@@ -1,0 +1,52 @@
+- jobName: example job
+  executions:
+    - type: EXECUTE
+      sql: truncate table test_table
+    - type: INSERT
+      name: example insert
+      sql: select * from test_table where name in (:names)
+      destTable: test_table
+      parameters:
+        - param: names
+          value:
+            - a
+    - type: UPDATE
+      name: example update
+      sql: select * from test_table where name in (:names)
+      destTable: test_table
+      parameters:
+        - param: names
+          value:
+            - a
+            - b
+    - type: UPSERT
+      name: example upsert
+      sql: select * from test_table where name in (:names)
+      destTable: test_table
+      parameters:
+        - param: names
+          value:
+            - a
+            - b
+    - type: DELETE
+      name: example delete
+      sql: select * from test_table where name in (:names)
+      destTable: test_table
+      parameters:
+        - param: names
+          value:
+            - b
+  setting:
+    fetchSize: 4000
+    batchSize: 2000
+  database:
+    source:
+      driver: database driver
+      url: database url
+      username: xxx
+      password: pwd
+    dest:
+      driver: database driver
+      url: database url
+      username: xxx
+      password: pwd
