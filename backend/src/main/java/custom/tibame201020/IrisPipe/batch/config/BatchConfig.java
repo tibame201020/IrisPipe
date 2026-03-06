@@ -27,7 +27,7 @@ public class BatchConfig {
         executor.setMaxPoolSize(1);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("async-job");
-        executor.initialize();;
+        executor.initialize();
 
         return executor;
     }
