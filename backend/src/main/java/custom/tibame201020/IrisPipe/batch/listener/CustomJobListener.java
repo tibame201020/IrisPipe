@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
@@ -16,7 +15,6 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 import custom.tibame201020.IrisPipe.context.SyncJobContext;
 import custom.tibame201020.IrisPipe.data.SummaryInfo;
 
-@Component
 public class CustomJobListener implements JobExecutionListener {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final PlatformTransactionManager transactionManager;

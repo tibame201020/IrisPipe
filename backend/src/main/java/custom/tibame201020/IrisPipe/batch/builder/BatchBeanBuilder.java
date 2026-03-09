@@ -68,7 +68,7 @@ public class BatchBeanBuilder {
                     Object[] args = NamedParameterUtils.buildValueArray(parsedSql, mapSqlParameterSource, null);
                     for (int i = 0; i < args.length; i++) {
                         Object arg = args[i];
-                        ps.setObject(i, arg);
+                        ps.setObject(i + 1, arg);
                     }
                 })
                 .build();

@@ -10,14 +10,12 @@ import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Component;
 
 import custom.tibame201020.IrisPipe.context.SyncJobContext;
 import custom.tibame201020.IrisPipe.data.SyncJobProp;
 import custom.tibame201020.IrisPipe.service.ExecutionRecordService;
 import io.micrometer.common.util.StringUtils;
 
-@Component
 public class ExecutionStepListener implements StepExecutionListener {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
