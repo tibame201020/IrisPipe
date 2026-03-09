@@ -17,6 +17,12 @@ public interface SyncJobProp {
         INSERT {
             @Override
             public void validate(Setting setting, Database database, Execution execution) {
+                if (StringUtils.isNotBlank(setting.recordTable)) {
+                    if (null == database.record) {
+                        throw new IllegalArgumentException(exceptionPrefix() + "database record must config");
+                    }
+                    database.record.validate();
+                }
                 if (StringUtils.isBlank(execution.destTable)) {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
@@ -39,6 +45,12 @@ public interface SyncJobProp {
         UPDATE {
             @Override
             public void validate(Setting setting, Database database, Execution execution) {
+                if (StringUtils.isNotBlank(setting.recordTable)) {
+                    if (null == database.record) {
+                        throw new IllegalArgumentException(exceptionPrefix() + "database record must config");
+                    }
+                    database.record.validate();
+                }
                 if (StringUtils.isBlank(execution.destTable)) {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
@@ -61,6 +73,12 @@ public interface SyncJobProp {
         UPSERT {
             @Override
             public void validate(Setting setting, Database database, Execution execution) {
+                if (StringUtils.isNotBlank(setting.recordTable)) {
+                    if (null == database.record) {
+                        throw new IllegalArgumentException(exceptionPrefix() + "database record must config");
+                    }
+                    database.record.validate();
+                }
                 if (StringUtils.isBlank(execution.destTable)) {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
@@ -133,13 +151,15 @@ public interface SyncJobProp {
     record Setting(
             Integer fetchSize,
             Integer batchSize,
-            Integer deleteThreshold
+            Integer deleteThreshold,
+            String recordTable
     ) {
     }
 
     record Database(
             ConnectionInfo source,
-            ConnectionInfo dest
+            ConnectionInfo dest,
+            ConnectionInfo record
     ) {
     }
 

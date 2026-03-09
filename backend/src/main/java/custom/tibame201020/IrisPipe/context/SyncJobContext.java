@@ -8,6 +8,7 @@ import custom.tibame201020.IrisPipe.data.SyncJob;
 public record SyncJobContext(
         DatabaseContext sourceContext,
         DatabaseContext destContext,
+        DatabaseContext recordContext,
         SyncJob syncJob,
         SummaryInfo summaryInfo) implements AutoCloseable {
 

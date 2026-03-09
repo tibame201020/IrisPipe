@@ -39,6 +39,7 @@
   setting:
     fetchSize: 4000
     batchSize: 2000
+    recordTable: batch_job_execution_record
   database:
     source:
       driver: database driver
@@ -46,6 +47,11 @@
       username: xxx
       password: pwd
     dest:
+      driver: database driver
+      url: database url
+      username: xxx
+      password: pwd
+    record:
       driver: database driver
       url: database url
       username: xxx
