@@ -19,7 +19,6 @@ public class JobConfigService {
     private final JsonFileProvider jsonFileProvider;
     private final YamlFileProvider yamlFileProvider;
 
-
     public JobConfigService(JsonFileProvider jsonFileProvider, YamlFileProvider yamlFileProvider) {
         this.jsonFileProvider = jsonFileProvider;
         this.yamlFileProvider = yamlFileProvider;

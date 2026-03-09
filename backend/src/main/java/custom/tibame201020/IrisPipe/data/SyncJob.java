@@ -24,6 +24,7 @@ public class SyncJob {
             } catch (Exception e) {
                 String name = execution.name();
                 String executionName = StringUtils.isBlank(name) ? "on type " + execution.type() : name;
+                throw new ConfigValidationException(jobName, executionName, e.getMessage());
             }
         });
     }
