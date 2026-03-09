@@ -12,7 +12,7 @@
 
 ## Phase 1: Data Models
 
-- [ ] **1-1** `SummaryInfo` **(A)** — [spec](../specs/phase-01-data/01-summary-info.md) → 3 tests
+- [x] **1-1** `SummaryInfo` **(A)** — [spec](../specs/phase-01-data/01-summary-info.md) → 3 tests
 - [ ] **1-2** `SimpleEnum` **(A)** — [spec](../specs/phase-01-data/02-simple-enum.md) → 4 tests
 - [ ] **1-3** `BatchJobExecutionRecord` **(A)** — [spec](../specs/phase-01-data/03-batch-job-execution-record.md) → 2 tests
 - [ ] **1-4** `SyncJob` **(A)** — [spec](../specs/phase-01-data/04-sync-job.md) → 4 tests
