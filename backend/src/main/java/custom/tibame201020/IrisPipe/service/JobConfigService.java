@@ -42,7 +42,7 @@ public class JobConfigService {
                     .map(path -> rooPath.relativize(path).toString())
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ConfigFileException("jobs root dir", e.getMessage());
         }
     }
 
@@ -54,6 +54,7 @@ public class JobConfigService {
 
     public SyncConfigDTO.ConfigFileInfo getConfigFileInfo(String configAcceptPath, String configFilePath) {
         try {
+            secureConifgPath(configFilePath);
             Path path = Path.of(configAcceptPath, configFilePath);
             List<SyncJob> jobs = getSyncJobs(path);
             return new SyncConfigDTO.ConfigFileInfo(configFilePath, path.getFileName().toString(), jobs);
@@ -65,6 +66,7 @@ public class JobConfigService {
     public SyncConfigDTO.ConfigFileInfo syncConfigControl(String configAcceptPath, String configFilePath,
             MultipartFile file, SyncConfigDTO.SyncConfigFileOperation operation) {
         try {
+            secureConifgPath(configFilePath);
             Path path = Path.of(configAcceptPath, configFilePath);
             createTempFileAndValidate(configFilePath, file);
             operation.validate(path);
@@ -79,6 +81,7 @@ public class JobConfigService {
 
     public void deleteSyncConfig(String configAcceptPath, String configFilePath) {
         try {
+            secureConifgPath(configFilePath);
             Path path = Path.of(configAcceptPath, configFilePath);
             boolean isFileExists = Files.exists(path);
             if (!isFileExists) {
@@ -90,8 +93,8 @@ public class JobConfigService {
         }
     }
 
-    public List<SyncJob> getSyncJobs(String configFilePath) {
-        Path path = Path.of(configFilePath);
+    public List<SyncJob> getSyncJobs(String fullConfigFilePath) {
+        Path path = Path.of(fullConfigFilePath);
         return getSyncJobs(path);
     }
 
@@ -102,6 +105,12 @@ public class JobConfigService {
         List<SyncJob> syncJobs = getSyncJobs(tempPath);
         syncJobs.forEach(SyncJob::validate);
         Files.deleteIfExists(tempPath);
+    }
+
+    private void secureConifgPath(String configPath) {
+        if (configPath.contains("..")) {
+            throw new ConfigFileException(configPath, "not support relateive filepath");
+        }
     }
 
     private FileProvider getFileProvider(Path path) {

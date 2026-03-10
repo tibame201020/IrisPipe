@@ -3,7 +3,6 @@ package custom.tibame201020.IrisPipe.api;
 import java.util.List;
 
 import org.springframework.core.env.Environment;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import custom.tibame201020.IrisPipe.dto.SyncConfigDTO;
 import custom.tibame201020.IrisPipe.service.JobConfigService;
 
 @RestController
@@ -32,33 +32,33 @@ public class SyncConfigAPI {
     }
 
     @GetMapping
-    public ResponseEntity<?> getConfigDetail(@RequestParam("path") String path) {
-        return null;
+    public SyncConfigDTO.ConfigFileInfo getConfigDetail(@RequestParam("path") String path) {
+        return jobConfigService.getConfigFileInfo(configAcceptPath, path);
     }
 
     @PostMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> createConfig(
+    public SyncConfigDTO.ConfigFileInfo createConfig(
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
-        return null;
+        return jobConfigService.syncConfigControl(configAcceptPath, path, file, SyncConfigDTO.SyncConfigFileOperation.CREATE);
     }
 
     @PutMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateConfig(
+    public SyncConfigDTO.ConfigFileInfo updateConfig(
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
-        return null;
+                return jobConfigService.syncConfigControl(configAcceptPath, path, file, SyncConfigDTO.SyncConfigFileOperation.UPSERT);
     }
 
     @PatchMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> patchConfig(
+    public SyncConfigDTO.ConfigFileInfo patchConfig(
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
-        return null;
+                return jobConfigService.syncConfigControl(configAcceptPath, path, file, SyncConfigDTO.SyncConfigFileOperation.UPDATE);
     }
 
     @DeleteMapping
-    public ResponseEntity<?> deleteConfig(@RequestParam("path") String path) {
-        return null;
+    public void deleteConfig(@RequestParam("path") String path) {
+        jobConfigService.deleteSyncConfig(configAcceptPath, path);
     }
 }
