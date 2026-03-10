@@ -1,5 +1,7 @@
 package custom.tibame201020.IrisPipe.batch.repo;
 
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,4 +10,5 @@ import custom.tibame201020.IrisPipe.batch.entity.BatchJobExecutionParamsId;
 
 @Repository
 public interface BatchJobExecutionParamsRepo extends JpaRepository<BatchJobExecutionParams, BatchJobExecutionParamsId> {
+    List<BatchJobExecutionParams> findByJobExecutionId(Long jobExecutionId);
 }

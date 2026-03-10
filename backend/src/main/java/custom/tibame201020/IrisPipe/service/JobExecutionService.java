@@ -1,5 +1,6 @@
 package custom.tibame201020.IrisPipe.service;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -31,6 +32,11 @@ public class JobExecutionService {
         this.syncJobContextFactory = syncJobContextFactory;
         this.syncJobFactory = syncJobFactory;
         this.executionRecordService = executionRecordService;
+    }
+
+    public List<JobExecution> execute(JobLauncher jobLauncher, Path path) {
+        List<SyncJob> syncJobs = jobConfigService.getSyncJobs(path);
+        return execute(jobLauncher, syncJobs);
     }
 
     public List<JobExecution> execute(JobLauncher jobLauncher, String filepath) {
