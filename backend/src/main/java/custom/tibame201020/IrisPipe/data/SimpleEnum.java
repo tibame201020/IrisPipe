@@ -13,4 +13,5 @@ public interface SimpleEnum {
     enum SummaryInfoLayer {
         JOB, STEP
     }
+
 }
