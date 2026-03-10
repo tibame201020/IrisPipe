@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import custom.tibame201020.IrisPipe.dto.SyncJobDTO;
 import custom.tibame201020.IrisPipe.service.JobExecutionService;
-import custom.tibame201020.IrisPipe.service.JobMetadataSerivce;
+import custom.tibame201020.IrisPipe.service.JobMetadataService;
 
 @RestController
 @RequestMapping("/api/v1/sync-job")
@@ -29,16 +29,16 @@ public class SyncJobAPI {
     private final JobLauncher asyncJobLauncher;
     private final JobExplorer jobExplorer;
     private final JobExecutionService jobExecutionService;
-    private final JobMetadataSerivce jobMetadataSerivce;
+    private final JobMetadataService jobMetadataService;
     private final String configAcceptPath;
 
     public SyncJobAPI(JobLauncher jobLauncher, JobLauncher asyncJobLauncher, JobExplorer jobExplorer,
-            JobExecutionService jobExecutionService, JobMetadataSerivce jobMetadataSerivce, Environment environment) {
+            JobExecutionService jobExecutionService, JobMetadataService jobMetadataService, Environment environment) {
         this.jobLauncher = jobLauncher;
         this.asyncJobLauncher = asyncJobLauncher;
         this.jobExplorer = jobExplorer;
         this.jobExecutionService = jobExecutionService;
-        this.jobMetadataSerivce = jobMetadataSerivce;
+        this.jobMetadataService = jobMetadataService;
         this.configAcceptPath = environment.getRequiredProperty("config.accept-path", String.class);
     }
 
@@ -53,7 +53,7 @@ public class SyncJobAPI {
 
     @PostMapping
     public List<SyncJobDTO.JobSummaryInfo> executeJob(@RequestBody SyncJobDTO.JobExecuteRequest jobExecuteRequest) {
-        boolean useAsyncLaucher = jobExecuteRequest.useAsyncLaucher();
+        boolean useAsyncLaucher = Boolean.TRUE.equals(jobExecuteRequest.useAsyncLaucher());
         JobLauncher jobLauncher = useAsyncLaucher ? this.asyncJobLauncher : this.jobLauncher;
         String configPath = jobExecuteRequest.configPath();
         Path path = Paths.get(configAcceptPath, configPath);
@@ -71,7 +71,7 @@ public class SyncJobAPI {
 
     @DeleteMapping("/{jobId}")
     public ResponseEntity<Void> deleteMetadata(@PathVariable("jobId") Long jobId) {
-        jobMetadataSerivce.deleteByJobExecution(jobExplorer.getJobExecution(jobId));
-        return ResponseEntity.ok().build();
+        jobMetadataService.deleteByJobExecution(jobExplorer.getJobExecution(jobId));
+        return ResponseEntity.noContent().build();
     }
 }

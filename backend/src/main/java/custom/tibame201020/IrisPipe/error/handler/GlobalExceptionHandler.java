@@ -4,6 +4,7 @@ import custom.tibame201020.IrisPipe.error.exception.ConfigFileException;
 import custom.tibame201020.IrisPipe.error.exception.ConfigValidationException;
 import custom.tibame201020.IrisPipe.error.exception.CustomJobExecutionException;
 import custom.tibame201020.IrisPipe.error.exception.General;
+import custom.tibame201020.IrisPipe.error.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -17,6 +18,13 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<General.GeneralExceptionResponse> handle(ResourceNotFoundException e) {
+        General.GeneralExceptionResponse generalExceptionResponse = new General.GeneralExceptionResponse(
+                "[" + e.getResourceName() + "] " + e.getMessage());
+        return new ResponseEntity<>(generalExceptionResponse, HttpStatus.NOT_FOUND);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handle(MethodArgumentNotValidException e) {

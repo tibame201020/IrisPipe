@@ -71,9 +71,9 @@
 | [3-4](./phase-03-error/04-general.md) | General | A. 純邏輯 | 3 | ⭐ |
 | [4-1](./phase-04-provider/01-json-file-provider.md) | JsonFileProvider | B. @TempDir | 9 | ⭐⭐ |
 | [4-2](./phase-04-provider/02-yaml-file-provider.md) | YamlFileProvider | B. @TempDir | 9 | ⭐⭐ |
-| [5-1](./phase-05-service/01-job-config-service.md) | JobConfigService | D. Mock | 5 | ⭐⭐ |
+| [5-1](./phase-05-service/01-job-config-service.md) | JobConfigService | B+D. @TempDir+Mock | 8 | ⭐⭐⭐ |
 | [5-2](./phase-05-service/02-execution-record-service.md) | ExecutionRecordService | C. H2 DB | 8 | ⭐⭐ |
-| [6-1](./phase-06-error-handler/01-global-exception-handler.md) | GlobalExceptionHandler | A/D. 直接呼叫 | 7 | ⭐⭐ |
+| [6-1](./phase-06-error-handler/01-global-exception-handler.md) | GlobalExceptionHandler | A/D. 直接呼叫 | 8 | ⭐⭐ |
 | [7-1](./phase-07-writer/01-batch-insert-writer.md) | BatchInsertWriter | D. Mock Writer | 3 | ⭐⭐ |
 | [7-2](./phase-07-writer/02-batch-update-writer.md) | BatchUpdateWriter | A. 純邏輯 | 4 | ⭐ |
 | [7-3](./phase-07-writer/03-batch-upsert-writer.md) | BatchUpsertWriter | C+D. H2+Mock | 7 | ⭐⭐⭐ |
@@ -86,6 +86,9 @@
 | [11-2](./phase-11-context/02-sync-job-context.md) | SyncJobContext | A. 純邏輯 | 3 | ⭐ |
 | [12-1](./phase-12-factory/01-sync-job-context-factory.md) | SyncJobContextFactory | C+D. H2+Mock | 7 | ⭐⭐⭐ |
 | [12-2](./phase-12-factory/02-sync-job-factory.md) | SyncJobFactory | C. H2 DB | 8 | ⭐⭐⭐ |
-| [13-1](./phase-13-service-integration/01-job-execution-service.md) | JobExecutionService | D. Mock | 5 | ⭐⭐⭐ |
+| [13-1](./phase-13-service-integration/01-job-execution-service.md) | JobExecutionService | D. Mock | 6 | ⭐⭐⭐ |
+| [13-2](./phase-13-service-integration/02-job-metadata-service.md) | JobMetadataService | C. H2 DB | 4 | ⭐⭐⭐ |
+| [14-1](./phase-14-api/01-sync-config-api.md) | SyncConfigAPI | D. MockMvc | 6 | ⭐⭐⭐ |
+| [14-2](./phase-14-api/02-sync-job-api.md) | SyncJobAPI | D. MockMvc | 4 | ⭐⭐⭐ |
 
-**Total: 27 phases, ~148 test cases**
+**Total: 30 phases**
