@@ -21,9 +21,10 @@ import custom.tibame201020.IrisPipe.service.JobConfigService;
 public class SyncConfigAPI {
     private final JobConfigService jobConfigService;
     private final String configAcceptPath;
+
     public SyncConfigAPI(JobConfigService jobConfigService, Environment environment) {
         this.jobConfigService = jobConfigService;
-        this.configAcceptPath = environment.getRequiredProperty("config.accept.path", String.class);
+        this.configAcceptPath = environment.getRequiredProperty("config.accept-path", String.class);
     }
 
     @GetMapping
@@ -31,7 +32,7 @@ public class SyncConfigAPI {
         return jobConfigService.listSyncConfig(configAcceptPath);
     }
 
-    @GetMapping
+    @GetMapping(params = "path")
     public SyncConfigDTO.ConfigFileInfo getConfigDetail(@RequestParam("path") String path) {
         return jobConfigService.getConfigFileInfo(configAcceptPath, path);
     }
@@ -40,21 +41,24 @@ public class SyncConfigAPI {
     public SyncConfigDTO.ConfigFileInfo createConfig(
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
-        return jobConfigService.syncConfigControl(configAcceptPath, path, file, SyncConfigDTO.SyncConfigFileOperation.CREATE);
+        return jobConfigService.syncConfigControl(configAcceptPath, path, file,
+                SyncConfigDTO.SyncConfigFileOperation.CREATE);
     }
 
     @PutMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public SyncConfigDTO.ConfigFileInfo updateConfig(
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
-                return jobConfigService.syncConfigControl(configAcceptPath, path, file, SyncConfigDTO.SyncConfigFileOperation.UPSERT);
+        return jobConfigService.syncConfigControl(configAcceptPath, path, file,
+                SyncConfigDTO.SyncConfigFileOperation.UPSERT);
     }
 
     @PatchMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public SyncConfigDTO.ConfigFileInfo patchConfig(
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
-                return jobConfigService.syncConfigControl(configAcceptPath, path, file, SyncConfigDTO.SyncConfigFileOperation.UPDATE);
+        return jobConfigService.syncConfigControl(configAcceptPath, path, file,
+                SyncConfigDTO.SyncConfigFileOperation.UPDATE);
     }
 
     @DeleteMapping

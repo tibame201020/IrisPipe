@@ -102,9 +102,13 @@ public class JobConfigService {
         String extension = FilenameUtils.getExtension(configPath);
         String uuid = UUID.randomUUID().toString();
         Path tempPath = Files.createTempFile(uuid, "." + extension);
-        List<SyncJob> syncJobs = getSyncJobs(tempPath);
-        syncJobs.forEach(SyncJob::validate);
-        Files.deleteIfExists(tempPath);
+        try {
+            Files.write(tempPath, file.getBytes());
+            List<SyncJob> syncJobs = getSyncJobs(tempPath);
+            syncJobs.forEach(SyncJob::validate);
+        } finally {
+            Files.deleteIfExists(tempPath);
+        }
     }
 
     private void secureConifgPath(String configPath) {
