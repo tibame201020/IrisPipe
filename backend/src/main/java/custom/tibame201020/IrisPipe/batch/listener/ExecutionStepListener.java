@@ -12,8 +12,8 @@ import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import custom.tibame201020.IrisPipe.context.SyncJobContext;
+import custom.tibame201020.IrisPipe.data.StepExecutionRecord;
 import custom.tibame201020.IrisPipe.data.SyncJobProp;
-import custom.tibame201020.IrisPipe.service.ExecutionRecordService;
 import io.micrometer.common.util.StringUtils;
 
 public class ExecutionStepListener implements StepExecutionListener {
@@ -21,13 +21,10 @@ public class ExecutionStepListener implements StepExecutionListener {
 
     private final SyncJobContext syncJobContext;
     private final SyncJobProp.Execution execution;
-    private final ExecutionRecordService executionRecordService;
 
-    public ExecutionStepListener(SyncJobContext syncJobContext, SyncJobProp.Execution execution,
-            ExecutionRecordService executionRecordService) {
+    public ExecutionStepListener(SyncJobContext syncJobContext, SyncJobProp.Execution execution) {
         this.syncJobContext = syncJobContext;
         this.execution = execution;
-        this.executionRecordService = executionRecordService;
     }
 
     @Override
@@ -39,16 +36,15 @@ public class ExecutionStepListener implements StepExecutionListener {
     public ExitStatus afterStep(StepExecution stepExecution) {
         if (stepExecution.getStatus().equals(BatchStatus.COMPLETED)
                 && StringUtils.isNotBlank(execution.watermarkColumn())) {
-            NamedParameterJdbcTemplate jdbcTemplate = syncJobContext.recordContext().getNamedParameterJdbcTemplate();
-            String recordTable = syncJobContext.syncJob().getSetting().recordTable();
             String executionName = execution.name();
             String destTable = execution.destTable();
             String watermarkColumn = execution.watermarkColumn();
             Object value = execution.executionContext().get(watermarkColumn);
             if (Objects.nonNull(value)) {
-                executionRecordService.saveWatermark(jdbcTemplate, recordTable, executionName, destTable,
-                        watermarkColumn, value, stepExecution.getStartTime(), stepExecution.getEndTime(),
-                        LocalDateTime.now());
+                StepExecutionRecord stepExecutionRecord = new StepExecutionRecord(executionName, destTable,
+                        watermarkColumn, value, stepExecution.getStartTime(), LocalDateTime.now(),
+                        stepExecution.getLastUpdated());
+                execution.executionContext().put(StepExecutionRecord.contextKey(), stepExecutionRecord);
             }
         }
 
