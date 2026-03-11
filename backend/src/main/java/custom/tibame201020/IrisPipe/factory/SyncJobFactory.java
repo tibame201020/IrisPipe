@@ -94,7 +94,7 @@ public class SyncJobFactory {
                                 execution.summaryInfo());
 
                 return new StepBuilder(jobName + "_ insert_step", jobRepository)
-                                .listener(new ExecutionStepListener(syncJobContext, execution))
+                                .listener(new ExecutionStepListener(execution))
                                 .<Map<String, Object>, Map<String, Object>>chunk(
                                                 syncJobContext.syncJob().getSetting().batchSize(),
                                                 platformTransactionManager)
@@ -136,7 +136,7 @@ public class SyncJobFactory {
                                 destDataSource, sqlSyntaxHelper.updateSql);
 
                 return new StepBuilder(jobName + "_ update_step", jobRepository)
-                                .listener(new ExecutionStepListener(syncJobContext, execution))
+                                .listener(new ExecutionStepListener(execution))
                                 .<Map<String, Object>, Map<String, Object>>chunk(
                                                 syncJobContext.syncJob().getSetting().batchSize(),
                                                 platformTransactionManager)
@@ -182,7 +182,7 @@ public class SyncJobFactory {
                                 execution.destTable(), execution.summaryInfo());
 
                 return new StepBuilder(jobName + "_ upsert_step", jobRepository)
-                                .listener(new ExecutionStepListener(syncJobContext, execution))
+                                .listener(new ExecutionStepListener(execution))
                                 .<Map<String, Object>, Map<String, Object>>chunk(
                                                 syncJobContext.syncJob().getSetting().batchSize(),
                                                 platformTransactionManager)

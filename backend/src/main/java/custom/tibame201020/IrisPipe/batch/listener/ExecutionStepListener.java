@@ -9,9 +9,7 @@ import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-import custom.tibame201020.IrisPipe.context.SyncJobContext;
 import custom.tibame201020.IrisPipe.data.StepExecutionRecord;
 import custom.tibame201020.IrisPipe.data.SyncJobProp;
 import io.micrometer.common.util.StringUtils;
@@ -19,11 +17,9 @@ import io.micrometer.common.util.StringUtils;
 public class ExecutionStepListener implements StepExecutionListener {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private final SyncJobContext syncJobContext;
     private final SyncJobProp.Execution execution;
 
-    public ExecutionStepListener(SyncJobContext syncJobContext, SyncJobProp.Execution execution) {
-        this.syncJobContext = syncJobContext;
+    public ExecutionStepListener(SyncJobProp.Execution execution) {
         this.execution = execution;
     }
 
@@ -44,7 +40,7 @@ public class ExecutionStepListener implements StepExecutionListener {
                 StepExecutionRecord stepExecutionRecord = new StepExecutionRecord(executionName, destTable,
                         watermarkColumn, value, stepExecution.getStartTime(), LocalDateTime.now(),
                         stepExecution.getLastUpdated());
-                execution.executionContext().put(StepExecutionRecord.contextKey(), stepExecutionRecord);
+                stepExecution.getExecutionContext().put(StepExecutionRecord.contextKey(), stepExecutionRecord);
             }
         }
 
