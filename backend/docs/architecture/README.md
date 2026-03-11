@@ -14,7 +14,8 @@
 | Build Tool | Maven |
 | Java Version | 21+ (record, switch expression, text block) |
 | Serialization | Jackson (JSON + YAML via `YAMLFactory`) |
-| Metadata ORM | Spring Data JPA (僅供 Spring Batch metadata) |
+| Metadata ORM | Spring Data JPA (Spring Batch + Watermark 紀錄) |
+| Migration Tool | Flyway (V1: Batch Schema, V2: Watermark Schema) |
 | Code Generation | Lombok (`@Data`, `@Getter`) |
 
 ## Package Structure
@@ -46,10 +47,13 @@ custom.tibame201020.IrisPipe
 │
 ├── context/
 │   ├── DatabaseContext.java           # DataSource + JdbcTemplate + TxManager 封裝 (AutoCloseable)
-│   └── SyncJobContext.java            # record: source/dest/record 三組 DatabaseContext + SyncJob + SummaryInfo
+│   └── SyncJobContext.java            # record: source/dest 兩組 DatabaseContext + SyncJob + SummaryInfo
 │
+├── entity/                       # JPA 實體層
+│   └── WatermarkRecord.java      # Watermark 紀錄 Entity
+├── repo/                         # JPA Repository 接口
+│   └── WatermarkRecordRepo.java  # Watermark CRUD 核心
 ├── data/
-│   ├── BatchJobExecutionRecord.java   # Watermark 紀錄 POJO
 │   ├── SimpleEnum.java                # GeneralStatus / SystemProvideVariable / SummaryInfoLayer
 │   ├── SummaryInfo.java               # AtomicLong 計數器群組
 │   ├── SyncJob.java                   # Job 定義 POJO (含 validate())

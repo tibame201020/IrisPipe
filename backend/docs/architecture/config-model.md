@@ -36,7 +36,7 @@ record Setting(
     Integer fetchSize,       // Reader 的 JDBC fetch size
     Integer batchSize,       // Writer 的 batch commit size
     Integer deleteThreshold, // Delete 保護閾值 (-1 = 不限制)
-    String recordTable       // Watermark 紀錄表名稱
+    AtomicLevel atomicLevel  // 交易層級 (JOB / CHUNK)
 ) {}
 ```
 
@@ -47,8 +47,7 @@ record Setting(
 ```java
 record Database(
     ConnectionInfo source,  // 來源資料庫
-    ConnectionInfo dest,    // 目標資料庫
-    ConnectionInfo record   // Watermark 紀錄資料庫 (可選)
+    ConnectionInfo dest     // 目標資料庫
 ) {}
 ```
 
@@ -111,8 +110,6 @@ public List<Parameter> parameters() {
 
 | 驗證項目 | 失敗訊息 |
 |---|---|
-| 有 `recordTable` 但 `database.record` 為 null | `database record must config` |
-| 有 `recordTable` 時呼叫 `record.validate()` | (由 ConnectionInfo 拋出) |
 | `execution.destTable` blank | `must config destTable` |
 | `setting.fetchSize` null 或 0 | `setting fetchSize must config, and not allow zero` |
 | `setting.batchSize` null 或 0 | `setting batchSize must config, and not allow zero` |
@@ -197,12 +194,6 @@ enum SupportType {
         "password": "pass"
       },
       "dest": {
-        "driver": "org.postgresql.Driver",
-        "url": "jdbc:postgresql://dest:5432/db",
-        "username": "writer",
-        "password": "pass"
-      },
-      "record": {
         "driver": "org.postgresql.Driver",
         "url": "jdbc:postgresql://dest:5432/db",
         "username": "writer",

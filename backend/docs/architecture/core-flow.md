@@ -15,7 +15,7 @@ graph TD
     H -->|"依 ExecutionType"| I["ExecutionType.validate()"]
     I --> J["3. 建立 Context"]
     J --> K["SyncJobContextFactory.initialSyncJobContext()"]
-    K -->|"3a. 建立 DB Connections"| L["generDatabaseContext() x3"]
+    K -->|"3a. 建立 DB Connections"| L["generDatabaseContext() x2 (Source & Dest)"]
     K -->|"3b. 渲染系統變數"| M["renderSystemProvoderVariable()"]
     L --> N[SyncJobContext]
     M --> N
