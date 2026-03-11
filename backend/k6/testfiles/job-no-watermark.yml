@@ -1,0 +1,22 @@
+- jobName: k6_test_job_no_watermark
+  executions:
+    - type: INSERT
+      name: k6_insert_no_watermark
+      sql: select * from test_source order by update_time asc
+      destTable: test_dest
+      # Intentionally omitting watermarkColumn and parameters
+  setting:
+    fetchSize: 100
+    batchSize: 100
+    atomicLevel: JOB
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
