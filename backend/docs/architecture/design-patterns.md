@@ -12,9 +12,10 @@ Watermark 是增量同步的核心，記錄「上次同步到哪裡」，下次�
 |---|---|
 | `SimpleEnum.SystemProvideVariable` | 定義 4 種系統提供變數 |
 | `ExecutionRecordService.fetchValue()` | 查詢歷史 watermark 值 |
-| `ExecutionRecordService.saveWatermark()` | 寫回新 watermark 值 |
+| `ExecutionRecordService.saveWatermark()` | 寫回新 watermark 值 (由 CustomJobListener 在 Job 結束時統一代勞) |
 | `SyncJobContextFactory.renderSystemProvoderVariable()` | 在 context 初始化時替換參數 |
-| `ExecutionStepListener.afterStep()` | Step 完成後觸發寫回 |
+| `ExecutionStepListener.afterStep()` | Step 完成後，將新的 watermark 值暫存入 `ExecutionContext` |
+| `CustomJobListener.afterJob()` | Job COMPLETED 且交易成功後，統一將收集的 watermark 寫入 DB (At-Least-Once 防護) |
 | `SyncJobProp.Execution.executionContext` | 暫存執行期間的 watermark 值 |
 
 ### 4 種系統變數
@@ -50,7 +51,12 @@ sequenceDiagram
 
     Note over Listener: 3. Step 完成後
     Listener->>Listener: afterStep() triggered
-    Listener->>ERS: saveWatermark(recordTable, ...)
+    Listener->>Step: executionContext.put("watermarks", ...) (暫存於記憶體)
+
+    Note over Factory: 4. Job 完成且交易 Commit
+    participant JL as CustomJobListener
+    JL->>JL: afterJob() triggered (Status = COMPLETED)
+    JL->>ERS: 統一執行 saveWatermark(...)
     ERS->>RecordDB: INSERT or UPDATE record_tbl
 ```
 

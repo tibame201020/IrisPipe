@@ -31,8 +31,8 @@ custom.tibame201020.IrisPipe
 │   ├── entity/                       # Spring Batch metadata JPA entities (7 files)
 │   ├── repo/                         # Spring Batch metadata JPA repos (6 files)
 │   ├── listener/
-│   │   ├── CustomJobListener.java    # Job listener（原子交易 + 摘要輸出）
-│   │   └── ExecutionStepListener.java # Step listener（watermark 寫回 + readCount）
+│   │   ├── CustomJobListener.java    # Job listener（原子交易 + 摘要輸出 + Watermark 寫回 DB）
+│   │   └── ExecutionStepListener.java # Step listener（Watermark 記憶體暫存 + readCount）
 │   ├── tasklet/
 │   │   ├── DeleteTasklet.java        # 刪除 Tasklet（含 threshold 保護）
 │   │   └── ExecuteTasklet.java       # 通用 SQL 執行 Tasklet

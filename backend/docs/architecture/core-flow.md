@@ -136,13 +136,13 @@ graph LR
 | Event | openJobTransaction=true | openJobTransaction=false |
 |---|---|---|
 | `beforeJob` | 開啟交易 (`getTransaction()`) | 無動作 |
-| `afterJob` (COMPLETED) | `commit()` + `close()` + 輸出摘要 | `close()` + 輸出摘要 |
-| `afterJob` (FAILED) | `rollback()` + `close()` + 輸出摘要 | `close()` + 輸出摘要 |
+| `afterJob` (COMPLETED) | 確保交易成功後，`persistStepExecutionRecords()` 寫入所有 Watermark -> `commit()` -> `close()` | `persistStepExecutionRecords()` -> `close()` |
+| `afterJob` (FAILED) | `rollback()` -> `close()` (丟棄所有 Watermark 變更) | `close()` |
 
 ### ExecutionStepListener (Step 級別)
 
 | Event | Condition | Action |
 |---|---|---|
 | `beforeStep` | 無 | log step name |
-| `afterStep` | COMPLETED + watermarkColumn 有值 + value 非 null | `saveWatermark()` |
+| `afterStep` | COMPLETED + watermarkColumn 有值 + value 非 null | 暫存進 StepExecution.getExecutionContext() |
 | `afterStep` | readCount != 0 | `summaryInfo.total.setPlain(readCount)` |
