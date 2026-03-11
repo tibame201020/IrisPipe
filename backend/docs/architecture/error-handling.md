@@ -1,90 +1,57 @@
 # Error Handling
 
-## Exception Hierarchy
+## Global exception mapping
 
-```mermaid
-graph TD
-    A[RuntimeException] --> B[ConfigValidationException]
-    A --> C[CustomJobExecutionException]
-    A --> D[ConfigFileException]
-    A --> E["General.GeneralException"]
-```
+`GlobalExceptionHandler` is the REST boundary for application errors.
 
-## Exception Details
+| Exception | HTTP status | Response shape |
+| --- | --- | --- |
+| `ResourceNotFoundException` | `404` | `{ "message": "[resource] ..." }` |
+| `MethodArgumentNotValidException` | `400` | `{ "field": "error" }` |
+| `ResponseStatusException` | status from exception | `{ "message": "..." }` |
+| `ConfigValidationException` | `400` | `{ "jobName": "...", "executionName": "...", "message": "..." }` |
+| `General.GeneralException` | `400` or `500` | `{ "message": "..." }` |
+| `CustomJobExecutionException` | `500` | `{ "message": "jobName: ..., error: ..." }` |
+| `ConfigFileException` | `400` | `{ "message": "..." }` |
+| other `RuntimeException` | `500` | `{ "message": "..." }` |
 
-### ConfigValidationException
+## Exception roles
 
-**用途**: Job 設定檔驗證失敗
+### `ConfigValidationException`
 
-| Field | Type | Description |
-|---|---|---|
-| `jobName` | String | Job 名稱 |
-| `executionName` | String | Execution 名稱 |
-| `message` | String | 錯誤訊息 |
+Raised when a parsed job config is structurally valid JSON or YAML, but fails IrisPipe-specific validation.
 
-**`getMessage()` 邏輯**:
-- `jobName` 有值 + `executionName` 為 blank → 回傳 `message`（只有 message）
-- 否則 → `"job: %s, execution: %s, error: %s"`
+Typical causes:
 
-### CustomJobExecutionException
+- blank `jobName`
+- missing `destTable`
+- missing named SQL parameters
+- missing `atomicLevel`
+- missing connection credentials
 
-**用途**: Job 執行期間錯誤（如 delete threshold exceeded、job launch 失敗）
+### `ConfigFileException`
 
-| Field | Type | Description |
-|---|---|---|
-| `jobName` | String | Job 名稱 |
-| `message` | String | 錯誤訊息 |
+Raised when a config file cannot be loaded, validated, written, or deleted.
 
-**`getMessage()`**: `"jobName: %s, error: %s"`
+Typical causes:
 
-### ConfigFileException
+- unsupported file type
+- invalid path such as `..`
+- invalid file content
+- missing target file during delete
 
-**用途**: 設定檔讀取失敗
+### `CustomJobExecutionException`
 
-| Field | Type | Description |
-|---|---|---|
-| `configPath` | String | 設定檔路徑 |
-| `message` | String | 錯誤訊息 |
+Raised when Spring Batch job startup fails inside `JobExecutionService`.
 
-> ⚠️ 目前 `GlobalExceptionHandler` 中對應的 handler **已被註解**
+### `ResourceNotFoundException`
 
-### General.GeneralException
+Raised by metadata operations such as deleting a job execution that does not exist.
 
-**用途**: 通用錯誤（區分 server/client error）
+## Practical API expectations
 
-| Field | Type | Description |
-|---|---|---|
-| `isServerError` | boolean | true=500, false=400 |
-| `message` | String | 錯誤訊息 |
+- Config upload validation failures should return `400`.
+- Metadata lookups or deletes for missing jobs should return `404`.
+- Unexpected runtime failures still fall back to `500`.
 
-### General.GeneralExceptionResponse
-
-```java
-record GeneralExceptionResponse(String message) {}
-```
-
-統一的 API 錯誤回應格式。
-
----
-
-## GlobalExceptionHandler Mapping
-
-`@RestControllerAdvice`，統一處理所有 REST API 例外。
-
-| Handler Method | Exception | HTTP Status | Response Body |
-|---|---|---|---|
-| `handle(MethodArgumentNotValidException)` | Bean Validation | 400 | `Map<fieldName, errorMessage>` |
-| `handle(ResponseStatusException)` | Spring 內建 | 依原始 status | `GeneralExceptionResponse` |
-| `handle(ConfigValidationException)` | 設定驗證 | 400 | `Map{jobName, executionName, message}` |
-| `handle(General.GeneralException)` | 通用例外 | 依 `isServerError` | `GeneralExceptionResponse` |
-| `handle(CustomJobExecutionException)` | Job 執行錯誤 | 500 | `GeneralExceptionResponse` |
-| `handle(RuntimeException)` | Fallback | 500 | `GeneralExceptionResponse` |
-| ~~`handle(ConfigFileException)`~~ | ~~設定檔錯誤~~ | ~~500~~ | ~~已註解~~ |
-
-### Handler 優先順序
-
-Spring 會依照例外繼承鏈選擇最具體的 handler：
-1. `ConfigValidationException` (最具體)
-2. `CustomJobExecutionException`
-3. `General.GeneralException`
-4. `RuntimeException` (最寬泛 fallback)
+These are the behaviors the K6 suite and future API documentation should assume.

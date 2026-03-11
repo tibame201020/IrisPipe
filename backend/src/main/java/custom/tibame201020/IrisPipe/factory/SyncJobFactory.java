@@ -108,7 +108,7 @@ public class SyncJobFactory {
                                         }
                                         List<String> columns = sqlSyntaxHelper.columns;
                                         columns.forEach(column -> {
-                                                if (processItem.containsKey(column)) {
+                                                if (!processItem.containsKey(column)) {
                                                         processItem.put(column, null);
                                                 }
                                         });
@@ -150,7 +150,7 @@ public class SyncJobFactory {
                                         }
                                         List<String> columns = sqlSyntaxHelper.columns;
                                         columns.forEach(column -> {
-                                                if (processItem.containsKey(column)) {
+                                                if (!processItem.containsKey(column)) {
                                                         processItem.put(column, null);
                                                 }
                                         });
@@ -196,7 +196,7 @@ public class SyncJobFactory {
                                         }
                                         List<String> columns = sqlSyntaxHelper.columns;
                                         columns.forEach(column -> {
-                                                if (processItem.containsKey(column)) {
+                                                if (!processItem.containsKey(column)) {
                                                         processItem.put(column, null);
                                                 }
                                         });

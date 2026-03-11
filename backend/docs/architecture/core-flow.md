@@ -1,148 +1,83 @@
-# Core Flow — Job Execution Pipeline
+# Core Flow
 
-## 主要流程
+## High-level execution path
 
 ```mermaid
 graph TD
-    A["JobExecutionService.execute(filepath)"] -->|"1. 讀取設定檔"| B["JobConfigService.getSyncJobs(path)"]
-    B -->|"JSON / YAML 判斷"| C{"FileProvider?"}
-    C -->|".json"| D[JsonFileProvider]
-    C -->|".yaml / .yml"| E[YamlFileProvider]
-    D --> F["List&lt;SyncJob&gt;"]
-    E --> F
-    F -->|"2. 驗證"| G["SyncJob.validate()"]
-    G -->|"每個 Execution"| H["Execution.validate(setting, database)"]
-    H -->|"依 ExecutionType"| I["ExecutionType.validate()"]
-    I --> J["3. 建立 Context"]
-    J --> K["SyncJobContextFactory.initialSyncJobContext()"]
-    K -->|"3a. 建立 DB Connections"| L["generDatabaseContext() x2 (Source & Dest)"]
-    K -->|"3b. 渲染系統變數"| M["renderSystemProvoderVariable()"]
-    L --> N[SyncJobContext]
-    M --> N
-    N -->|"4. 組裝 Job"| O["SyncJobFactory.createBatchJob()"]
-    O -->|"依 ExecutionType 分派"| P{ExecutionType}
-    P -->|INSERT| Q[createInsertStep]
-    P -->|UPDATE| R[createUpdateStep]
-    P -->|UPSERT| S[createUpsertStep]
-    P -->|DELETE| T[createDeleteStep]
-    P -->|EXECUTE| U[createExecuteStep]
-    Q --> V[Job with Steps]
-    R --> V
-    S --> V
-    T --> V
-    U --> V
-    V -->|"5. 啟動 Job"| W["JobLauncher.run(job, params)"]
-    W --> X[JobExecution]
+    A["POST /api/v1/sync-job"] --> B["SyncJobAPI.executeJob()"]
+    B --> C["JobExecutionService.execute(jobLauncher, path)"]
+    C --> D["JobConfigService.getSyncJobs(path)"]
+    D --> E["JsonFileProvider / YamlFileProvider"]
+    E --> F["List<SyncJob>"]
+    F --> G["SyncJob.validate()"]
+    G --> H["SyncJobContextFactory.initialSyncJobContext()"]
+    H --> I["SyncJobFactory.createBatchJob()"]
+    I --> J["JobLauncher.run(job, jobParameters)"]
+    J --> K["Spring Batch JobExecution"]
 ```
 
-## 各 Step 類型組裝細節
+## Config management flow
 
-### INSERT Step
+`/api/v1/sync-config` exposes the file-based config lifecycle used by both manual testing and K6:
 
-```mermaid
-graph LR
-    A[SqlSyntaxHelper] -->|"insertSql"| B["BatchBeanBuilder.createJdbcBatchItemWriter()"]
-    C["BatchBeanBuilder.creatJdbcCursorItemReader()"] --> D[JdbcCursorItemReader]
-    B --> E[JdbcBatchItemWriter]
-    E --> F["BatchInsertWriter(writer, destTable, summaryInfo)"]
-    D --> G[StepBuilder]
-    F --> G
-    H[ExecutionStepListener] --> G
-    G --> I[Step]
-```
+- `GET /api/v1/sync-config`
+- `GET /api/v1/sync-config?path=...`
+- `POST /api/v1/sync-config`
+- `PUT /api/v1/sync-config`
+- `PATCH /api/v1/sync-config`
+- `DELETE /api/v1/sync-config?path=...`
 
-**Processor 邏輯（INSERT/UPDATE/UPSERT 共用）**:
-1. 複製 item 為新 Map（避免修改原始資料）
-2. 如果有 `watermarkColumn`，將當前值存入 `execution.executionContext()`
-3. 遍歷 `sqlSyntaxHelper.columns`，對存在的欄位設為 null（⚠️ 這是目前程式碼的行為，可能是 bug 或特殊設計）
+`JobConfigService` validates uploaded files by writing them to a temporary file, loading them through the matching file provider, and calling `SyncJob.validate()` before the real file is persisted.
 
-### UPDATE Step
+## Job assembly
 
-```mermaid
-graph LR
-    A[SqlSyntaxHelper] -->|"updateSql"| B["BatchUpdateWriter(destTable, summaryInfo, dataSource, sql)"]
-    C["BatchBeanBuilder.creatJdbcCursorItemReader()"] --> D[JdbcCursorItemReader]
-    B --> G[StepBuilder]
-    D --> G
-    G --> I[Step]
-```
+For every `SyncJob`:
 
-**`BatchUpdateWriter` 特殊行為**:
-- 繼承 `JdbcBatchItemWriter`
-- `write()` 呼叫 `super.write(chunk)`
-- override `processUpdateCounts(int[])` 追蹤更新筆數
+1. `SyncJobContextFactory` creates source and destination database contexts.
+2. System-provided parameters are rendered into each execution context.
+3. `SyncJobFactory` maps each execution to a Spring Batch step:
+   - `INSERT`
+   - `UPDATE`
+   - `UPSERT`
+   - `DELETE`
+   - `EXECUTE`
+4. A `CustomJobListener` is attached to the job.
+5. `JobExecutionService` launches the job with a fresh `run.id`.
 
-### UPSERT Step
+## Step behavior
 
-```mermaid
-graph LR
-    A[SqlSyntaxHelper] -->|"insertSql"| B[insertWriter]
-    A -->|"updateSql"| C[updateWriter]
-    B --> D["BatchUpsertWriter(insertWriter, updateWriter, sqlSyntaxHelper, queryTemplate, destTable, summaryInfo)"]
-    C --> D
-    D --> G[StepBuilder]
-    G --> I[Step]
-```
+### INSERT, UPDATE, and UPSERT
 
-**`BatchUpsertWriter` 核心邏輯**:
-```
-1. queryIdentifierList(chunk)
-   → buildExistsQuery(chunkSize)
-   → queryTemplate.query(sql, rowMapper, params)
-   → List<String> identifiers
+These step types all use chunk-oriented processing with a reader, processor, and writer.
 
-2. if (identifiers.size == chunk.size)
-   → updateChunk(chunk)       // 全部更新
-   
-3. if (identifiers.size == 0)
-   → insertChunk(chunk)       // 全部新增
-   
-4. else (mixed)
-   → 比對 generateCompositePkIdentifier()
-   → 分流到 updateChunk + insertChunk
-```
+The processor currently does three important things:
 
-### DELETE Step
+1. Copies the row into a mutable `Map<String, Object>`.
+2. Captures the current watermark value into `execution.executionContext()` when `watermarkColumn` is configured.
+3. Backfills only missing destination columns with `null`.
 
-```mermaid
-graph LR
-    A["DeleteTasklet(syncJobContext, execution)"] --> B[StepBuilder]
-    B -->|"tasklet mode"| C[Step]
-```
+That third point is important: the current implementation no longer overwrites columns that are already present in the source row.
 
-**Delete 流程**:
-1. 建立 `SqlSyntaxHelper`（取得 `deleteSql`）
-2. COUNT 待刪除筆數
-3. 與 `deleteThreshold` 比較（threshold = -1 表示不限制）
-4. 超過 threshold → 拋出 `CustomJobExecutionException`
-5. streaming 方式分 batch 執行 `batchUpdate(deleteSql, batch)`
+### DELETE
 
-### EXECUTE Step
+`DeleteTasklet` uses the rendered SQL plus `deleteThreshold` to guard against accidental mass deletion.
 
-```mermaid
-graph LR
-    A["ExecuteTasklet(syncJobContext, execution)"] --> B[StepBuilder]
-    B -->|"tasklet mode"| C[Step]
-```
+### EXECUTE
 
-**Execute 流程**:
-1. 取得 SQL 和參數
-2. 在 `TransactionTemplate` 內執行 `namedParameterJdbcTemplate.execute(sql, params, PreparedStatement::execute)`
+`ExecuteTasklet` runs the configured SQL against the destination database inside a Spring transaction.
 
-## Listener 行為
+## Watermark persistence
 
-### CustomJobListener (Job 級別)
+`ExecutionStepListener` stores watermark candidates in the step execution context after a step completes.
+`CustomJobListener` persists those records only after the job finishes successfully.
 
-| Event | openJobTransaction=true | openJobTransaction=false |
-|---|---|---|
-| `beforeJob` | 開啟交易 (`getTransaction()`) | 無動作 |
-| `afterJob` (COMPLETED) | 確保交易成功後，`persistStepExecutionRecords()` 寫入所有 Watermark -> `commit()` -> `close()` | `persistStepExecutionRecords()` -> `close()` |
-| `afterJob` (FAILED) | `rollback()` -> `close()` (丟棄所有 Watermark 變更) | `close()` |
+This means:
 
-### ExecutionStepListener (Step 級別)
+- successful jobs can advance watermarks
+- failed jobs do not persist watermarks
+- watermark storage is coupled to the final job outcome, not to individual read operations
 
-| Event | Condition | Action |
-|---|---|---|
-| `beforeStep` | 無 | log step name |
-| `afterStep` | COMPLETED + watermarkColumn 有值 + value 非 null | 暫存進 StepExecution.getExecutionContext() |
-| `afterStep` | readCount != 0 | `summaryInfo.total.setPlain(readCount)` |
+## Important current limitation
+
+`atomicLevel` is required by config validation, but the runtime does not yet switch behavior based on it.
+`SyncJobFactory` always creates `CustomJobListener` with `openJobTransaction = true`, so the effective execution model is still job-scoped transaction orchestration for every job.

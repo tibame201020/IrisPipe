@@ -1,32 +1,55 @@
 import http from 'k6/http';
-import { BASE_URL, getMultipartHeaders } from './api-client.js';
+import { buildApiUrl, getMultipartHeaders } from './api-client.js';
 
-export function createConfig(filePath, fileName, fileContent) {
-    const boundary = '----WebKitFormBoundary7bMgGAs75rD5qQvR';
-    const payload = `--${boundary}\r\nContent-Disposition: form-data; name="path"\r\n\r\n${filePath}\r\n--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/x-yaml\r\n\r\n${fileContent}\r\n--${boundary}--`;
+function buildMultipartPayload(filePath, fileName, fileContent) {
+    const boundary = `----IrisPipeK6Boundary${Math.random().toString(16).slice(2)}`;
+    const parts = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="path"',
+        '',
+        filePath,
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
+        'Content-Type: application/x-yaml',
+        '',
+        fileContent,
+        `--${boundary}--`,
+    ];
 
-    return http.post(`${BASE_URL}/sync-config`, payload, {
+    return {
+        boundary,
+        body: parts.join('\r\n'),
+    };
+}
+
+function requestConfig(method, filePath, fileName, fileContent) {
+    const { boundary, body } = buildMultipartPayload(filePath, fileName, fileContent);
+
+    return http.request(method, buildApiUrl('/sync-config'), body, {
         headers: getMultipartHeaders(boundary),
     });
+}
+
+export function createConfig(filePath, fileName, fileContent) {
+    return requestConfig('POST', filePath, fileName, fileContent);
 }
 
 export function updateConfig(filePath, fileName, fileContent) {
-    const boundary = '----WebKitFormBoundary7bMgGAs75rD5qQvR';
-    const payload = `--${boundary}\r\nContent-Disposition: form-data; name="path"\r\n\r\n${filePath}\r\n--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/x-yaml\r\n\r\n${fileContent}\r\n--${boundary}--`;
+    return requestConfig('PUT', filePath, fileName, fileContent);
+}
 
-    return http.put(`${BASE_URL}/sync-config`, payload, {
-        headers: getMultipartHeaders(boundary),
-    });
+export function patchConfig(filePath, fileName, fileContent) {
+    return requestConfig('PATCH', filePath, fileName, fileContent);
 }
 
 export function getConfigDetail(filePath) {
-    return http.get(`${BASE_URL}/sync-config/detail?path=${filePath}`);
+    return http.get(buildApiUrl('/sync-config', { path: filePath }));
 }
 
 export function listConfigs() {
-    return http.get(`${BASE_URL}/sync-config`);
+    return http.get(buildApiUrl('/sync-config'));
 }
 
 export function deleteConfig(filePath) {
-    return http.del(`${BASE_URL}/sync-config?path=${filePath}`);
+    return http.del(buildApiUrl('/sync-config', { path: filePath }));
 }

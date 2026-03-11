@@ -4,7 +4,7 @@
       name: k6_insert_chunk_fail
       sql: select * from test_source where update_time > :_LAST_UPDATE order by update_time asc
       destTable: test_dest
-      watermarkColumn: update_time
+      watermarkColumn: UPDATE_TIME
       parameters:
         - param: _LAST_UPDATE
           type: timestamp

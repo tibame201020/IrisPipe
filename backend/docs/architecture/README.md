@@ -1,99 +1,51 @@
-# IrisPipe Backend — Architecture Documentation
+# IrisPipe Backend Architecture
 
-> A Spring Batch-based **data synchronization pipeline** that reads from a source database
-> and writes (INSERT / UPDATE / UPSERT / DELETE / EXECUTE) to a destination database.
-> Jobs are defined declaratively via JSON or YAML configuration files.
+IrisPipe is a Spring Boot and Spring Batch based data synchronization engine.
+Jobs are defined in JSON or YAML files, loaded from the configured job directory, and executed as Spring Batch jobs that read from a source database and write to a destination database.
 
-## Technology Stack
+## Runtime highlights
 
-| Layer | Technology |
-|---|---|
-| Framework | Spring Boot 3.x + Spring Batch 5.x |
-| Database Access | Spring JDBC (`JdbcTemplate`, `NamedParameterJdbcTemplate`) |
-| Connection Pool | HikariCP |
-| Build Tool | Maven |
-| Java Version | 21+ (record, switch expression, text block) |
-| Serialization | Jackson (JSON + YAML via `YAMLFactory`) |
-| Metadata ORM | Spring Data JPA (Spring Batch + Watermark 紀錄) |
-| Migration Tool | Flyway (V1: Batch Schema, V2: Watermark Schema) |
-| Code Generation | Lombok (`@Data`, `@Getter`) |
+- Spring Boot 3.x
+- Spring Batch 5.x
+- Java 21
+- Spring JDBC plus `NamedParameterJdbcTemplate`
+- Spring Data JPA for watermark storage and batch metadata cleanup support
+- Flyway for application schema setup
+- H2 as the local default database
+- K6 for end-to-end regression coverage
 
-## Package Structure
+## Current implementation notes
 
-```
-custom.tibame201020.IrisPipe
-├── IrisPipeApplication.java          # Spring Boot entry point
-│
-├── batch/                            # Spring Batch 核心元件
-│   ├── builder/
-│   │   └── BatchBeanBuilder.java     # 組裝 Reader / Writer 的 Builder
-│   ├── config/
-│   │   └── BatchConfig.java          # 非同步 JobLauncher + ThreadPool
-│   ├── entity/                       # Spring Batch metadata JPA entities (7 files)
-│   ├── repo/                         # Spring Batch metadata JPA repos (6 files)
-│   ├── listener/
-│   │   ├── CustomJobListener.java    # Job listener（原子交易 + 摘要輸出 + Watermark 寫回 DB）
-│   │   └── ExecutionStepListener.java # Step listener（Watermark 記憶體暫存 + readCount）
-│   ├── tasklet/
-│   │   ├── DeleteTasklet.java        # 刪除 Tasklet（含 threshold 保護）
-│   │   └── ExecuteTasklet.java       # 通用 SQL 執行 Tasklet
-│   └── writer/
-│       ├── BatchInsertWriter.java    # INSERT 委派 + 計數
-│       ├── BatchUpdateWriter.java    # UPDATE (extends JdbcBatchItemWriter) + updateCounts 追蹤
-│       └── BatchUpsertWriter.java    # UPSERT = 先查主鍵 → 分流 insert/update
-│
-├── config/
-│   └── BeanConfig.java               # ObjectMapper (JSON + YAML) Bean
-│
-├── context/
-│   ├── DatabaseContext.java           # DataSource + JdbcTemplate + TxManager 封裝 (AutoCloseable)
-│   └── SyncJobContext.java            # record: source/dest 兩組 DatabaseContext + SyncJob + SummaryInfo
-│
-├── entity/                       # JPA 實體層
-│   └── WatermarkRecord.java      # Watermark 紀錄 Entity
-├── repo/                         # JPA Repository 接口
-│   └── WatermarkRecordRepo.java  # Watermark CRUD 核心
-├── data/
-│   ├── SimpleEnum.java                # GeneralStatus / SystemProvideVariable / SummaryInfoLayer
-│   ├── SummaryInfo.java               # AtomicLong 計數器群組
-│   ├── SyncJob.java                   # Job 定義 POJO (含 validate())
-│   └── SyncJobProp.java               # ExecutionType / Setting / Database / ConnectionInfo / Parameter / Execution / SupportType
-│
-├── error/
-│   ├── exception/
-│   │   ├── ConfigFileException.java
-│   │   ├── ConfigValidationException.java
-│   │   ├── CustomJobExecutionException.java
-│   │   └── General.java               # GeneralException + GeneralExceptionResponse
-│   └── handler/
-│       └── GlobalExceptionHandler.java # @RestControllerAdvice
-│
-├── factory/
-│   ├── SyncJobContextFactory.java     # 建立 DatabaseContext + 渲染系統變數 → SyncJobContext
-│   └── SyncJobFactory.java            # ExecutionType → Spring Batch Job/Step 組裝
-│
-├── provider/
-│   ├── FileProvider.java              # 介面
-│   ├── JsonFileProvider.java          # JSON 實作
-│   └── YamlFileProvider.java          # YAML 實作
-│
-├── service/
-│   ├── ExecutionRecordService.java    # Watermark CRUD (fetchValue / saveWatermark)
-│   ├── JobConfigService.java          # 設定檔 → List<SyncJob>
-│   └── JobExecutionService.java       # 驗證 → context → job → launch
-│
-└── utility/
-    ├── CollectionHelper.java          # flatternArray 遞迴攤平
-    └── SqlSyntaxHelper.java           # DatabaseMetaData → INSERT/UPDATE/DELETE/EXISTS SQL
-```
+- Sync config management lives under `/api/v1/sync-config`.
+- Job execution and metadata queries live under `/api/v1/sync-job`.
+- Watermarks are stored in the application database through `ExecutionRecordService`.
+- `atomicLevel` is part of config validation, but the current runtime still uses the job-scoped transaction listener for every job.
+- The documentation in this folder and `../feature/` is the maintained source of truth for architecture notes.
 
-## Component Details
+## Package map
 
-各元件細節請參閱下列文件：
+| Package | Responsibility |
+| --- | --- |
+| `api` | REST endpoints for config management, job execution, metadata lookup, and test support |
+| `batch` | Spring Batch listeners, builders, tasklets, writers, metadata entities, and repositories |
+| `config` | Application beans such as object mappers |
+| `context` | Source and destination database context objects used during execution |
+| `data` | Job config model, enums, summaries, and watermark records |
+| `dto` | API request and response payloads |
+| `error` | Exception types and global exception handling |
+| `factory` | Runtime assembly of job contexts and Spring Batch jobs |
+| `provider` | JSON and YAML file loading |
+| `repo` | Application-level repositories such as watermark storage |
+| `service` | Config loading, execution orchestration, watermark persistence, and metadata deletion |
+| `utility` | SQL helper utilities |
 
-| Document | Content |
-|---|---|
-| [core-flow.md](./core-flow.md) | Job 執行管線完整流程圖 |
-| [design-patterns.md](./design-patterns.md) | 5 大設計模式深度解析 |
-| [config-model.md](./config-model.md) | SyncJobProp 設定模型規格 |
-| [error-handling.md](./error-handling.md) | 例外類別層級 + HTTP 回應映射 |
+## Document map
+
+| Document | Focus |
+| --- | --- |
+| [core-flow.md](./core-flow.md) | End-to-end execution flow and step behavior |
+| [config-model.md](./config-model.md) | JSON and YAML configuration model |
+| [error-handling.md](./error-handling.md) | Exception mapping and API error shapes |
+| [../feature/01-core-transaction-and-restart.md](../feature/01-core-transaction-and-restart.md) | Current transaction semantics and the restart gap |
+| [../feature/03-scheduling-and-orchestration.md](../feature/03-scheduling-and-orchestration.md) | Current orchestration surface and future scheduler work |
+| [../feature/05-observability-and-alerting.md](../feature/05-observability-and-alerting.md) | Current observability surface and future monitoring work |

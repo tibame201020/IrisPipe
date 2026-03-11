@@ -1,30 +1,70 @@
 import { check } from 'k6';
-import { createConfig, updateConfig, getConfigDetail, listConfigs, deleteConfig } from './services/sync-config-api.js';
+import { singleRunOptions } from './utils/test-options.js';
+import { jsonOrFallback } from './utils/test-helpers.js';
+import {
+    createConfig,
+    updateConfig,
+    patchConfig,
+    getConfigDetail,
+    listConfigs,
+    deleteConfig,
+} from './services/sync-config-api.js';
 
-// Read the static payload from external file
+export const options = singleRunOptions;
+
 const yamlContent = open('./testfiles/test-config.yml');
+const fileName = 'test-config.yml';
+const filePath = `k6-tests/${fileName}`;
+const normalizedListPath = filePath.replace(/\//g, '\\');
 
 export default function () {
-    const fileName = 'test-config.yml';
-    const filePath = 'k6-tests/' + fileName;
+    let response = createConfig(filePath, fileName, yamlContent);
+    let payload = jsonOrFallback(response, {});
+    check(response, {
+        'create config status is 200': (res) => res.status === 200,
+    });
+    check(payload, {
+        'create config response returns requested path': (body) => body.path === filePath,
+        'create config response returns file name': (body) => body.fileName === fileName,
+    });
 
-    // 1. Create Config
-    let res = createConfig(filePath, fileName, yamlContent);
-    check(res, { 'create config status is 201 or 200': (r) => r.status === 201 || r.status === 200 });
+    response = getConfigDetail(filePath);
+    payload = jsonOrFallback(response, {});
+    check(response, {
+        'get config detail status is 200': (res) => res.status === 200,
+    });
+    check(payload, {
+        'config detail returns uploaded job': (body) =>
+            Array.isArray(body.jobs) && body.jobs.length === 1 && body.jobs[0].jobName === 'k6_test_config',
+    });
 
-    // 2. Get Config Detail
-    res = getConfigDetail(filePath);
-    check(res, { 'get config detail status is 200': (r) => r.status === 200 });
+    response = listConfigs();
+    payload = jsonOrFallback(response, []);
+    check(response, {
+        'list configs status is 200': (res) => res.status === 200,
+    });
+    check(payload, {
+        'list configs includes uploaded file': (files) =>
+            Array.isArray(files) && (files.includes(filePath) || files.includes(normalizedListPath)),
+    });
 
-    // 3. List Configs
-    res = listConfigs();
-    check(res, { 'list configs status is 200': (r) => r.status === 200 });
+    response = updateConfig(filePath, fileName, yamlContent);
+    check(response, {
+        'update config status is 200': (res) => res.status === 200,
+    });
 
-    // 4. Update Config (PUT)
-    res = updateConfig(filePath, fileName, yamlContent);
-    check(res, { 'update config status is 200 or 201': (r) => r.status === 200 || r.status === 201 });
+    response = patchConfig(filePath, fileName, yamlContent);
+    check(response, {
+        'patch config status is 200': (res) => res.status === 200,
+    });
 
-    // 5. Delete Config
-    res = deleteConfig(filePath);
-    check(res, { 'delete config status is 204 or 200': (r) => r.status === 204 || r.status === 200 });
+    response = deleteConfig(filePath);
+    check(response, {
+        'delete config status is 200 or 204': (res) => res.status === 200 || res.status === 204,
+    });
+
+    response = getConfigDetail(filePath);
+    check(response, {
+        'deleted config detail returns 400': (res) => res.status === 400,
+    });
 }

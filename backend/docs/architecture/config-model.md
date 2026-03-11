@@ -1,221 +1,149 @@
-# Configuration Model — SyncJobProp
+# Configuration Model
 
-## 概覽
+## Root object
 
-IrisPipe 的 Job 定義完全透過設定檔（JSON 或 YAML）驅動。
-`SyncJobProp` 是所有設定相關型別的容器介面。
-
----
-
-## SyncJob (Root Object)
+Each config file resolves to a `List<SyncJob>`.
 
 ```java
 @Data
 public class SyncJob {
-    String jobName;                          // 必要，不可為 blank
-    List<SyncJobProp.Execution> executions;  // 必要，至少一個
-    SyncJobProp.Setting setting;             // 依 ExecutionType 而定
-    SyncJobProp.Database database;           // 依 ExecutionType 而定
+    String jobName;
+    List<SyncJobProp.Execution> executions;
+    SyncJobProp.Setting setting;
+    SyncJobProp.Database database;
 }
 ```
 
-### validate() 行為
-
-1. `jobName` blank → `ConfigValidationException("", "", "jobName can not be blank")`
-2. 每個 `execution.validate(setting, database)`:
-   - 成功 → 繼續
-   - 失敗 → `ConfigValidationException(jobName, executionName, e.getMessage())`
-   - `executionName` 為 blank 時使用 `"on type " + execution.type()`
-
----
-
-## Setting (record)
+## Setting
 
 ```java
 record Setting(
-    Integer fetchSize,       // Reader 的 JDBC fetch size
-    Integer batchSize,       // Writer 的 batch commit size
-    Integer deleteThreshold, // Delete 保護閾值 (-1 = 不限制)
-    AtomicLevel atomicLevel  // 交易層級 (JOB / CHUNK)
+    Integer fetchSize,
+    Integer batchSize,
+    Integer deleteThreshold,
+    AtomicLevel atomicLevel
 ) {}
 ```
 
----
+Notes:
 
-## Database (record)
+- `fetchSize` is required for `INSERT`, `UPDATE`, and `UPSERT`.
+- `batchSize` is required for `INSERT`, `UPDATE`, `UPSERT`, and `DELETE`.
+- `deleteThreshold` is used only by `DELETE`.
+- `atomicLevel` is required by validation and must be either `JOB` or `CHUNK`.
+- The current runtime still behaves like job-scoped orchestration even when `atomicLevel` is set to `CHUNK`.
+
+## Database
 
 ```java
 record Database(
-    ConnectionInfo source,  // 來源資料庫
-    ConnectionInfo dest     // 目標資料庫
+    ConnectionInfo source,
+    ConnectionInfo dest
 ) {}
 ```
-
-## ConnectionInfo (record)
 
 ```java
 record ConnectionInfo(
-    String driver,    // JDBC driver class name
-    String url,       // JDBC URL
+    String driver,
+    String url,
     String username,
     String password
-) {
-    public void validate() {
-        // 全部欄位不可為 blank
-    }
-}
-```
-
----
-
-## Execution (record)
-
-```java
-record Execution(
-    ExecutionType type,              // INSERT / UPDATE / UPSERT / DELETE / EXECUTE
-    String name,                     // 執行名稱 (可選)
-    String sql,                      // 查詢 SQL / 刪除 SQL / 執行 SQL
-    String destTable,                // 目標表名
-    List<Parameter> parameters,      // SQL 參數
-    String watermarkColumn,          // watermark 欄位 (可選)
-    SummaryInfo summaryInfo,         // 執行摘要 (由 Factory 注入，設定檔不填)
-    Map<String, Object> executionContext  // 執行期上下文 (由 Factory 注入)
 ) {}
 ```
 
-### parameters() 方法
+All four connection fields are required when the corresponding database is needed by the execution type.
+
+## Execution
 
 ```java
-public List<Parameter> parameters() {
-    if (null == parameters) {
-        return new ArrayList<>();  // null-safe
-    }
-    return parameters;
-}
+record Execution(
+    ExecutionType type,
+    String name,
+    String sql,
+    String destTable,
+    List<Parameter> parameters,
+    String watermarkColumn,
+    SummaryInfo summaryInfo,
+    Map<String, Object> executionContext
+) {}
 ```
 
-### validate() 方法
+Validation rules:
 
-1. `sql` blank → `IllegalArgumentException`
-2. 解析 SQL 中的 named parameters，若 parameters 列表缺少對應值 → `IllegalArgumentException("lost parameter config: xxx")`
-3. 呼叫 `type.validate(setting, database, this)` → 依類型驗證
+- `sql` must not be blank.
+- Every named SQL parameter must appear in `parameters`.
+- `destTable` is required for `INSERT`, `UPDATE`, `UPSERT`, and `DELETE`.
+- `watermarkColumn` is optional.
 
----
+Important runtime detail:
 
-## ExecutionType (enum with validation)
+- `watermarkColumn` must match the column label returned by the JDBC reader.
+- In the local H2-based K6 fixtures, that means using `UPDATE_TIME` instead of `update_time`.
 
-每個列舉值都有自己的 `validate(setting, database, execution)` 實作：
-
-### INSERT / UPDATE / UPSERT（驗證邏輯相同）
-
-| 驗證項目 | 失敗訊息 |
-|---|---|
-| `execution.destTable` blank | `must config destTable` |
-| `setting.fetchSize` null 或 0 | `setting fetchSize must config, and not allow zero` |
-| `setting.batchSize` null 或 0 | `setting batchSize must config, and not allow zero` |
-| `database.source` null | `database source must config` |
-| 呼叫 `source.validate()` | (由 ConnectionInfo 拋出)  |
-| `database.dest` null | `database source must config` ⚠️ (訊息有 typo，寫的是 source) |
-| 呼叫 `dest.validate()` | (由 ConnectionInfo 拋出) |
-
-### DELETE
-
-| 驗證項目 | 失敗訊息 |
-|---|---|
-| `execution.destTable` blank | `must config destTable` |
-| `setting.batchSize` null 或 0 | `setting batchSize must config, and not allow zero` |
-| `database.dest` null | `database source must config` |
-| 呼叫 `dest.validate()` | (由 ConnectionInfo 拋出) |
-
-### EXECUTE
-
-| 驗證項目 | 失敗訊息 |
-|---|---|
-| `database.dest` null | `database source must config` |
-| 呼叫 `dest.validate()` | (由 ConnectionInfo 拋出) |
-
----
-
-## Parameter (record)
+## Parameters
 
 ```java
 record Parameter(
-    String param,        // 參數名稱
-    Object value,        // 參數值
-    SupportType type     // 型別轉換策略 (可選，預設 general)
-) {
-    public Object getRenderedValue() {
-        if (null == type) {
-            return SupportType.general.renderClass(value);
-        }
-        return type.renderClass(value);
-    }
-}
+    String param,
+    Object value,
+    SupportType type
+) {}
 ```
 
----
+`SupportType` currently supports:
 
-## SupportType (enum)
+- `general`
+- `timestamp`
 
-```java
-enum SupportType {
-    general {
-        public Object renderClass(Object val) {
-            return val;  // 原值回傳
-        }
-    },
-    timestamp {
-        public Object renderClass(Object val) {
-            return Timestamp.valueOf(val.toString());  // String → Timestamp
-        }
-    }
-}
+`timestamp` values are converted with `Timestamp.valueOf(...)`.
+
+## Execution types
+
+| Type | Source DB | Dest DB | Notes |
+| --- | --- | --- | --- |
+| `INSERT` | required | required | chunk reader plus insert writer |
+| `UPDATE` | required | required | chunk reader plus custom update writer |
+| `UPSERT` | required | required | chunk reader plus mixed insert and update writer |
+| `DELETE` | not used | required | tasklet with delete threshold guard |
+| `EXECUTE` | not used | required | tasklet for arbitrary destination SQL |
+
+## Example YAML
+
+```yaml
+- jobName: example_job
+  executions:
+    - type: INSERT
+      name: load_orders
+      sql: select * from source_orders where update_time > :_LAST_UPDATE order by update_time asc
+      destTable: target_orders
+      watermarkColumn: UPDATE_TIME
+      parameters:
+        - param: _LAST_UPDATE
+          type: timestamp
+          value: "1970-01-01 00:00:00"
+  setting:
+    fetchSize: 100
+    batchSize: 100
+    deleteThreshold: -1
+    atomicLevel: JOB
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
 ```
 
----
+## Removed legacy fields
 
-## 設定檔範例 (JSON)
+The current config model does not include:
 
-```json
-[
-  {
-    "jobName": "sync_users",
-    "setting": {
-      "fetchSize": 1000,
-      "batchSize": 500,
-      "deleteThreshold": -1,
-      "recordTable": "sync_record"
-    },
-    "database": {
-      "source": {
-        "driver": "com.mysql.cj.jdbc.Driver",
-        "url": "jdbc:mysql://source:3306/db",
-        "username": "reader",
-        "password": "pass"
-      },
-      "dest": {
-        "driver": "org.postgresql.Driver",
-        "url": "jdbc:postgresql://dest:5432/db",
-        "username": "writer",
-        "password": "pass"
-      }
-    },
-    "executions": [
-      {
-        "type": "UPSERT",
-        "name": "sync_users_upsert",
-        "sql": "SELECT * FROM users WHERE updated_at > :_LAST_WATERMARK",
-        "destTable": "users",
-        "watermarkColumn": "updated_at",
-        "parameters": [
-          {
-            "param": "_LAST_WATERMARK",
-            "value": "2000-01-01 00:00:00",
-            "type": "timestamp"
-          }
-        ]
-      }
-    ]
-  }
-]
-```
+- `recordTable`
+- `database.record`
+
+Watermarks are stored internally through `ExecutionRecordService` and `iris_watermark_record`.

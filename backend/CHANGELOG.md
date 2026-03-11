@@ -1,23 +1,29 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
 ### Added
-- **Flyway Database Migrations**:
-    - `V1__init_batch_metadata.sql`: Initializes Spring Batch internal metadata tables.
-    - `V2__init_watermark_record.sql`: Initializes `iris_watermark_record` table for centralized watermark tracking.
-- **Centralized Watermark Storage**: Watermarks are now stored in the internal application database using Spring Data JPA, removing the need for external `record` database configuration.
-- **At-Least-Once Watermark Protection**: Refactored `ExecutionStepListener` and `CustomJobListener` to ensure watermarks are only persisted to the database when the overall Job is successfully `COMPLETED`.
-- **K6 E2E Regression Suite**: Added comprehensive tests under `k6/` to validate API CRUD and Job execution logic before refactoring.
-- **Architectural Documentation**: Added detailed documents in `docs/architecture/` covering Core Flow, Design Patterns, Config Model, and Error Handling.
-
-### Fixed
-- **SyncConfig API Validation**: Fixed `NullPointerException` and 400 Bad Request errors by adding proper validation for `executions` and database passwords.
-- **K6 Mock Payloads**: Updated test files to use compliant `password` values and lowercase `timestamp` enums to match backend expectations.
-- **Spring Boot Startup**: Fixed H2 database dependency scope and `application.yaml` indentation to prevent startup failures.
+- Reusable K6 helpers in `k6/utils/` for shared setup, config cleanup, SQL assertions, and job metadata polling.
+- Coverage for the current sync-job metadata APIs in the K6 suite:
+  - `GET /api/v1/sync-job?ids=...`
+  - `GET /api/v1/sync-job/{jobId}`
+  - `DELETE /api/v1/sync-job/{jobId}`
+- `server.bat` to start the backend from the repository root on Windows.
 
 ### Changed
-- **SyncJobProp Refactoring**: Removed `recordTable` and `database.record` from configuration properties.
-- **Job Execution Logic**: Updated synchronization logic to be more robust against transaction rollbacks.
+- K6 API clients now target the current REST contract and support `IRISPIPE_BASE_URL`.
+- `run-tests.ps1` now fails fast when the backend is unavailable, runs every suite in sequence, and exits non-zero when any suite fails.
+- K6 fixtures now use `UPDATE_TIME` as `watermarkColumn` so the YAML matches the column labels returned by the H2/JDBC reader.
+- Local runtime defaults now enable Spring virtual threads and set the embedded H2 password to `sa`.
+- Maintained documentation has been refreshed around the current implementation. Legacy snapshots under `docs/specs/` and `docs/jules/TASK_QUEUE.md` were removed.
+
+### Fixed
+- `SyncJobFactory` now fills only missing destination columns with `null` before INSERT, UPDATE, and UPSERT processing, instead of overwriting existing values.
+- K6 config CRUD coverage now asserts the actual response payloads returned by the current API, including `PATCH` behavior and post-delete validation.
+- K6 job execution coverage now validates returned job summaries instead of relying on removed legacy endpoints.
+
+### Removed
+- Legacy design snapshots under `backend/docs/specs/`.
+- `backend/docs/jules/TASK_QUEUE.md`.
