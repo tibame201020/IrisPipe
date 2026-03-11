@@ -57,14 +57,20 @@ Spring Batch 內建強大的斷點接續能力，前提是 **JobParameters 必�
 ### 3.5 浮水印 (Watermark) 持久化策略的雙軌設計
 在解決上述的「Watermark 髒寫」問題，並同時引入 Chunk Commit 模式後，我們必須針對兩種模式提供完全不同的 Persistence 邊界防呆策略：
 
-* **模式 A: Atomic Transaction (修補現有 Bug)**
+* **模式 A: Atomic Transaction (修補現有 Bug) [✅ 已由團隊修復完成]**
   * **問題解法**: 將原先在 `ExecutionStepListener.afterStep` 寫死 DB 的動作移除！改為將各 Step 算出的 Watermark 結果，暫存在 Spring Batch 執行期的記憶體 (`JobExecutionContext`) 內。
-  * **落地時機**: 延遲到 `CustomJobListener.afterJob` 確認狀態為 `COMPLETED`，且真正要發出 `transactionManager.commit()` 之前，才將蒐集好的所有 Watermark 一口氣寫進 Record Database 中。確保真正的生死與共 (All-or-Nothing)。
+  * **落地時機**: 延遲到 `CustomJobListener.afterJob` 確認狀態為 `COMPLETED`，且真正要發出 `transactionManager.commit()` 之後，才將蒐集好的所有 Watermark 一口氣寫進 Record Database 中。若中途網路斷線只會造成 At-Least-Once (下次重跑 UPSERT)，成功根絕了會引發 Data Loss 的全有全無失敗問題。
 
 * **模式 B: Chunk Commit (全新的巨量分段模式)**
   * **特點**: 每一小批資料 (例如 1,000 筆) 完成時，Dest DB 就會真實 Commit 且釋放資源。此時如果中斷，系統依賴 Restart API 繼續處理接下來的資料。
   * **問題解法**: 在這個模式下，**絕對不能** 等到整個 Job 結束才寫入 Watermark。如果中途失敗，下次 Restart 雖然 Spring Batch 會透過 `readCount` 自動跳過已讀數量，但 Watermark 沒有跟著最新的資料前進，會導致 Source DB 不斷被撈出重複的舊資料。
   * **落地時機**: 必須掛載並實作 Spring Batch 原生的 `ItemWriteListener.afterWrite` 或 `ChunkListener.afterChunk`，提取剛完成的該批 Chunk 中的最新一筆 Watermark 值，**並緊貼著這一批次的 Dest DB Transaction 一同 Commit 寫入 DB**。這保證了每一段分次搬運的資料，都有對應的 Watermark 跟隨綁定。
+
+### 3.6 Watermark 與執行紀錄庫 (Record DB) 中樞化
+為了解決過往外放 `record: DataSource` 給使用者自行定義，導致的 Schema 不相容或遺失風險，整個 Record DB 必須被徹底**收編歸廠**：
+*   **配置拔除**：移除 `jobs.yml` 與 `SyncJobProp` 中所有暴露給使用者的 `database.record` 設定。
+*   **Flyway 集成**：利用 `V1__init_watermark_record.sql` 在系統內部的 App DB (與 Spring Batch Metadata 共用的微服務資料庫) 建立統一的 `iris_watermark_record` 實體表。
+*   **效益 (Local Transaction)**：由於 Spring Batch 的 Metadata 與業務的 Watermark 現在同屬於一個實體資料庫，未來若需要，將有潛力把兩者的狀態變更納入同一個 Local Transaction 進行管理，徹底消除中斷時框架與業務紀錄不同步的幽靈狀態。
 
 ## 4. 預期效益
 * **解鎖天花板**：透過 Chunk Commit，就算執行十億筆的同步任務也不會拖垮資料庫的 Undo Space 與鎖表資源。

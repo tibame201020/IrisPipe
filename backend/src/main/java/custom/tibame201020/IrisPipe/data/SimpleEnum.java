@@ -14,4 +14,8 @@ public interface SimpleEnum {
         JOB, STEP
     }
 
+    enum AtomicLevel {
+        JOB, CHUNK
+    }
+
 }

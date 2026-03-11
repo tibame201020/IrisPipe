@@ -6,6 +6,8 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.ParsedSql;
 
+import custom.tibame201020.IrisPipe.data.SimpleEnum.AtomicLevel;
+
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,20 +19,16 @@ public interface SyncJobProp {
         INSERT {
             @Override
             public void validate(Setting setting, Database database, Execution execution) {
-                if (StringUtils.isNotBlank(setting.recordTable)) {
-                    if (null == database.record) {
-                        throw new IllegalArgumentException(exceptionPrefix() + "database record must config");
-                    }
-                    database.record.validate();
-                }
                 if (StringUtils.isBlank(execution.destTable)) {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
                 if (null == setting.fetchSize || 0 == setting.fetchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting fetchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting fetchSize must config, and not allow zero");
                 }
                 if (null == setting.batchSize || 0 == setting.batchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting batchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting batchSize must config, and not allow zero");
                 }
                 if (null == database.source) {
                     throw new IllegalArgumentException(exceptionPrefix() + "database source must config");
@@ -45,20 +43,16 @@ public interface SyncJobProp {
         UPDATE {
             @Override
             public void validate(Setting setting, Database database, Execution execution) {
-                if (StringUtils.isNotBlank(setting.recordTable)) {
-                    if (null == database.record) {
-                        throw new IllegalArgumentException(exceptionPrefix() + "database record must config");
-                    }
-                    database.record.validate();
-                }
                 if (StringUtils.isBlank(execution.destTable)) {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
                 if (null == setting.fetchSize || 0 == setting.fetchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting fetchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting fetchSize must config, and not allow zero");
                 }
                 if (null == setting.batchSize || 0 == setting.batchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting batchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting batchSize must config, and not allow zero");
                 }
                 if (null == database.source) {
                     throw new IllegalArgumentException(exceptionPrefix() + "database source must config");
@@ -73,20 +67,16 @@ public interface SyncJobProp {
         UPSERT {
             @Override
             public void validate(Setting setting, Database database, Execution execution) {
-                if (StringUtils.isNotBlank(setting.recordTable)) {
-                    if (null == database.record) {
-                        throw new IllegalArgumentException(exceptionPrefix() + "database record must config");
-                    }
-                    database.record.validate();
-                }
                 if (StringUtils.isBlank(execution.destTable)) {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
                 if (null == setting.fetchSize || 0 == setting.fetchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting fetchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting fetchSize must config, and not allow zero");
                 }
                 if (null == setting.batchSize || 0 == setting.batchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting batchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting batchSize must config, and not allow zero");
                 }
                 if (null == database.source) {
                     throw new IllegalArgumentException(exceptionPrefix() + "database source must config");
@@ -105,7 +95,8 @@ public interface SyncJobProp {
                     throw new IllegalArgumentException(exceptionPrefix() + " must config destTable");
                 }
                 if (null == setting.batchSize || 0 == setting.batchSize) {
-                    throw new IllegalArgumentException(exceptionPrefix() + " setting batchSize must config, and not allow zero");
+                    throw new IllegalArgumentException(
+                            exceptionPrefix() + " setting batchSize must config, and not allow zero");
                 }
                 if (null == database.dest) {
                     throw new IllegalArgumentException(exceptionPrefix() + "database source must config");
@@ -152,23 +143,19 @@ public interface SyncJobProp {
             Integer fetchSize,
             Integer batchSize,
             Integer deleteThreshold,
-            String recordTable
-    ) {
+            AtomicLevel atomicLevel) {
     }
 
     record Database(
             ConnectionInfo source,
-            ConnectionInfo dest,
-            ConnectionInfo record
-    ) {
+            ConnectionInfo dest) {
     }
 
     record ConnectionInfo(
             String driver,
             String url,
             String username,
-            String password
-    ) {
+            String password) {
         public void validate() {
             if (StringUtils.isBlank(driver)) {
                 throw new IllegalArgumentException("driver can not be blank");
@@ -188,8 +175,7 @@ public interface SyncJobProp {
     record Parameter(
             String param,
             Object value,
-            SupportType type
-    ) {
+            SupportType type) {
         public Object getRenderedValue() {
             if (null == type) {
                 return SupportType.general.renderClass(value);
@@ -206,8 +192,7 @@ public interface SyncJobProp {
             List<Parameter> parameters,
             String watermarkColumn,
             SummaryInfo summaryInfo,
-            Map<String, Object> executionContext
-    ) {
+            Map<String, Object> executionContext) {
         public List<Parameter> parameters() {
             if (null == parameters) {
                 return new ArrayList<>();
@@ -221,13 +206,18 @@ public interface SyncJobProp {
             }
 
             ParsedSql parsedSql = NamedParameterUtils.parseSqlStatement(sql);
-            List<SqlParameter> sqlParameters = NamedParameterUtils.buildSqlParameterList(parsedSql, new MapSqlParameterSource());
+            List<SqlParameter> sqlParameters = NamedParameterUtils.buildSqlParameterList(parsedSql,
+                    new MapSqlParameterSource());
             List<String> parameterParams = parameters().stream().map(Parameter::param).toList();
             sqlParameters.forEach(sqlParameter -> {
                 if (!parameterParams.contains(sqlParameter.getName())) {
                     throw new IllegalArgumentException("lost parameter config: " + sqlParameter.getName());
                 }
             });
+
+            if (null == setting.atomicLevel) {
+                throw new IllegalArgumentException("atomicLevel must config, either JOB or CHUNK");
+            }
 
             type.validate(setting, database, this);
         }

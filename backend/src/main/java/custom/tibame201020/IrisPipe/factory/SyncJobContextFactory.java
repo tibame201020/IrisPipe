@@ -7,7 +7,6 @@ import java.util.Objects;
 
 import javax.sql.DataSource;
 
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.zaxxer.hikari.HikariDataSource;
@@ -28,7 +27,6 @@ public class SyncJobContextFactory {
         int fetchSize = Objects.nonNull(syncJob.getSetting()) ? syncJob.getSetting().fetchSize() : Integer.MAX_VALUE;
         DatabaseContext sourceContext = generDatabaseContext(syncJob.getDatabase().source(), fetchSize);
         DatabaseContext destContext = generDatabaseContext(syncJob.getDatabase().dest(), fetchSize);
-        DatabaseContext recordContext = generDatabaseContext(syncJob.getDatabase().record(), fetchSize);
 
         List<SyncJobProp.Execution> updatedExecutions = syncJob.getExecutions()
                 .stream()
@@ -42,9 +40,7 @@ public class SyncJobContextFactory {
                     List<SyncJobProp.Parameter> parameters = renderSystemProvoderVariable(
                             originalExecution,
                             executionRecordService,
-                            Objects.nonNull(recordContext) ? recordContext.getNamedParameterJdbcTemplate() : null,
-                            executionName,
-                            Objects.nonNull(syncJob.getSetting()) ? syncJob.getSetting().recordTable() : "");
+                            executionName);
 
                     return new SyncJobProp.Execution(
                             originalExecution.type(),
@@ -61,22 +57,19 @@ public class SyncJobContextFactory {
         syncJob.setExecutions(updatedExecutions);
         SummaryInfo summaryInfo = new SummaryInfo(syncJob.getJobName(), SimpleEnum.SummaryInfoLayer.JOB);
 
-        return new SyncJobContext(sourceContext, destContext, recordContext, syncJob, summaryInfo);
+        return new SyncJobContext(sourceContext, destContext, syncJob, summaryInfo);
     }
 
     private List<SyncJobProp.Parameter> renderSystemProvoderVariable(SyncJobProp.Execution execution,
-            ExecutionRecordService executionRecordService, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-            String executionName, String recordTable) {
+            ExecutionRecordService executionRecordService, String executionName) {
         List<String> dyamicParameters = Arrays.stream(SimpleEnum.SystemProvideVariable.values()).map(Enum::name)
                 .toList();
         return execution.parameters().stream().map(parameter -> {
             if (dyamicParameters.contains(parameter.param())) {
                 Object value = executionRecordService.fetchValue(
-                        namedParameterJdbcTemplate,
-                        recordTable,
                         executionName,
-                        executionName,
-                        recordTable,
+                        execution.destTable(),
+                        execution.watermarkColumn(),
                         SystemProvideVariable.valueOf(parameter.param()));
 
                 if (Objects.nonNull(value)) {

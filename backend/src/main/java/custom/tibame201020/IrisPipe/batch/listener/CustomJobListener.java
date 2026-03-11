@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
@@ -106,9 +105,6 @@ public class CustomJobListener implements JobExecutionListener {
                         StepExecutionRecord.class))
                 .filter(Objects::nonNull)
                 .forEach(stepExecutionRecord -> {
-                    NamedParameterJdbcTemplate jdbcTemplate = syncJobContext.recordContext()
-                            .getNamedParameterJdbcTemplate();
-                    String recordTable = syncJobContext.syncJob().getSetting().recordTable();
                     String executionName = stepExecutionRecord.executionName();
                     String destTable = stepExecutionRecord.tableName();
                     String watermarkColumn = stepExecutionRecord.watermarkColumn();
@@ -117,7 +113,7 @@ public class CustomJobListener implements JobExecutionListener {
                     LocalDateTime endTime = stepExecutionRecord.endTime();
                     LocalDateTime updateTime = stepExecutionRecord.updateTime();
 
-                    executionRecordService.saveWatermark(jdbcTemplate, recordTable, executionName, destTable,
+                    executionRecordService.saveWatermark(executionName, destTable,
                             watermarkColumn, value, startTime, endTime, updateTime);
                 });
     }
