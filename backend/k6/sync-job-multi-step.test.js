@@ -25,11 +25,12 @@ export function setup() {
         "INSERT INTO test_dest VALUES (99, 'DELETE_ME', '2023-01-01 00:00:00')",
     ]);
 
-    ensureConfigUploaded(filePath, fileName, yamlContent);
+    const pipeline = ensureConfigUploaded(filePath, fileName, yamlContent);
+    return { pipelineId: pipeline.id };
 }
 
-export default function () {
-    const { summary } = runJobAndGetSummary(filePath);
+export default function (data) {
+    const { summary } = runJobAndGetSummary(data.pipelineId);
     const rows = queryRowsOrFail('SELECT * FROM test_dest ORDER BY id ASC', 'multi-step result query');
 
     check(summary, {
@@ -43,6 +44,6 @@ export default function () {
     });
 }
 
-export function teardown() {
-    ensureConfigDeleted(filePath);
+export function teardown(data) {
+    ensureConfigDeleted(data && data.pipelineId);
 }

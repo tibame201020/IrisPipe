@@ -1,9 +1,9 @@
 import http from 'k6/http';
 import { buildApiUrl, getJsonHeaders } from './api-client.js';
 
-export function executeJob(configPath, useAsyncLaucher = false) {
+export function executeJob(pipelineId, useAsyncLaucher = false) {
     const payload = JSON.stringify({
-        configPath: configPath,
+        pipelineId: pipelineId,
         useAsyncLaucher: useAsyncLaucher,
     });
 

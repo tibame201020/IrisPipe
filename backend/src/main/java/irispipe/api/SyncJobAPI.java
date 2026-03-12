@@ -1,13 +1,10 @@
 package irispipe.api;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,16 +27,14 @@ public class SyncJobAPI {
     private final JobExplorer jobExplorer;
     private final JobExecutionService jobExecutionService;
     private final JobMetadataService jobMetadataService;
-    private final String configAcceptPath;
 
     public SyncJobAPI(JobLauncher jobLauncher, JobLauncher asyncJobLauncher, JobExplorer jobExplorer,
-            JobExecutionService jobExecutionService, JobMetadataService jobMetadataService, Environment environment) {
+            JobExecutionService jobExecutionService, JobMetadataService jobMetadataService) {
         this.jobLauncher = jobLauncher;
         this.asyncJobLauncher = asyncJobLauncher;
         this.jobExplorer = jobExplorer;
         this.jobExecutionService = jobExecutionService;
         this.jobMetadataService = jobMetadataService;
-        this.configAcceptPath = environment.getRequiredProperty("config.accept-path", String.class);
     }
 
     @GetMapping
@@ -55,10 +50,9 @@ public class SyncJobAPI {
     public List<SyncJobDTO.JobSummaryInfo> executeJob(@RequestBody SyncJobDTO.JobExecuteRequest jobExecuteRequest) {
         boolean useAsyncLauncher = Boolean.TRUE.equals(jobExecuteRequest.useAsyncLauncher());
         JobLauncher jobLauncher = useAsyncLauncher ? this.asyncJobLauncher : this.jobLauncher;
-        String configPath = jobExecuteRequest.configPath();
-        Path path = Paths.get(configAcceptPath, configPath);
+        Long pipelineId = jobExecuteRequest.pipelineId();
 
-        return jobExecutionService.execute(jobLauncher, path)
+        return jobExecutionService.execute(jobLauncher, pipelineId)
                 .stream()
                 .map(SyncJobDTO.JobSummaryInfo::render)
                 .toList();

@@ -1,6 +1,5 @@
 package irispipe.core.service;
 
-import java.nio.file.Path;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -36,17 +35,12 @@ public class JobExecutionService {
         this.executionRecordService = executionRecordService;
     }
 
-    public List<JobExecution> execute(JobLauncher jobLauncher, Path path) {
-        List<SyncJobDefinition> syncJobs = jobConfigService.getSyncJobs(path);
-        return execute(jobLauncher, syncJobs);
+    public List<JobExecution> execute(JobLauncher jobLauncher, Long pipelineId) {
+        List<SyncJobDefinition> syncJobs = jobConfigService.getSyncJobs(pipelineId);
+        return execute(jobLauncher, pipelineId, syncJobs);
     }
 
-    public List<JobExecution> execute(JobLauncher jobLauncher, String filepath) {
-        List<SyncJobDefinition> syncJobs = jobConfigService.getSyncJobs(filepath);
-        return execute(jobLauncher, syncJobs);
-    }
-
-    public List<JobExecution> execute(JobLauncher jobLauncher, List<SyncJobDefinition> syncJobs) {
+    public List<JobExecution> execute(JobLauncher jobLauncher, Long pipelineId, List<SyncJobDefinition> syncJobs) {
         syncJobs.forEach(SyncJobDefinition::validate);
         return syncJobs
                 .stream()
@@ -55,6 +49,7 @@ public class JobExecutionService {
                             executionRecordService);
                     Job job = syncJobFactory.createBatchJob(syncJobContext);
                     JobParameters jobParameters = new JobParametersBuilder()
+                            .addLong("pipeline.id", pipelineId)
                             .addLong("run.id", System.currentTimeMillis())
                             .toJobParameters();
                     try {

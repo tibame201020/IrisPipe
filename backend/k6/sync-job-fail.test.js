@@ -26,11 +26,12 @@ export function setup() {
         "DELETE FROM iris_watermark_record WHERE execution_name = 'k6_insert_fail'",
     ]);
 
-    ensureConfigUploaded(filePath, fileName, yamlContent);
+    const pipeline = ensureConfigUploaded(filePath, fileName, yamlContent);
+    return { pipelineId: pipeline.id };
 }
 
-export default function () {
-    const { summary } = runJobAndGetSummary(filePath);
+export default function (data) {
+    const { summary } = runJobAndGetSummary(data.pipelineId);
     const destCount = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM test_dest', 'CNT', 'dest rollback count');
     const watermarkCount = queryScalarOrFail(
         "SELECT COUNT(*) AS CNT FROM iris_watermark_record WHERE execution_name = 'k6_insert_fail'",
@@ -49,6 +50,6 @@ export default function () {
     });
 }
 
-export function teardown() {
-    ensureConfigDeleted(filePath);
+export function teardown(data) {
+    ensureConfigDeleted(data && data.pipelineId);
 }

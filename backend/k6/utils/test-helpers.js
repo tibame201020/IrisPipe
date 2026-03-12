@@ -1,6 +1,6 @@
 import { check, sleep } from 'k6';
 
-import { deleteConfig, updateConfig } from '../services/sync-config-api.js';
+import { createConfig, deleteConfig, listConfigs } from '../services/sync-config-api.js';
 import {
     deleteJobMetadata,
     executeJob,
@@ -9,8 +9,10 @@ import {
 } from '../services/sync-job-api.js';
 import { executeStatement, querySql } from '../services/test-support-api.js';
 
+const configPathPrefix = __ENV.IRISPIPE_CONFIG_PREFIX || `${Date.now()}`;
+
 export function configPathFor(fileName) {
-    return `k6-tests/${fileName}`;
+    return `k6-tests/${configPathPrefix}-${fileName}`;
 }
 
 export function responseSummary(response) {
@@ -26,22 +28,36 @@ export function jsonOrFallback(response, fallback = null) {
 }
 
 export function ensureConfigUploaded(filePath, fileName, fileContent) {
-    const response = updateConfig(filePath, fileName, fileContent);
+    const existingPipeline = findConfigByPath(filePath);
+    if (existingPipeline) {
+        ensureConfigDeleted(existingPipeline.id);
+    }
+
+    const response = createConfig(filePath, fileName, fileContent);
+    const payload = jsonOrFallback(response, {});
     const uploaded = check(response, {
         [`upload ${fileName} succeeded`]: (res) => res.status === 200,
     });
+    const hasPipelineId = check(payload, {
+        [`upload ${fileName} returns pipeline id`]: (body) =>
+            body && Number.isInteger(body.id) && body.id > 0,
+    });
 
-    if (!uploaded) {
+    if (!uploaded || !hasPipelineId) {
         throw new Error(`Failed to upload config ${fileName}: ${responseSummary(response)}`);
     }
 
-    return response;
+    return payload;
 }
 
-export function ensureConfigDeleted(filePath) {
-    const response = deleteConfig(filePath);
+export function ensureConfigDeleted(pipelineId) {
+    if (!pipelineId) {
+        return;
+    }
+
+    const response = deleteConfig(pipelineId);
     check(response, {
-        [`delete ${filePath} succeeded`]: (res) => res.status === 200 || res.status === 204,
+        [`delete pipeline ${pipelineId} succeeded`]: (res) => res.status === 200 || res.status === 204,
     });
 }
 
@@ -61,14 +77,14 @@ export function executeStatementsOrFail(statements) {
         });
 }
 
-export function runJobAndGetSummary(configPath, useAsyncLaucher = false) {
-    const response = executeJob(configPath, useAsyncLaucher);
+export function runJobAndGetSummary(pipelineId, useAsyncLaucher = false) {
+    const response = executeJob(pipelineId, useAsyncLaucher);
     const requestAccepted = check(response, {
         'sync-job request succeeded': (res) => res.status === 200,
     });
 
     if (!requestAccepted) {
-        throw new Error(`Failed to execute job with config ${configPath}: ${responseSummary(response)}`);
+        throw new Error(`Failed to execute job with pipeline ${pipelineId}: ${responseSummary(response)}`);
     }
 
     const summaries = jsonOrFallback(response, []);
@@ -77,7 +93,7 @@ export function runJobAndGetSummary(configPath, useAsyncLaucher = false) {
     });
 
     if (!hasSingleSummary) {
-        throw new Error(`Unexpected job execution payload for ${configPath}: ${response.body}`);
+        throw new Error(`Unexpected job execution payload for pipeline ${pipelineId}: ${response.body}`);
     }
 
     return {
@@ -85,6 +101,20 @@ export function runJobAndGetSummary(configPath, useAsyncLaucher = false) {
         summary: summaries[0],
         summaries,
     };
+}
+
+export function findConfigByPath(filePath) {
+    const response = listConfigs();
+    const listed = check(response, {
+        'list configs succeeded during lookup': (res) => res.status === 200,
+    });
+
+    if (!listed) {
+        throw new Error(`Failed to list configs while looking up ${filePath}: ${responseSummary(response)}`);
+    }
+
+    const pipelines = jsonOrFallback(response, []);
+    return pipelines.find((pipeline) => pipeline.path === filePath) || null;
 }
 
 export function getJobSummariesOrFail(jobIds, label = 'job summary query') {

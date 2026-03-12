@@ -22,34 +22,34 @@ function buildMultipartPayload(filePath, fileName, fileContent) {
     };
 }
 
-function requestConfig(method, filePath, fileName, fileContent) {
+function requestConfig(method, path, filePath, fileName, fileContent) {
     const { boundary, body } = buildMultipartPayload(filePath, fileName, fileContent);
 
-    return http.request(method, buildApiUrl('/sync-config'), body, {
+    return http.request(method, buildApiUrl(path), body, {
         headers: getMultipartHeaders(boundary),
     });
 }
 
 export function createConfig(filePath, fileName, fileContent) {
-    return requestConfig('POST', filePath, fileName, fileContent);
+    return requestConfig('POST', '/sync-config', filePath, fileName, fileContent);
 }
 
-export function updateConfig(filePath, fileName, fileContent) {
-    return requestConfig('PUT', filePath, fileName, fileContent);
+export function updateConfig(pipelineId, filePath, fileName, fileContent) {
+    return requestConfig('PUT', `/sync-config/${pipelineId}`, filePath, fileName, fileContent);
 }
 
-export function patchConfig(filePath, fileName, fileContent) {
-    return requestConfig('PATCH', filePath, fileName, fileContent);
+export function patchConfig(pipelineId, filePath, fileName, fileContent) {
+    return requestConfig('PATCH', `/sync-config/${pipelineId}`, filePath, fileName, fileContent);
 }
 
-export function getConfigDetail(filePath) {
-    return http.get(buildApiUrl('/sync-config', { path: filePath }));
+export function getConfigDetail(pipelineId) {
+    return http.get(buildApiUrl(`/sync-config/${pipelineId}`));
 }
 
 export function listConfigs() {
     return http.get(buildApiUrl('/sync-config'));
 }
 
-export function deleteConfig(filePath) {
-    return http.del(buildApiUrl('/sync-config', { path: filePath }));
+export function deleteConfig(pipelineId) {
+    return http.del(buildApiUrl(`/sync-config/${pipelineId}`));
 }

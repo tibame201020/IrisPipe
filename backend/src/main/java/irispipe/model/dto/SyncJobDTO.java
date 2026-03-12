@@ -14,7 +14,7 @@ public interface SyncJobDTO {
     record JobExecuteRequest(
             @com.fasterxml.jackson.annotation.JsonProperty("useAsyncLaucher")
             Boolean useAsyncLauncher,
-            String configPath) {
+            Long pipelineId) {
     }
 
     record JobSummaryInfo(
