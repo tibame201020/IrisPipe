@@ -1,0 +1,25 @@
+- jobName: sync-composite-pk
+  setting:
+    fetchSize: 100
+    batchSize: 10
+    atomicLevel: JOB
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data;AUTO_SERVER=true;DB_CLOSE_DELAY=-1
+      username: sa
+      password: sa
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data;AUTO_SERVER=true;DB_CLOSE_DELAY=-1
+      username: sa
+      password: sa
+  executions:
+    - type: UPSERT
+      name: k6_upsert_composite
+      sql: |
+        SELECT id1, id2, name, update_time 
+        FROM source_composite
+      destTable: dest_composite
+      parameters: []
+      watermarkColumn: UPDATE_TIME

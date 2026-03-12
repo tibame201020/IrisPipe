@@ -12,6 +12,8 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
+import org.springframework.jdbc.core.namedparam.ParsedSql;
 
 import custom.tibame201020.IrisPipe.data.SummaryInfo;
 import custom.tibame201020.IrisPipe.utility.SqlSyntaxHelper;
@@ -82,6 +84,8 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
         List<String> primaryKeys = sqlSyntaxHelper.primaryColumns;
         int querySize = chunk.size();
         String queryExistingPrimaryKeysSql = sqlSyntaxHelper.buildExistsQuery(querySize);
+        ParsedSql parsedSql = NamedParameterUtils.parseSqlStatement(queryExistingPrimaryKeysSql);
+        String sql = NamedParameterUtils.substituteNamedParameters(parsedSql, null);
 
         List<Object> checkParams = new ArrayList<>();
         chunk.getItems().forEach(item -> {
@@ -98,7 +102,7 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
             return generateCompositePkIdentifier(row, primaryKeys);
         };
 
-        return queryTemplate.query(queryExistingPrimaryKeysSql, rowMapper, checkParams.toArray());
+        return queryTemplate.query(sql, rowMapper, checkParams.toArray());
     }
 
     private String generateCompositePkIdentifier(Map<String, Object> item, List<String> primaryKeys) {

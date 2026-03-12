@@ -46,6 +46,7 @@ Jobs are defined in JSON or YAML files, loaded from the configured job directory
 | [core-flow.md](./core-flow.md) | End-to-end execution flow and step behavior |
 | [config-model.md](./config-model.md) | JSON and YAML configuration model |
 | [error-handling.md](./error-handling.md) | Exception mapping and API error shapes |
+| [full-implementation-guide.md](./full-implementation-guide.md) | Code-first, end-to-end walkthrough of the current backend behavior |
 | [../feature/01-core-transaction-and-restart.md](../feature/01-core-transaction-and-restart.md) | Current transaction semantics and the restart gap |
 | [../feature/03-scheduling-and-orchestration.md](../feature/03-scheduling-and-orchestration.md) | Current orchestration surface and future scheduler work |
 | [../feature/05-observability-and-alerting.md](../feature/05-observability-and-alerting.md) | Current observability surface and future monitoring work |

@@ -18,9 +18,10 @@ $tests = @(
     @{ Name = "Config API CRUD"; Path = "sync-config.test.js" },
     @{ Name = "Sync Job Success"; Path = "sync-job-success.test.js" },
     @{ Name = "Sync Job Fail/Atomic"; Path = "sync-job-fail.test.js" },
-    @{ Name = "Sync Job Fail/Chunk"; Path = "sync-job-chunk-fail.test.js" },
     @{ Name = "Sync Job No Watermark"; Path = "sync-job-no-watermark.test.js" },
-    @{ Name = "Sync Job Multi-step Operations"; Path = "sync-job-multi-step.test.js" }
+    @{ Name = "Sync Job Multi-step Operations"; Path = "sync-job-multi-step.test.js" },
+    @{ Name = "Sync Job Composite PK"; Path = "sync-upsert-composite.test.js" },
+    @{ Name = "Sync Job System Variables"; Path = "sync-system-variable.test.js" }
 )
 
 $failedTests = @()

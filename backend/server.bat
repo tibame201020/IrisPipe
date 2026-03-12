@@ -1,2 +1,3 @@
-cd  C:\Users\jeffh\Downloads\develop\codes\IrisPipe\backend
-call mvn spring-boot:run
+@echo off
+REM Use repository-relative path to run the backend
+mvn spring-boot:run
