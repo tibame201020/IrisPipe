@@ -8,10 +8,10 @@ graph TD
     B --> C["JobExecutionService.execute(jobLauncher, path)"]
     C --> D["JobConfigService.getSyncJobs(path)"]
     D --> E["JsonFileProvider / YamlFileProvider"]
-    E --> F["List<SyncJob>"]
-    F --> G["SyncJob.validate()"]
-    G --> H["SyncJobContextFactory.initialSyncJobContext()"]
-    H --> I["SyncJobFactory.createBatchJob()"]
+    E --> F["List<SyncJobDefinition>"]
+    F --> G["SyncJobDefinition.validate()"]
+    G --> H["SyncJobStrategyFactory.createStrategy()"]
+    H --> I["BatchJobBuilder.build()"]
     I --> J["JobLauncher.run(job, jobParameters)"]
     J --> K["Spring Batch JobExecution"]
 ```
@@ -27,22 +27,23 @@ graph TD
 - `PATCH /api/v1/sync-config`
 - `DELETE /api/v1/sync-config?path=...`
 
-`JobConfigService` validates uploaded files by writing them to a temporary file, loading them through the matching file provider, and calling `SyncJob.validate()` before the real file is persisted.
+`JobConfigService` validates uploaded files by writing them to a temporary file, loading them through the matching file provider, and calling `SyncJobDefinition.validate()` before the real file is persisted.
 
 ## Job assembly
 
-For every `SyncJob`:
+For every `SyncJobDefinition`:
 
-1. `SyncJobContextFactory` creates source and destination database contexts.
-2. System-provided parameters are rendered into each execution context.
-3. `SyncJobFactory` maps each execution to a Spring Batch step:
+1. `JobExecutionService` coordinates the execution.
+2. `JobConfigService` loads the configuration.
+3. `SyncJobStrategyFactory` selects the appropriate execution strategy.
+4. `BatchJobBuilder` maps each execution to a Spring Batch step:
    - `INSERT`
    - `UPDATE`
    - `UPSERT`
    - `DELETE`
    - `EXECUTE`
-4. A `CustomJobListener` is attached to the job.
-5. `JobExecutionService` launches the job with a fresh `run.id`.
+5. A `CustomJobListener` is attached to the job.
+6. `JobExecutionService` launches the job with a fresh `run.id`.
 
 ## Step behavior
 
@@ -80,4 +81,4 @@ This means:
 ## Important current limitation
 
 `atomicLevel` is required by config validation, but the runtime does not yet switch behavior based on it.
-`SyncJobFactory` always creates `CustomJobListener` with `openJobTransaction = true`, so the effective execution model is still job-scoped transaction orchestration for every job.
+`SimpleJobBuilder` always creates `CustomJobListener` with `openJobTransaction = true`, so the effective execution model is still job-scoped transaction orchestration for every job.

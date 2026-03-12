@@ -4,12 +4,16 @@ Write-Host "=========================================="
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "[WAITING] Checking if backend is running on http://localhost:8080 ..."
+$PORT = "8080"
+$IRISPIPE_BASE_URL = "http://localhost:$PORT/api/v1"
+$env:IRISPIPE_BASE_URL = $IRISPIPE_BASE_URL
+
+Write-Host "[WAITING] Checking if backend is running on $IRISPIPE_BASE_URL ..."
 try {
-    $response = Invoke-WebRequest -Uri "http://localhost:8080/api/v1/sync-config" -Method Get -UseBasicParsing -ErrorAction Stop
+    $response = Invoke-WebRequest -Uri "$IRISPIPE_BASE_URL/sync-config" -Method Get -UseBasicParsing -ErrorAction Stop
     Write-Host "[OK] Backend is reachable!"
 } catch {
-    Write-Host "[ERROR] Backend is not reachable. Start Spring Boot first, then rerun this script." -ForegroundColor Red
+    Write-Host "[ERROR] Backend is not reachable (on port $PORT). Start Spring Boot first, then rerun this script." -ForegroundColor Red
     exit 1
 }
 

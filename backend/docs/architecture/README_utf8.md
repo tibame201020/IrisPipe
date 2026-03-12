@@ -1,4 +1,4 @@
-# IrisPipe Backend Architecture
+﻿# IrisPipe Backend Architecture
 
 IrisPipe is a Spring Boot and Spring Batch based data synchronization engine.
 Jobs are defined in JSON or YAML files, loaded from the configured job directory, and executed as Spring Batch jobs that read from a source database and write to a destination database.
@@ -26,11 +26,18 @@ Jobs are defined in JSON or YAML files, loaded from the configured job directory
 
 | Package | Responsibility |
 | --- | --- |
-| `api` | REST endpoints for config management, job execution, metadata lookup |
-| `batch` | Spring Batch listeners, builders, tasklets, writers |
-| `core` | Core business logic: job execution service, metadata management, strategy factory |
-| `infrastructure` | Implementation details: file persistence, DB repositories, external providers, error handling |
-| `model` | Domain models: `SyncJobDefinition`, `ExecutionStep`, and API DTOs |
+| `api` | REST endpoints for config management, job execution, metadata lookup, and test support |
+| `batch` | Spring Batch listeners, builders, tasklets, writers, metadata entities, and repositories |
+| `config` | Application beans such as object mappers |
+| `context` | Source and destination database context objects used during execution |
+| `data` | Job config model, enums, summaries, and watermark records |
+| `dto` | API request and response payloads |
+| `error` | Exception types and global exception handling |
+| `factory` | Runtime assembly of job contexts and Spring Batch jobs |
+| `provider` | JSON and YAML file loading |
+| `repo` | Application-level repositories such as watermark storage |
+| `service` | Config loading, execution orchestration, watermark persistence, and metadata deletion |
+| `utility` | SQL helper utilities |
 
 ## Document map
 

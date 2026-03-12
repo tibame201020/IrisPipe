@@ -2,22 +2,22 @@
 
 ## Root object
 
-Each config file resolves to a `List<SyncJob>`.
+Each config file resolves to a `List<SyncJobDefinition>`.
 
 ```java
 @Data
-public class SyncJob {
+public class SyncJobDefinition {
     String jobName;
-    List<SyncJobProp.Execution> executions;
-    SyncJobProp.Setting setting;
-    SyncJobProp.Database database;
+    List<ExecutionStep> executions;
+    JobSetting setting;
+    DatabaseConfig database;
 }
 ```
 
 ## Setting
 
 ```java
-record Setting(
+record JobSetting(
     Integer fetchSize,
     Integer batchSize,
     Integer deleteThreshold,
@@ -36,7 +36,7 @@ Notes:
 ## Database
 
 ```java
-record Database(
+record DatabaseConfig(
     ConnectionInfo source,
     ConnectionInfo dest
 ) {}
@@ -56,12 +56,12 @@ All four connection fields are required when the corresponding database is neede
 ## Execution
 
 ```java
-record Execution(
+record ExecutionStep(
     ExecutionType type,
     String name,
     String sql,
     String destTable,
-    List<Parameter> parameters,
+    List<JobParameter> parameters,
     String watermarkColumn,
     SummaryInfo summaryInfo,
     Map<String, Object> executionContext
@@ -83,7 +83,7 @@ Important runtime detail:
 ## Parameters
 
 ```java
-record Parameter(
+record JobParameter(
     String param,
     Object value,
     SupportType type
