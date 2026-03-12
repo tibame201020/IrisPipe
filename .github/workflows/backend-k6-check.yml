@@ -21,9 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      APP_LOG: ${{ runner.temp }}/irispipe-k6.log
-      APP_PID_FILE: ${{ runner.temp }}/irispipe-k6.pid
-      SPRING_DATASOURCE_URL: jdbc:h2:file:${{ runner.temp }}/irispipe-k6-db;AUTO_SERVER=true;DB_CLOSE_DELAY=-1
+      K6_TMP_DIR: ${{ github.workspace }}/.k6-tmp
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/irispipe-k6.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/irispipe-k6.pid
+      SPRING_DATASOURCE_URL: jdbc:h2:file:${{ github.workspace }}/.k6-tmp/irispipe-k6-db;AUTO_SERVER=true;DB_CLOSE_DELAY=-1
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
 
@@ -50,6 +51,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p "$K6_TMP_DIR"
           app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
 
           if [ -z "$app_jar" ]; then
