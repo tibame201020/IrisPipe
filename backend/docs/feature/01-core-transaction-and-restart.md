@@ -44,7 +44,7 @@ The following items are still gaps between the config model and the runtime:
    The backend currently exposes execute, summary, detail, and metadata deletion endpoints only.
 
 3. Restart-safe config snapshotting.
-   Jobs are reconstructed from the current file contents under `jobs/`, not from an immutable execution snapshot.
+   Jobs are reconstructed from the current persisted pipeline rows in the application database, not from an immutable execution snapshot.
 
 ## Why this matters
 

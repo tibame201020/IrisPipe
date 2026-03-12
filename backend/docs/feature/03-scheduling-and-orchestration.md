@@ -10,7 +10,7 @@ POST /api/v1/sync-job
 Content-Type: application/json
 
 {
-  "configPath": "k6-tests/job-success.yml",
+  "pipelineId": 1,
   "useAsyncLaucher": false
 }
 ```
@@ -19,7 +19,7 @@ Notes:
 
 - The request field is currently spelled `useAsyncLaucher` because that is the DTO name in the code.
 - `asyncJobLauncher` exists, but orchestration is still caller-driven.
-- Config file management is separate and lives under `/api/v1/sync-config`.
+- Pipeline management is separate and lives under `/api/v1/sync-config`.
 
 ## Current orchestration surface
 
