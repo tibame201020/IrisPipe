@@ -1,13 +1,13 @@
-# Core Flow
+# Core Flow (DB-Driven)
 
 ## High-level execution path
 
 ```mermaid
 graph TD
-    A["POST /api/v1/sync-job"] --> B["SyncJobAPI.executeJob()"]
-    B --> C["JobExecutionService.execute(jobLauncher, path)"]
-    C --> D["JobConfigService.getSyncJobs(path)"]
-    D --> E["JsonFileProvider / YamlFileProvider"]
+    A["POST /api/v1/sync-job"] --> B["SyncJobAPI.executeJob(pipelineId)"]
+    B --> C["JobExecutionService.execute(jobLauncher, pipelineId)"]
+    C --> D["JobConfigService.getSyncJobs(pipelineId)"]
+    D --> E["JPA Repositories (Pipeline/Job/Step)"]
     E --> F["List<SyncJobDefinition>"]
     F --> G["SyncJobDefinition.validate()"]
     G --> H["SyncJobStrategyFactory.createStrategy()"]
@@ -16,69 +16,21 @@ graph TD
     J --> K["Spring Batch JobExecution"]
 ```
 
-## Config management flow
+## Pipeline management flow
 
-`/api/v1/sync-config` exposes the file-based config lifecycle used by both manual testing and K6:
+`/api/v1/sync-config` manages the **Pipeline Lifecycle** in the database:
 
-- `GET /api/v1/sync-config`
-- `GET /api/v1/sync-config?path=...`
-- `POST /api/v1/sync-config`
-- `PUT /api/v1/sync-config`
-- `PATCH /api/v1/sync-config`
-- `DELETE /api/v1/sync-config?path=...`
-
-`JobConfigService` validates uploaded files by writing them to a temporary file, loading them through the matching file provider, and calling `SyncJobDefinition.validate()` before the real file is persisted.
+- **GET /sync-config**: Lists all persisted pipelines (id, path, filename).
+- **POST /sync-config**: Uploads a file, validates it, and saves it as a new Pipeline in the DB.
+- **PUT / PATCH /sync-config/{id}**: Updates an existing Pipeline and its child records in the DB.
+- **DELETE /sync-config/{id}**: Removes a Pipeline and all associated Jobs/Steps.
 
 ## Job assembly
 
-For every `SyncJobDefinition`:
+1. **Reconstruction**: `JobConfigService` performs a recursive join/query across normalization tables to build `SyncJobDefinition` objects.
+2. **Context Creation**: `SyncJobContextFactory` builds runtime JDBC data sources.
+3. **Batch Mapping**: `SyncJobStrategyFactory` selects the `ExecutionStep` strategy.
+4. **Execution**: `JobExecutionService` attaches the `pipeline.id` and `run.id` to `JobParameters` and launches via Spring Batch.
 
-1. `JobExecutionService` coordinates the execution.
-2. `JobConfigService` loads the configuration.
-3. `SyncJobStrategyFactory` selects the appropriate execution strategy.
-4. `BatchJobBuilder` maps each execution to a Spring Batch step:
-   - `INSERT`
-   - `UPDATE`
-   - `UPSERT`
-   - `DELETE`
-   - `EXECUTE`
-5. A `CustomJobListener` is attached to the job.
-6. `JobExecutionService` launches the job with a fresh `run.id`.
-
-## Step behavior
-
-### INSERT, UPDATE, and UPSERT
-
-These step types all use chunk-oriented processing with a reader, processor, and writer.
-
-The processor currently does three important things:
-
-1. Copies the row into a mutable `Map<String, Object>`.
-2. Captures the current watermark value into `execution.executionContext()` when `watermarkColumn` is configured.
-3. Backfills only missing destination columns with `null`.
-
-That third point is important: the current implementation no longer overwrites columns that are already present in the source row.
-
-### DELETE
-
-`DeleteTasklet` uses the rendered SQL plus `deleteThreshold` to guard against accidental mass deletion.
-
-### EXECUTE
-
-`ExecuteTasklet` runs the configured SQL against the destination database inside a Spring transaction.
-
-## Watermark persistence
-
-`ExecutionStepListener` stores watermark candidates in the step execution context after a step completes.
-`CustomJobListener` persists those records only after the job finishes successfully.
-
-This means:
-
-- successful jobs can advance watermarks
-- failed jobs do not persist watermarks
-- watermark storage is coupled to the final job outcome, not to individual read operations
-
-## Important current limitation
-
-`atomicLevel` is required by config validation, but the runtime does not yet switch behavior based on it.
-`SimpleJobBuilder` always creates `CustomJobListener` with `openJobTransaction = true`, so the effective execution model is still job-scoped transaction orchestration for every job.
+## Restartability Hook
+By storing `pipeline.id` in `JobParameters`, the system ensures that a restarted job instance can re-link to the exact configuration stored in the database.

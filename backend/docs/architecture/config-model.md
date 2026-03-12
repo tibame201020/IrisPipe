@@ -1,11 +1,10 @@
-# Configuration Model
+# Configuration Model & Persistence
 
-## Root object
+## 1. Domain Model
 
-Each config file resolves to a `List<SyncJobDefinition>`.
+Configuration is logically represented as a `Pipeline` containing multiple `SyncJobDefinition` objects.
 
 ```java
-@Data
 public class SyncJobDefinition {
     String jobName;
     List<ExecutionStep> executions;
@@ -14,136 +13,40 @@ public class SyncJobDefinition {
 }
 ```
 
-## Setting
+## 2. Database Persistence (Normalized)
 
-```java
-record JobSetting(
-    Integer fetchSize,
-    Integer batchSize,
-    Integer deleteThreshold,
-    AtomicLevel atomicLevel
-) {}
-```
+Since Phase 3, configurations are no longer loaded directly from files at execution time. They are persisted in the following tables:
 
-Notes:
+### `iris_pipeline`
+The top-level container, corresponding to what was previously a single configuration file.
+- `id`: PK
+- `config_path`: Logical path (e.g., `k6-tests/success.yml`)
+- `content_hash`: SHA-256 of the last uploaded content
 
-- `fetchSize` is required for `INSERT`, `UPDATE`, and `UPSERT`.
-- `batchSize` is required for `INSERT`, `UPDATE`, `UPSERT`, and `DELETE`.
-- `deleteThreshold` is used only by `DELETE`.
-- `atomicLevel` is required by validation and must be either `JOB` or `CHUNK`.
-- The current runtime still behaves like job-scoped orchestration even when `atomicLevel` is set to `CHUNK`.
+### `iris_pipeline_job`
+Individual sync jobs within a pipeline.
+- `pipeline_id`: FK
+- `sequence_order`: Execution order within the pipeline
+- `settings`: Flattened columns for `fetch_size`, `batch_size`, etc.
 
-## Database
+### `iris_pipeline_job_connection`
+Centralized database connection info for each job role (`SOURCE`, `DEST`).
 
-```java
-record DatabaseConfig(
-    ConnectionInfo source,
-    ConnectionInfo dest
-) {}
-```
+### `iris_pipeline_execution`
+Execution steps (SQL, type, etc.) for a specific job.
 
-```java
-record ConnectionInfo(
-    String driver,
-    String url,
-    String username,
-    String password
-) {}
-```
+### `iris_pipeline_execution_parameter`
+Key-value parameters for each execution step.
 
-All four connection fields are required when the corresponding database is needed by the execution type.
+## 3. Upload & Validation Flow
 
-## Execution
+Even though the system is DB-driven, users still interact with YAML/JSON for convenience:
 
-```java
-record ExecutionStep(
-    ExecutionType type,
-    String name,
-    String sql,
-    String destTable,
-    List<JobParameter> parameters,
-    String watermarkColumn,
-    SummaryInfo summaryInfo,
-    Map<String, Object> executionContext
-) {}
-```
+1. **Upload**: User sends a file via `POST /sync-config`.
+2. **Parsing**: `Yaml/JsonFileProvider` deserializes the file.
+3. **Validation**: `SyncJobDefinition.validate()` is called in-memory.
+4. **Persistence**: If valid, the existing pipeline records are deleted (or updated) and new records are inserted into the normalized tables.
+5. **Launch**: `executeJob` now uses the `pipelineId` to query the DB and reconstruct the `SyncJobDefinition` for Spring Batch.
 
-Validation rules:
-
-- `sql` must not be blank.
-- Every named SQL parameter must appear in `parameters`.
-- `destTable` is required for `INSERT`, `UPDATE`, `UPSERT`, and `DELETE`.
-- `watermarkColumn` is optional.
-
-Important runtime detail:
-
-- `watermarkColumn` must match the column label returned by the JDBC reader.
-- In the local H2-based K6 fixtures, that means using `UPDATE_TIME` instead of `update_time`.
-
-## Parameters
-
-```java
-record JobParameter(
-    String param,
-    Object value,
-    SupportType type
-) {}
-```
-
-`SupportType` currently supports:
-
-- `general`
-- `timestamp`
-
-`timestamp` values are converted with `Timestamp.valueOf(...)`.
-
-## Execution types
-
-| Type | Source DB | Dest DB | Notes |
-| --- | --- | --- | --- |
-| `INSERT` | required | required | chunk reader plus insert writer |
-| `UPDATE` | required | required | chunk reader plus custom update writer |
-| `UPSERT` | required | required | chunk reader plus mixed insert and update writer |
-| `DELETE` | not used | required | tasklet with delete threshold guard |
-| `EXECUTE` | not used | required | tasklet for arbitrary destination SQL |
-
-## Example YAML
-
-```yaml
-- jobName: example_job
-  executions:
-    - type: INSERT
-      name: load_orders
-      sql: select * from source_orders where update_time > :_LAST_UPDATE order by update_time asc
-      destTable: target_orders
-      watermarkColumn: UPDATE_TIME
-      parameters:
-        - param: _LAST_UPDATE
-          type: timestamp
-          value: "1970-01-01 00:00:00"
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    deleteThreshold: -1
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-```
-
-## Removed legacy fields
-
-The current config model does not include:
-
-- `recordTable`
-- `database.record`
-
-Watermarks are stored internally through `ExecutionRecordService` and `iris_watermark_record`.
+## 4. Removed Legacy Logic
+The `jobs/` directory on the filesystem is no longer the source of truth for job execution.

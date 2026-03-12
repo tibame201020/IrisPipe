@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 3: Job Configuration Persistence] - 2026-03-12
+
+### Added
+- **Database Persistence Layer**: Successfully migrated from file-based (YAML/JSON) job definitions to a fully managed database persistence layer.
+- **Normalized DB Schema**: Designed and implemented a robust 3-layer schema (`iris_pipeline`, `iris_pipeline_job`, `iris_pipeline_execution`, `iris_pipeline_execution_parameter`) using Flyway.
+- **JPA Entities & Repositories**: Implemented a complete set of Spring Data JPA entities and repositories to manage the configuration hierarchy.
+- **Content Hashing**: Introduced SHA-256 hashing for pipeline content to ensure configuration integrity and provide hooks for future restartability checks.
+- **DB-Driven Execution**: Updated `JobExecutionService` and `JobConfigService` to assemble `SyncJobDefinition` objects directly from database records.
+
+### Changed
+- **REST API Evolution**: Evolved `/api/v1/sync-config` to persist uploaded files into the database and `/api/v1/sync-job` to execute jobs based on `pipelineId`.
+- **Documentation Refinement**: Updated all `docs/architecture` documents to perfectly align with the database-driven implementation.
+
+### Fixed
+- **Configuration Lifecycle Management**: Optimized `JobConfigService` to handle transactional updates (Delete-and-Insert strategy) for pipeline configurations.
+
+---
+
 ## [Phase 2: Architecture & Naming Alignment] - 2026-03-12
 
 ### Added

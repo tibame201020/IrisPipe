@@ -1,47 +1,29 @@
-# IrisPipe Full Implementation Guide
+# IrisPipe Full Implementation Guide (Phase 3)
 
-This document is a code-first walkthrough of the current IrisPipe backend.
+## 1. Current System State
 
-## 1. What IrisPipe is right now
+IrisPipe has transitioned from a file-driven engine to a **Database-Driven Execution Engine**.
 
-At runtime, IrisPipe is a Spring Boot application that:
+1. **Persistence**: Jobs are stored in normalized tables (`iris_pipeline`, `iris_pipeline_job`, etc.).
+2. **API**: The Config API now operates on `pipelineId` for management while accepting files for initial ingestion.
+3. **Execution**: The `JobLauncher` retrieves configuration from the DB, reconstructs the domain model, and executes using Spring Batch.
 
-1. Reads one config file from the `jobs/` directory.
-2. Deserializes the file into `List<SyncJobDefinition>`.
-3. Validates each job definition.
-4. Builds an in-memory `SyncJobContext` with source and destination JDBC data sources.
-5. Converts each configured execution into a Spring Batch `Step` via strategy factory.
-6. Launches the assembled Spring Batch `Job`.
-7. Stores job metadata in Spring Batch tables.
-8. Stores watermark state in the application table `iris_watermark_record` only after the whole job completes successfully.
+## 2. Key Modules (Post-Phase 3)
 
-## 2. Source of truth
+- **`infrastructure.entity`**: Defines the JPA entities for the normalized configuration schema.
+- **`infrastructure.repo`**: Repositories for Pipelines, Jobs, Connections, Executions, and Parameters.
+- **`infrastructure.service.JobConfigService`**: The bridge between files/API and the DB. It handles hashing, validation, and recursive persistence.
+- **`core.service.JobExecutionService`**: Orchestrates the execution by fetching configurations from the DB.
 
-The most trustworthy packages for understanding the current implementation are:
+## 3. Configuration Hierarchy
 
-- `src/main/java/irispipe/api/*`
-- `src/main/java/irispipe/core/*`
-- `src/main/java/irispipe/infrastructure/*`
-- `src/main/java/irispipe/batch/*`
-- `src/main/java/irispipe/model/*`
+The system follows a strict 3-layer persistence hierarchy:
+- **Pipeline**: One upload unit (logical group).
+- **Job**: One Batch Job (Atomic unit).
+- **Execution**: One Step (SQL unit).
 
-## 3. Top-level module map
-
-The packages divide responsibilities cleanly:
-
-- **`api`**: REST controllers for config and job management.
-- **`batch`**: Spring Batch specific components (listeners, tasklets, writers, builders).
-- **`core`**: Core services (JobExecutionService, JobMetadataService) and Strategy Factory.
-- **`infrastructure`**: Implementation of providers, persistence (JobConfigService), repositories, and error handling.
-- **`model`**: Domain models (`SyncJobDefinition`, `ExecutionStep`) and DTOs.
-
-## 4. Execution Logic
-
-### 4.1 SQL Generation
-`SqlSyntaxHelper` provides dynamic SQL generation by analyzing database metadata. It supports correctly quoted identifiers and vendor-specific casing.
-
-### 4.2 UPSERT Strategy
-`BatchUpsertWriter` implements a generic "query-then-split" logic to handle updates and inserts in a database-agnostic manner.
-
-### 4.3 Watermark Processing
-Watermarks are collected during step execution (`ExecutionStepListener`) and persisted upon successful job completion (`CustomJobListener`).
+## 4. Why DB Persistence?
+Moving to the database allows for:
+- **Centralized Management**: No more managing files across multiple instances.
+- **Metadata Association**: Tying Spring Batch `JobParameters` to a specific `pipelineId` in the DB.
+- **Restartability**: Providing a stable hook for resuming failed jobs in Phase 4.
