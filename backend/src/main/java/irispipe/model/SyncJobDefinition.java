@@ -26,6 +26,10 @@ public class SyncJobDefinition {
             throw new ConfigValidationException(jobName, "", "executions list can not be null or empty");
         }
 
+        if (setting.atomicLevel() == null) {
+            throw new ConfigValidationException(jobName, "", "atomicLevel should be JOB|CHUNK.");
+        }
+
         executions.forEach(execution -> {
             try {
                 execution.validate(setting, database);

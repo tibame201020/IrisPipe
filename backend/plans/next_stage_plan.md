@@ -110,9 +110,7 @@ That matches current JOB-level semantics.
 
 For CHUNK mode, the team must explicitly decide:
 
-- whether watermark persistence remains whole-job only
-- whether it advances per successful step
-- or whether it advances per committed chunk
+- **Decided**: Watermark persistence remains whole-job only in the initial CHUNK implementation. This relies on the future **Restart** mechanism to recover state correctly after partial failures.
 
 This decision affects both correctness and restart behavior.
 
@@ -161,7 +159,7 @@ If these are implemented out of order, the restart contract will likely be wrong
 
 ## Recommended implementation order
 
-### Step 1. Make `atomicLevel` effective in runtime
+### [DONE] Step 1. Make `atomicLevel` effective in runtime
 
 Target:
 
@@ -176,8 +174,8 @@ Implementation direction:
 
 Validation target:
 
-- add or promote a chunk-failure K6 scenario that proves partial commit behavior
-- keep existing JOB-mode failure test proving full rollback behavior
+- [x] add or promote a chunk-failure K6 scenario that proves partial commit behavior
+- [x] keep existing JOB-mode failure test proving full rollback behavior
 
 ### Step 2. Introduce restart-safe config identity
 

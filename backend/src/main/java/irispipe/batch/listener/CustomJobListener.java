@@ -53,6 +53,9 @@ public class CustomJobListener implements JobExecutionListener {
         if (this.openJobTransaction) {
             handleAtomicJobTransaction(jobExecution);
         }
+        if (!this.openJobTransaction && jobExecution.getStatus().equals(BatchStatus.COMPLETED)) {
+            persistStepExecutionRecords(jobExecution);
+        }
 
         logger.info("=== job summary ===");
         logger.info("[job] name: {}", jobExecution.getJobInstance().getJobName());
@@ -84,7 +87,7 @@ public class CustomJobListener implements JobExecutionListener {
     }
 
     private void handleAtomicJobTransaction(JobExecution jobExecution) {
-        if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
+        if (jobExecution.getStatus().equals(BatchStatus.COMPLETED)) {
             logger.info("-------------- commit job {}", jobExecution);
             this.transactionManager.commit(this.transactionStatus);
             persistStepExecutionRecords(jobExecution);

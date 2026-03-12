@@ -10,8 +10,8 @@ graph TD
     D --> E["JPA Repositories (Pipeline/Job/Step)"]
     E --> F["List<SyncJobDefinition>"]
     F --> G["SyncJobDefinition.validate()"]
-    G --> H["SyncJobStrategyFactory.createStrategy()"]
-    H --> I["BatchJobBuilder.build()"]
+    G --> H["SyncJobFactory.createBatchJob()"]
+    H --> I["SimpleJobBuilder.build()"]
     I --> J["JobLauncher.run(job, jobParameters)"]
     J --> K["Spring Batch JobExecution"]
 ```
@@ -29,8 +29,9 @@ graph TD
 
 1. **Reconstruction**: `JobConfigService` performs a recursive join/query across normalization tables to build `SyncJobDefinition` objects.
 2. **Context Creation**: `SyncJobContextFactory` builds runtime JDBC data sources.
-3. **Batch Mapping**: `SyncJobStrategyFactory` selects the `ExecutionStep` strategy.
-4. **Execution**: `JobExecutionService` attaches the `pipeline.id` and `run.id` to `JobParameters` and launches via Spring Batch.
+3. **Batch Mapping**: `SyncJobFactory` selects the `ExecutionStepStrategy` based on `ExecutionType`.
+4. **Transactional Scope**: `SyncJobFactory` branches logic based on `atomicLevel` (JOB vs CHUNK) to determine the transaction manager and listener behavior.
+5. **Execution**: `JobExecutionService` attaches the `pipeline.id` and `run.id` to `JobParameters` and launches via Spring Batch.
 
 ## Restartability Hook
 By storing `pipeline.id` in `JobParameters`, the system ensures that a restarted job instance can re-link to the exact configuration stored in the database.

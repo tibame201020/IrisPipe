@@ -3,8 +3,8 @@ package irispipe.core.factory;
 import com.zaxxer.hikari.HikariDataSource;
 import irispipe.infrastructure.context.DatabaseContext;
 import irispipe.infrastructure.context.SyncJobContext;
-import irispipe.model.*;
 import irispipe.infrastructure.service.ExecutionRecordService;
+import irispipe.model.*;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -54,23 +54,23 @@ public class SyncJobContextFactory {
     }
 
     private List<JobParameter> renderSystemProvoderVariable(ExecutionStep execution,
-            ExecutionRecordService executionRecordService, String executionName) {
+                                                            ExecutionRecordService executionRecordService, String executionName) {
         List<String> dyamicParameters = Arrays.stream(SystemProvideVariable.values()).map(Enum::name)
                 .toList();
         return execution.parameters().stream().map(parameter -> {
-            if (dyamicParameters.contains(parameter.param())) {
-                Object value = executionRecordService.fetchValue(
-                        executionName,
-                        execution.destTable(),
-                        execution.watermarkColumn(),
-                        SystemProvideVariable.valueOf(parameter.param()));
+                    if (dyamicParameters.contains(parameter.param())) {
+                        Object value = executionRecordService.fetchValue(
+                                executionName,
+                                execution.destTable(),
+                                execution.watermarkColumn(),
+                                SystemProvideVariable.valueOf(parameter.param()));
 
-                if (Objects.nonNull(value)) {
-                    return new JobParameter(parameter.param(), value, parameter.type());
-                }
-            }
-            return parameter;
-        })
+                        if (Objects.nonNull(value)) {
+                            return new JobParameter(parameter.param(), value, parameter.type());
+                        }
+                    }
+                    return parameter;
+                })
                 .toList();
 
     }

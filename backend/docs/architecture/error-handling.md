@@ -22,3 +22,15 @@ Triggered during the **Upload -> Persistence** phase. If the uploaded YAML/JSON 
 
 ### `ConfigFileException`
 Used sparingly for unexpected IO or encryption/hashing errors during the upload process.
+
+## Transactional Scopes
+
+As of Phase 4, IrisPipe supports two transactional scopes via the `atomicLevel` setting:
+
+| Scope | Transaction Boundary | Failure Behavior |
+| --- | --- | --- |
+| `JOB` | Full job duration (Outer transaction) | Entire job rolls back; no data committed in any step. |
+| `CHUNK` | Spring Batch Chunks | Partial success; committed chunks remain in DB; failed chunk rolls back. |
+
+> [!NOTE]
+> In `CHUNK` mode, watermarks are currently persistent only after **whole-job success**. Partial commitments during failure will be handled by future **Restart** functionality to avoid redundant processing.

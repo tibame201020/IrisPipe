@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 4 (Partial): Segmented Commit Support] - 2026-03-12
+
+### Added
+- **`atomicLevel` Runtime Support**: Implemented runtime branching between `JOB` and `CHUNK` transaction models in `SyncJobFactory`.
+- **Custom Transaction Control**: Updated `CustomJobListener` to selectively open outer job-level transactions only when `atomicLevel: JOB` is specified.
+- **Chunked Data Processing**: Enabled Spring Batch native chunk commit behavior for `CHUNK` mode, allowing partial data persistence during massive tasks.
+- **Regression Coverage**: Added `k6/sync-job-chunk-fail.test.js` to verify that failed `CHUNK` jobs leave previously committed segments in the destination database.
+
+---
+
 ## [Phase 3: Job Configuration Persistence] - 2026-03-12
 
 ### Added
