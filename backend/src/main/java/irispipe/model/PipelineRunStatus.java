@@ -4,6 +4,8 @@ import org.springframework.batch.core.BatchStatus;
 
 public enum PipelineRunStatus {
     PENDING,
+    NOT_RUN,
+    SKIPPED,
     STARTING,
     STARTED,
     STOPPING,

@@ -24,6 +24,16 @@ public interface SyncPipelineDTO {
             Long pipelineId) {
     }
 
+    record PipelineResumeRequest(
+            @JsonProperty("useAsyncLaucher")
+            Boolean useAsyncLauncher) {
+    }
+
+    record PipelineRerunRequest(
+            @JsonProperty("useAsyncLaucher")
+            Boolean useAsyncLauncher) {
+    }
+
     record PipelineRunSummaryInfo(
             Long id,
             Long pipelineId,

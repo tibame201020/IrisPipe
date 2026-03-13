@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
+import { singleRunOptions } from '../utils/test-options.js';
 import {
     configPathFor,
     deletePipelineRunOrFail,
@@ -9,11 +9,11 @@ import {
     getPipelineRunDetailOrFail,
     getPipelineRunsOrFail,
     runPipelineAndGetSummary,
-} from './utils/test-helpers.js';
+} from '../utils/test-helpers.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/job-success.yml');
+const yamlContent = open('../testfiles/job-success.yml');
 const fileName = 'job-success.yml';
 const filePath = configPathFor(`pipeline-api-${fileName}`);
 

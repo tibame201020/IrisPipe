@@ -32,6 +32,24 @@ public class SyncPipelineAPI {
                 pipelineExecuteRequest.useAsyncLauncher());
     }
 
+    @PostMapping("/{pipelineRunId}/resume")
+    public SyncPipelineDTO.PipelineRunSummaryInfo resumePipeline(
+            @PathVariable("pipelineRunId") Long pipelineRunId,
+            @RequestBody(required = false) SyncPipelineDTO.PipelineResumeRequest pipelineResumeRequest) {
+        return pipelineExecutionService.resume(
+                pipelineRunId,
+                pipelineResumeRequest == null ? null : pipelineResumeRequest.useAsyncLauncher());
+    }
+
+    @PostMapping("/{pipelineRunId}/rerun")
+    public SyncPipelineDTO.PipelineRunSummaryInfo rerunPipeline(
+            @PathVariable("pipelineRunId") Long pipelineRunId,
+            @RequestBody(required = false) SyncPipelineDTO.PipelineRerunRequest pipelineRerunRequest) {
+        return pipelineExecutionService.rerun(
+                pipelineRunId,
+                pipelineRerunRequest == null ? null : pipelineRerunRequest.useAsyncLauncher());
+    }
+
     @GetMapping
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunsByIds(@RequestParam("ids") List<Long> ids) {
         return pipelineExecutionService.getPipelineRunSummaries(ids);

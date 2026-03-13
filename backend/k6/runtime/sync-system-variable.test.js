@@ -7,7 +7,7 @@ import {
     executeStatementsOrFail,
     queryScalarOrFail,
     runPipelineAndGetSummary,
-} from './utils/test-helpers.js';
+} from '../utils/test-helpers.js';
 
 export const options = {
     thresholds: {
@@ -15,7 +15,7 @@ export const options = {
     },
 };
 
-const yamlContent = open('./testfiles/job-watermark.yml');
+const yamlContent = open('../testfiles/job-watermark.yml');
 const fileName = 'job-watermark.yml';
 const filePath = configPathFor(fileName);
 

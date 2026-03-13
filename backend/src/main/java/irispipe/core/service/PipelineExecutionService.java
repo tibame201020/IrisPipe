@@ -38,6 +38,7 @@ import irispipe.infrastructure.service.JobConfigService;
 import irispipe.infrastructure.service.JobMetadataService;
 import irispipe.infrastructure.service.PipelineRunLifecycleService;
 import irispipe.infrastructure.service.PipelineRunSnapshotService;
+import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
 import irispipe.model.SyncJobDefinition;
@@ -100,32 +101,102 @@ public class PipelineExecutionService {
         List<SyncJobDefinition> syncJobs = jobConfigService.getSyncJobs(pipelineId);
         syncJobs.forEach(SyncJobDefinition::validate);
 
-        PipelineRun pipelineRun = createPipelineRun(pipelineId, requestedAsync);
+        PipelineRun pipelineRun = createPipelineRun(pipelineId, requestedAsync, null);
         List<SyncJobDefinition> snapshotSyncJobs = pipelineRunSnapshotService.createSnapshot(
                 pipelineRun.getId(),
                 pipelineDefinition.getContentHash(),
                 syncJobs);
-        List<PipelineRunJob> pipelineRunJobs = createPipelineRunJobs(pipelineRun.getId(), snapshotSyncJobs);
-        PipelineRunExecution pipelineRunExecution = createPipelineRunExecution(pipelineRun, requestedAsync);
-        List<PipelineRunExecutionJob> pipelineRunExecutionJobs = createPipelineRunExecutionJobs(
+        return startPipelineRun(pipelineDefinition, pipelineRun, snapshotSyncJobs, requestedAsync);
+    }
+
+    public SyncPipelineDTO.PipelineRunSummaryInfo rerun(Long pipelineRunId, Boolean useAsyncLauncher) {
+        boolean requestedAsync = Boolean.TRUE.equals(useAsyncLauncher);
+        PipelineRun sourcePipelineRun = getPipelineRun(pipelineRunId);
+        PipelineDefinition pipelineDefinition = getPipelineDefinition(sourcePipelineRun.getPipelineId());
+        PipelineRun pipelineRun = createPipelineRun(sourcePipelineRun.getPipelineId(), requestedAsync,
+                sourcePipelineRun.getId());
+        List<SyncJobDefinition> snapshotSyncJobs = pipelineRunSnapshotService.copySnapshot(
+                sourcePipelineRun.getId(),
+                pipelineRun.getId());
+        return startPipelineRun(pipelineDefinition, pipelineRun, snapshotSyncJobs, requestedAsync);
+    }
+
+    private SyncPipelineDTO.PipelineRunSummaryInfo startPipelineRun(PipelineDefinition pipelineDefinition,
+            PipelineRun pipelineRun, List<SyncJobDefinition> syncJobs, boolean requestedAsync) {
+        syncJobs.forEach(SyncJobDefinition::validate);
+
+        List<PipelineRunJob> pipelineRunJobs = createPipelineRunJobs(pipelineRun.getId(), syncJobs);
+        PipelineRunExecution pipelineRunExecution = createPipelineRunExecution(
+                pipelineRun,
+                requestedAsync,
+                PipelineRunExecutionKind.INITIAL);
+        List<PipelineRunExecutionJob> pipelineRunExecutionJobs = createInitialPipelineRunExecutionJobs(
                 pipelineRunExecution.getId(),
                 pipelineRunJobs);
 
         if (requestedAsync) {
             pipelineTaskExecutor.execute(
-                    () -> executePipelineRun(pipelineId, snapshotSyncJobs, pipelineRunExecution, pipelineRunJobs,
-                            pipelineRunExecutionJobs));
+                    () -> executePipelineRun(pipelineDefinition.getId(), syncJobs, pipelineRunExecution, pipelineRunJobs,
+                            pipelineRunExecutionJobs, 0));
             return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRun.getId()));
         }
 
-        executePipelineRun(pipelineId, snapshotSyncJobs, pipelineRunExecution, pipelineRunJobs, pipelineRunExecutionJobs);
+        executePipelineRun(pipelineDefinition.getId(), syncJobs, pipelineRunExecution, pipelineRunJobs, pipelineRunExecutionJobs,
+                0);
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRun.getId()));
+    }
+
+    public SyncPipelineDTO.PipelineRunSummaryInfo resume(Long pipelineRunId, Boolean useAsyncLauncher) {
+        boolean requestedAsync = Boolean.TRUE.equals(useAsyncLauncher);
+        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineRun.getPipelineId());
+        PipelineRunExecution latestExecution = getLatestExecution(pipelineRun);
+        validateResumablePipelineRun(pipelineRunId, latestExecution);
+
+        List<SyncJobDefinition> snapshotSyncJobs = pipelineRunSnapshotService.getSnapshotSyncJobs(pipelineRunId);
+        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId);
+        validatePipelineRunTopology(pipelineRunId, snapshotSyncJobs, pipelineRunJobs);
+
+        Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId = getExecutionJobsByRunJobId(latestExecution.getId());
+        int resumeJobSequence = findResumeJobSequence(pipelineRunId, pipelineRunJobs, latestExecutionJobsByRunJobId);
+        validateResumeStrategy(pipelineRunId, pipelineRunJobs.get(resumeJobSequence));
+
+        PipelineRunExecution pipelineRunExecution = createPipelineRunExecution(
+                pipelineRun,
+                requestedAsync,
+                PipelineRunExecutionKind.RESUME);
+        List<PipelineRunExecutionJob> pipelineRunExecutionJobs = createResumePipelineRunExecutionJobs(
+                pipelineRunExecution.getId(),
+                pipelineRunJobs,
+                latestExecutionJobsByRunJobId,
+                resumeJobSequence);
+
+        if (requestedAsync) {
+            pipelineTaskExecutor.execute(
+                    () -> executePipelineRun(
+                            pipelineRun.getPipelineId(),
+                            snapshotSyncJobs,
+                            pipelineRunExecution,
+                            pipelineRunJobs,
+                            pipelineRunExecutionJobs,
+                            resumeJobSequence));
+            return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
+        }
+
+        executePipelineRun(
+                pipelineRun.getPipelineId(),
+                snapshotSyncJobs,
+                pipelineRunExecution,
+                pipelineRunJobs,
+                pipelineRunExecutionJobs,
+                resumeJobSequence);
+        return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
     }
 
     private void executePipelineRun(Long pipelineId, List<SyncJobDefinition> syncJobs,
             PipelineRunExecution pipelineRunExecution, List<PipelineRunJob> pipelineRunJobs,
-            List<PipelineRunExecutionJob> pipelineRunExecutionJobs) {
-        for (int jobSequence = 0; jobSequence < syncJobs.size(); jobSequence++) {
+            List<PipelineRunExecutionJob> pipelineRunExecutionJobs, int startJobSequence) {
+        for (int jobSequence = startJobSequence; jobSequence < syncJobs.size(); jobSequence++) {
             SyncJobDefinition syncJob = syncJobs.get(jobSequence);
             PipelineRunJob pipelineRunJob = pipelineRunJobs.get(jobSequence);
             PipelineRunExecutionJob pipelineRunExecutionJob = pipelineRunExecutionJobs.get(jobSequence);
@@ -134,19 +205,19 @@ public class PipelineExecutionService {
             try {
                 syncJobContext = syncJobContextFactory.initialSyncJobContext(syncJob, executionRecordService);
                 Job job = syncJobFactory.createBatchJob(syncJobContext);
-                JobParameters jobParameters = new JobParametersBuilder()
-                        .addLong("pipeline.run.job.id", pipelineRunJob.getId())
-                        .addLong("pipeline.id", pipelineId, false)
-                        .addLong("pipeline.run.id", pipelineRunJob.getPipelineRunId(), false)
-                        .addLong("pipeline.run.execution.id", pipelineRunExecution.getId(), false)
-                        .addLong("pipeline.run.execution.job.id", pipelineRunExecutionJob.getId(), false)
-                        .addLong("job.sequence", Long.valueOf(jobSequence), false)
-                        .toJobParameters();
+                JobParameters jobParameters = buildJobParameters(
+                        pipelineId,
+                        syncJob,
+                        pipelineRunJob,
+                        pipelineRunExecution,
+                        pipelineRunExecutionJob,
+                        jobSequence);
 
                 JobExecution jobExecution = jobLauncher.run(job, jobParameters);
                 closeSyncJobContext = false;
 
                 if (!BatchStatus.COMPLETED.equals(jobExecution.getStatus())) {
+                    markRemainingJobsNotRun(pipelineRunExecutionJobs, jobSequence);
                     return;
                 }
             } catch (Exception e) {
@@ -156,6 +227,7 @@ public class PipelineExecutionService {
                         pipelineRunExecution.getId(),
                         pipelineRunJob.getId(),
                         pipelineRunExecutionJob.getId());
+                markRemainingJobsNotRun(pipelineRunExecutionJobs, jobSequence);
                 return;
             } finally {
                 if (closeSyncJobContext && syncJobContext != null) {
@@ -242,12 +314,12 @@ public class PipelineExecutionService {
         pipelineRunRepo.delete(pipelineRun);
     }
 
-    private PipelineRun createPipelineRun(Long pipelineId, boolean requestedAsync) {
+    private PipelineRun createPipelineRun(Long pipelineId, boolean requestedAsync, Long rerunFromPipelineRunId) {
         LocalDateTime now = LocalDateTime.now();
 
         PipelineRun pipelineRun = new PipelineRun();
         pipelineRun.setPipelineId(pipelineId);
-        pipelineRun.setRerunFromPipelineRunId(null);
+        pipelineRun.setRerunFromPipelineRunId(rerunFromPipelineRunId);
         pipelineRun.setLatestExecutionId(null);
         pipelineRun.setRequestedAsync(requestedAsync);
         pipelineRun.setStatus(PipelineRunStatus.STARTING);
@@ -276,13 +348,17 @@ public class PipelineExecutionService {
                 .toList();
     }
 
-    private PipelineRunExecution createPipelineRunExecution(PipelineRun pipelineRun, boolean requestedAsync) {
+    private PipelineRunExecution createPipelineRunExecution(PipelineRun pipelineRun, boolean requestedAsync,
+            PipelineRunExecutionKind executionKind) {
         LocalDateTime now = LocalDateTime.now();
+        int nextExecutionNo = pipelineRunExecutionRepo.findTopByPipelineRunIdOrderByExecutionNoDesc(pipelineRun.getId())
+                .map(existingExecution -> existingExecution.getExecutionNo() + 1)
+                .orElse(1);
 
         PipelineRunExecution pipelineRunExecution = new PipelineRunExecution();
         pipelineRunExecution.setPipelineRunId(pipelineRun.getId());
-        pipelineRunExecution.setExecutionNo(1);
-        pipelineRunExecution.setExecutionKind(PipelineRunExecutionKind.INITIAL);
+        pipelineRunExecution.setExecutionNo(nextExecutionNo);
+        pipelineRunExecution.setExecutionKind(executionKind);
         pipelineRunExecution.setRequestedAsync(requestedAsync);
         pipelineRunExecution.setStatus(PipelineRunStatus.STARTING);
         pipelineRunExecution.setCreatedAt(now);
@@ -301,7 +377,7 @@ public class PipelineExecutionService {
         return savedPipelineRunExecution;
     }
 
-    private List<PipelineRunExecutionJob> createPipelineRunExecutionJobs(Long pipelineRunExecutionId,
+    private List<PipelineRunExecutionJob> createInitialPipelineRunExecutionJobs(Long pipelineRunExecutionId,
             List<PipelineRunJob> pipelineRunJobs) {
         LocalDateTime now = LocalDateTime.now();
         return pipelineRunJobs.stream()
@@ -315,6 +391,103 @@ public class PipelineExecutionService {
                     return pipelineRunExecutionJobRepo.save(pipelineRunExecutionJob);
                 })
                 .toList();
+    }
+
+    private List<PipelineRunExecutionJob> createResumePipelineRunExecutionJobs(Long pipelineRunExecutionId,
+            List<PipelineRunJob> pipelineRunJobs,
+            Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId,
+            int resumeJobSequence) {
+        LocalDateTime now = LocalDateTime.now();
+        return java.util.stream.IntStream.range(0, pipelineRunJobs.size())
+                .mapToObj(jobSequence -> {
+                    PipelineRunJob pipelineRunJob = pipelineRunJobs.get(jobSequence);
+                    PipelineRunExecutionJob previousExecutionJob = latestExecutionJobsByRunJobId.get(pipelineRunJob.getId());
+
+                    PipelineRunExecutionJob pipelineRunExecutionJob = new PipelineRunExecutionJob();
+                    pipelineRunExecutionJob.setPipelineRunExecutionId(pipelineRunExecutionId);
+                    pipelineRunExecutionJob.setPipelineRunJobId(pipelineRunJob.getId());
+                    pipelineRunExecutionJob.setStatus(jobSequence < resumeJobSequence
+                            ? PipelineRunStatus.SKIPPED
+                            : PipelineRunStatus.PENDING);
+                    pipelineRunExecutionJob.setRootJobInstanceId(jobSequence < resumeJobSequence
+                            ? previousExecutionJob == null
+                                    ? pipelineRunJob.getRootJobInstanceId()
+                                    : previousExecutionJob.getRootJobInstanceId()
+                            : null);
+                    pipelineRunExecutionJob.setLastJobExecutionId(jobSequence < resumeJobSequence
+                            ? previousExecutionJob == null
+                                    ? pipelineRunJob.getLastJobExecutionId()
+                                    : previousExecutionJob.getLastJobExecutionId()
+                            : null);
+                    pipelineRunExecutionJob.setCreatedAt(now);
+                    pipelineRunExecutionJob.setUpdatedAt(now);
+                    return pipelineRunExecutionJobRepo.save(pipelineRunExecutionJob);
+                })
+                .toList();
+    }
+
+    private JobParameters buildJobParameters(Long pipelineId, SyncJobDefinition syncJob, PipelineRunJob pipelineRunJob,
+            PipelineRunExecution pipelineRunExecution, PipelineRunExecutionJob pipelineRunExecutionJob, int jobSequence) {
+        boolean replayJobInstance = PipelineRunExecutionKind.RESUME.equals(pipelineRunExecution.getExecutionKind())
+                && AtomicLevel.JOB.equals(syncJob.getSetting().atomicLevel());
+
+        return new JobParametersBuilder()
+                .addLong("pipeline.run.job.id", pipelineRunJob.getId(), !replayJobInstance)
+                .addLong("pipeline.id", pipelineId, false)
+                .addLong("pipeline.run.id", pipelineRunJob.getPipelineRunId(), false)
+                .addLong("pipeline.run.execution.id", pipelineRunExecution.getId(), false)
+                .addLong("pipeline.run.execution.job.id", pipelineRunExecutionJob.getId(), replayJobInstance)
+                .addLong("job.sequence", Long.valueOf(jobSequence), false)
+                .toJobParameters();
+    }
+
+    private void markRemainingJobsNotRun(List<PipelineRunExecutionJob> pipelineRunExecutionJobs, int currentJobSequence) {
+        if (currentJobSequence + 1 >= pipelineRunExecutionJobs.size()) {
+            return;
+        }
+
+        List<Long> remainingExecutionJobIds = pipelineRunExecutionJobs.subList(
+                currentJobSequence + 1,
+                pipelineRunExecutionJobs.size()).stream()
+                .map(PipelineRunExecutionJob::getId)
+                .toList();
+        pipelineRunLifecycleService.markExecutionJobsNotRun(remainingExecutionJobIds);
+    }
+
+    private void validateResumablePipelineRun(Long pipelineRunId, PipelineRunExecution latestExecution) {
+        if (latestExecution == null) {
+            throw new IllegalArgumentException("Pipeline run has no execution to resume: " + pipelineRunId);
+        }
+        if (!isTerminalFailure(latestExecution.getStatus())) {
+            throw new IllegalArgumentException("Only failed pipeline runs can be resumed: " + pipelineRunId);
+        }
+    }
+
+    private void validatePipelineRunTopology(Long pipelineRunId, List<SyncJobDefinition> snapshotSyncJobs,
+            List<PipelineRunJob> pipelineRunJobs) {
+        if (snapshotSyncJobs.size() != pipelineRunJobs.size()) {
+            throw new IllegalStateException("Pipeline run topology mismatch: " + pipelineRunId);
+        }
+    }
+
+    private int findResumeJobSequence(Long pipelineRunId, List<PipelineRunJob> pipelineRunJobs,
+            Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId) {
+        for (int jobSequence = 0; jobSequence < pipelineRunJobs.size(); jobSequence++) {
+            PipelineRunExecutionJob executionJob = latestExecutionJobsByRunJobId.get(pipelineRunJobs.get(jobSequence).getId());
+            if (executionJob != null && isTerminalFailure(executionJob.getStatus())) {
+                return jobSequence;
+            }
+        }
+
+        throw new IllegalArgumentException("Pipeline run has no failed job to resume: " + pipelineRunId);
+    }
+
+    private void validateResumeStrategy(Long pipelineRunId, PipelineRunJob pipelineRunJob) {
+        if (!AtomicLevel.JOB.equals(pipelineRunJob.getAtomicLevel())
+                && !AtomicLevel.CHUNK.equals(pipelineRunJob.getAtomicLevel())) {
+            throw new IllegalArgumentException(
+                    "Pipeline resume currently supports only failed JOB or CHUNK nodes: " + pipelineRunId);
+        }
     }
 
     private PipelineRun getPipelineRun(Long pipelineRunId) {
@@ -334,5 +507,19 @@ public class PipelineExecutionService {
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
         return pipelineDefinitionRepo.findById(pipelineId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
+    }
+
+    private Map<Long, PipelineRunExecutionJob> getExecutionJobsByRunJobId(Long pipelineRunExecutionId) {
+        return pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(pipelineRunExecutionId).stream()
+                .collect(Collectors.toMap(
+                        PipelineRunExecutionJob::getPipelineRunJobId,
+                        executionJob -> executionJob));
+    }
+
+    private boolean isTerminalFailure(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED
+                || pipelineRunStatus == PipelineRunStatus.ABANDONED
+                || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
     }
 }

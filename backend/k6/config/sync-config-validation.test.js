@@ -1,11 +1,11 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
-import { jsonOrFallback } from './utils/test-helpers.js';
-import { createConfig } from './services/sync-config-api.js';
+import { singleRunOptions } from '../utils/test-options.js';
+import { jsonOrFallback } from '../utils/test-helpers.js';
+import { createConfig } from '../services/sync-config-api.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/test-config-invalid-format.yml');
+const yamlContent = open('../testfiles/test-config-invalid-format.yml');
 const fileName = 'test-config-invalid-format.yml';
 const filePath = `k6-tests/${fileName}`;
 

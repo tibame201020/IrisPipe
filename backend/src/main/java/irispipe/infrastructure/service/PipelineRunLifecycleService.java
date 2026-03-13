@@ -2,6 +2,8 @@ package irispipe.infrastructure.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
@@ -109,7 +111,7 @@ public class PipelineRunLifecycleService {
         List<PipelineRunExecutionJob> pipelineRunExecutionJobs = pipelineRunExecutionJobRepo
                 .findByPipelineRunExecutionId(pipelineRunExecutionId);
         boolean allCompleted = pipelineRunExecutionJobs.stream()
-                .allMatch(executionJob -> executionJob.getStatus() == PipelineRunStatus.COMPLETED);
+                .allMatch(executionJob -> isSuccessfulTerminalStatus(executionJob.getStatus()));
 
         pipelineRunExecution.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
         pipelineRunExecution.setEndTime(allCompleted ? now : null);
@@ -151,6 +153,38 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
+    }
+
+    @Transactional
+    public void markExecutionJobsNotRun(List<Long> pipelineRunExecutionJobIds) {
+        if (pipelineRunExecutionJobIds == null || pipelineRunExecutionJobIds.isEmpty()) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<PipelineRunExecutionJob> pipelineRunExecutionJobs = pipelineRunExecutionJobRepo.findAllById(
+                pipelineRunExecutionJobIds);
+        Map<Long, PipelineRunJob> pipelineRunJobsById = pipelineRunJobRepo.findAllById(
+                pipelineRunExecutionJobs.stream()
+                        .map(PipelineRunExecutionJob::getPipelineRunJobId)
+                        .distinct()
+                        .toList())
+                .stream()
+                .collect(Collectors.toMap(PipelineRunJob::getId, pipelineRunJob -> pipelineRunJob));
+
+        pipelineRunExecutionJobs.stream()
+                .filter(pipelineRunExecutionJob -> pipelineRunExecutionJob.getStatus() == PipelineRunStatus.PENDING)
+                .forEach(pipelineRunExecutionJob -> {
+                    pipelineRunExecutionJob.setStatus(PipelineRunStatus.NOT_RUN);
+                    pipelineRunExecutionJob.setUpdatedAt(now);
+                    pipelineRunExecutionJobRepo.save(pipelineRunExecutionJob);
+
+                    PipelineRunJob pipelineRunJob = pipelineRunJobsById.get(pipelineRunExecutionJob.getPipelineRunJobId());
+                    if (pipelineRunJob != null) {
+                        syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
+                        pipelineRunJobRepo.save(pipelineRunJob);
+                    }
+                });
     }
 
     private PipelineRun getPipelineRun(Long pipelineRunId) {
@@ -200,6 +234,11 @@ public class PipelineRunLifecycleService {
                 || pipelineRunStatus == PipelineRunStatus.STOPPED
                 || pipelineRunStatus == PipelineRunStatus.ABANDONED
                 || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
+    }
+
+    private boolean isSuccessfulTerminalStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || pipelineRunStatus == PipelineRunStatus.SKIPPED;
     }
 
     private Long getRequiredLong(JobParameters jobParameters, String key) {

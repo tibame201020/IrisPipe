@@ -1,6 +1,6 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
-import { configPathFor, jsonOrFallback } from './utils/test-helpers.js';
+import { singleRunOptions } from '../utils/test-options.js';
+import { configPathFor, jsonOrFallback } from '../utils/test-helpers.js';
 import {
     createConfig,
     updateConfig,
@@ -8,11 +8,11 @@ import {
     getConfigDetail,
     listConfigs,
     deleteConfig,
-} from './services/sync-config-api.js';
+} from '../services/sync-config-api.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/test-config.yml');
+const yamlContent = open('../testfiles/test-config.yml');
 const fileName = 'test-config.yml';
 const filePath = configPathFor(fileName);
 const normalizedListPath = filePath.replace(/\//g, '\\');

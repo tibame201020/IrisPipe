@@ -3,6 +3,7 @@ Write-Host "      Starting IrisPipe K6 E2E Tests       "
 Write-Host "=========================================="
 
 $ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
 
 $PORT = "8080"
 $IRISPIPE_BASE_URL = "http://localhost:$PORT/api/v1"
@@ -18,17 +19,23 @@ try {
 }
 
 $tests = @(
-    @{ Name = "Config API Validation"; Path = "sync-config-validation.test.js" },
-    @{ Name = "Config API CRUD"; Path = "sync-config.test.js" },
-    @{ Name = "Sync Pipeline API"; Path = "sync-pipeline-api.test.js" },
-    @{ Name = "Sync Pipeline Async Trigger"; Path = "sync-pipeline-async.test.js" },
-    @{ Name = "Sync Pipeline Success"; Path = "sync-job-success.test.js" },
-    @{ Name = "Sync Pipeline Fail/Atomic"; Path = "sync-job-fail.test.js" },
-    @{ Name = "Sync Pipeline Chunk Commit"; Path = "sync-job-chunk-fail.test.js" },
-    @{ Name = "Sync Pipeline No Watermark"; Path = "sync-job-no-watermark.test.js" },
-    @{ Name = "Sync Pipeline Multi-step Operations"; Path = "sync-job-multi-step.test.js" },
-    @{ Name = "Sync Pipeline Composite PK"; Path = "sync-upsert-composite.test.js" },
-    @{ Name = "Sync Pipeline System Variables"; Path = "sync-system-variable.test.js" }
+    @{ Name = "Config API Validation"; Path = "config/sync-config-validation.test.js" },
+    @{ Name = "Config API CRUD"; Path = "config/sync-config.test.js" },
+    @{ Name = "Sync Pipeline API"; Path = "pipeline/sync-pipeline-api.test.js" },
+    @{ Name = "Sync Pipeline Async Trigger"; Path = "pipeline/sync-pipeline-async.test.js" },
+    @{ Name = "Sync Pipeline Resume"; Path = "pipeline/sync-pipeline-resume.test.js" },
+    @{ Name = "Sync Pipeline Chunk Resume"; Path = "pipeline/sync-pipeline-resume-chunk.test.js" },
+    @{ Name = "Sync Pipeline Async Resume"; Path = "pipeline/sync-pipeline-resume-async.test.js" },
+    @{ Name = "Sync Pipeline Mixed Resume"; Path = "pipeline/sync-pipeline-resume-mixed.test.js" },
+    @{ Name = "Sync Pipeline Rerun"; Path = "pipeline/sync-pipeline-rerun.test.js" },
+    @{ Name = "Sync Pipeline Async Rerun"; Path = "pipeline/sync-pipeline-rerun-async.test.js" },
+    @{ Name = "Sync Pipeline Success"; Path = "runtime/sync-job-success.test.js" },
+    @{ Name = "Sync Pipeline Fail/Atomic"; Path = "runtime/sync-job-fail.test.js" },
+    @{ Name = "Sync Pipeline Chunk Commit"; Path = "runtime/sync-job-chunk-fail.test.js" },
+    @{ Name = "Sync Pipeline No Watermark"; Path = "runtime/sync-job-no-watermark.test.js" },
+    @{ Name = "Sync Pipeline Multi-step Operations"; Path = "runtime/sync-job-multi-step.test.js" },
+    @{ Name = "Sync Pipeline Composite PK"; Path = "runtime/sync-upsert-composite.test.js" },
+    @{ Name = "Sync Pipeline System Variables"; Path = "runtime/sync-system-variable.test.js" }
 )
 
 $failedTests = @()

@@ -1,5 +1,5 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
+import { singleRunOptions } from '../utils/test-options.js';
 import {
     configPathFor,
     deletePipelineRunOrFail,
@@ -9,11 +9,11 @@ import {
     queryRowsOrFail,
     queryScalarOrFail,
     runPipelineAndGetSummary,
-} from './utils/test-helpers.js';
+} from '../utils/test-helpers.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/job-composite-pk.yml');
+const yamlContent = open('../testfiles/job-composite-pk.yml');
 const fileName = 'job-composite-pk.yml';
 const filePath = configPathFor(fileName);
 

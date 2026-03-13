@@ -1,11 +1,13 @@
 import { check, sleep } from 'k6';
 
-import { createConfig, deleteConfig, listConfigs } from '../services/sync-config-api.js';
+import { createConfig, deleteConfig, listConfigs, updateConfig } from '../services/sync-config-api.js';
 import {
     deletePipelineRun,
     executePipeline,
     getPipelineRunDetail,
     getPipelineRunsByIds,
+    rerunPipeline,
+    resumePipeline,
 } from '../services/sync-pipeline-api.js';
 import { executeStatement, querySql } from '../services/test-support-api.js';
 
@@ -45,6 +47,20 @@ export function ensureConfigUploaded(filePath, fileName, fileContent) {
 
     if (!uploaded || !hasPipelineId) {
         throw new Error(`Failed to upload config ${fileName}: ${responseSummary(response)}`);
+    }
+
+    return payload;
+}
+
+export function ensureConfigUpdated(pipelineId, filePath, fileName, fileContent) {
+    const response = updateConfig(pipelineId, filePath, fileName, fileContent);
+    const updated = check(response, {
+        [`update ${fileName} succeeded`]: (res) => res.status === 200,
+    });
+    const payload = jsonOrFallback(response, {});
+
+    if (!updated) {
+        throw new Error(`Failed to update config ${fileName}: ${responseSummary(response)}`);
     }
 
     return payload;
@@ -95,6 +111,58 @@ export function runPipelineAndGetSummary(pipelineId, useAsyncLaucher = false) {
 
     if (!hasPipelineRunId) {
         throw new Error(`Unexpected pipeline execution payload for pipeline ${pipelineId}: ${response.body}`);
+    }
+
+    return {
+        response,
+        summary,
+    };
+}
+
+export function resumePipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false) {
+    const response = resumePipeline(pipelineRunId, useAsyncLaucher);
+    const requestAccepted = check(response, {
+        'sync-pipeline resume request succeeded': (res) => res.status === 200,
+    });
+
+    if (!requestAccepted) {
+        throw new Error(`Failed to resume pipeline run ${pipelineRunId}: ${responseSummary(response)}`);
+    }
+
+    const summary = jsonOrFallback(response, {});
+    const hasPipelineRunId = check(summary, {
+        'pipeline resume returned a pipeline run summary': (item) =>
+            item && Number.isInteger(item.id) && item.id > 0,
+    });
+
+    if (!hasPipelineRunId) {
+        throw new Error(`Unexpected pipeline resume payload for run ${pipelineRunId}: ${response.body}`);
+    }
+
+    return {
+        response,
+        summary,
+    };
+}
+
+export function rerunPipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false) {
+    const response = rerunPipeline(pipelineRunId, useAsyncLaucher);
+    const requestAccepted = check(response, {
+        'sync-pipeline rerun request succeeded': (res) => res.status === 200,
+    });
+
+    if (!requestAccepted) {
+        throw new Error(`Failed to rerun pipeline run ${pipelineRunId}: ${responseSummary(response)}`);
+    }
+
+    const summary = jsonOrFallback(response, {});
+    const hasPipelineRunId = check(summary, {
+        'pipeline rerun returned a pipeline run summary': (item) =>
+            item && Number.isInteger(item.id) && item.id > 0,
+    });
+
+    if (!hasPipelineRunId) {
+        throw new Error(`Unexpected pipeline rerun payload for run ${pipelineRunId}: ${response.body}`);
     }
 
     return {

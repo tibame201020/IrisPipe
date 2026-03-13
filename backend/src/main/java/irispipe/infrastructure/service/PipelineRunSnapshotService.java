@@ -35,27 +35,44 @@ public class PipelineRunSnapshotService {
 
     public List<SyncJobDefinition> createSnapshot(Long pipelineRunId, String pipelineContentHash, List<SyncJobDefinition> syncJobs) {
         List<SyncJobDefinition> materializedSyncJobs = materializeSyncJobs(syncJobs);
-
-        PipelineRunSnapshot snapshot = new PipelineRunSnapshot();
-        snapshot.setPipelineRunId(pipelineRunId);
-        snapshot.setSnapshotSchemaVersion(SNAPSHOT_SCHEMA_VERSION);
-        snapshot.setPipelineContentHash(pipelineContentHash);
-        snapshot.setMaterializedJobJson(serialize(materializedSyncJobs));
-        snapshot.setCreatedAt(LocalDateTime.now());
-        pipelineRunSnapshotRepo.save(snapshot);
-
+        saveSnapshot(pipelineRunId, SNAPSHOT_SCHEMA_VERSION, pipelineContentHash, serialize(materializedSyncJobs));
         return materializedSyncJobs;
     }
 
     public List<SyncJobDefinition> getSnapshotSyncJobs(Long pipelineRunId) {
-        PipelineRunSnapshot snapshot = pipelineRunSnapshotRepo.findByPipelineRunId(pipelineRunId)
-                .orElseThrow(() -> new IllegalArgumentException("Pipeline run snapshot not found: " + pipelineRunId));
+        PipelineRunSnapshot snapshot = getSnapshot(pipelineRunId);
         return deserialize(snapshot.getMaterializedJobJson());
+    }
+
+    public List<SyncJobDefinition> copySnapshot(Long sourcePipelineRunId, Long targetPipelineRunId) {
+        PipelineRunSnapshot sourceSnapshot = getSnapshot(sourcePipelineRunId);
+        saveSnapshot(
+                targetPipelineRunId,
+                sourceSnapshot.getSnapshotSchemaVersion(),
+                sourceSnapshot.getPipelineContentHash(),
+                sourceSnapshot.getMaterializedJobJson());
+        return deserialize(sourceSnapshot.getMaterializedJobJson());
     }
 
     public void deleteSnapshot(Long pipelineRunId) {
         pipelineRunSnapshotRepo.findByPipelineRunId(pipelineRunId)
                 .ifPresent(pipelineRunSnapshotRepo::delete);
+    }
+
+    private PipelineRunSnapshot getSnapshot(Long pipelineRunId) {
+        return pipelineRunSnapshotRepo.findByPipelineRunId(pipelineRunId)
+                .orElseThrow(() -> new IllegalArgumentException("Pipeline run snapshot not found: " + pipelineRunId));
+    }
+
+    private void saveSnapshot(Long pipelineRunId, Integer snapshotSchemaVersion, String pipelineContentHash,
+            String materializedJobJson) {
+        PipelineRunSnapshot snapshot = new PipelineRunSnapshot();
+        snapshot.setPipelineRunId(pipelineRunId);
+        snapshot.setSnapshotSchemaVersion(snapshotSchemaVersion);
+        snapshot.setPipelineContentHash(pipelineContentHash);
+        snapshot.setMaterializedJobJson(materializedJobJson);
+        snapshot.setCreatedAt(LocalDateTime.now());
+        pipelineRunSnapshotRepo.save(snapshot);
     }
 
     private List<SyncJobDefinition> materializeSyncJobs(List<SyncJobDefinition> syncJobs) {

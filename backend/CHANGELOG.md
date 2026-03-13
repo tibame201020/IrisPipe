@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 9: Pipeline Rerun Snapshot Replay] - 2026-03-13
+
+### Added
+- **Pipeline Rerun API**: Added pipeline-level rerun support so callers can fully replay a previous `PipelineRun` as a brand new logical run while keeping lineage through `rerun_from_pipeline_run_id`.
+- **Rerun Regression Coverage**: Added K6 coverage for sync and async rerun flows, explicitly asserting that rerun replays the source snapshot even after the persisted pipeline config changes.
+
+### Changed
+- **Rerun Snapshot Semantics**: `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun` now clones the source run snapshot instead of re-materializing from the latest pipeline config, keeping rerun semantics distinct from fresh `execute`.
+- **K6 Suite Layout**: Reorganized K6 scripts into `config/`, `pipeline/`, and `runtime/` folders, and updated the runner script to resolve paths from `backend/k6` consistently.
+
+### Verified
+- **Regression Safety**: Re-ran compile, package, targeted rerun K6 suites, and the full K6 suite after the rerun/snapshot adjustment; execute, resume, and rerun all remained compatible at the public API layer.
+
+---
+
+## [Phase 8: Pipeline Resume Strategies] - 2026-03-13
+
+### Added
+- **Pipeline Resume API**: Added pipeline-level resume support so a failed `PipelineRun` can create a new execution attempt without creating a new logical run.
+- **Resume Status Projection**: Added `SKIPPED` and `NOT_RUN` runtime statuses so latest attempt detail can distinguish skipped upstream jobs from downstream jobs that never executed.
+- **Resume Regression Coverage**: Added K6 coverage for `JOB` replay, `CHUNK` restart, async resume, and mixed-atomic pipeline resume scenarios.
+
+### Changed
+- **JOB Resume Strategy**: Failed `JOB` nodes now resume by replaying the whole job under a fresh Spring Batch job instance while keeping the same logical `PipelineRun`.
+- **CHUNK Resume Strategy**: Failed `CHUNK` nodes now resume by restarting the original Spring Batch job instance with stable identifying parameters, allowing checkpoint-based continuation.
+- **Mixed Pipeline Continuation**: Resume now selects replay vs restart per failed node based on `atomicLevel`, while preserving completed upstream nodes as skipped and continuing downstream nodes after recovery.
+
+### Fixed
+- **Snapshot Deserialization Safety**: Excluded runtime-only rendered parameter state from snapshot JSON so stored pipeline snapshots can be deserialized safely during resume attempts.
+- **Restart Metadata Cleanup**: Updated Spring Batch metadata deletion to keep shared `JobInstance` rows alive until all related executions are removed, fixing cleanup for `CHUNK` restart lineage and mixed resume flows.
+
+### Verified
+- **Regression Safety**: Re-ran compile, package, targeted resume K6 suites, and the full K6 suite after adding `JOB`/`CHUNK` resume strategies; the existing public pipeline APIs remained compatible.
+
+---
+
 ## [Phase 7: Pipeline Run Execution Lineage] - 2026-03-13
 
 ### Added
