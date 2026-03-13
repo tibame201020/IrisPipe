@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 7: Pipeline Run Execution Lineage] - 2026-03-13
+
+### Added
+- **Execution Attempt Persistence**: Added `iris_pipeline_run_execution` and `iris_pipeline_run_execution_job` so each `PipelineRun` can keep execution-attempt history instead of collapsing instance and attempt into a single row.
+- **Execution Lineage Model**: Added runtime entities, repositories, and execution-kind modeling to separate logical pipeline runs from their concrete attempts while preserving the pipeline-level API contract.
+- **Compatible Backfill Migration**: Introduced a compatible migration that backfills existing `PipelineRun` / `PipelineRunJob` rows into initial execution attempts so current runtime data remains queryable after the model split.
+
+### Changed
+- **Runtime Lifecycle Projection**: `PipelineRunLifecycleService` now updates execution-attempt records first, then projects the latest attempt back onto `PipelineRun` and `PipelineRunJob` for fast summary/detail reads.
+- **Pipeline Execution Assembly**: Trigger flow now creates logical run state, snapshot, logical job nodes, initial execution, and execution-job rows explicitly before launching the sequence-first pipeline.
+- **Delete Semantics**: Pipeline-run deletion now removes full execution lineage and historical Spring Batch metadata across all attempts, not just the latest projection.
+- **Design Plan Alignment**: Updated the restart design plan to adopt an instance/execution split, sequence-first execution lineage, and migration guidance for future resume/rerun work.
+
+### Verified
+- **Regression Safety**: Re-ran compile, package, and the full K6 suite after the execution-lineage refactor; the public pipeline API contract remained unchanged.
+
+---
+
 ## [Phase 6: Restart Foundations] - 2026-03-13
 
 ### Added

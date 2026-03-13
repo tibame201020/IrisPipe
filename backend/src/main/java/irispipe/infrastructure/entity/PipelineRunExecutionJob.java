@@ -19,28 +19,28 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "iris_pipeline_run")
-public class PipelineRun {
+@Table(name = "iris_pipeline_run_execution_job")
+public class PipelineRunExecutionJob {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "pipeline_id")
-    private Long pipelineId;
+    @Column(name = "pipeline_run_execution_id")
+    private Long pipelineRunExecutionId;
 
-    @Column(name = "rerun_from_pipeline_run_id")
-    private Long rerunFromPipelineRunId;
-
-    @Column(name = "latest_execution_id")
-    private Long latestExecutionId;
-
-    @Column(name = "requested_async")
-    private Boolean requestedAsync;
+    @Column(name = "pipeline_run_job_id")
+    private Long pipelineRunJobId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private PipelineRunStatus status;
+
+    @Column(name = "root_job_instance_id")
+    private Long rootJobInstanceId;
+
+    @Column(name = "last_job_execution_id")
+    private Long lastJobExecutionId;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

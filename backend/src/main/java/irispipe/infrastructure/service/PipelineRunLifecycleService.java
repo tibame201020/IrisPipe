@@ -9,7 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import irispipe.infrastructure.entity.PipelineRun;
+import irispipe.infrastructure.entity.PipelineRunExecution;
+import irispipe.infrastructure.entity.PipelineRunExecutionJob;
 import irispipe.infrastructure.entity.PipelineRunJob;
+import irispipe.infrastructure.repo.PipelineRunExecutionJobRepo;
+import irispipe.infrastructure.repo.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.PipelineRunRepo;
 import irispipe.model.PipelineRunStatus;
@@ -17,95 +21,135 @@ import irispipe.model.PipelineRunStatus;
 @Service
 public class PipelineRunLifecycleService {
     private final PipelineRunRepo pipelineRunRepo;
+    private final PipelineRunExecutionRepo pipelineRunExecutionRepo;
+    private final PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo;
     private final PipelineRunJobRepo pipelineRunJobRepo;
 
-    public PipelineRunLifecycleService(PipelineRunRepo pipelineRunRepo, PipelineRunJobRepo pipelineRunJobRepo) {
+    public PipelineRunLifecycleService(PipelineRunRepo pipelineRunRepo,
+            PipelineRunExecutionRepo pipelineRunExecutionRepo,
+            PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
+            PipelineRunJobRepo pipelineRunJobRepo) {
         this.pipelineRunRepo = pipelineRunRepo;
+        this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
+        this.pipelineRunExecutionJobRepo = pipelineRunExecutionJobRepo;
         this.pipelineRunJobRepo = pipelineRunJobRepo;
     }
 
     @Transactional
     public void markJobStarted(JobExecution jobExecution) {
         Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.id");
+        Long pipelineRunExecutionId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.id");
+        Long pipelineRunExecutionJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.job.id");
         Long pipelineRunJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.job.id");
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = jobExecution.getStartTime() != null ? jobExecution.getStartTime() : now;
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
 
-        pipelineRun.setStatus(PipelineRunStatus.STARTED);
-        pipelineRun.setUpdatedAt(now);
+        pipelineRunExecution.setStatus(PipelineRunStatus.STARTED);
+        pipelineRunExecution.setStartTime(pipelineRunExecution.getStartTime() == null ? startTime : pipelineRunExecution.getStartTime());
+        pipelineRunExecution.setUpdatedAt(now);
+        pipelineRunExecutionRepo.save(pipelineRunExecution);
+
+        pipelineRunExecutionJob.setStatus(PipelineRunStatus.STARTED);
+        pipelineRunExecutionJob.setRootJobInstanceId(jobExecution.getJobInstance().getId());
+        pipelineRunExecutionJob.setLastJobExecutionId(jobExecution.getId());
+        pipelineRunExecutionJob.setStartTime(startTime);
+        pipelineRunExecutionJob.setUpdatedAt(now);
+        pipelineRunExecutionJobRepo.save(pipelineRunExecutionJob);
+
+        syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
 
-        pipelineRunJob.setStatus(PipelineRunStatus.STARTED);
-        pipelineRunJob.setRootJobInstanceId(jobExecution.getJobInstance().getId());
-        pipelineRunJob.setLastJobExecutionId(jobExecution.getId());
-        pipelineRunJob.setStartTime(jobExecution.getStartTime() != null ? jobExecution.getStartTime() : now);
-        pipelineRunJob.setUpdatedAt(now);
+        syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
     }
 
     @Transactional
     public void markJobFinished(JobExecution jobExecution) {
         Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.id");
+        Long pipelineRunExecutionId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.id");
+        Long pipelineRunExecutionJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.job.id");
         Long pipelineRunJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.job.id");
         LocalDateTime now = LocalDateTime.now();
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
 
-        pipelineRunJob.setStatus(PipelineRunStatus.from(jobExecution.getStatus()));
-        pipelineRunJob.setRootJobInstanceId(jobExecution.getJobInstance().getId());
-        pipelineRunJob.setLastJobExecutionId(jobExecution.getId());
-        if (pipelineRunJob.getStartTime() == null) {
-            pipelineRunJob.setStartTime(jobExecution.getStartTime() != null ? jobExecution.getStartTime() : now);
+        PipelineRunStatus jobStatus = PipelineRunStatus.from(jobExecution.getStatus());
+        pipelineRunExecutionJob.setStatus(jobStatus);
+        pipelineRunExecutionJob.setRootJobInstanceId(jobExecution.getJobInstance().getId());
+        pipelineRunExecutionJob.setLastJobExecutionId(jobExecution.getId());
+        if (pipelineRunExecutionJob.getStartTime() == null) {
+            pipelineRunExecutionJob.setStartTime(jobExecution.getStartTime() != null ? jobExecution.getStartTime() : now);
         }
-        pipelineRunJob.setEndTime(jobExecution.getEndTime() != null ? jobExecution.getEndTime() : now);
-        pipelineRunJob.setUpdatedAt(now);
+        pipelineRunExecutionJob.setEndTime(jobExecution.getEndTime() != null ? jobExecution.getEndTime() : now);
+        pipelineRunExecutionJob.setUpdatedAt(now);
+        pipelineRunExecutionJobRepo.save(pipelineRunExecutionJob);
+
+        syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
 
-        PipelineRunStatus jobStatus = PipelineRunStatus.from(jobExecution.getStatus());
-        if (jobStatus == PipelineRunStatus.FAILED
-                || jobStatus == PipelineRunStatus.STOPPED
-                || jobStatus == PipelineRunStatus.ABANDONED
-                || jobStatus == PipelineRunStatus.UNKNOWN) {
-            pipelineRun.setStatus(jobStatus);
-            pipelineRun.setEndTime(now);
-            pipelineRun.setUpdatedAt(now);
+        if (isTerminalFailure(jobStatus)) {
+            pipelineRunExecution.setStatus(jobStatus);
+            pipelineRunExecution.setEndTime(jobExecution.getEndTime() != null ? jobExecution.getEndTime() : now);
+            pipelineRunExecution.setUpdatedAt(now);
+            pipelineRunExecutionRepo.save(pipelineRunExecution);
+
+            syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
             pipelineRunRepo.save(pipelineRun);
             return;
         }
 
-        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId);
-        boolean allCompleted = pipelineRunJobs.stream()
-                .allMatch(runJob -> runJob.getStatus() == PipelineRunStatus.COMPLETED);
+        List<PipelineRunExecutionJob> pipelineRunExecutionJobs = pipelineRunExecutionJobRepo
+                .findByPipelineRunExecutionId(pipelineRunExecutionId);
+        boolean allCompleted = pipelineRunExecutionJobs.stream()
+                .allMatch(executionJob -> executionJob.getStatus() == PipelineRunStatus.COMPLETED);
 
-        pipelineRun.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
-        if (allCompleted) {
-            pipelineRun.setEndTime(now);
-        }
-        pipelineRun.setUpdatedAt(now);
+        pipelineRunExecution.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
+        pipelineRunExecution.setEndTime(allCompleted ? now : null);
+        pipelineRunExecution.setUpdatedAt(now);
+        pipelineRunExecutionRepo.save(pipelineRunExecution);
+
+        syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
     }
 
     @Transactional
-    public void markLaunchFailed(Long pipelineRunId, Long pipelineRunJobId) {
+    public void markLaunchFailed(Long pipelineRunId, Long pipelineRunExecutionId, Long pipelineRunJobId,
+            Long pipelineRunExecutionJobId) {
         LocalDateTime now = LocalDateTime.now();
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
+        PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
 
-        if (pipelineRunJob.getStartTime() == null) {
-            pipelineRunJob.setStartTime(now);
+        if (pipelineRunExecutionJob.getStartTime() == null) {
+            pipelineRunExecutionJob.setStartTime(now);
         }
-        pipelineRunJob.setStatus(PipelineRunStatus.FAILED);
-        pipelineRunJob.setEndTime(now);
-        pipelineRunJob.setUpdatedAt(now);
+        pipelineRunExecutionJob.setStatus(PipelineRunStatus.FAILED);
+        pipelineRunExecutionJob.setEndTime(now);
+        pipelineRunExecutionJob.setUpdatedAt(now);
+        pipelineRunExecutionJobRepo.save(pipelineRunExecutionJob);
+
+        syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
 
-        pipelineRun.setStatus(PipelineRunStatus.FAILED);
-        pipelineRun.setEndTime(now);
-        pipelineRun.setUpdatedAt(now);
+        if (pipelineRunExecution.getStartTime() == null) {
+            pipelineRunExecution.setStartTime(now);
+        }
+        pipelineRunExecution.setStatus(PipelineRunStatus.FAILED);
+        pipelineRunExecution.setEndTime(now);
+        pipelineRunExecution.setUpdatedAt(now);
+        pipelineRunExecutionRepo.save(pipelineRunExecution);
+
+        syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
     }
 
@@ -114,9 +158,48 @@ public class PipelineRunLifecycleService {
                 .orElseThrow(() -> new IllegalArgumentException("Pipeline run not found: " + pipelineRunId));
     }
 
+    private PipelineRunExecution getPipelineRunExecution(Long pipelineRunExecutionId) {
+        return pipelineRunExecutionRepo.findById(pipelineRunExecutionId)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Pipeline run execution not found: " + pipelineRunExecutionId));
+    }
+
+    private PipelineRunExecutionJob getPipelineRunExecutionJob(Long pipelineRunExecutionJobId) {
+        return pipelineRunExecutionJobRepo.findById(pipelineRunExecutionJobId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pipeline run execution job not found: " + pipelineRunExecutionJobId));
+    }
+
     private PipelineRunJob getPipelineRunJob(Long pipelineRunJobId) {
         return pipelineRunJobRepo.findById(pipelineRunJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Pipeline run job not found: " + pipelineRunJobId));
+    }
+
+    private void syncLatestRunProjection(PipelineRun pipelineRun, PipelineRunExecution pipelineRunExecution,
+            LocalDateTime now) {
+        pipelineRun.setLatestExecutionId(pipelineRunExecution.getId());
+        pipelineRun.setRequestedAsync(pipelineRunExecution.getRequestedAsync());
+        pipelineRun.setStatus(pipelineRunExecution.getStatus());
+        pipelineRun.setStartTime(pipelineRunExecution.getStartTime());
+        pipelineRun.setEndTime(pipelineRunExecution.getEndTime());
+        pipelineRun.setUpdatedAt(now);
+    }
+
+    private void syncLatestRunJobProjection(PipelineRunJob pipelineRunJob, PipelineRunExecutionJob pipelineRunExecutionJob,
+            LocalDateTime now) {
+        pipelineRunJob.setStatus(pipelineRunExecutionJob.getStatus());
+        pipelineRunJob.setRootJobInstanceId(pipelineRunExecutionJob.getRootJobInstanceId());
+        pipelineRunJob.setLastJobExecutionId(pipelineRunExecutionJob.getLastJobExecutionId());
+        pipelineRunJob.setStartTime(pipelineRunExecutionJob.getStartTime());
+        pipelineRunJob.setEndTime(pipelineRunExecutionJob.getEndTime());
+        pipelineRunJob.setUpdatedAt(now);
+    }
+
+    private boolean isTerminalFailure(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED
+                || pipelineRunStatus == PipelineRunStatus.ABANDONED
+                || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
     }
 
     private Long getRequiredLong(JobParameters jobParameters, String key) {

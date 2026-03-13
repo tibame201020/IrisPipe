@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import irispipe.infrastructure.entity.PipelineDefinition;
 import irispipe.infrastructure.entity.PipelineRun;
+import irispipe.infrastructure.entity.PipelineRunExecution;
+import irispipe.infrastructure.entity.PipelineRunExecutionJob;
 import irispipe.infrastructure.entity.PipelineRunJob;
 import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunStatus;
@@ -58,17 +60,18 @@ public interface SyncPipelineDTO {
             List<PipelineRunJobInfo> jobs) {
 
         public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, PipelineRun pipelineRun,
+                PipelineRunExecution pipelineRunExecution,
                 List<PipelineRunJobInfo> jobs) {
             return new PipelineRunDetailInfo(
                     pipelineRun.getId(),
                     pipelineDefinition.getId(),
                     pipelineDefinition.getConfigPath(),
                     pipelineDefinition.getFileName(),
-                    pipelineRun.getRequestedAsync(),
-                    pipelineRun.getStatus(),
+                    pipelineRunExecution == null ? pipelineRun.getRequestedAsync() : pipelineRunExecution.getRequestedAsync(),
+                    pipelineRunExecution == null ? pipelineRun.getStatus() : pipelineRunExecution.getStatus(),
                     pipelineRun.getCreatedAt(),
-                    pipelineRun.getStartTime(),
-                    pipelineRun.getEndTime(),
+                    pipelineRunExecution == null ? pipelineRun.getStartTime() : pipelineRunExecution.getStartTime(),
+                    pipelineRunExecution == null ? pipelineRun.getEndTime() : pipelineRunExecution.getEndTime(),
                     jobs);
         }
     }
@@ -86,7 +89,8 @@ public interface SyncPipelineDTO {
             LocalDateTime endTime,
             List<StepExecutionInfo> stepExecutionInfos) {
 
-        public static PipelineRunJobInfo render(PipelineRunJob pipelineRunJob, JobExecution jobExecution) {
+        public static PipelineRunJobInfo render(PipelineRunJob pipelineRunJob,
+                PipelineRunExecutionJob pipelineRunExecutionJob, JobExecution jobExecution) {
             List<StepExecutionInfo> stepExecutionInfos = jobExecution == null
                     ? List.of()
                     : jobExecution.getStepExecutions().stream()
@@ -98,12 +102,14 @@ public interface SyncPipelineDTO {
                     pipelineRunJob.getJobSequenceOrder(),
                     pipelineRunJob.getJobName(),
                     pipelineRunJob.getAtomicLevel(),
-                    pipelineRunJob.getStatus(),
-                    pipelineRunJob.getRootJobInstanceId(),
-                    pipelineRunJob.getLastJobExecutionId(),
-                    pipelineRunJob.getCreatedAt(),
-                    pipelineRunJob.getStartTime(),
-                    pipelineRunJob.getEndTime(),
+                    pipelineRunExecutionJob == null ? pipelineRunJob.getStatus() : pipelineRunExecutionJob.getStatus(),
+                    pipelineRunExecutionJob == null ? pipelineRunJob.getRootJobInstanceId()
+                            : pipelineRunExecutionJob.getRootJobInstanceId(),
+                    pipelineRunExecutionJob == null ? pipelineRunJob.getLastJobExecutionId()
+                            : pipelineRunExecutionJob.getLastJobExecutionId(),
+                    pipelineRunExecutionJob == null ? pipelineRunJob.getCreatedAt() : pipelineRunExecutionJob.getCreatedAt(),
+                    pipelineRunExecutionJob == null ? pipelineRunJob.getStartTime() : pipelineRunExecutionJob.getStartTime(),
+                    pipelineRunExecutionJob == null ? pipelineRunJob.getEndTime() : pipelineRunExecutionJob.getEndTime(),
                     stepExecutionInfos);
         }
     }

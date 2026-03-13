@@ -2,6 +2,7 @@ package irispipe.infrastructure.entity;
 
 import java.time.LocalDateTime;
 
+import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,21 +20,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "iris_pipeline_run")
-public class PipelineRun {
+@Table(name = "iris_pipeline_run_execution")
+public class PipelineRunExecution {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "pipeline_id")
-    private Long pipelineId;
+    @Column(name = "pipeline_run_id")
+    private Long pipelineRunId;
 
-    @Column(name = "rerun_from_pipeline_run_id")
-    private Long rerunFromPipelineRunId;
+    @Column(name = "execution_no")
+    private Integer executionNo;
 
-    @Column(name = "latest_execution_id")
-    private Long latestExecutionId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_kind")
+    private PipelineRunExecutionKind executionKind;
 
     @Column(name = "requested_async")
     private Boolean requestedAsync;
