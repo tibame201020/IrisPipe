@@ -2,12 +2,13 @@ import { check } from 'k6';
 import { singleRunOptions } from './utils/test-options.js';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryRowsOrFail,
     queryScalarOrFail,
-    runJobAndGetSummary,
+    runPipelineAndGetSummary,
 } from './utils/test-helpers.js';
 
 export const options = singleRunOptions;
@@ -38,7 +39,7 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runJobAndGetSummary(data.pipelineId);
+    const { summary } = runPipelineAndGetSummary(data.pipelineId);
     const rows = queryRowsOrFail('SELECT id, name FROM test_dest ORDER BY id ASC', 'chunk fail result query');
     const destCount = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM test_dest', 'CNT', 'chunk fail dest count');
     const watermarkCount = queryScalarOrFail(
@@ -62,6 +63,8 @@ export default function (data) {
     check(watermarkCount, {
         'Failed chunk-mode job did not persist watermark': (count) => count === 0,
     });
+
+    deletePipelineRunOrFail(summary.id, 'chunk pipeline run delete');
 }
 
 export function teardown(data) {

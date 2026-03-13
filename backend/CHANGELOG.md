@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 5: Pipeline Run API and Runtime Lifecycle] - 2026-03-13
+
+### Added
+- **Pipeline-Level Execution API**: Replaced the public runtime boundary from `sync-job` to `sync-pipeline`, covering trigger, summary query, detail query, and delete by `PipelineRun`.
+- **Pipeline Run Persistence**: Added `iris_pipeline_run` and `iris_pipeline_run_job` with runtime status tracking, sequence-first job nodes, and persisted `root_job_instance_id` / `last_job_execution_id`.
+- **Pipeline Runtime DTOs**: Introduced pipeline-oriented summary/detail DTOs so callers can observe a whole pipeline run without depending on Spring Batch job metadata directly.
+- **Async Trigger Coverage**: Added `k6/sync-pipeline-async.test.js` to verify asynchronous pipeline trigger, polling, detail query, and cleanup behavior.
+
+### Changed
+- **Execution Orchestration**: Replaced `JobExecutionService` with `PipelineExecutionService`, keeping execution sequence-first while promoting the external execution boundary to pipeline level.
+- **Lifecycle Ownership**: Moved `PipelineRun` and `PipelineRunJob` status updates behind `PipelineRunLifecycleService`, driven from `CustomJobListener` so sync and async triggers share one runtime lifecycle path.
+- **K6 Regression Suite**: Migrated existing runtime K6 tests and helpers from job-oriented endpoints to pipeline-oriented endpoints, and explicitly covered both sync and async trigger paths.
+- **Packaging Stability**: Declared the Spring Boot main class explicitly in Maven packaging so local packaging and executable jar startup remain stable.
+
+### Removed
+- **Legacy Job Runtime API**: Removed the public `sync-job` execution controller and its job-oriented DTOs/services in favor of pipeline-level runtime resources.
+
+---
+
 ## [Phase 4 (Partial): Segmented Commit Support] - 2026-03-12
 
 ### Added

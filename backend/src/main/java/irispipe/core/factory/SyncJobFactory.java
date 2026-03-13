@@ -4,6 +4,7 @@ import irispipe.batch.builder.BatchBeanBuilder;
 import irispipe.batch.listener.CustomJobListener;
 import irispipe.infrastructure.context.SyncJobContext;
 import irispipe.infrastructure.service.ExecutionRecordService;
+import irispipe.infrastructure.service.PipelineRunLifecycleService;
 import irispipe.model.AtomicLevel;
 import irispipe.model.ExecutionType;
 import org.springframework.batch.core.Job;
@@ -26,13 +27,16 @@ public class SyncJobFactory {
     private final Map<ExecutionType, ExecutionStepStrategy> strategies = new EnumMap<>(ExecutionType.class);
 
     private final PlatformTransactionManager platformTransactionManager;
+    private final PipelineRunLifecycleService pipelineRunLifecycleService;
 
     public SyncJobFactory(JobRepository jobRepository, BatchBeanBuilder batchBeanBuilder,
                           PlatformTransactionManager platformTransactionManager,
-                          ExecutionRecordService executionRecordService) {
+                          ExecutionRecordService executionRecordService,
+                          PipelineRunLifecycleService pipelineRunLifecycleService) {
         this.jobRepository = jobRepository;
         this.executionRecordService = executionRecordService;
         this.platformTransactionManager = platformTransactionManager;
+        this.pipelineRunLifecycleService = pipelineRunLifecycleService;
 
         strategies.put(ExecutionType.INSERT,
                 new InsertStepStrategy(jobRepository, batchBeanBuilder));
@@ -59,7 +63,7 @@ public class SyncJobFactory {
 
         CustomJobListener customJobListener = new CustomJobListener(
                 syncJobContext.destContext().getTransactionManager(), openJobTransaction, syncJobContext,
-                executionRecordService);
+                executionRecordService, pipelineRunLifecycleService);
 
         SimpleJobBuilder simpleJobBuilder = new JobBuilder(syncJobContext.syncJob().getJobName(), jobRepository)
                 .listener(customJobListener)

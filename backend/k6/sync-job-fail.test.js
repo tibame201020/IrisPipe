@@ -2,11 +2,12 @@ import { check } from 'k6';
 import { singleRunOptions } from './utils/test-options.js';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryScalarOrFail,
-    runJobAndGetSummary,
+    runPipelineAndGetSummary,
 } from './utils/test-helpers.js';
 
 export const options = singleRunOptions;
@@ -31,7 +32,7 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runJobAndGetSummary(data.pipelineId);
+    const { summary } = runPipelineAndGetSummary(data.pipelineId);
     const destCount = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM test_dest', 'CNT', 'dest rollback count');
     const watermarkCount = queryScalarOrFail(
         "SELECT COUNT(*) AS CNT FROM iris_watermark_record WHERE execution_name = 'k6_insert_fail'",
@@ -48,6 +49,8 @@ export default function (data) {
     check(watermarkCount, {
         'Watermark was NOT saved because job failed': (count) => count === 0,
     });
+
+    deletePipelineRunOrFail(summary.id, 'failed pipeline run delete');
 }
 
 export function teardown(data) {

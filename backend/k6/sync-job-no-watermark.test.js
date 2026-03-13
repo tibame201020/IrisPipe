@@ -2,11 +2,12 @@ import { check } from 'k6';
 import { singleRunOptions } from './utils/test-options.js';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryScalarOrFail,
-    runJobAndGetSummary,
+    runPipelineAndGetSummary,
 } from './utils/test-helpers.js';
 
 export const options = singleRunOptions;
@@ -30,7 +31,7 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runJobAndGetSummary(data.pipelineId);
+    const { summary } = runPipelineAndGetSummary(data.pipelineId);
     const destCount = queryScalarOrFail(
         'SELECT COUNT(*) AS CNT FROM test_dest',
         'CNT',
@@ -51,6 +52,8 @@ export default function (data) {
     check(watermarkCount, {
         'No Watermark inserted': (count) => count === 0,
     });
+
+    deletePipelineRunOrFail(summary.id, 'no-watermark pipeline run delete');
 }
 
 export function teardown(data) {

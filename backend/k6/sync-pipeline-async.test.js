@@ -6,16 +6,16 @@ import {
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
-    queryRowsOrFail,
-    queryScalarOrFail,
+    getPipelineRunDetailOrFail,
     runPipelineAndGetSummary,
+    waitForPipelineCompletion,
 } from './utils/test-helpers.js';
 
 export const options = singleRunOptions;
 
 const yamlContent = open('./testfiles/job-success.yml');
 const fileName = 'job-success.yml';
-const filePath = configPathFor(fileName);
+const filePath = configPathFor(`pipeline-async-${fileName}`);
 
 export function setup() {
     executeStatementsOrFail([
@@ -32,25 +32,25 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runPipelineAndGetSummary(data.pipelineId);
-    const destCount = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM test_dest', 'CNT', 'dest row count');
-    const watermarkRows = queryRowsOrFail(
-        "SELECT last_value FROM iris_watermark_record WHERE execution_name = 'k6_insert'",
-        'watermark query',
-    );
+    const { summary } = runPipelineAndGetSummary(data.pipelineId, true);
+    const completedSummary = waitForPipelineCompletion(summary.id, 'COMPLETED', 10, 0.2);
+    const detail = getPipelineRunDetailOrFail(summary.id, 'async pipeline detail query');
 
     check(summary, {
-        'Job marked as COMPLETED': (job) => job.status === 'COMPLETED',
+        'Async trigger returns a pipeline run id': (item) => Number.isInteger(item.id) && item.id > 0,
+        'Async trigger returns a valid pipeline status': (item) =>
+            ['STARTING', 'STARTED', 'COMPLETED'].includes(item.status),
     });
-    check(destCount, {
-        'All 3 rows synced to dest': (count) => count === 3,
+    check(completedSummary, {
+        'Async pipeline eventually completes': (item) => item.status === 'COMPLETED',
     });
-    check(watermarkRows, {
-        'Watermark advanced successfully': (rows) =>
-            rows.length === 1 && rows[0].LAST_VALUE === '2023-01-01 12:00:00.0',
+    check(detail, {
+        'Async pipeline detail marks requestedAsync': (item) => item.requestedAsync === true,
+        'Async pipeline detail keeps completed status': (item) => item.status === 'COMPLETED',
+        'Async pipeline detail includes one job node': (item) => Array.isArray(item.jobs) && item.jobs.length === 1,
     });
 
-    deletePipelineRunOrFail(summary.id, 'success pipeline run delete');
+    deletePipelineRunOrFail(summary.id, 'async pipeline run delete');
 }
 
 export function teardown(data) {
