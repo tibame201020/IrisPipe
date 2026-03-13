@@ -11,7 +11,6 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.job.builder.SimpleJobBuilder;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -67,7 +66,6 @@ public class SyncJobFactory {
 
         SimpleJobBuilder simpleJobBuilder = new JobBuilder(syncJobContext.syncJob().getJobName(), jobRepository)
                 .listener(customJobListener)
-                .incrementer(new RunIdIncrementer())
                 .start(steps.getFirst());
 
         for (int i = 1; i < steps.size(); i++) {

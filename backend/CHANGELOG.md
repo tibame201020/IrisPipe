@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 6: Restart Foundations] - 2026-03-13
+
+### Added
+- **Stable Batch Identity Helper**: Added deterministic execution-name materialization and step-name bounding so internal Spring Batch identifiers remain stable and length-safe across reruns.
+- **Pipeline Run Snapshot Persistence**: Added `iris_pipeline_run_snapshot` plus snapshot entity/repository/service to persist immutable materialized pipeline definitions per `PipelineRun`.
+
+### Changed
+- **Restart-Safe Job Parameters**: Switched runtime job launch parameters to use `pipeline.run.job.id` as the identifying key and removed the per-launch `run.id` increment pattern, preparing `CHUNK` jobs for true restart semantics.
+- **Snapshot-Driven Execution**: Pipeline execution now materializes job definitions once, saves them as a run-bound snapshot, and executes from that snapshot instead of directly from the latest persisted pipeline rows.
+- **Stable Internal Naming**: Step builders now derive names from materialized execution identities instead of type-only job-level names, reducing collision risk in Spring Batch metadata and watermark lookups.
+
+### Verified
+- **Regression Safety**: Re-ran compile and the full K6 suite after the identity/parameter changes and again after snapshot integration; public API behavior remained unchanged.
+
+---
+
 ## [Phase 5: Pipeline Run API and Runtime Lifecycle] - 2026-03-13
 
 ### Added

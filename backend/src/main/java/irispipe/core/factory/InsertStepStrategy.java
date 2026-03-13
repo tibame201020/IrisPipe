@@ -4,6 +4,7 @@ import io.micrometer.common.util.StringUtils;
 import irispipe.batch.builder.BatchBeanBuilder;
 import irispipe.batch.listener.ExecutionStepListener;
 import irispipe.batch.writer.BatchInsertWriter;
+import irispipe.core.utility.BatchIdentityHelper;
 import irispipe.core.utility.SqlSyntaxHelper;
 import irispipe.infrastructure.context.SyncJobContext;
 import irispipe.model.ExecutionStep;
@@ -47,7 +48,7 @@ public class InsertStepStrategy implements ExecutionStepStrategy {
         BatchInsertWriter batchInsertWriter = new BatchInsertWriter(insertWriter, execution.destTable(),
                 execution.summaryInfo());
 
-        return new StepBuilder(jobName + "_ insert_step", jobRepository)
+        return new StepBuilder(BatchIdentityHelper.renderStepName(execution.name(), "insert_step"), jobRepository)
                 .listener(new ExecutionStepListener(execution))
                 .<Map<String, Object>, Map<String, Object>>chunk(
                         syncJobContext.syncJob().getSetting().batchSize(),

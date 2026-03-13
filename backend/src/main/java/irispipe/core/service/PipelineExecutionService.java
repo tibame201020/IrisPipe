@@ -30,6 +30,7 @@ import irispipe.infrastructure.service.ExecutionRecordService;
 import irispipe.infrastructure.service.JobConfigService;
 import irispipe.infrastructure.service.JobMetadataService;
 import irispipe.infrastructure.service.PipelineRunLifecycleService;
+import irispipe.infrastructure.service.PipelineRunSnapshotService;
 import irispipe.model.PipelineRunStatus;
 import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncPipelineDTO;
@@ -49,6 +50,7 @@ public class PipelineExecutionService {
     private final ExecutionRecordService executionRecordService;
     private final JobMetadataService jobMetadataService;
     private final PipelineRunLifecycleService pipelineRunLifecycleService;
+    private final PipelineRunSnapshotService pipelineRunSnapshotService;
 
     public PipelineExecutionService(JobLauncher jobLauncher,
             TaskExecutor pipelineTaskExecutor,
@@ -61,7 +63,8 @@ public class PipelineExecutionService {
             SyncJobFactory syncJobFactory,
             ExecutionRecordService executionRecordService,
             JobMetadataService jobMetadataService,
-            PipelineRunLifecycleService pipelineRunLifecycleService) {
+            PipelineRunLifecycleService pipelineRunLifecycleService,
+            PipelineRunSnapshotService pipelineRunSnapshotService) {
         this.jobLauncher = jobLauncher;
         this.pipelineTaskExecutor = pipelineTaskExecutor;
         this.jobExplorer = jobExplorer;
@@ -74,6 +77,7 @@ public class PipelineExecutionService {
         this.executionRecordService = executionRecordService;
         this.jobMetadataService = jobMetadataService;
         this.pipelineRunLifecycleService = pipelineRunLifecycleService;
+        this.pipelineRunSnapshotService = pipelineRunSnapshotService;
     }
 
     public SyncPipelineDTO.PipelineRunSummaryInfo execute(Long pipelineId, Boolean useAsyncLauncher) {
@@ -82,14 +86,18 @@ public class PipelineExecutionService {
         syncJobs.forEach(SyncJobDefinition::validate);
 
         PipelineRun pipelineRun = createPipelineRun(pipelineId, Boolean.TRUE.equals(useAsyncLauncher));
-        List<PipelineRunJob> pipelineRunJobs = createPipelineRunJobs(pipelineRun.getId(), syncJobs);
+        List<SyncJobDefinition> snapshotSyncJobs = pipelineRunSnapshotService.createSnapshot(
+                pipelineRun.getId(),
+                pipelineDefinition.getContentHash(),
+                syncJobs);
+        List<PipelineRunJob> pipelineRunJobs = createPipelineRunJobs(pipelineRun.getId(), snapshotSyncJobs);
 
         if (Boolean.TRUE.equals(useAsyncLauncher)) {
-            pipelineTaskExecutor.execute(() -> executePipelineRun(pipelineId, syncJobs, pipelineRunJobs));
+            pipelineTaskExecutor.execute(() -> executePipelineRun(pipelineId, snapshotSyncJobs, pipelineRunJobs));
             return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRun.getId()));
         }
 
-        executePipelineRun(pipelineId, syncJobs, pipelineRunJobs);
+        executePipelineRun(pipelineId, snapshotSyncJobs, pipelineRunJobs);
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRun.getId()));
     }
 
@@ -103,11 +111,10 @@ public class PipelineExecutionService {
                 syncJobContext = syncJobContextFactory.initialSyncJobContext(syncJob, executionRecordService);
                 Job job = syncJobFactory.createBatchJob(syncJobContext);
                 JobParameters jobParameters = new JobParametersBuilder()
-                        .addLong("pipeline.id", pipelineId)
-                        .addLong("pipeline.run.id", pipelineRunJob.getPipelineRunId())
                         .addLong("pipeline.run.job.id", pipelineRunJob.getId())
-                        .addLong("job.sequence", Long.valueOf(jobSequence))
-                        .addLong("run.id", System.currentTimeMillis())
+                        .addLong("pipeline.id", pipelineId, false)
+                        .addLong("pipeline.run.id", pipelineRunJob.getPipelineRunId(), false)
+                        .addLong("job.sequence", Long.valueOf(jobSequence), false)
                         .toJobParameters();
 
                 JobExecution jobExecution = jobLauncher.run(job, jobParameters);
@@ -169,6 +176,7 @@ public class PipelineExecutionService {
         if (!pipelineRunJobs.isEmpty()) {
             pipelineRunJobRepo.deleteAllInBatch(pipelineRunJobs);
         }
+        pipelineRunSnapshotService.deleteSnapshot(pipelineRunId);
         pipelineRunRepo.delete(pipelineRun);
     }
 
