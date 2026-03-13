@@ -16,14 +16,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  k6-regression:
-    name: K6 Regression
+  build-backend:
+    name: Build Backend Jar
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     env:
-      K6_TMP_DIR: ${{ github.workspace }}/.k6-tmp
-      APP_LOG: ${{ github.workspace }}/.k6-tmp/irispipe-k6.log
-      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/irispipe-k6.pid
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
 
@@ -38,12 +35,79 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Install K6
-        uses: grafana/setup-k6-action@v1
-
       - name: Build backend without unit tests
         working-directory: backend
         run: mvn -B -DskipTests package
+
+      - name: Locate runnable jar
+        id: jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_jar="$(find backend/target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+
+          if [ -z "$app_jar" ]; then
+            echo "No runnable jar found in backend/target" >&2
+            exit 1
+          fi
+
+          echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
+
+      - name: Upload runnable jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-runnable-jar
+          path: ${{ steps.jar.outputs.app_jar }}
+          if-no-files-found: error
+
+  k6-regression:
+    name: K6 Regression (${{ matrix.suite.name }})
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - id: config
+            name: Config
+          - id: pipeline-core
+            name: Pipeline Core
+          - id: pipeline-resume
+            name: Pipeline Resume
+          - id: pipeline-stop
+            name: Pipeline Stop
+          - id: pipeline-rerun
+            name: Pipeline Rerun
+          - id: pipeline-control-loop
+            name: Pipeline Control Loop
+          - id: runtime
+            name: Runtime
+    env:
+      K6_TMP_DIR: ${{ github.workspace }}/.k6-tmp
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/irispipe-k6-${{ matrix.suite.id }}.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/irispipe-k6-${{ matrix.suite.id }}.pid
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install K6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Download runnable jar
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-runnable-jar
+          path: backend/target
 
       - name: Start backend
         working-directory: backend
@@ -77,15 +141,23 @@ jobs:
           tail -n 200 "$APP_LOG" || true
           exit 1
 
-      - name: Run K6 regression suite
+      - name: Run K6 suite (${{ matrix.suite.name }})
         working-directory: backend/k6
         shell: pwsh
-        run: ./run-tests.ps1
+        run: ./run-tests.ps1 -Suite ${{ matrix.suite.id }}
 
       - name: Print backend log on failure
         if: failure()
         shell: bash
         run: tail -n 200 "$APP_LOG" || true
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-k6-log-${{ matrix.suite.id }}
+          path: ${{ env.APP_LOG }}
+          if-no-files-found: ignore
 
       - name: Stop backend
         if: always()
