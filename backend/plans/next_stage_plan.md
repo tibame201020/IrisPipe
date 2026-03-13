@@ -1,55 +1,57 @@
 # IrisPipe 下一階段計畫
 
+## Phase 11: Observability and Operator Safety
+
 ## 文件目的
 
-這份文件不是舊版 restart 提案的延伸，而是目前實作完成後的接手文件。
+這份文件是目前主線狀態下的接手文件，不再延續舊版「manual stop 還沒做」的前提。
 
 目標是讓新的對話或新的 agent 可以直接理解：
 
-1. IrisPipe 現在的 runtime 主語是什麼
-2. 哪些能力已經完成
-3. 哪些能力故意還沒做
-4. 下一階段最合理的切入點是什麼
+1. IrisPipe 現在已經做到哪裡
+2. 哪些設計判斷已經拍板，不要再重辯
+3. 下一階段為什麼不是 microservice / multi-module
+4. 下一階段要做什麼，以及建議的實作順序
 
-本文件以目前主線狀態為基準，對應 commit：
+本文件預設基線對應目前主線控制面已完成的狀態，參考 commit：
 
-- `ad35145`
-- message: `feat: add pipeline resume and rerun execution flows`
+- `d43480d`
+- message: `feat: close pipeline stop control loop and align runtime docs`
 
 ---
 
 ## 一句話總結
 
-IrisPipe 已經完成 pipeline-level 的基本 trigger 與基本觀察能力。
-
-目前 runtime 三種執行語意已固定：
+IrisPipe 現在已經完成 pipeline-level 的完整控制迴路：
 
 - `execute`
-  - 建立新的 `PipelineRun`
-  - 使用最新 pipeline config materialize 新 snapshot
 - `resume`
-  - 留在同一個 `PipelineRun`
-  - 建立新的 `PipelineRunExecution`
-  - 從失敗節點接續
-  - 參照的是既有 snapshot
 - `rerun`
-  - 建立新的 `PipelineRun`
-  - 重新從頭跑整條 pipeline
-  - 參照的是來源 run 的 snapshot，不是最新 pipeline config
+- `stop`
+
+控制面已經閉環，下一階段不該再把重心放在 restart 語意本身，而應該轉向：
+
+- 提升觀測性
+- 補上 operator safety
+
+也就是：
+
+- attempt timeline / control history
+- actuator / metrics / operator-facing observability
+- delete in-flight guard
 
 ---
 
-## 目前已完成的能力
+## 目前系統狀態
 
-## 1. 對外 runtime 邊界已提升到 pipeline
+## 1. Runtime 主語已經固定為 `PipelineRun`
 
-公開 API 已不再以 `job` 為主語，而是以 `PipelineRun` 為主語。
-
-目前 runtime API：
+對外 runtime API 現在是：
 
 - `POST /api/v1/sync-pipeline`
 - `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
 - `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
 - `GET /api/v1/sync-pipeline?ids=...`
 - `GET /api/v1/sync-pipeline/{pipelineRunId}`
 - `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
@@ -58,9 +60,9 @@ IrisPipe 已經完成 pipeline-level 的基本 trigger 與基本觀察能力。
 
 - `backend/src/main/java/irispipe/api/SyncPipelineAPI.java`
 
-## 2. runtime model 已拆成 logical run 與 execution attempt
+## 2. Runtime model 已經拆成 logical run 與 execution attempt
 
-目前 runtime tables 已成形：
+目前 runtime tables：
 
 - `iris_pipeline_run`
 - `iris_pipeline_run_snapshot`
@@ -73,330 +75,597 @@ IrisPipe 已經完成 pipeline-level 的基本 trigger 與基本觀察能力。
 - `PipelineRun`
   - logical run
 - `PipelineRunSnapshot`
-  - immutable run snapshot
+  - immutable runtime snapshot
 - `PipelineRunJob`
-  - logical job node
+  - logical pipeline job node
 - `PipelineRunExecution`
   - 某次 execution attempt
 - `PipelineRunExecutionJob`
   - 某次 attempt 中某個 job node 的結果
 
-關鍵檔案：
+## 3. 三種 runtime 語意已固定，不要再改回去
 
-- `backend/src/main/java/irispipe/core/service/PipelineExecutionService.java`
-- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunSnapshotService.java`
-- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunLifecycleService.java`
+- `execute`
+  - 建立新的 `PipelineRun`
+  - 讀最新 pipeline config
+  - materialize 新 snapshot
+- `resume`
+  - 留在同一個 `PipelineRun`
+  - 建立新的 `PipelineRunExecution`
+  - 參照既有 snapshot
+- `rerun`
+  - 建立新的 `PipelineRun`
+  - 複製來源 run 的 snapshot
+  - 不讀最新 pipeline config
 
-## 3. stable identity 與 snapshot 已完成
+這是目前最重要的語意邊界之一，不要再把 `rerun` 改回 fresh execute。
 
-這是 resume / rerun / CHUNK restart 能成立的前提。
+## 4. `JOB` / `CHUNK` / mixed 都已成立
 
-已完成內容：
-
-- execution name 先 materialize 再寫入 snapshot
-- step name 走穩定命名規則
-- `CHUNK` restart-safe identifying params 已補齊
-- rerun 改為複用來源 run 的 snapshot，而不是重新讀最新 config
-
-## 4. resume 已支援 `JOB` 與 `CHUNK`
-
-目前 resume 行為：
+目前已完成：
 
 - `JOB`
-  - replay failed job
+  - outer transaction at job boundary
+  - failure / stop 走 replay
 - `CHUNK`
-  - restart failed Spring Batch job instance
+  - native chunk commit
+  - failure / stop 走 restart
 - mixed pipeline
-  - 依 failed node 的 `atomicLevel` 決定 replay 或 restart
+  - 依 failed/stopped node 的 `atomicLevel` 決定 replay 或 restart
 
-目前 latest execution detail 也已能正確區分：
+## 5. manual stop 已經完成
 
-- `SKIPPED`
-- `NOT_RUN`
-- `FAILED`
-- `COMPLETED`
+目前 stop 語意：
 
-## 5. sync / async trigger 與 runtime regression 已有 K6 保護
+- public API 已存在
+- lifecycle 會經過 `STOPPING` -> `STOPPED`
+- Spring Batch stop 透過 `JobOperator.stop(...)`
+- sequence-first orchestration 已有 stop guard
+- downstream pending nodes 會標成 `NOT_RUN`
+- stopped run 可以再 `resume`
 
-K6 現在已按責任分資料夾：
+## 6. 驗證基線
 
-- `backend/k6/config`
-- `backend/k6/pipeline`
-- `backend/k6/runtime`
-
-已覆蓋：
-
-- config validation / CRUD
-- pipeline execute
-- pipeline async execute
-- pipeline resume (`JOB`)
-- pipeline resume (`CHUNK`)
-- pipeline resume (mixed)
-- pipeline async resume
-- pipeline rerun
-- pipeline async rerun
-- 既有 runtime 行為回歸
-
-執行入口：
+目前可信的回歸基線：
 
 - `backend/k6/run-tests.ps1`
+- `backend/k6/pipeline/sync-pipeline-control-flow-async.test.js`
+
+已驗證：
+
+- sync / async trigger
+- resume (`JOB`, `CHUNK`, mixed)
+- rerun
+- stop (`JOB`, `CHUNK`, mixed)
+- `execute -> stop -> resume -> rerun -> stop -> resume`
+
+另外要注意：
+
+- `mvn -q -DskipTests compile` 可作為基本編譯檢查
+- `mvn test` 目前不是可靠基線，repo 內仍有舊測試噪音
 
 ---
 
-## 目前還沒完成，但屬於已知缺口
+## 已拍板的架構決策
 
-## 1. public detail 還不是完整 attempt timeline
+## 1. 保持 single app
 
-現在 detail 回傳的是 latest execution projection，不是完整 execution history。
-
-這代表：
-
-- UI 可以看最新狀態
-- UI 可以看最新 job node 結果
-- 但 UI 還不能直接從同一個 detail payload 拿到完整 attempts timeline
-
-這不是模型做不到，而是 API 還沒展開。
-
-## 2. manual stop 還沒實作
-
-目前 model 已經有：
-
-- `STOPPING`
-- `STOPPED`
-
-但還沒有：
-
-- public stop API
-- stop request propagation
-- lifecycle stop 專用寫入路徑
-- orchestration stop guard
-
-## 3. delete 對 in-flight run 沒有明確保護
-
-現在 delete 著重的是 lineage cleanup。
-
-對於：
-
-- `STARTING`
-- `STARTED`
-- 未來的 `STOPPING`
-
-是否允許刪除，還沒有清楚 guard。
-
-這件事最好跟 manual stop 一起定義。
-
----
-
-## 關於 manual stop 的判斷
-
-## 結論
-
-manual stop 是目前最合理的下一個 runtime control surface。
-
-但它不是「只要停下就好、剩下都不用處理」的那種工作。
-
-它的複雜度不是大工程，但也不是只補 controller endpoint 就結束。
-
-## 為什麼它是下一步
-
-因為目前已經有：
-
-- pipeline-level trigger
-- pipeline-level observe
-- pipeline-level resume
-- pipeline-level rerun
-
-控制面剩下最明顯的缺口就是：
-
-- stop in-flight pipeline run
-
-## 為什麼不能只停當前 job 就結束
-
-因為 IrisPipe 是 sequence-first pipeline orchestration。
-
-如果只停掉當前 Spring Batch job，但沒有處理 pipeline 自己的流程控制，會有幾個問題：
-
-1. stop request 可能剛好落在兩個 job 之間
-   - 當前 job 已結束
-   - 下一個 job 可能已經被 `executePipelineRun(...)` 啟動
-
-2. lifecycle 需要正確投影
-   - `PipelineRun` / `PipelineRunExecution` 要進入 `STOPPING` / `STOPPED`
-   - 當前 `PipelineRunExecutionJob` 要正確落停
-   - downstream nodes 要標成 `NOT_RUN`
-
-3. resume 之後要能銜接
-   - 現在 `resume` 的 terminal 判定其實已包含 `STOPPED`
-   - 也就是說 manual stop 一旦做對，後續 resume 語意可以自然銜接
-
-## 因此 manual stop 至少需要這四塊
-
-### A. public API
-
-建議新增：
-
-- `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
-
-先不要用 `DELETE` 取代 stop，也不要把 stop 混進 query/detail。
-
-### B. stop request persistence / lifecycle path
-
-需要有明確的 lifecycle 寫入方法，例如：
-
-- `markStopRequested(...)`
-- `markStopped(...)`
-
-目前 `PipelineRunLifecycleService` 還沒有 stop 專用方法。
-
-### C. 真正的 Spring Batch stop propagation
-
-不能只改 IrisPipe 自己的表狀態，還要真的讓目前正在跑的 job 停下來。
-
-這通常代表至少要補一種機制：
-
-- `JobOperator.stop(...)`
-- 或等效的 Spring Batch stop 控制方式
-
-目前程式裡尚未接入這一層。
-
-### D. sequence-first orchestration guard
-
-`executePipelineRun(...)` 需要在至少兩個時點檢查 stop：
-
-- 啟動下一個 job 之前
-- 當前 job 結束回來之後
-
-否則 stop request 會有 race condition。
-
----
-
-## 建議的下一階段實作順序
-
-## Step 1. 先做 manual stop，範圍只收斂到 pipeline-level control
-
-建議先支援：
-
-- stop async execute
-- stop async resume
+下一階段不拆 microservice。
 
 理由：
 
-- sync request 本身會卡住呼叫端
-- 真實操作 stop 幾乎一定是第二個 client / UI 發出
-- async flow 比較符合 stop 的實際使用場景
+- 現在還沒有證據顯示 deployment boundary 是主要問題
+- runtime 一致性目前強依賴同一個 app 內的 orchestration + lifecycle + listener path
+- 為了 observability 去拆 service，只會把本來清楚的狀態機變成跨程序協調問題
 
-sync flow 不需要禁止 stop，只是 K6 第一階段不必先把它當主驗證場景。
+## 2. 不做 Maven multi-module
 
-## Step 2. lifecycle service 補 stop 專用方法
+下一階段也不把 repo 拆成多模組。
 
-建議新增：
+理由：
 
-- `markStopRequested(...)`
-- `markExecutionJobsNotRun(...)` 可重用於 downstream
-- `markStopped(...)`
+- 目前需求是補觀測性與 delete guard，不是重整 build graph
+- multi-module 會增加組織成本，但不會直接提升 operator visibility
+- 等 observability 與 query model 穩定後，再考慮是否需要 module boundary
 
-目標是讓 status transition 明確，不要把 stop 混進 failed path。
+## 3. 採用 single app + clear package boundary
 
-## Step 3. orchestration 補 stop guard
+下一階段的邊界建議是 package boundary，而不是 process boundary。
 
-主要調整點會在：
+建議原則：
 
-- `PipelineExecutionService.executePipelineRun(...)`
+- `api`
+  - REST contract 與 request/response
+- `core`
+  - runtime control 與 query assembly
+- `infrastructure`
+  - repo / config / Spring wiring
+- `observability`（可新增 top-level package）
+  - meter names
+  - metric publishing
+  - actuator / prometheus wiring
+  - lifecycle-derived observation events
 
-至少要能做到：
+注意：
 
-- stop request 到達後，不再啟動下一個 job
-- 若 stop 成功，剩餘 execution jobs 標 `NOT_RUN`
+- 不要把 metrics 邏輯直接散落在 controller
+- 不要讓 `PipelineExecutionService` 同時無限制膨脹成 query assembler + metrics hub
 
-## Step 4. 接入 Spring Batch stop 能力
+## 4. 盡量採 additive API 變更
 
-這一段要先決定技術路線，再開始寫 code：
+目前 API 已有使用者與 K6 契約。
 
-- 是否引入 `JobOperator`
-- 是否需要額外保存 currently running job execution reference
-- stop request 到達時，要怎麼定位該停哪一筆 Spring Batch job execution
+下一階段原則：
 
-這是 manual stop 真正需要先拍板的地方。
+- 優先擴充現有 payload 或新增可選欄位
+- 不要破壞既有 `summary` / `detail` top-level 結構
+- delete guard 先沿用目前 exception model，優先回 `400`
 
-## Step 5. K6 保護 stop flow
+---
 
-建議至少補：
+## 下一階段主題
 
-- `pipeline stop async execute`
-- `pipeline stop async resume`
+## 結論
+
+下一階段應定義為：
+
+## Phase 11: Observability and Operator Safety
+
+這個階段不是單做 metrics，而是三件事一起做：
+
+1. attempt timeline / control history
+2. actuator / runtime metrics
+3. delete in-flight guard
+
+這三件事放在一起最合理，因為它們都服務於「operator 可以安全地看懂、操作、治理 pipeline run」。
+
+---
+
+## 交付目標
+
+## Goal A. public detail 能看見 attempts timeline
+
+目前 detail 只有 latest projection。
+
+下一階段要做到：
+
+- operator 可以看到一個 `PipelineRun` 經歷過哪些 attempts
+- 每個 attempt 的：
+  - `executionNo`
+  - `executionKind`
+  - `status`
+  - `requestedAsync`
+  - `startTime`
+  - `endTime`
+  - job-level 結果
+- latest top-level `jobs` 仍保留，避免破壞舊用法
+
+## Goal B. 有可用的 runtime observability v1
+
+至少要做到：
+
+- actuator health
+- metrics endpoint
+- prometheus scrape endpoint（若採用 Prometheus）
+- pipeline run / execution / job 的基本 counters / gauges / timers
+
+## Goal C. delete 不再能誤刪 in-flight run
+
+至少要做到：
+
+- `STARTING` / `STARTED` / `STOPPING` 不可 delete
+- terminal run 才允許 cleanup
+- 行為在 API 層與 K6 都被保護
+
+---
+
+## 詳細規劃
+
+## Workstream 1: Delete In-Flight Guard
+
+### 為什麼先做
+
+這是最小但最有價值的 operator safety 補丁。
+
+現在 stop 已存在，如果 delete 仍能對 in-flight run 生效，控制面仍然不夠安全。
+
+### 建議行為
+
+`DELETE /api/v1/sync-pipeline/{pipelineRunId}`：
+
+- 拒絕：
+  - `STARTING`
+  - `STARTED`
+  - `STOPPING`
+- 允許：
+  - `COMPLETED`
+  - `FAILED`
+  - `STOPPED`
+  - `ABANDONED`
+  - `UNKNOWN`
+
+### 建議實作點
+
+- `backend/src/main/java/irispipe/core/service/PipelineExecutionService.java`
+  - `deletePipelineRun(...)` 先驗證 latest execution status
+- `backend/src/main/java/irispipe/api/SyncPipelineAPI.java`
+  - API contract 不需新增 endpoint
+- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunLifecycleService.java`
+  - 不一定要改，但要理解 stop / terminal semantics
+
+### API 行為建議
+
+先沿用目前 exception model：
+
+- 用 `IllegalArgumentException`
+- 讓現有 `GlobalExceptionHandler` 映射成 `400`
+
+理由：
+
+- 這一階段重點不是重寫錯誤模型
+- 新增 `409` 會牽動更大的 API 契約調整
+
+### 驗證
+
+建議新增 K6：
+
+- `sync-pipeline-delete-guard-async.test.js`
 
 驗證點：
 
-- stop API 成功
-- run status 進入 `STOPPED`
-- 當前 job 停止
-- downstream jobs = `NOT_RUN`
-- stop 後可以再 `resume`
+- 對 in-flight run delete -> `400`
+- 對 completed/stopped run delete -> `204`
+- delete guard 不影響 stop / resume / rerun 現有語意
 
 ---
 
-## 目前不建議先做的事
+## Workstream 2: Attempt Timeline / Control History
 
-## 1. 不建議先把 detail 擴成完整 timeline API
+### 為什麼這是 observability 的核心
 
-這是合理的後續工作，但不是最急迫。
+如果 detail 只能看 latest projection，operator 無法回答這些問題：
 
-原因：
+- 這個 run 曾經 stop 過幾次？
+- 這次 completion 是 initial run 還是 resume 完成？
+- 哪些 job 是在第 1 次 attempt 完成、哪些是第 2 次才完成？
 
-- 內部 execution history 已經存在
-- 產品控制面現在更缺的是 stop，不是 timeline
+這些都屬於最基本的操作可觀測性，而不是「額外 fancy 功能」。
 
-## 2. 不建議先做 full DAG
+### 建議 API 方向
 
-現況是 sequence-first，這是有意識的選擇。
+優先擴充現有 detail response，而不是另開一個完全獨立的 API。
 
-manual stop 也會比較容易先在 sequence-first 模型內做對。
+建議維持：
 
-## 3. 不建議讓 rerun 改回讀最新 config
+- top-level `jobs`
+  - 仍表示 latest execution projection
 
-這點已明確拍板：
+新增：
 
-- rerun = replay source snapshot
-- execute = read latest config
+- top-level `attempts`
+  - 每個 `PipelineRunExecution` 一筆
+  - 內含該 attempt 的 jobs
 
-不要再把兩者語意混回去。
+### 建議 response 形狀
+
+```json
+{
+  "id": 123,
+  "status": "STOPPED",
+  "requestedAsync": true,
+  "jobs": [
+    {
+      "jobName": "job_b",
+      "status": "STOPPED"
+    }
+  ],
+  "attempts": [
+    {
+      "executionId": 1001,
+      "executionNo": 1,
+      "executionKind": "INITIAL",
+      "status": "STOPPED",
+      "requestedAsync": true,
+      "startTime": "2026-03-13T10:00:00",
+      "endTime": "2026-03-13T10:01:00",
+      "jobs": [
+        {
+          "jobName": "job_a",
+          "status": "COMPLETED"
+        },
+        {
+          "jobName": "job_b",
+          "status": "STOPPED"
+        },
+        {
+          "jobName": "job_c",
+          "status": "NOT_RUN"
+        }
+      ]
+    },
+    {
+      "executionId": 1002,
+      "executionNo": 2,
+      "executionKind": "RESUME",
+      "status": "COMPLETED",
+      "requestedAsync": true,
+      "jobs": [
+        {
+          "jobName": "job_a",
+          "status": "SKIPPED"
+        },
+        {
+          "jobName": "job_b",
+          "status": "COMPLETED"
+        },
+        {
+          "jobName": "job_c",
+          "status": "COMPLETED"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 建議實作點
+
+- `backend/src/main/java/irispipe/model/dto/SyncPipelineDTO.java`
+  - 新增 attempt-level DTO
+- `backend/src/main/java/irispipe/core/service`
+  - 建議抽出 `PipelineRunQueryService.java`
+  - 不要繼續把 read-model assembly 塞進 `PipelineExecutionService`
+- `backend/src/main/java/irispipe/infrastructure/repo`
+  - 需要可依 `pipelineRunId` 讀取所有 executions / executionJobs 的查詢
+- `backend/src/main/java/irispipe/api/SyncPipelineAPI.java`
+  - detail endpoint contract 擴充
+
+### 實作原則
+
+- 按 `executionNo` 升序輸出 attempts
+- top-level `jobs` 不移除
+- attempt-level job order 仍按 `jobSequenceOrder`
+- job-level欄位盡量沿用現有 `PipelineRunJobInfo`
+
+### 驗證
+
+建議新增 K6：
+
+- `sync-pipeline-observe-timeline.test.js`
+
+建議情境：
+
+- execute -> stop -> resume
+- execute -> rerun -> stop -> resume
+
+驗證點：
+
+- detail 有 `attempts`
+- attempts 順序正確
+- attempt 1 / attempt 2 狀態與 job status 正確
+- top-level latest `jobs` 仍與舊 detail 契約一致
 
 ---
 
-## 目前接手時最重要的檔案
+## Workstream 3: Observability V1
 
-若要直接開始做下一步，先看這些檔案：
+### 目標
+
+不是一次做完整監控平台，而是先把 app 變成「可被監控」。
+
+### 這一階段建議至少加入
+
+- `spring-boot-starter-actuator`
+- `micrometer-registry-prometheus`（若要 Prometheus）
+
+建議暴露：
+
+- `/actuator/health`
+- `/actuator/metrics`
+- `/actuator/prometheus`
+
+### 建議 metrics
+
+#### Counters
+
+- `irispipe.pipeline.run.triggered`
+- `irispipe.pipeline.execution.completed`
+- `irispipe.pipeline.execution.failed`
+- `irispipe.pipeline.execution.stopped`
+- `irispipe.pipeline.job.completed`
+- `irispipe.pipeline.job.failed`
+- `irispipe.pipeline.job.stopped`
+
+#### Gauges
+
+- `irispipe.pipeline.runs.active`
+- `irispipe.pipeline.executions.active`
+
+#### Timers
+
+- `irispipe.pipeline.execution.duration`
+- `irispipe.pipeline.job.duration`
+
+### Tag 設計原則
+
+只用 low-cardinality tags，例如：
+
+- `execution_kind`
+- `requested_async`
+- `atomic_level`
+- `status`
+
+不要用：
+
+- `pipelineRunId`
+- `pipelineId`
+- `jobName`
+- 任意 config path
+
+否則 cardinality 很快失控。
+
+### 建議實作邊界
+
+建議新增 package：
+
+- `backend/src/main/java/irispipe/observability`
+
+內容可包含：
+
+- metric names constants
+- meter publisher
+- lifecycle observation event handlers
+- actuator / prometheus config
+
+不要把這些邏輯直接塞進：
+
+- controller
+- DTO
+- JPA entity
+
+### 事件來源建議
+
+觀測性應該盡量從 lifecycle transition 取資料，而不是從 controller 猜狀態。
+
+可考慮做法：
+
+- `PipelineRunLifecycleService` 完成狀態寫入後發出 app event
+- `observability` package 內的 listener 消費 event 並更新 meter
+
+這樣可以讓：
+
+- persistence path
+- metrics path
+
+彼此邊界比較清楚。
+
+### 驗證
+
+建議新增 smoke tests：
+
+- actuator health reachable
+- `/actuator/metrics` 有關鍵 metric name
+- `/actuator/prometheus` 有輸出
+
+若使用 K6，可加：
+
+- `sync-pipeline-observability-smoke.test.js`
+
+但這一階段不需要把 Prometheus 整套 infra 帶進 repo。
+
+---
+
+## 建議實作順序
+
+## Step 1. Delete guard
+
+先補安全性最明確的缺口，範圍小、風險低、回饋快。
+
+## Step 2. 抽出 query service，準備 timeline
+
+在擴充 detail 前，先避免 `PipelineExecutionService` 繼續膨脹。
+
+建議先抽：
+
+- `PipelineRunQueryService`
+
+讓：
+
+- execute / resume / rerun / stop / delete
+  - 留在 control service
+- detail / attempts assembly
+  - 走 query service
+
+## Step 3. 擴充 detail -> attempts timeline
+
+這是 observability 最直接的使用者價值。
+
+## Step 4. 加 actuator 與 metrics v1
+
+等 query model 比較穩了，再加 meter publishing，避免一邊改 query 一邊改 metrics 邊界。
+
+## Step 5. 補 K6 與文件
+
+K6 補：
+
+- delete guard
+- attempt timeline
+- actuator smoke
+
+文件補：
+
+- `docs/architecture`
+- `docs/feature`
+- `CHANGELOG`
+
+---
+
+## 非目標
+
+這一階段明確不做：
+
+- microservice split
+- Maven multi-module split
+- full DAG orchestration
+- distributed worker / remote partitioning
+- alert channel integration（Slack / Teams / email）
+- tracing platform 整合
+- 重寫整套 exception model
+
+---
+
+## 新 agent 接手時應先讀的檔案
+
+### Runtime control
 
 - `backend/src/main/java/irispipe/api/SyncPipelineAPI.java`
-  - runtime API surface
 - `backend/src/main/java/irispipe/core/service/PipelineExecutionService.java`
-  - execute / resume / rerun 與 sequence-first orchestration
 - `backend/src/main/java/irispipe/infrastructure/service/PipelineRunLifecycleService.java`
-  - runtime state projection
-- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunSnapshotService.java`
-  - snapshot create / copy / read
 - `backend/src/main/java/irispipe/batch/listener/CustomJobListener.java`
-  - Spring Batch 與 pipeline lifecycle 的橋接
+- `backend/src/main/java/irispipe/model/dto/SyncPipelineDTO.java`
+
+### Runtime persistence
+
+- `backend/src/main/java/irispipe/infrastructure/repo/PipelineRunRepo.java`
+- `backend/src/main/java/irispipe/infrastructure/repo/PipelineRunExecutionRepo.java`
+- `backend/src/main/java/irispipe/infrastructure/repo/PipelineRunJobRepo.java`
+- `backend/src/main/java/irispipe/infrastructure/repo/PipelineRunExecutionJobRepo.java`
+- `backend/src/main/java/irispipe/infrastructure/repo/PipelineRunSnapshotRepo.java`
+
+### Regression coverage
+
+- `backend/k6/run-tests.ps1`
 - `backend/k6/pipeline`
-  - runtime regression suite
+- `backend/k6/utils/test-helpers.js`
+- `backend/k6/services/sync-pipeline-api.js`
+
+### 文件基線
+
+- `backend/docs/architecture/README.md`
+- `backend/docs/architecture/core-flow.md`
+- `backend/docs/architecture/full-implementation-guide.md`
+- `backend/CHANGELOG.md`
 
 ---
 
 ## 最後結論
 
-IrisPipe 現在已經具備：
+IrisPipe 現在缺的已經不是控制面，而是營運面。
 
-- pipeline-level execute
-- pipeline-level observe
-- pipeline-level resume
-- pipeline-level rerun
-- snapshot-consistent runtime semantics
-- K6 regression protection
+因此下一階段最合理的主題不是再做新的 trigger/restart 變體，而是：
 
-所以下一個合理階段不是再往 restart 語意上堆功能，而是把 runtime control 補齊。
+- 讓 operator 看得清楚
+- 讓 operator 刪得安全
+- 讓 runtime 狀態能被健康檢查與 metrics 系統可靠地觀測
 
-目前最值得做的就是：
+也就是：
 
-- `manual stop`
+- attempt timeline
+- observability v1
+- delete in-flight guard
 
-但實作時要把它當成「pipeline control + lifecycle + Spring Batch stop propagation」來做，而不是單純的 status update endpoint。
+並且整個階段都應維持：
+
+- single app
+- clear package boundary
+- additive API evolution

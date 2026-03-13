@@ -2,38 +2,69 @@
 
 ## Current state
 
-The current implementation exposes only a lightweight observability surface:
+The current implementation exposes a lightweight but usable observability surface:
 
 - application logs
 - Spring Batch metadata
-- sync-job summary and detail APIs
-- K6 regression scripts for end-to-end verification
+- pipeline run summary and detail APIs
+- persisted runtime tables for run, execution, and job projection
+- K6 regression coverage for public runtime behavior
 
-The main job metadata endpoints are:
+The main runtime metadata endpoints are:
 
-- `GET /api/v1/sync-job?ids=...`
-- `GET /api/v1/sync-job/{jobId}`
+- `GET /api/v1/sync-pipeline?ids=...`
+- `GET /api/v1/sync-pipeline/{pipelineRunId}`
 
-These replace the older `/api/v1/sync-job/executions` wording that appeared in earlier notes.
+The control endpoints are also part of the operational surface because they change observable runtime state:
+
+- `POST /api/v1/sync-pipeline`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
 
 ## What operators can do today
 
 With the current code, an operator or external platform can:
 
-- start a job
-- fetch current status for known job ids
-- inspect per-step execution details
-- delete stored metadata when cleanup is needed
+- start a new run
+- poll latest status for known pipeline run ids
+- inspect latest per-job status and step execution detail
+- stop an in-flight run
+- resume a failed or stopped run
+- rerun a historical snapshot as a new run
+- delete lineage after cleanup is safe
 
-There is no built-in alert channel, metrics dashboard, or webhook dispatcher yet.
+This is enough for basic operational workflows and external dashboards that poll the public runtime API.
 
-## What is still future work
+## Current observability limits
 
-The following items remain roadmap work, not shipped functionality:
+The current code still does not provide:
 
-- Micrometer and Prometheus metrics for record counts, latency, and failure rate
+- Micrometer or Prometheus metrics
 - Grafana dashboards
-- Slack, Teams, email, or webhook notifications
-- SLO-based alerts and retry automation
+- webhook or chat alert dispatch
+- SLO-based alert rules
+- a public attempt-history timeline in detail responses
 
-Any future observability design should use the current metadata APIs and current listener behavior as its starting point.
+Detail responses remain latest-execution projections rather than a full historical timeline across attempts.
+
+## Operational interpretation
+
+Operators should treat the runtime API like this:
+
+- summary endpoint
+  - latest run status and timestamps
+- detail endpoint
+  - latest projected job state plus step execution detail for the latest batch execution
+- runtime tables
+  - internal source of truth for lineage and execution attempts
+- K6 suite
+  - regression protection for execute, resume, rerun, stop, and core runtime semantics
+
+## Recommended next steps
+
+Any future observability design should start from the current runtime model:
+
+1. derive metrics from `PipelineRun`, `PipelineRunExecution`, and `PipelineRunExecutionJob`
+2. keep alerts aligned with pipeline-level state transitions instead of raw Spring Batch internals
+3. add public attempt-history payloads before building a rich UI timeline
