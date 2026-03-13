@@ -1,643 +1,402 @@
-# IrisPipe 下一階段實作計畫
+# IrisPipe 下一階段計畫
 
 ## 文件目的
 
-本文件用來重新定義 IrisPipe 的 runtime 模型，目標不是立刻寫 restart API，而是先把「哪個資源代表 logical run、哪個資源代表 attempt」講清楚，避免 resume / restart / rerun / UI 歷程查詢全部混在同一層。
+這份文件不是舊版 restart 提案的延伸，而是目前實作完成後的接手文件。
 
-這份設計稿建立在目前已完成的基礎上：
+目標是讓新的對話或新的 agent 可以直接理解：
 
-- 對外 execution API 已升到 pipeline-level
-- `PipelineRun`、runtime lifecycle、K6 保護層已落地
-- stable identity 與 immutable snapshot 已補齊
+1. IrisPipe 現在的 runtime 主語是什麼
+2. 哪些能力已經完成
+3. 哪些能力故意還沒做
+4. 下一階段最合理的切入點是什麼
 
-本文件要回答的核心問題是：
+本文件以目前主線狀態為基準，對應 commit：
 
-1. `PipelineRun` 是否應同時承擔 instance 與 execution
-2. failed pipeline 的 restart / resume 應該掛在哪一層
-3. whole pipeline rerun 是否應建立新的 lineage
-4. 未來 UI 要怎麼呈現同一條 run 的多次 attempts
+- `ad35145`
+- message: `feat: add pipeline resume and rerun execution flows`
 
-## 核心結論
+---
 
-以下結論視為本版建議方案：
+## 一句話總結
 
-1. IrisPipe 對外的邊界仍然是 `pipeline`
-2. `PipelineRun` 不應再同時承擔 logical run 與 attempt
-3. 應拆成：
-   - `PipelineRun`：logical run instance / lineage
-   - `PipelineRunExecution`：單次 execution attempt
-4. 若要讓 `CHUNK` restart 的 identifying key 長期穩定，還需要一層 logical job node：
-   - `PipelineRunJob`
-   - `PipelineRunExecutionJob`
-5. snapshot 應掛在 `PipelineRun`，不是掛在 execution attempt
-6. failed pipeline 的 resume / restart：
-   - 不建立新的 `PipelineRun`
-   - 只在同一個 `PipelineRun` 下新增新的 `PipelineRunExecution`
-7. whole pipeline rerun：
-   - 建立新的 `PipelineRun`
-   - 可選擇保留 `rerun_from_pipeline_run_id` 來做 lineage 關聯
+IrisPipe 已經完成 pipeline-level 的基本 trigger 與基本觀察能力。
 
-## 為什麼現狀不夠
+目前 runtime 三種執行語意已固定：
 
-目前的 `PipelineRun` 比較像是 `logical run + latest attempt` 的合體。
+- `execute`
+  - 建立新的 `PipelineRun`
+  - 使用最新 pipeline config materialize 新 snapshot
+- `resume`
+  - 留在同一個 `PipelineRun`
+  - 建立新的 `PipelineRunExecution`
+  - 從失敗節點接續
+  - 參照的是既有 snapshot
+- `rerun`
+  - 建立新的 `PipelineRun`
+  - 重新從頭跑整條 pipeline
+  - 參照的是來源 run 的 snapshot，不是最新 pipeline config
 
-在只有 trigger / query / detail / delete 時，這個模型還能工作；但一旦要加上下面能力，就會開始失焦：
+---
 
-- failed pipeline resume
-- `JOB` replay 與 `CHUNK` restart 的 attempt history
-- whole pipeline rerun
-- UI 顯示「這次 run 曾經失敗 2 次，第 3 次才成功」
+## 目前已完成的能力
 
-如果不拆，最後只會落入這兩種都不漂亮的選項：
+## 1. 對外 runtime 邊界已提升到 pipeline
 
-- restart 覆蓋同一筆 `PipelineRun`
-  - 缺點：歷程消失
-- restart 另開新的 `PipelineRun`
-  - 缺點：`PipelineRun` 變成 attempt，不再是 logical run
+公開 API 已不再以 `job` 為主語，而是以 `PipelineRun` 為主語。
 
-所以我認為現在就該拆。
-
-## 建議 runtime 模型
-
-### 1. `Pipeline`
-
-靜態配置單位。
-
-仍由：
-
-- `iris_pipeline`
-- `iris_pipeline_job`
-- `iris_pipeline_job_connection`
-- `iris_pipeline_execution`
-- `iris_pipeline_execution_parameter`
-
-承載。
-
-### 2. `PipelineRun`
-
-`PipelineRun` 代表一次 logical run instance。
-
-它回答的是：
-
-- 哪個 pipeline 被觸發
-- 這次 run 的 immutable snapshot 是什麼
-- 這條 run 的最新 attempt 狀態是什麼
-- 這條 run 是否來自某個舊 run 的 rerun
-
-它不直接代表某一次 batch launch。
-
-### 3. `PipelineRunSnapshot`
-
-`PipelineRunSnapshot` 與 `PipelineRun` 一對一。
-
-它保存：
-
-- `snapshot_schema_version`
-- `pipeline_content_hash`
-- `materialized_job_json`
-
-後續無論 resume、restart、detail replay，都應以這份 snapshot 為基準，而不是以最新 pipeline config 為基準。
-
-### 4. `PipelineRunJob`
-
-`PipelineRunJob` 是 logical job node。
-
-它是某條 `PipelineRun` 底下按 `sequence_order` 固定存在的節點，主要用途是：
-
-- 提供穩定 job node identity
-- 作為 `CHUNK` restart 的 identifying anchor
-- 支援 UI 顯示同一條 run 的固定 pipeline graph
-
-這層不直接表示某次 attempt 的執行結果。
-
-### 5. `PipelineRunExecution`
-
-`PipelineRunExecution` 代表單次 attempt。
-
-它回答的是：
-
-- 這是第幾次 attempt
-- 這次 attempt 是 initial trigger 還是 resume
-- 這次 attempt 是否以 async 方式啟動
-- 這次 attempt 的狀態與時間區間
-
-### 6. `PipelineRunExecutionJob`
-
-`PipelineRunExecutionJob` 是某一次 attempt 中，每個 logical job node 的執行結果。
-
-它回答的是：
-
-- 這次 attempt 內某個 job node 是 `COMPLETED`、`FAILED`、`SKIPPED` 還是 `NOT_RUN`
-- 這次 attempt 對應的 Spring Batch `JobExecution` 是哪一筆
-- 如果這次真的執行了該 job，它的 `root_job_instance_id` / `last_job_execution_id` 是什麼
-
-## 模型關係
-
-```text
-Pipeline
-  └── PipelineRun (logical run)
-        ├── PipelineRunSnapshot (1:1)
-        ├── PipelineRunJob (logical nodes, sequence-first)
-        └── PipelineRunExecution (attempts)
-              └── PipelineRunExecutionJob (attempt results for each node)
-```
-
-## 資料表建議草案
-
-## Migration Plan
-
-這次 migration 不建議直接推倒重來，而是採「相容式演進」：
-
-1. 保留既有 `iris_pipeline_run`
-   - 繼續作為對外 API 的主鍵與 query anchor
-   - 先把它收斂成 logical run + latest projection
-2. 保留既有 `iris_pipeline_run_job`
-   - 先把它收斂成 logical node + latest projection
-3. 新增：
-   - `iris_pipeline_run_execution`
-   - `iris_pipeline_run_execution_job`
-4. 將 execution / execution-job 作為新的 source of truth
-5. 現有 API summary/detail 先讀 latest projection，保持 K6 與對外 contract 不變
-6. 等 resume / rerun 完整落地後，再決定是否移除 projection 欄位
-
-### V6 migration 具體步驟
-
-1. `ALTER TABLE iris_pipeline_run`
-   - 新增 `rerun_from_pipeline_run_id`
-   - 新增 `latest_execution_id`
-2. `CREATE TABLE iris_pipeline_run_execution`
-3. `CREATE TABLE iris_pipeline_run_execution_job`
-4. 將既有 `iris_pipeline_run` backfill 成一筆 `execution_no = 1` 的 `INITIAL` execution
-5. 將既有 `iris_pipeline_run_job` backfill 成該 initial execution 的 execution jobs
-6. 回填 `iris_pipeline_run.latest_execution_id`
-
-### 讀寫策略
-
-- trigger 新 run
-  - 寫 `PipelineRun`
-  - 寫 snapshot
-  - 寫 logical `PipelineRunJob`
-  - 寫 first `PipelineRunExecution`
-  - 寫 first `PipelineRunExecutionJob`
-- listener / lifecycle
-  - 先更新 `PipelineRunExecution` / `PipelineRunExecutionJob`
-  - 再同步回寫 `PipelineRun` / `PipelineRunJob` 的 latest projection
-- detail query
-  - 先抓 `PipelineRun.latest_execution_id`
-  - 再讀該 execution 底下的 execution jobs
-  - 對外仍回傳既有 latest-only detail 結構
-- delete
-  - 必須刪整條 run 底下所有 executions / execution jobs，而不是只刪 latest
-
-### `iris_pipeline_run`
-
-建議它成為 logical run 主表。
-
-最少欄位：
-
-- `id`
-- `pipeline_id`
-- `rerun_from_pipeline_run_id`
-- `latest_execution_id`
-- `latest_status`
-- `created_at`
-- `updated_at`
-
-說明：
-
-- `latest_execution_id` / `latest_status` 是為了 list query 與 UI 首屏方便，可視為 denormalized latest view
-- `requested_async` 不建議留在這層，因為 async / sync 是 attempt 級別，不是 logical run 級別
-
-### `iris_pipeline_run_snapshot`
-
-已存在，建議保留一對一設計：
-
-- `pipeline_run_id`
-- `snapshot_schema_version`
-- `pipeline_content_hash`
-- `materialized_job_json`
-- `created_at`
-
-### `iris_pipeline_run_job`
-
-建議改為 logical node 表。
-
-最少欄位：
-
-- `id`
-- `pipeline_run_id`
-- `job_sequence_order`
-- `job_name`
-- `atomic_level`
-- `created_at`
-- `updated_at`
-
-說明：
-
-- 這層不再放 attempt status
-- 這層的重點是固定 graph node 與穩定 identifying key
-
-### `iris_pipeline_run_execution`
-
-新增 attempt 表。
-
-最少欄位：
-
-- `id`
-- `pipeline_run_id`
-- `execution_no`
-- `execution_kind` (`INITIAL` / `RESUME`)
-- `requested_async`
-- `status`
-- `created_at`
-- `start_time`
-- `end_time`
-- `updated_at`
-
-### `iris_pipeline_run_execution_job`
-
-新增 attempt result 表。
-
-最少欄位：
-
-- `id`
-- `pipeline_run_execution_id`
-- `pipeline_run_job_id`
-- `status`
-- `resume_action` (`RUN` / `REPLAY` / `RESTART` / `SKIP`)
-- `root_job_instance_id`
-- `last_job_execution_id`
-- `created_at`
-- `start_time`
-- `end_time`
-- `updated_at`
-
-## 狀態語意建議
-
-### `PipelineRun.latest_status`
-
-建議由 latest execution 推導並回寫：
-
-- `STARTING`
-- `STARTED`
-- `COMPLETED`
-- `FAILED`
-- `STOPPED`
-- `ABANDONED`
-- `UNKNOWN`
-
-### `PipelineRunExecutionJob.status`
-
-除了 batch 常見狀態，建議額外引入兩個語意化狀態：
-
-- `SKIPPED`
-  - 該 job 在這次 attempt 中被故意跳過，因為前次已完成，resume 從後面接
-- `NOT_RUN`
-  - 該 job 在這次 attempt 中尚未執行就被前面節點失敗終止
-
-這兩個狀態對 UI 和 debug 都很重要。
-
-## 對外 API 語意
-
-目前對外主語仍建議只暴露 `PipelineRun`。
-
-### 本期保留
+目前 runtime API：
 
 - `POST /api/v1/sync-pipeline`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
 - `GET /api/v1/sync-pipeline?ids=...`
 - `GET /api/v1/sync-pipeline/{pipelineRunId}`
 - `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
 
-### 後續新增
-
-- `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
-  - 對 failed `PipelineRun` 建立新的 `PipelineRunExecution`
-- `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
-  - 建立新的 `PipelineRun`
-  - 新 run 可帶 `rerun_from_pipeline_run_id = {pipelineRunId}`
-
-### detail 回傳建議
-
-未來 detail 應回傳：
-
-- `PipelineRun` base info
-- latest execution summary
-- executions list
-- 每個 execution 底下的 execution jobs
-- logical pipeline graph nodes
-
-這樣 UI 才能同時滿足：
-
-- 看最新狀態
-- 看歷程
-- 看 pipeline graph
+相關入口：
 
-## 執行流程語意
+- `backend/src/main/java/irispipe/api/SyncPipelineAPI.java`
 
-### trigger new run
+## 2. runtime model 已拆成 logical run 與 execution attempt
 
-```text
-POST /sync-pipeline
-    |
-    v
-create PipelineRun
-    |
-    +--> create PipelineRunSnapshot
-    |
-    +--> create logical PipelineRunJob nodes
-    |
-    +--> create PipelineRunExecution(execution_no = 1, kind = INITIAL)
-    |
-    +--> create PipelineRunExecutionJob rows
-    |
-    +--> execute sequence-first pipeline
-```
+目前 runtime tables 已成形：
 
-### resume failed run
+- `iris_pipeline_run`
+- `iris_pipeline_run_snapshot`
+- `iris_pipeline_run_job`
+- `iris_pipeline_run_execution`
+- `iris_pipeline_run_execution_job`
 
-```text
-POST /sync-pipeline/{pipelineRunId}/resume
-    |
-    v
-load PipelineRun + Snapshot + latest failed execution
-    |
-    v
-create PipelineRunExecution(execution_no = n + 1, kind = RESUME)
-    |
-    v
-for each logical PipelineRunJob node
-    |
-    +--> if node was already completed before resume point
-    |       mark execution job = SKIPPED
-    |
-    +--> if node is the failed resume point
-    |       JOB   -> REPLAY whole job
-    |       CHUNK -> RESTART same logical node lineage
-    |
-    +--> downstream nodes execute after resume point succeeds
-```
+對應語意：
 
-### rerun whole pipeline
+- `PipelineRun`
+  - logical run
+- `PipelineRunSnapshot`
+  - immutable run snapshot
+- `PipelineRunJob`
+  - logical job node
+- `PipelineRunExecution`
+  - 某次 execution attempt
+- `PipelineRunExecutionJob`
+  - 某次 attempt 中某個 job node 的結果
 
-```text
-POST /sync-pipeline/{pipelineRunId}/rerun
-    |
-    v
-create a brand new PipelineRun
-    |
-    +--> set rerun_from_pipeline_run_id = old run
-    |
-    +--> create new snapshot from current pipeline config
-    |
-    +--> execution_no starts from 1 again
-```
+關鍵檔案：
 
-## 為什麼這樣分層比較對
+- `backend/src/main/java/irispipe/core/service/PipelineExecutionService.java`
+- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunSnapshotService.java`
+- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunLifecycleService.java`
 
-### resume 與 rerun 的本質不同
+## 3. stable identity 與 snapshot 已完成
 
-- resume
-  - 是同一條 logical run 的後續 attempts
-- rerun
-  - 是新的 logical run
+這是 resume / rerun / CHUNK restart 能成立的前提。
 
-如果這兩者都塞在同一個 `PipelineRun` 定義下，語意會混亂。
+已完成內容：
 
-### snapshot 的生命週期屬於 run，不屬於 attempt
+- execution name 先 materialize 再寫入 snapshot
+- step name 走穩定命名規則
+- `CHUNK` restart-safe identifying params 已補齊
+- rerun 改為複用來源 run 的 snapshot，而不是重新讀最新 config
 
-resume 必須沿用同一份 snapshot。
+## 4. resume 已支援 `JOB` 與 `CHUNK`
 
-如果 snapshot 掛在 execution attempt，就會讓同一條 run 的 attempts 可能讀到不同版本 config，這和 restartability 的需求相衝突。
+目前 resume 行為：
 
-### async / sync 屬於 attempt，不屬於 run
+- `JOB`
+  - replay failed job
+- `CHUNK`
+  - restart failed Spring Batch job instance
+- mixed pipeline
+  - 依 failed node 的 `atomicLevel` 決定 replay 或 restart
 
-一條 `PipelineRun` 的第一次可能是 sync trigger，第二次 resume 可能是 async。
+目前 latest execution detail 也已能正確區分：
 
-所以 `requested_async` 應該掛在 `PipelineRunExecution`，不是 `PipelineRun`。
+- `SKIPPED`
+- `NOT_RUN`
+- `FAILED`
+- `COMPLETED`
 
-### UI 需要歷程，而不是只有 latest state
+## 5. sync / async trigger 與 runtime regression 已有 K6 保護
 
-如果未來 detail 頁只看得到 latest one row：
+K6 現在已按責任分資料夾：
 
-- 使用者不知道之前失敗幾次
-- 也不知道 resume 是從哪一個 job 接起來的
-- 更看不到每次 attempt 的差異
+- `backend/k6/config`
+- `backend/k6/pipeline`
+- `backend/k6/runtime`
 
-拆成 execution attempts 之後，UI 才能有真正的 timeline。
+已覆蓋：
 
-## 沙盤推演 / 模擬校驗
+- config validation / CRUD
+- pipeline execute
+- pipeline async execute
+- pipeline resume (`JOB`)
+- pipeline resume (`CHUNK`)
+- pipeline resume (mixed)
+- pipeline async resume
+- pipeline rerun
+- pipeline async rerun
+- 既有 runtime 行為回歸
 
-以下是用新模型做的模擬校驗，目標是驗證語意是否一致。
+執行入口：
 
-### Scenario A：初次 trigger，整條 pipeline 一次成功
+- `backend/k6/run-tests.ps1`
 
-條件：
+---
 
-- pipeline 有 3 個 jobs：A / B / C
-- 第一次 trigger 即成功
+## 目前還沒完成，但屬於已知缺口
 
-推演：
+## 1. public detail 還不是完整 attempt timeline
 
-1. 建立 `PipelineRun R1`
-2. 建立 `PipelineRunSnapshot S1`
-3. 建立 logical nodes：`N-A` / `N-B` / `N-C`
-4. 建立 `PipelineRunExecution E1`
-5. 建立 `E1-A` / `E1-B` / `E1-C`
-6. 三個 execution jobs 都完成
-7. `R1.latest_execution_id = E1`
-8. `R1.latest_status = COMPLETED`
+現在 detail 回傳的是 latest execution projection，不是完整 execution history。
 
-校驗結果：
+這代表：
 
-- query list 看 `R1`，語意清楚
-- detail 同時可以看到 latest execution 與 graph nodes
-- 不需要額外 lineage 關聯
+- UI 可以看最新狀態
+- UI 可以看最新 job node 結果
+- 但 UI 還不能直接從同一個 detail payload 拿到完整 attempts timeline
 
-結論：成立。
+這不是模型做不到，而是 API 還沒展開。
 
-### Scenario B：初次 trigger 失敗於 job B，之後做 `JOB` resume
+## 2. manual stop 還沒實作
 
-條件：
+目前 model 已經有：
 
-- pipeline 有 A / B / C
-- `atomicLevel(B) = JOB`
-- E1 在 B fail
+- `STOPPING`
+- `STOPPED`
 
-推演：
+但還沒有：
 
-1. `R2` 建立成功
-2. `E1-A = COMPLETED`
-3. `E1-B = FAILED`
-4. `E1-C = NOT_RUN`
-5. 使用者呼叫 `/resume`
-6. 建立 `E2`
-7. `E2-A = SKIPPED`
-8. `E2-B = REPLAY`
-9. `E2-C = RUN`
-10. 若成功，`R2.latest_status = COMPLETED`
+- public stop API
+- stop request propagation
+- lifecycle stop 專用寫入路徑
+- orchestration stop guard
 
-校驗結果：
+## 3. delete 對 in-flight run 沒有明確保護
 
-- 同一條 logical run 有完整歷程
-- resume 沒有覆寫 E1
-- UI 可清楚呈現「第 2 次 attempt 從 B 接起來」
+現在 delete 著重的是 lineage cleanup。
 
-結論：成立。
+對於：
 
-### Scenario C：初次 trigger 失敗於 job B，之後做 `CHUNK` restart
+- `STARTING`
+- `STARTED`
+- 未來的 `STOPPING`
 
-條件：
+是否允許刪除，還沒有清楚 guard。
 
-- pipeline 有 A / B / C
-- `atomicLevel(B) = CHUNK`
-- B 在第一個 attempt 已部分 commit
+這件事最好跟 manual stop 一起定義。
 
-推演：
+---
 
-1. `R3` 建立成功
-2. `E1-A = COMPLETED`
-3. `E1-B = FAILED`
-4. `E1-C = NOT_RUN`
-5. `/resume` 建立 `E2`
-6. `E2-A = SKIPPED`
-7. `E2-B = RESTART`
-8. `E2-B` 使用 logical node identity 作為 restart anchor
-9. `E2-C = RUN`
+## 關於 manual stop 的判斷
 
-校驗重點：
+## 結論
 
-- resume 不該依賴最新 pipeline config
-- restart identity 不該依賴 attempt row id
-- identity 應綁在 logical node 上
+manual stop 是目前最合理的下一個 runtime control surface。
 
-結論：
+但它不是「只要停下就好、剩下都不用處理」的那種工作。
 
-- 若只有 `PipelineRun + PipelineRunExecution` 而沒有 logical node，identity 會變得彆扭
-- 若有 `PipelineRunJob`，則成立
+它的複雜度不是大工程，但也不是只補 controller endpoint 就結束。
 
-### Scenario D：failed run 之後，使用者想整條 rerun
+## 為什麼它是下一步
 
-條件：
+因為目前已經有：
 
-- `R4` 失敗
-- 使用者不想 resume，只想重跑整條
+- pipeline-level trigger
+- pipeline-level observe
+- pipeline-level resume
+- pipeline-level rerun
 
-推演：
+控制面剩下最明顯的缺口就是：
 
-1. 建立新的 `R5`
-2. `R5.rerun_from_pipeline_run_id = R4`
-3. `R5` 取得新的 snapshot
-4. `R5.E1` 從 job A 開始執行
+- stop in-flight pipeline run
 
-校驗結果：
+## 為什麼不能只停當前 job 就結束
 
-- `R4` 與 `R5` 的歷程不會混在一起
-- UI 可以顯示「R5 是由 R4 rerun 而來」
-- 若 pipeline config 在 rerun 前有更新，`R5` 也會有新的 snapshot
+因為 IrisPipe 是 sequence-first pipeline orchestration。
 
-結論：成立。
+如果只停掉當前 Spring Batch job，但沒有處理 pipeline 自己的流程控制，會有幾個問題：
 
-### Scenario E：同一條 run 連續 resume 兩次才成功
+1. stop request 可能剛好落在兩個 job 之間
+   - 當前 job 已結束
+   - 下一個 job 可能已經被 `executePipelineRun(...)` 啟動
 
-條件：
+2. lifecycle 需要正確投影
+   - `PipelineRun` / `PipelineRunExecution` 要進入 `STOPPING` / `STOPPED`
+   - 當前 `PipelineRunExecutionJob` 要正確落停
+   - downstream nodes 要標成 `NOT_RUN`
 
-- `R6`
-- `E1` fail at B
-- `E2` fail at C
-- `E3` 才成功
+3. resume 之後要能銜接
+   - 現在 `resume` 的 terminal 判定其實已包含 `STOPPED`
+   - 也就是說 manual stop 一旦做對，後續 resume 語意可以自然銜接
 
-推演：
+## 因此 manual stop 至少需要這四塊
 
-- `R6` 底下有三筆 executions
-- latest state 只看 `E3`
-- 歷史 timeline 仍保留 `E1`、`E2`
+### A. public API
 
-校驗結果：
+建議新增：
 
-- UI 可以呈現完整 attempt timeline
-- debug 時可回頭看每次 fail 發生在哪個 node
-- 不需要用自關聯 chain 去拼 history
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
 
-結論：成立。
+先不要用 `DELETE` 取代 stop，也不要把 stop 混進 query/detail。
 
-### Scenario F：delete 行為
+### B. stop request persistence / lifecycle path
 
-條件：
+需要有明確的 lifecycle 寫入方法，例如：
 
-- 使用者刪除某條 `PipelineRun`
+- `markStopRequested(...)`
+- `markStopped(...)`
 
-推演：
+目前 `PipelineRunLifecycleService` 還沒有 stop 專用方法。
 
-刪除順序建議：
+### C. 真正的 Spring Batch stop propagation
 
-1. 刪 `PipelineRunExecutionJob`
-2. 刪 `PipelineRunExecution`
-3. 刪 `PipelineRunJob`
-4. 刪 `PipelineRunSnapshot`
-5. 針對需要清理的 latest / historical Spring Batch metadata 做刪除
-6. 刪 `PipelineRun`
+不能只改 IrisPipe 自己的表狀態，還要真的讓目前正在跑的 job 停下來。
 
-校驗結果：
+這通常代表至少要補一種機制：
 
-- 若只刪 latest execution metadata，不夠
-- 因為同一條 run 可能已經有多次 attempts
+- `JobOperator.stop(...)`
+- 或等效的 Spring Batch stop 控制方式
 
-結論：
+目前程式裡尚未接入這一層。
 
-- delete 邏輯必須升級成對整條 run lineage 做清理
+### D. sequence-first orchestration guard
 
-## 設計判斷
+`executePipelineRun(...)` 需要在至少兩個時點檢查 stop：
 
-### 是否要把 `PipelineRun` 拆成 instance / execution
+- 啟動下一個 job 之前
+- 當前 job 結束回來之後
 
-我的結論是：要，而且應該在 Phase A 之前拆。
+否則 stop request 會有 race condition。
 
-### 是否還要再多一層 logical job node
+---
 
-我的結論也是：要。
+## 建議的下一階段實作順序
 
-原因不是為了 UI 好看而已，而是因為：
+## Step 1. 先做 manual stop，範圍只收斂到 pipeline-level control
 
-- `CHUNK` restart 需要穩定 identifying anchor
-- execution attempt row 本身不適合承擔 long-lived node identity
-- `JOB` replay 與 `CHUNK` restart 的 batch lineage 行為不同，不能直接把 `root_job_instance_id` 視為 logical node identity
+建議先支援：
 
-## 建議落地順序
+- stop async execute
+- stop async resume
 
-### Step 1. 先重構 runtime model
+理由：
 
-- `PipelineRun` 收斂為 logical run
-- 新增 `PipelineRunExecution`
-- 新增 `PipelineRunExecutionJob`
-- 現有 `PipelineRunJob` 改為 logical node
+- sync request 本身會卡住呼叫端
+- 真實操作 stop 幾乎一定是第二個 client / UI 發出
+- async flow 比較符合 stop 的實際使用場景
 
-### Step 2. 調整 detail query 與 delete semantics
+sync flow 不需要禁止 stop，只是 K6 第一階段不必先把它當主驗證場景。
 
-- detail 改成 latest + history
-- delete 改成刪整條 run lineage
+## Step 2. lifecycle service 補 stop 專用方法
 
-### Step 3. 再做 `JOB` pipeline resume
+建議新增：
 
-- 用同一條 `PipelineRun`
-- 建立新的 `PipelineRunExecution`
-- 從 failed node 做 replay
+- `markStopRequested(...)`
+- `markExecutionJobsNotRun(...)` 可重用於 downstream
+- `markStopped(...)`
 
-### Step 4. 最後做 `CHUNK` pipeline restart
+目標是讓 status transition 明確，不要把 stop 混進 failed path。
 
-- 使用 same `PipelineRun`
-- same snapshot
-- stable logical node identity
+## Step 3. orchestration 補 stop guard
 
-## 目前我對方向的結論
+主要調整點會在：
 
-如果只站在「眼前能不能把 resume 做出來」的角度，現在其實已經可以直接寫。
+- `PipelineExecutionService.executePipelineRun(...)`
 
-但如果站在產品模型、UI 歷程、未來 mixed pipeline 與真正 restartability 的角度，我會建議先把 `PipelineRun` 從 `instance + execution` 拆開，再往下做 resume。
+至少要能做到：
 
-這一步不是過度設計，而是在避免之後：
+- stop request 到達後，不再啟動下一個 job
+- 若 stop 成功，剩餘 execution jobs 標 `NOT_RUN`
 
-- restart 做完後又要重構整張表
-- UI 要 timeline 時發現資料模型不夠
-- `CHUNK` restart 的 identifying key 再改一次
+## Step 4. 接入 Spring Batch stop 能力
 
-我認為這一版模型比較穩。
+這一段要先決定技術路線，再開始寫 code：
+
+- 是否引入 `JobOperator`
+- 是否需要額外保存 currently running job execution reference
+- stop request 到達時，要怎麼定位該停哪一筆 Spring Batch job execution
+
+這是 manual stop 真正需要先拍板的地方。
+
+## Step 5. K6 保護 stop flow
+
+建議至少補：
+
+- `pipeline stop async execute`
+- `pipeline stop async resume`
+
+驗證點：
+
+- stop API 成功
+- run status 進入 `STOPPED`
+- 當前 job 停止
+- downstream jobs = `NOT_RUN`
+- stop 後可以再 `resume`
+
+---
+
+## 目前不建議先做的事
+
+## 1. 不建議先把 detail 擴成完整 timeline API
+
+這是合理的後續工作，但不是最急迫。
+
+原因：
+
+- 內部 execution history 已經存在
+- 產品控制面現在更缺的是 stop，不是 timeline
+
+## 2. 不建議先做 full DAG
+
+現況是 sequence-first，這是有意識的選擇。
+
+manual stop 也會比較容易先在 sequence-first 模型內做對。
+
+## 3. 不建議讓 rerun 改回讀最新 config
+
+這點已明確拍板：
+
+- rerun = replay source snapshot
+- execute = read latest config
+
+不要再把兩者語意混回去。
+
+---
+
+## 目前接手時最重要的檔案
+
+若要直接開始做下一步，先看這些檔案：
+
+- `backend/src/main/java/irispipe/api/SyncPipelineAPI.java`
+  - runtime API surface
+- `backend/src/main/java/irispipe/core/service/PipelineExecutionService.java`
+  - execute / resume / rerun 與 sequence-first orchestration
+- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunLifecycleService.java`
+  - runtime state projection
+- `backend/src/main/java/irispipe/infrastructure/service/PipelineRunSnapshotService.java`
+  - snapshot create / copy / read
+- `backend/src/main/java/irispipe/batch/listener/CustomJobListener.java`
+  - Spring Batch 與 pipeline lifecycle 的橋接
+- `backend/k6/pipeline`
+  - runtime regression suite
+
+---
+
+## 最後結論
+
+IrisPipe 現在已經具備：
+
+- pipeline-level execute
+- pipeline-level observe
+- pipeline-level resume
+- pipeline-level rerun
+- snapshot-consistent runtime semantics
+- K6 regression protection
+
+所以下一個合理階段不是再往 restart 語意上堆功能，而是把 runtime control 補齊。
+
+目前最值得做的就是：
+
+- `manual stop`
+
+但實作時要把它當成「pipeline control + lifecycle + Spring Batch stop propagation」來做，而不是單純的 status update endpoint。

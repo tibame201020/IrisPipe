@@ -1,52 +1,97 @@
-﻿# IrisPipe Backend Architecture
+# IrisPipe Backend Architecture
 
 IrisPipe is a Spring Boot and Spring Batch based data synchronization engine.
-Jobs are defined in JSON or YAML files, loaded from the configured job directory, and executed as Spring Batch jobs that read from a source database and write to a destination database.
+Static configuration is managed as a `Pipeline`. Runtime execution is managed as a `PipelineRun`.
 
-## Runtime highlights
+## Current Architecture Summary
 
-- Spring Boot 3.x
-- Spring Batch 5.x
-- Java 21
-- Spring JDBC plus `NamedParameterJdbcTemplate`
-- Spring Data JPA for watermark storage and batch metadata cleanup support
-- Flyway for application schema setup
-- H2 as the local default database
-- K6 for end-to-end regression coverage
+- `Pipeline` is the external configuration boundary.
+- `PipelineRun` is the external runtime boundary.
+- `Job` remains an internal Spring Batch boundary used to execute one atomic node inside a pipeline.
+- Runtime execution is snapshot-driven:
+  - `execute` uses the latest persisted pipeline config and creates a new snapshot.
+  - `resume` uses the failed run's existing snapshot.
+  - `rerun` creates a brand new run but clones the source run's snapshot.
+- Runtime state is sequence-first and persisted explicitly through run, run-job, execution, and execution-job tables.
 
-## Current implementation notes
+## Runtime Surface
 
-- Sync config management lives under `/api/v1/sync-config`.
-- Job execution and metadata queries live under `/api/v1/sync-job`.
-- Watermarks are stored in the application database through `ExecutionRecordService`.
-- `atomicLevel` is part of config validation, but the current runtime still uses the job-scoped transaction listener for every job.
-- The documentation in this folder and `../feature/` is the maintained source of truth for architecture notes.
+### Configuration APIs
 
-## Package map
+- `GET /api/v1/sync-config`
+- `POST /api/v1/sync-config`
+- `PUT /api/v1/sync-config/{id}`
+- `PATCH /api/v1/sync-config/{id}`
+- `DELETE /api/v1/sync-config/{id}`
+
+These APIs manage the static `Pipeline` definition stored in normalized tables.
+
+### Runtime APIs
+
+- `POST /api/v1/sync-pipeline`
+  - Trigger a brand new `PipelineRun`
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
+  - Continue a failed or stopped run from its failed node using the run snapshot
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
+  - Create a brand new run that replays the source run snapshot
+- `GET /api/v1/sync-pipeline?ids=...`
+  - Query pipeline run summaries
+- `GET /api/v1/sync-pipeline/{pipelineRunId}`
+  - Query latest detail for a pipeline run
+- `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
+  - Delete a pipeline run lineage and related Spring Batch metadata
+
+## Data Model Layers
+
+### Static Configuration
+
+- `iris_pipeline`
+- `iris_pipeline_job`
+- `iris_pipeline_job_connection`
+- `iris_pipeline_execution`
+- `iris_pipeline_execution_parameter`
+
+### Runtime Execution
+
+- `iris_pipeline_run`
+- `iris_pipeline_run_snapshot`
+- `iris_pipeline_run_job`
+- `iris_pipeline_run_execution`
+- `iris_pipeline_run_execution_job`
+
+## Package Map
 
 | Package | Responsibility |
 | --- | --- |
-| `api` | REST endpoints for config management, job execution, metadata lookup, and test support |
-| `batch` | Spring Batch listeners, builders, tasklets, writers, metadata entities, and repositories |
-| `config` | Application beans such as object mappers |
-| `context` | Source and destination database context objects used during execution |
-| `data` | Job config model, enums, summaries, and watermark records |
-| `dto` | API request and response payloads |
-| `error` | Exception types and global exception handling |
-| `factory` | Runtime assembly of job contexts and Spring Batch jobs |
-| `provider` | JSON and YAML file loading |
-| `repo` | Application-level repositories such as watermark storage |
-| `service` | Config loading, execution orchestration, watermark persistence, and metadata deletion |
-| `utility` | SQL helper utilities |
+| `api` | REST endpoints for config and pipeline runtime |
+| `batch` | Spring Batch listeners, step strategies, tasklets, metadata repositories |
+| `core` | Runtime orchestration, batch assembly, shared runtime utilities |
+| `infrastructure` | JPA entities/repos, file providers, persistence services, exception handling |
+| `model` | Domain models, enums, DTOs, records |
 
-## Document map
+## Current Runtime Notes
+
+- `PipelineRunDetailInfo` currently exposes the latest execution projection, not a full attempt timeline.
+- `JOB` and `CHUNK` are both supported in resume flow:
+  - `JOB` resumes by replaying the whole failed job.
+  - `CHUNK` resumes by restarting the failed Spring Batch job instance.
+- K6 coverage now protects:
+  - config CRUD/validation
+  - sync pipeline execute
+  - async trigger
+  - `JOB` resume
+  - `CHUNK` resume
+  - mixed resume
+  - sync rerun
+  - async rerun
+- Manual stop is not implemented yet. `STOPPING` and `STOPPED` statuses exist in the model, but there is no public stop API or runtime stop controller path yet.
+
+## Document Map
 
 | Document | Focus |
 | --- | --- |
-| [core-flow.md](./core-flow.md) | End-to-end execution flow and step behavior |
-| [config-model.md](./config-model.md) | JSON and YAML configuration model |
-| [error-handling.md](./error-handling.md) | Exception mapping and API error shapes |
-| [full-implementation-guide.md](./full-implementation-guide.md) | Code-first, end-to-end walkthrough of the current backend behavior |
-| [../feature/01-core-transaction-and-restart.md](../feature/01-core-transaction-and-restart.md) | Current transaction semantics and the restart gap |
-| [../feature/03-scheduling-and-orchestration.md](../feature/03-scheduling-and-orchestration.md) | Current orchestration surface and future scheduler work |
-| [../feature/05-observability-and-alerting.md](../feature/05-observability-and-alerting.md) | Current observability surface and future monitoring work |
+| [config-model.md](./config-model.md) | Static config tables and runtime execution tables |
+| [core-flow.md](./core-flow.md) | Execute, resume, rerun, observe, delete runtime flows |
+| [design-patterns.md](./design-patterns.md) | Snapshot, identity, projection, and transaction patterns |
+| [error-handling.md](./error-handling.md) | Current exception mapping and failure behaviors |
+| [full-implementation-guide.md](./full-implementation-guide.md) | Code-oriented walkthrough of the current implementation |
