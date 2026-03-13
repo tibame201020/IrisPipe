@@ -1,18 +1,19 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
+import { singleRunOptions } from '../utils/test-options.js';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryRowsOrFail,
     queryScalarOrFail,
-    runJobAndGetSummary,
-} from './utils/test-helpers.js';
+    runPipelineAndGetSummary,
+} from '../utils/test-helpers.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/job-success.yml');
+const yamlContent = open('../testfiles/job-success.yml');
 const fileName = 'job-success.yml';
 const filePath = configPathFor(fileName);
 
@@ -31,7 +32,7 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runJobAndGetSummary(data.pipelineId);
+    const { summary } = runPipelineAndGetSummary(data.pipelineId);
     const destCount = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM test_dest', 'CNT', 'dest row count');
     const watermarkRows = queryRowsOrFail(
         "SELECT last_value FROM iris_watermark_record WHERE execution_name = 'k6_insert'",
@@ -48,6 +49,8 @@ export default function (data) {
         'Watermark advanced successfully': (rows) =>
             rows.length === 1 && rows[0].LAST_VALUE === '2023-01-01 12:00:00.0',
     });
+
+    deletePipelineRunOrFail(summary.id, 'success pipeline run delete');
 }
 
 export function teardown(data) {

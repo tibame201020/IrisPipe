@@ -1,0 +1,42 @@
+- jobName: k6_pipeline_resume_job_a
+  executions:
+    - type: INSERT
+      name: k6_pipeline_resume_insert_a
+      sql: select * from test_resume_source_a order by id asc
+      destTable: test_resume_dest
+  setting:
+    fetchSize: 100
+    batchSize: 100
+    atomicLevel: JOB
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+- jobName: k6_pipeline_resume_job_b
+  executions:
+    - type: INSERT
+      name: k6_pipeline_resume_insert_b
+      sql: select * from test_resume_source_b order by id asc
+      destTable: test_resume_dest
+  setting:
+    fetchSize: 100
+    batchSize: 100
+    atomicLevel: JOB
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"

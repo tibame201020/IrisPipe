@@ -1,6 +1,7 @@
 package irispipe.core.factory;
 
 import irispipe.batch.tasklet.ExecuteTasklet;
+import irispipe.core.utility.BatchIdentityHelper;
 import irispipe.infrastructure.context.SyncJobContext;
 import irispipe.model.ExecutionStep;
 import org.springframework.batch.core.Step;
@@ -20,7 +21,7 @@ public class ExecuteStepStrategy implements ExecutionStepStrategy {
         String jobName = syncJobContext.syncJob().getJobName();
         ExecuteTasklet executeTasklet = new ExecuteTasklet(syncJobContext, execution);
 
-        return new StepBuilder(jobName + "_ execute_step", jobRepository)
+        return new StepBuilder(BatchIdentityHelper.renderStepName(execution.name(), "execute_step"), jobRepository)
                 .tasklet(executeTasklet, syncJobContext.destContext().getTransactionManager())
                 .build();
     }

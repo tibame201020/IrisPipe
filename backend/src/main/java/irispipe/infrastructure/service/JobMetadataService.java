@@ -70,7 +70,11 @@ public class JobMetadataService {
 
                 batchJobExecutionContextRepo.deleteById(jobExecutionId);
                 batchJobExecutionRepo.deleteById(jobExecutionId);
-                batchJobInstanceRepo.deleteById(jobInstanceId);
+                batchJobExecutionRepo.flush();
+
+                if (batchJobExecutionRepo.countByJobInstanceJobInstanceId(jobInstanceId) == 0) {
+                        batchJobInstanceRepo.deleteById(jobInstanceId);
+                }
         }
 
 }

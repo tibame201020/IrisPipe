@@ -1,12 +1,13 @@
 import { check } from 'k6';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryScalarOrFail,
-    runJobAndGetSummary,
-} from './utils/test-helpers.js';
+    runPipelineAndGetSummary,
+} from '../utils/test-helpers.js';
 
 export const options = {
     thresholds: {
@@ -14,7 +15,7 @@ export const options = {
     },
 };
 
-const yamlContent = open('./testfiles/job-watermark.yml');
+const yamlContent = open('../testfiles/job-watermark.yml');
 const fileName = 'job-watermark.yml';
 const filePath = configPathFor(fileName);
 
@@ -35,7 +36,7 @@ export function setup() {
 
 export default function (data) {
     // Run 1: Should sync 2 rows
-    const { summary: summary1 } = runJobAndGetSummary(data.pipelineId);
+    const { summary: summary1 } = runPipelineAndGetSummary(data.pipelineId);
     const count1 = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM dest_watermark', 'CNT', 'dest count run 1');
     const watermark1 = queryScalarOrFail(
         "SELECT last_value FROM iris_watermark_record WHERE execution_name = 'k6_watermark_test'",
@@ -59,7 +60,7 @@ export default function (data) {
     ]);
 
     // Run 2: Should sync only the new row (incremental)
-    const { summary: summary2 } = runJobAndGetSummary(data.pipelineId);
+    const { summary: summary2 } = runPipelineAndGetSummary(data.pipelineId);
     const count2 = queryScalarOrFail('SELECT COUNT(*) AS CNT FROM dest_watermark', 'CNT', 'dest count run 2');
     const watermark2 = queryScalarOrFail(
         "SELECT last_value FROM iris_watermark_record WHERE execution_name = 'k6_watermark_test'",
@@ -76,6 +77,9 @@ export default function (data) {
     check(watermark2, {
         'Run 2 watermark is 12:00:00': (w) => w.includes('12:00:00'),
     });
+
+    deletePipelineRunOrFail(summary1.id, 'system variable pipeline run delete 1');
+    deletePipelineRunOrFail(summary2.id, 'system variable pipeline run delete 2');
 }
 
 export function teardown(data) {

@@ -15,6 +15,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import irispipe.infrastructure.context.SyncJobContext;
+import irispipe.infrastructure.service.PipelineRunLifecycleService;
 import irispipe.model.StepExecutionRecord;
 import irispipe.model.SummaryInfo;
 import irispipe.infrastructure.service.ExecutionRecordService;
@@ -25,26 +26,32 @@ public class CustomJobListener implements JobExecutionListener {
     private final boolean openJobTransaction;
     private final SyncJobContext syncJobContext;
     private final ExecutionRecordService executionRecordService;
+    private final PipelineRunLifecycleService pipelineRunLifecycleService;
     private TransactionStatus transactionStatus;
 
     public CustomJobListener(PlatformTransactionManager transactionManager, boolean openJobTransaction,
-            SyncJobContext syncJobContext, ExecutionRecordService executionRecordService) {
+            SyncJobContext syncJobContext, ExecutionRecordService executionRecordService,
+            PipelineRunLifecycleService pipelineRunLifecycleService) {
         this.transactionManager = transactionManager;
         this.openJobTransaction = openJobTransaction;
         this.syncJobContext = syncJobContext;
         this.executionRecordService = executionRecordService;
+        this.pipelineRunLifecycleService = pipelineRunLifecycleService;
     }
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
         logger.info("start job {}", jobExecution);
         if (!this.openJobTransaction) {
+            pipelineRunLifecycleService.markJobStarted(jobExecution);
             return;
         }
         DefaultTransactionDefinition defaultTransactionDefinition = new DefaultTransactionDefinition();
         defaultTransactionDefinition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
         this.transactionStatus = this.transactionManager.getTransaction(defaultTransactionDefinition);
         logger.info("atomic transaction started for job {}", jobExecution.getJobInstance().getJobName());
+
+        pipelineRunLifecycleService.markJobStarted(jobExecution);
     }
 
     @Override
@@ -84,6 +91,12 @@ public class CustomJobListener implements JobExecutionListener {
         long mills = duration.toMillis() % 1000;
 
         logger.info("[job] duration: {}h {}m {}s {}ms", hours, minutes, seconds, mills);
+
+        pipelineRunLifecycleService.markJobFinished(jobExecution);
+
+        if (!this.openJobTransaction) {
+            this.syncJobContext.close();
+        }
     }
 
     private void handleAtomicJobTransaction(JobExecution jobExecution) {

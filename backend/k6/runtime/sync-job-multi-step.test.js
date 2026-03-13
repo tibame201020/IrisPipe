@@ -1,17 +1,18 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
+import { singleRunOptions } from '../utils/test-options.js';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryRowsOrFail,
-    runJobAndGetSummary,
-} from './utils/test-helpers.js';
+    runPipelineAndGetSummary,
+} from '../utils/test-helpers.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/job-multi-step.yml');
+const yamlContent = open('../testfiles/job-multi-step.yml');
 const fileName = 'job-multi-step.yml';
 const filePath = configPathFor(fileName);
 
@@ -30,7 +31,7 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runJobAndGetSummary(data.pipelineId);
+    const { summary } = runPipelineAndGetSummary(data.pipelineId);
     const rows = queryRowsOrFail('SELECT * FROM test_dest ORDER BY id ASC', 'multi-step result query');
 
     check(summary, {
@@ -42,6 +43,8 @@ export default function (data) {
         'Row 2 corresponds to ID 3 with UPDATED suffix': (items) =>
             items.length > 1 && items[1].NAME === 'C_UPDATED' && items[1].ID === 3,
     });
+
+    deletePipelineRunOrFail(summary.id, 'multi-step pipeline run delete');
 }
 
 export function teardown(data) {

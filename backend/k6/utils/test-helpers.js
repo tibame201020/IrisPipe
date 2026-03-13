@@ -1,12 +1,14 @@
 import { check, sleep } from 'k6';
 
-import { createConfig, deleteConfig, listConfigs } from '../services/sync-config-api.js';
+import { createConfig, deleteConfig, listConfigs, updateConfig } from '../services/sync-config-api.js';
 import {
-    deleteJobMetadata,
-    executeJob,
-    getJobDetail,
-    getJobSummariesByIds,
-} from '../services/sync-job-api.js';
+    deletePipelineRun,
+    executePipeline,
+    getPipelineRunDetail,
+    getPipelineRunsByIds,
+    rerunPipeline,
+    resumePipeline,
+} from '../services/sync-pipeline-api.js';
 import { executeStatement, querySql } from '../services/test-support-api.js';
 
 const configPathPrefix = __ENV.IRISPIPE_CONFIG_PREFIX || `${Date.now()}`;
@@ -50,6 +52,20 @@ export function ensureConfigUploaded(filePath, fileName, fileContent) {
     return payload;
 }
 
+export function ensureConfigUpdated(pipelineId, filePath, fileName, fileContent) {
+    const response = updateConfig(pipelineId, filePath, fileName, fileContent);
+    const updated = check(response, {
+        [`update ${fileName} succeeded`]: (res) => res.status === 200,
+    });
+    const payload = jsonOrFallback(response, {});
+
+    if (!updated) {
+        throw new Error(`Failed to update config ${fileName}: ${responseSummary(response)}`);
+    }
+
+    return payload;
+}
+
 export function ensureConfigDeleted(pipelineId) {
     if (!pipelineId) {
         return;
@@ -77,29 +93,81 @@ export function executeStatementsOrFail(statements) {
         });
 }
 
-export function runJobAndGetSummary(pipelineId, useAsyncLaucher = false) {
-    const response = executeJob(pipelineId, useAsyncLaucher);
+export function runPipelineAndGetSummary(pipelineId, useAsyncLaucher = false) {
+    const response = executePipeline(pipelineId, useAsyncLaucher);
     const requestAccepted = check(response, {
-        'sync-job request succeeded': (res) => res.status === 200,
+        'sync-pipeline request succeeded': (res) => res.status === 200,
     });
 
     if (!requestAccepted) {
-        throw new Error(`Failed to execute job with pipeline ${pipelineId}: ${responseSummary(response)}`);
+        throw new Error(`Failed to execute pipeline ${pipelineId}: ${responseSummary(response)}`);
     }
 
-    const summaries = jsonOrFallback(response, []);
-    const hasSingleSummary = check(summaries, {
-        'job execution returned one summary': (items) => Array.isArray(items) && items.length === 1,
+    const summary = jsonOrFallback(response, {});
+    const hasPipelineRunId = check(summary, {
+        'pipeline execution returned a pipeline run summary': (item) =>
+            item && Number.isInteger(item.id) && item.id > 0,
     });
 
-    if (!hasSingleSummary) {
-        throw new Error(`Unexpected job execution payload for pipeline ${pipelineId}: ${response.body}`);
+    if (!hasPipelineRunId) {
+        throw new Error(`Unexpected pipeline execution payload for pipeline ${pipelineId}: ${response.body}`);
     }
 
     return {
         response,
-        summary: summaries[0],
-        summaries,
+        summary,
+    };
+}
+
+export function resumePipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false) {
+    const response = resumePipeline(pipelineRunId, useAsyncLaucher);
+    const requestAccepted = check(response, {
+        'sync-pipeline resume request succeeded': (res) => res.status === 200,
+    });
+
+    if (!requestAccepted) {
+        throw new Error(`Failed to resume pipeline run ${pipelineRunId}: ${responseSummary(response)}`);
+    }
+
+    const summary = jsonOrFallback(response, {});
+    const hasPipelineRunId = check(summary, {
+        'pipeline resume returned a pipeline run summary': (item) =>
+            item && Number.isInteger(item.id) && item.id > 0,
+    });
+
+    if (!hasPipelineRunId) {
+        throw new Error(`Unexpected pipeline resume payload for run ${pipelineRunId}: ${response.body}`);
+    }
+
+    return {
+        response,
+        summary,
+    };
+}
+
+export function rerunPipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false) {
+    const response = rerunPipeline(pipelineRunId, useAsyncLaucher);
+    const requestAccepted = check(response, {
+        'sync-pipeline rerun request succeeded': (res) => res.status === 200,
+    });
+
+    if (!requestAccepted) {
+        throw new Error(`Failed to rerun pipeline run ${pipelineRunId}: ${responseSummary(response)}`);
+    }
+
+    const summary = jsonOrFallback(response, {});
+    const hasPipelineRunId = check(summary, {
+        'pipeline rerun returned a pipeline run summary': (item) =>
+            item && Number.isInteger(item.id) && item.id > 0,
+    });
+
+    if (!hasPipelineRunId) {
+        throw new Error(`Unexpected pipeline rerun payload for run ${pipelineRunId}: ${response.body}`);
+    }
+
+    return {
+        response,
+        summary,
     };
 }
 
@@ -117,48 +185,48 @@ export function findConfigByPath(filePath) {
     return pipelines.find((pipeline) => pipeline.path === filePath) || null;
 }
 
-export function getJobSummariesOrFail(jobIds, label = 'job summary query') {
-    const response = getJobSummariesByIds(jobIds);
+export function getPipelineRunsOrFail(pipelineRunIds, label = 'pipeline summary query') {
+    const response = getPipelineRunsByIds(pipelineRunIds);
     const queried = check(response, {
         [`${label} succeeded`]: (res) => res.status === 200,
     });
 
     if (!queried) {
-        throw new Error(`Failed to fetch job summaries for ${jobIds}: ${responseSummary(response)}`);
+        throw new Error(`Failed to fetch pipeline summaries for ${pipelineRunIds}: ${responseSummary(response)}`);
     }
 
     return jsonOrFallback(response, []);
 }
 
-export function getJobDetailOrFail(jobId, label = 'job detail query') {
-    const response = getJobDetail(jobId);
+export function getPipelineRunDetailOrFail(pipelineRunId, label = 'pipeline detail query') {
+    const response = getPipelineRunDetail(pipelineRunId);
     const queried = check(response, {
         [`${label} succeeded`]: (res) => res.status === 200,
     });
 
     if (!queried) {
-        throw new Error(`Failed to fetch job detail for ${jobId}: ${responseSummary(response)}`);
+        throw new Error(`Failed to fetch pipeline detail for ${pipelineRunId}: ${responseSummary(response)}`);
     }
 
     return jsonOrFallback(response, {});
 }
 
-export function deleteJobMetadataOrFail(jobId, label = 'job metadata delete') {
-    const response = deleteJobMetadata(jobId);
+export function deletePipelineRunOrFail(pipelineRunId, label = 'pipeline run delete') {
+    const response = deletePipelineRun(pipelineRunId);
     const deleted = check(response, {
         [`${label} succeeded`]: (res) => res.status === 204,
     });
 
     if (!deleted) {
-        throw new Error(`Failed to delete job metadata for ${jobId}: ${responseSummary(response)}`);
+        throw new Error(`Failed to delete pipeline run ${pipelineRunId}: ${responseSummary(response)}`);
     }
 }
 
-export function waitForJobCompletion(jobId, expectedStatus = 'COMPLETED', timeoutSeconds = 10, intervalSeconds = 0.2) {
+export function waitForPipelineCompletion(pipelineRunId, expectedStatus = 'COMPLETED', timeoutSeconds = 10, intervalSeconds = 0.2) {
     const maxAttempts = Math.ceil(timeoutSeconds / intervalSeconds);
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        const summaries = getJobSummariesOrFail([jobId], `poll job ${jobId}`);
+        const summaries = getPipelineRunsOrFail([pipelineRunId], `poll pipeline ${pipelineRunId}`);
         if (summaries.length > 0 && summaries[0].status === expectedStatus) {
             return summaries[0];
         }
@@ -166,7 +234,7 @@ export function waitForJobCompletion(jobId, expectedStatus = 'COMPLETED', timeou
         sleep(intervalSeconds);
     }
 
-    throw new Error(`Timed out waiting for job ${jobId} to reach status ${expectedStatus}`);
+    throw new Error(`Timed out waiting for pipeline ${pipelineRunId} to reach status ${expectedStatus}`);
 }
 
 export function queryRowsOrFail(sql, label = 'query') {

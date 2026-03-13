@@ -1,17 +1,18 @@
 import { check } from 'k6';
-import { singleRunOptions } from './utils/test-options.js';
+import { singleRunOptions } from '../utils/test-options.js';
 import {
     configPathFor,
+    deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     queryScalarOrFail,
-    runJobAndGetSummary,
-} from './utils/test-helpers.js';
+    runPipelineAndGetSummary,
+} from '../utils/test-helpers.js';
 
 export const options = singleRunOptions;
 
-const yamlContent = open('./testfiles/job-no-watermark.yml');
+const yamlContent = open('../testfiles/job-no-watermark.yml');
 const fileName = 'job-no-watermark.yml';
 const filePath = configPathFor(fileName);
 
@@ -30,7 +31,7 @@ export function setup() {
 }
 
 export default function (data) {
-    const { summary } = runJobAndGetSummary(data.pipelineId);
+    const { summary } = runPipelineAndGetSummary(data.pipelineId);
     const destCount = queryScalarOrFail(
         'SELECT COUNT(*) AS CNT FROM test_dest',
         'CNT',
@@ -51,6 +52,8 @@ export default function (data) {
     check(watermarkCount, {
         'No Watermark inserted': (count) => count === 0,
     });
+
+    deletePipelineRunOrFail(summary.id, 'no-watermark pipeline run delete');
 }
 
 export function teardown(data) {
