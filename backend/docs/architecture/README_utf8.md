@@ -34,6 +34,8 @@ These APIs manage the static `Pipeline` definition stored in normalized tables.
   - Continue a failed or stopped run from its failed node using the run snapshot
 - `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
   - Create a brand new run that replays the source run snapshot
+- `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
+  - Cooperatively stop an in-flight run and keep the run lineage resumable
 - `GET /api/v1/sync-pipeline?ids=...`
   - Query pipeline run summaries
 - `GET /api/v1/sync-pipeline/{pipelineRunId}`
@@ -75,6 +77,11 @@ These APIs manage the static `Pipeline` definition stored in normalized tables.
 - `JOB` and `CHUNK` are both supported in resume flow:
   - `JOB` resumes by replaying the whole failed job.
   - `CHUNK` resumes by restarting the failed Spring Batch job instance.
+- `stop` is now part of the public pipeline control surface:
+  - stop requests first project `STOPPING`
+  - active Spring Batch work is stopped cooperatively through `JobOperator.stop(...)`
+  - downstream pending nodes in the same attempt become `NOT_RUN`
+  - resume can continue a stopped run from a failed/stopped node or from the first `NOT_RUN` node when stop lands between jobs
 - K6 coverage now protects:
   - config CRUD/validation
   - sync pipeline execute
@@ -82,16 +89,21 @@ These APIs manage the static `Pipeline` definition stored in normalized tables.
   - `JOB` resume
   - `CHUNK` resume
   - mixed resume
+  - sync stop (`JOB`, `CHUNK`, mixed)
+  - async stop (`JOB`, `CHUNK`, mixed)
   - sync rerun
   - async rerun
-- Manual stop is not implemented yet. `STOPPING` and `STOPPED` statuses exist in the model, but there is no public stop API or runtime stop controller path yet.
+  - composite async control flow (`execute -> stop -> resume -> rerun -> stop -> resume`)
+- Remaining documented gaps:
+  - latest detail is still a projection, not a full attempt timeline
+  - delete still lacks an explicit in-flight guard for `STARTING` / `STARTED` / `STOPPING`
 
 ## Document Map
 
 | Document | Focus |
 | --- | --- |
 | [config-model.md](./config-model.md) | Static config tables and runtime execution tables |
-| [core-flow.md](./core-flow.md) | Execute, resume, rerun, observe, delete runtime flows |
-| [design-patterns.md](./design-patterns.md) | Snapshot, identity, projection, and transaction patterns |
-| [error-handling.md](./error-handling.md) | Current exception mapping and failure behaviors |
+| [core-flow.md](./core-flow.md) | Execute, resume, rerun, stop, observe, and delete runtime flows |
+| [design-patterns.md](./design-patterns.md) | Snapshot, identity, projection, transaction, and stop-control patterns |
+| [error-handling.md](./error-handling.md) | Current exception mapping, validation, and runtime failure behaviors |
 | [full-implementation-guide.md](./full-implementation-guide.md) | Code-oriented walkthrough of the current implementation |

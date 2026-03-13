@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 10: Pipeline Stop Control Loop] - 2026-03-13
+
+### Added
+- **Pipeline Stop API**: Added `POST /api/v1/sync-pipeline/{pipelineRunId}/stop` so callers can cooperatively stop an in-flight `PipelineRun` without deleting lineage.
+- **Stop Regression Coverage**: Added K6 coverage for sync and async stop flows across `JOB`, `CHUNK`, and mixed pipelines, plus one composite async control-flow scenario that chains `execute -> stop -> resume -> rerun -> stop -> resume`.
+
+### Changed
+- **Stop-Aware Runtime Lifecycle**: `PipelineRunLifecycleService` now projects `STOPPING` and `STOPPED` onto the latest run and execution state, and finalizes downstream pending nodes as `NOT_RUN`.
+- **Stop Propagation and Guarding**: `PipelineExecutionService` now propagates stop requests into Spring Batch through `JobOperator.stop(...)` and guards the sequence-first orchestration loop so the next job does not start after a stop request lands.
+- **Resume After Stop Semantics**: Resume now treats stopped attempts as resumable terminal state and can continue from the first `NOT_RUN` node when a stop lands between jobs instead of inside a failed node.
+- **Listener Race Handling**: `CustomJobListener.beforeJob(...)` now respects an already-requested stop and prevents a newly created batch job from re-opening the attempt as normal `STARTED` work.
+
+### Verified
+- **Control Surface Closure**: Verified `execute`, `resume`, `rerun`, and `stop` as one consistent pipeline control loop through `run-tests.ps1` regression coverage and a dedicated composite async K6 scenario.
+- **Composite Scenario**: Verified mixed `JOB -> CHUNK -> JOB`, multi-job, and multi-step control flow with snapshot-preserving rerun semantics even after the persisted pipeline config is updated.
+
+---
+
 ## [Phase 9: Pipeline Rerun Snapshot Replay] - 2026-03-13
 
 ### Added

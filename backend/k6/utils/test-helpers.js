@@ -8,6 +8,7 @@ import {
     getPipelineRunsByIds,
     rerunPipeline,
     resumePipeline,
+    stopPipeline,
 } from '../services/sync-pipeline-api.js';
 import { executeStatement, querySql } from '../services/test-support-api.js';
 
@@ -171,6 +172,32 @@ export function rerunPipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = f
     };
 }
 
+export function stopPipelineRunAndGetSummary(pipelineRunId) {
+    const response = stopPipeline(pipelineRunId);
+    const requestAccepted = check(response, {
+        'sync-pipeline stop request succeeded': (res) => res.status === 200,
+    });
+
+    if (!requestAccepted) {
+        throw new Error(`Failed to stop pipeline run ${pipelineRunId}: ${responseSummary(response)}`);
+    }
+
+    const summary = jsonOrFallback(response, {});
+    const hasPipelineRunId = check(summary, {
+        'pipeline stop returned a pipeline run summary': (item) =>
+            item && Number.isInteger(item.id) && item.id > 0,
+    });
+
+    if (!hasPipelineRunId) {
+        throw new Error(`Unexpected pipeline stop payload for run ${pipelineRunId}: ${response.body}`);
+    }
+
+    return {
+        response,
+        summary,
+    };
+}
+
 export function findConfigByPath(filePath) {
     const response = listConfigs();
     const listed = check(response, {
@@ -223,18 +250,22 @@ export function deletePipelineRunOrFail(pipelineRunId, label = 'pipeline run del
 }
 
 export function waitForPipelineCompletion(pipelineRunId, expectedStatus = 'COMPLETED', timeoutSeconds = 10, intervalSeconds = 0.2) {
+    return waitForPipelineStatus(pipelineRunId, [expectedStatus], timeoutSeconds, intervalSeconds);
+}
+
+export function waitForPipelineStatus(pipelineRunId, expectedStatuses, timeoutSeconds = 10, intervalSeconds = 0.2) {
     const maxAttempts = Math.ceil(timeoutSeconds / intervalSeconds);
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const summaries = getPipelineRunsOrFail([pipelineRunId], `poll pipeline ${pipelineRunId}`);
-        if (summaries.length > 0 && summaries[0].status === expectedStatus) {
+        if (summaries.length > 0 && expectedStatuses.includes(summaries[0].status)) {
             return summaries[0];
         }
 
         sleep(intervalSeconds);
     }
 
-    throw new Error(`Timed out waiting for pipeline ${pipelineRunId} to reach status ${expectedStatus}`);
+    throw new Error(`Timed out waiting for pipeline ${pipelineRunId} to reach one of ${expectedStatuses.join(', ')}`);
 }
 
 export function queryRowsOrFail(sql, label = 'query') {

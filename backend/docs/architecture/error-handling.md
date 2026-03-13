@@ -28,14 +28,15 @@ For pipeline execution:
 
 The API usually returns a pipeline run summary or detail, and the caller observes failure through runtime status instead of a transport-level exception.
 
-## 3. Resume and Rerun Validation
+## 3. Resume, Rerun, and Stop Validation
 
 Current validation examples:
 
 - resume requires a terminal failed/stopped run
 - resume requires an existing snapshot
-- resume requires a failed node to exist
+- resume requires either a failed/stopped node or, for a stopped-between-jobs attempt, a first `NOT_RUN` node to continue from
 - rerun requires the source run to exist
+- stop requires the latest execution to be `STARTING`, `STARTED`, or `STOPPING`
 
 These failures surface through `IllegalArgumentException` or `ResourceNotFoundException`, both mapped to `400`.
 
@@ -64,14 +65,21 @@ When a job fails or launch logic throws:
 
 This makes latest summary/detail readable even when the batch execution failed mid-pipeline.
 
-## 6. Current Gaps
+## 6. Cooperative Stop Semantics
 
-### Manual stop
+Stop does not try to kill application threads or half-open JDBC work.
+It requests a cooperative stop and callers observe the final state by polling summary/detail:
 
-The model contains `STOPPING` and `STOPPED`, but there is no public stop API yet.
-Until stop is implemented, those statuses can exist only as internal future-facing states.
+- request accepted -> latest attempt becomes `STOPPING`
+- active batch execution is asked to stop through Spring Batch
+- final runtime state becomes `STOPPED`
+- downstream pending nodes in the stopped attempt become `NOT_RUN`
+
+This keeps stop behavior consistent with `JOB` rollback semantics and `CHUNK` partial-commit semantics.
+
+## 7. Current Gaps
 
 ### In-flight delete guard
 
 Delete currently focuses on lineage cleanup.
-A dedicated guard for deleting a `STARTING`, `STARTED`, or future `STOPPING` run should be considered together with manual stop.
+A dedicated guard for deleting a `STARTING`, `STARTED`, or `STOPPING` run is still missing.

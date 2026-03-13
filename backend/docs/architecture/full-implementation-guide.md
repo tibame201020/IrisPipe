@@ -85,12 +85,12 @@ Resume works on a failed or stopped run.
 
 1. load the existing `PipelineRun`
 2. load the run snapshot
-3. load the latest failed execution
-4. find the first failed run job
+3. load the latest failed or stopped execution
+4. find the first failed or stopped run job, or the first `NOT_RUN` node when stop landed between jobs
 5. create a new `PipelineRunExecution`
 6. create new execution-job rows
 7. mark upstream completed nodes as `SKIPPED`
-8. continue from the failed node
+8. continue from the stopped or failed point
 
 Per-node strategy:
 
@@ -117,7 +117,26 @@ Important semantic rule:
 
 This keeps rerun closer to CI/CD replay semantics than to a new deployment.
 
-## 7. Lifecycle and Observability
+## 7. Stop Control
+
+Manual stop is now part of the public pipeline runtime surface.
+
+Current flow:
+
+1. `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
+2. load the latest `PipelineRunExecution`
+3. mark the execution as `STOPPING`
+4. locate the active Spring Batch `JobExecution`
+5. request stop through `JobOperator.stop(...)`
+6. let listener-driven lifecycle updates converge to `STOPPED`
+7. mark downstream pending nodes as `NOT_RUN`
+
+Two implementation details matter:
+
+- stop is cooperative, not a force-kill
+- orchestration checks stop state both before launching the next job and immediately after the current job returns
+
+## 8. Lifecycle and Observability
 
 ### Listener ownership
 
@@ -125,6 +144,7 @@ This keeps rerun closer to CI/CD replay semantics than to a new deployment.
 
 - `beforeJob`
   - marks job started
+  - respects an already requested stop before reopening normal in-flight status
 - `afterJob`
   - persists watermark records when appropriate
   - marks job finished
@@ -145,7 +165,7 @@ This keeps rerun closer to CI/CD replay semantics than to a new deployment.
 
 Current detail is intentionally simple and does not yet expose the full attempt history list.
 
-## 8. Current K6 Protection
+## 9. Current K6 Protection
 
 The K6 suite is now organized by concern:
 
@@ -160,23 +180,15 @@ Protected runtime cases include:
 - `JOB` resume
 - `CHUNK` resume
 - mixed resume
+- sync stop (`JOB`, `CHUNK`, mixed)
+- async stop (`JOB`, `CHUNK`, mixed)
 - sync rerun
 - async rerun
+- composite async control flow covering `execute -> stop -> resume -> rerun -> stop -> resume`
 
 This means the public pipeline runtime contract is already under regression protection while internal restart mechanics continue evolving.
 
-## 9. Current Gaps and Near-Term Work
-
-### Manual stop
-
-Manual stop is the next obvious runtime control surface, but it is not a zero-cost endpoint.
-
-The implementation still needs:
-
-- a stop API on `PipelineRun`
-- runtime stop propagation into the active Spring Batch job
-- sequence-first orchestration guards so the next job does not start after a stop request
-- lifecycle projection to `STOPPING`, `STOPPED`, and downstream `NOT_RUN`
+## 10. Current Gaps and Near-Term Work
 
 ### Attempt history in public detail
 
@@ -186,4 +198,4 @@ The public detail response still exposes only the latest projection.
 ### In-flight delete rules
 
 Delete already cleans the whole run lineage.
-It should eventually be paired with an explicit rule for in-flight runs once manual stop exists.
+It should eventually be paired with an explicit guard for `STARTING`, `STARTED`, or `STOPPING` runs.

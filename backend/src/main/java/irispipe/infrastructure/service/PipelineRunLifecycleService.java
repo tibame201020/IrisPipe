@@ -51,7 +51,9 @@ public class PipelineRunLifecycleService {
         PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
 
-        pipelineRunExecution.setStatus(PipelineRunStatus.STARTED);
+        if (!isStopStatus(pipelineRunExecution.getStatus())) {
+            pipelineRunExecution.setStatus(PipelineRunStatus.STARTED);
+        }
         pipelineRunExecution.setStartTime(pipelineRunExecution.getStartTime() == null ? startTime : pipelineRunExecution.getStartTime());
         pipelineRunExecution.setUpdatedAt(now);
         pipelineRunExecutionRepo.save(pipelineRunExecution);
@@ -68,6 +70,16 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isStopRequested(JobExecution jobExecution) {
+        return isStopRequested(getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.id"));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isStopRequested(Long pipelineRunExecutionId) {
+        return isStopStatus(getPipelineRunExecution(pipelineRunExecutionId).getStatus());
     }
 
     @Transactional
@@ -113,8 +125,14 @@ public class PipelineRunLifecycleService {
         boolean allCompleted = pipelineRunExecutionJobs.stream()
                 .allMatch(executionJob -> isSuccessfulTerminalStatus(executionJob.getStatus()));
 
-        pipelineRunExecution.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
-        pipelineRunExecution.setEndTime(allCompleted ? now : null);
+        if (pipelineRunExecution.getStatus() == PipelineRunStatus.STOPPED) {
+            pipelineRunExecution.setEndTime(pipelineRunExecution.getEndTime() == null ? now : pipelineRunExecution.getEndTime());
+        } else if (pipelineRunExecution.getStatus() == PipelineRunStatus.STOPPING && !allCompleted) {
+            pipelineRunExecution.setEndTime(null);
+        } else {
+            pipelineRunExecution.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
+            pipelineRunExecution.setEndTime(allCompleted ? now : null);
+        }
         pipelineRunExecution.setUpdatedAt(now);
         pipelineRunExecutionRepo.save(pipelineRunExecution);
 
@@ -148,6 +166,42 @@ public class PipelineRunLifecycleService {
         }
         pipelineRunExecution.setStatus(PipelineRunStatus.FAILED);
         pipelineRunExecution.setEndTime(now);
+        pipelineRunExecution.setUpdatedAt(now);
+        pipelineRunExecutionRepo.save(pipelineRunExecution);
+
+        syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
+        pipelineRunRepo.save(pipelineRun);
+    }
+
+    @Transactional
+    public void markStopRequested(Long pipelineRunId, Long pipelineRunExecutionId) {
+        LocalDateTime now = LocalDateTime.now();
+        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+
+        if (!isTerminalStatus(pipelineRunExecution.getStatus())) {
+            pipelineRunExecution.setStatus(PipelineRunStatus.STOPPING);
+            pipelineRunExecution.setUpdatedAt(now);
+            pipelineRunExecutionRepo.save(pipelineRunExecution);
+        }
+
+        pipelineRun.setLatestExecutionId(pipelineRunExecution.getId());
+        pipelineRun.setRequestedAsync(pipelineRunExecution.getRequestedAsync());
+        pipelineRun.setStatus(isTerminalStatus(pipelineRun.getStatus()) ? pipelineRun.getStatus() : PipelineRunStatus.STOPPING);
+        pipelineRun.setStartTime(pipelineRunExecution.getStartTime());
+        pipelineRun.setEndTime(null);
+        pipelineRun.setUpdatedAt(now);
+        pipelineRunRepo.save(pipelineRun);
+    }
+
+    @Transactional
+    public void markStopped(Long pipelineRunId, Long pipelineRunExecutionId) {
+        LocalDateTime now = LocalDateTime.now();
+        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+
+        pipelineRunExecution.setStatus(PipelineRunStatus.STOPPED);
+        pipelineRunExecution.setEndTime(pipelineRunExecution.getEndTime() == null ? now : pipelineRunExecution.getEndTime());
         pipelineRunExecution.setUpdatedAt(now);
         pipelineRunExecutionRepo.save(pipelineRunExecution);
 
@@ -236,9 +290,22 @@ public class PipelineRunLifecycleService {
                 || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
     }
 
+    private boolean isTerminalStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED
+                || pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || pipelineRunStatus == PipelineRunStatus.ABANDONED
+                || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
+    }
+
     private boolean isSuccessfulTerminalStatus(PipelineRunStatus pipelineRunStatus) {
         return pipelineRunStatus == PipelineRunStatus.COMPLETED
                 || pipelineRunStatus == PipelineRunStatus.SKIPPED;
+    }
+
+    private boolean isStopStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.STOPPING
+                || pipelineRunStatus == PipelineRunStatus.STOPPED;
     }
 
     private Long getRequiredLong(JobParameters jobParameters, String key) {

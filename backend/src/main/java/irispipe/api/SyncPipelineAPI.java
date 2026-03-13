@@ -50,6 +50,11 @@ public class SyncPipelineAPI {
                 pipelineRerunRequest == null ? null : pipelineRerunRequest.useAsyncLauncher());
     }
 
+    @PostMapping("/{pipelineRunId}/stop")
+    public SyncPipelineDTO.PipelineRunSummaryInfo stopPipeline(@PathVariable("pipelineRunId") Long pipelineRunId) {
+        return pipelineExecutionService.stop(pipelineRunId);
+    }
+
     @GetMapping
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunsByIds(@RequestParam("ids") List<Long> ids) {
         return pipelineExecutionService.getPipelineRunSummaries(ids);

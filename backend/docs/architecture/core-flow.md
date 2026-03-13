@@ -59,7 +59,27 @@ graph TD
 Rerun is a brand new logical run.
 It replays the source run snapshot and does not use the latest pipeline config.
 
-## 4. Summary and Detail Flow
+## 4. Stop Flow
+
+```mermaid
+graph TD
+    A["POST /api/v1/sync-pipeline/{pipelineRunId}/stop"] --> B["load PipelineRun + latest PipelineRunExecution"]
+    B --> C["validate latest execution is STARTING / STARTED / STOPPING"]
+    C --> D["mark PipelineRunExecution as STOPPING"]
+    D --> E{"running JobExecution exists?"}
+    E -->|yes| F["JobOperator.stop(jobExecutionId)"]
+    E -->|no| G["mark pending execution jobs as NOT_RUN"]
+    F --> H["CustomJobListener + PipelineRunLifecycleService"]
+    G --> I["mark PipelineRunExecution as STOPPED"]
+    H --> J["sequence-first guard prevents next job launch"]
+    J --> K["finalize pending downstream nodes as NOT_RUN"]
+    K --> I
+```
+
+Stop is cooperative, not force-kill.
+If stop lands between jobs, the execution can move directly from `STOPPING` to `STOPPED` with downstream nodes marked as `NOT_RUN`.
+
+## 5. Summary and Detail Flow
 
 ### Summary
 
@@ -81,7 +101,7 @@ It replays the source run snapshot and does not use the latest pipeline config.
 
 Current detail is latest-attempt oriented, not a full attempt history payload.
 
-## 5. Delete Flow
+## 6. Delete Flow
 
 `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
 
@@ -98,12 +118,13 @@ Current delete behavior:
 
 Delete is lineage-aware for the whole run, not only the latest projection.
 
-## 6. Lifecycle Ownership
+## 7. Lifecycle Ownership
 
 Runtime status writes are listener-driven:
 
 - `CustomJobListener.beforeJob`
   - marks job started
+  - respects already-requested stop before opening normal in-flight work
 - `CustomJobListener.afterJob`
   - marks job finished
 - `PipelineRunLifecycleService`
@@ -112,19 +133,7 @@ Runtime status writes are listener-driven:
 
 This keeps sync and async trigger paths on the same lifecycle path.
 
-## 7. Current Gap: Manual Stop
+## 8. Remaining Gaps
 
-Manual stop is not implemented yet.
-
-What exists already:
-
-- `STOPPING` and `STOPPED` statuses in the runtime model
-- listener-driven lifecycle updates
-- sequence-first orchestration
-
-What is still missing:
-
-- public stop API
-- stop request propagation into the running Spring Batch job
-- between-jobs stop guard in pipeline orchestration
-- downstream `NOT_RUN` projection after a successful stop
+- Public detail still exposes only the latest execution projection, not the full attempt timeline.
+- Delete is lineage-aware, but it still lacks an explicit in-flight guard for `STARTING`, `STARTED`, or `STOPPING` runs.

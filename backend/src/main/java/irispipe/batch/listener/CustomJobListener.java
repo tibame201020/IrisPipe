@@ -42,6 +42,9 @@ public class CustomJobListener implements JobExecutionListener {
     @Override
     public void beforeJob(JobExecution jobExecution) {
         logger.info("start job {}", jobExecution);
+        if (pipelineRunLifecycleService.isStopRequested(jobExecution)) {
+            jobExecution.setStatus(BatchStatus.STOPPING);
+        }
         if (!this.openJobTransaction) {
             pipelineRunLifecycleService.markJobStarted(jobExecution);
             return;

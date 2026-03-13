@@ -43,3 +43,9 @@ export function rerunPipeline(pipelineRunId, useAsyncLaucher = false) {
 export function deletePipelineRun(pipelineRunId) {
     return http.del(buildApiUrl(`/sync-pipeline/${pipelineRunId}`));
 }
+
+export function stopPipeline(pipelineRunId) {
+    return http.post(buildApiUrl(`/sync-pipeline/${pipelineRunId}/stop`), null, {
+        headers: getJsonHeaders(),
+    });
+}

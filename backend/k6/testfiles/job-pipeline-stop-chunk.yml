@@ -1,0 +1,42 @@
+- jobName: k6_pipeline_stop_chunk_job_a
+  executions:
+    - type: INSERT
+      name: k6_pipeline_stop_chunk_insert_a
+      sql: select * from test_stop_chunk_source_a order by id asc
+      destTable: test_stop_chunk_dest_a
+  setting:
+    fetchSize: 1000
+    batchSize: 1000
+    atomicLevel: CHUNK
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+- jobName: k6_pipeline_stop_chunk_job_b
+  executions:
+    - type: INSERT
+      name: k6_pipeline_stop_chunk_insert_b
+      sql: select * from test_stop_chunk_source_b order by id asc
+      destTable: test_stop_chunk_dest_b
+  setting:
+    fetchSize: 100
+    batchSize: 100
+    atomicLevel: CHUNK
+  database:
+    source:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"
+    dest:
+      driver: org.h2.Driver
+      url: jdbc:h2:./h2data/data
+      username: sa
+      password: "sa"

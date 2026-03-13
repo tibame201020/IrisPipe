@@ -1,6 +1,7 @@
 package irispipe.core.service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,7 +15,10 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.launch.JobExecutionNotRunningException;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.launch.NoSuchJobExecutionException;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +54,7 @@ public class PipelineExecutionService {
     private final JobLauncher jobLauncher;
     private final TaskExecutor pipelineTaskExecutor;
     private final JobExplorer jobExplorer;
+    private final JobOperator jobOperator;
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineRunRepo pipelineRunRepo;
     private final PipelineRunExecutionRepo pipelineRunExecutionRepo;
@@ -66,6 +71,7 @@ public class PipelineExecutionService {
     public PipelineExecutionService(JobLauncher jobLauncher,
             TaskExecutor pipelineTaskExecutor,
             JobExplorer jobExplorer,
+            JobOperator jobOperator,
             PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineRunRepo pipelineRunRepo,
             PipelineRunExecutionRepo pipelineRunExecutionRepo,
@@ -81,6 +87,7 @@ public class PipelineExecutionService {
         this.jobLauncher = jobLauncher;
         this.pipelineTaskExecutor = pipelineTaskExecutor;
         this.jobExplorer = jobExplorer;
+        this.jobOperator = jobOperator;
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
@@ -158,7 +165,11 @@ public class PipelineExecutionService {
         validatePipelineRunTopology(pipelineRunId, snapshotSyncJobs, pipelineRunJobs);
 
         Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId = getExecutionJobsByRunJobId(latestExecution.getId());
-        int resumeJobSequence = findResumeJobSequence(pipelineRunId, pipelineRunJobs, latestExecutionJobsByRunJobId);
+        int resumeJobSequence = findResumeJobSequence(
+                pipelineRunId,
+                latestExecution,
+                pipelineRunJobs,
+                latestExecutionJobsByRunJobId);
         validateResumeStrategy(pipelineRunId, pipelineRunJobs.get(resumeJobSequence));
 
         PipelineRunExecution pipelineRunExecution = createPipelineRunExecution(
@@ -193,10 +204,42 @@ public class PipelineExecutionService {
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
     }
 
+    public SyncPipelineDTO.PipelineRunSummaryInfo stop(Long pipelineRunId) {
+        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineRun.getPipelineId());
+        PipelineRunExecution latestExecution = getLatestExecution(pipelineRun);
+        validateStoppablePipelineRun(pipelineRunId, latestExecution);
+
+        pipelineRunLifecycleService.markStopRequested(pipelineRunId, latestExecution.getId());
+
+        Long runningBatchExecutionId = findRunningBatchExecutionId(pipelineRunId, latestExecution.getId());
+        if (runningBatchExecutionId == null) {
+            markPendingExecutionJobsNotRun(latestExecution.getId());
+            pipelineRunLifecycleService.markStopped(pipelineRunId, latestExecution.getId());
+        } else {
+            try {
+                jobOperator.stop(runningBatchExecutionId);
+            } catch (NoSuchJobExecutionException | JobExecutionNotRunningException e) {
+                logger.warn("pipeline run {} stop target {} was no longer running: {}",
+                        pipelineRunId,
+                        runningBatchExecutionId,
+                        e.getMessage());
+                markPendingExecutionJobsNotRun(latestExecution.getId());
+                pipelineRunLifecycleService.markStopped(pipelineRunId, latestExecution.getId());
+            }
+        }
+
+        return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
+    }
+
     private void executePipelineRun(Long pipelineId, List<SyncJobDefinition> syncJobs,
             PipelineRunExecution pipelineRunExecution, List<PipelineRunJob> pipelineRunJobs,
             List<PipelineRunExecutionJob> pipelineRunExecutionJobs, int startJobSequence) {
         for (int jobSequence = startJobSequence; jobSequence < syncJobs.size(); jobSequence++) {
+            if (finalizeStopIfRequested(pipelineRunExecution.getId())) {
+                return;
+            }
+
             SyncJobDefinition syncJob = syncJobs.get(jobSequence);
             PipelineRunJob pipelineRunJob = pipelineRunJobs.get(jobSequence);
             PipelineRunExecutionJob pipelineRunExecutionJob = pipelineRunExecutionJobs.get(jobSequence);
@@ -215,6 +258,10 @@ public class PipelineExecutionService {
 
                 JobExecution jobExecution = jobLauncher.run(job, jobParameters);
                 closeSyncJobContext = false;
+
+                if (finalizeStopIfRequested(pipelineRunExecution.getId())) {
+                    return;
+                }
 
                 if (!BatchStatus.COMPLETED.equals(jobExecution.getStatus())) {
                     markRemainingJobsNotRun(pipelineRunExecutionJobs, jobSequence);
@@ -454,6 +501,26 @@ public class PipelineExecutionService {
         pipelineRunLifecycleService.markExecutionJobsNotRun(remainingExecutionJobIds);
     }
 
+    private void markPendingExecutionJobsNotRun(Long pipelineRunExecutionId) {
+        List<Long> pendingExecutionJobIds = pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(pipelineRunExecutionId)
+                .stream()
+                .filter(pipelineRunExecutionJob -> PipelineRunStatus.PENDING.equals(pipelineRunExecutionJob.getStatus()))
+                .map(PipelineRunExecutionJob::getId)
+                .toList();
+        pipelineRunLifecycleService.markExecutionJobsNotRun(pendingExecutionJobIds);
+    }
+
+    private boolean finalizeStopIfRequested(Long pipelineRunExecutionId) {
+        PipelineRunExecution latestExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        if (!isStopState(latestExecution.getStatus())) {
+            return false;
+        }
+
+        markPendingExecutionJobsNotRun(pipelineRunExecutionId);
+        pipelineRunLifecycleService.markStopped(latestExecution.getPipelineRunId(), pipelineRunExecutionId);
+        return true;
+    }
+
     private void validateResumablePipelineRun(Long pipelineRunId, PipelineRunExecution latestExecution) {
         if (latestExecution == null) {
             throw new IllegalArgumentException("Pipeline run has no execution to resume: " + pipelineRunId);
@@ -470,13 +537,23 @@ public class PipelineExecutionService {
         }
     }
 
-    private int findResumeJobSequence(Long pipelineRunId, List<PipelineRunJob> pipelineRunJobs,
+    private int findResumeJobSequence(Long pipelineRunId, PipelineRunExecution latestExecution, List<PipelineRunJob> pipelineRunJobs,
             Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId) {
+        Integer firstNotRunJobSequence = null;
         for (int jobSequence = 0; jobSequence < pipelineRunJobs.size(); jobSequence++) {
             PipelineRunExecutionJob executionJob = latestExecutionJobsByRunJobId.get(pipelineRunJobs.get(jobSequence).getId());
             if (executionJob != null && isTerminalFailure(executionJob.getStatus())) {
                 return jobSequence;
             }
+            if (firstNotRunJobSequence == null
+                    && executionJob != null
+                    && PipelineRunStatus.NOT_RUN.equals(executionJob.getStatus())) {
+                firstNotRunJobSequence = jobSequence;
+            }
+        }
+
+        if (PipelineRunStatus.STOPPED.equals(latestExecution.getStatus()) && firstNotRunJobSequence != null) {
+            return firstNotRunJobSequence;
         }
 
         throw new IllegalArgumentException("Pipeline run has no failed job to resume: " + pipelineRunId);
@@ -504,6 +581,20 @@ public class PipelineExecutionService {
                 .orElse(null);
     }
 
+    private PipelineRunExecution getPipelineRunExecution(Long pipelineRunExecutionId) {
+        return pipelineRunExecutionRepo.findById(pipelineRunExecutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("pipeline run execution", "Pipeline run execution not found"));
+    }
+
+    private void validateStoppablePipelineRun(Long pipelineRunId, PipelineRunExecution latestExecution) {
+        if (latestExecution == null) {
+            throw new IllegalArgumentException("Pipeline run has no execution to stop: " + pipelineRunId);
+        }
+        if (!isStoppableStatus(latestExecution.getStatus())) {
+            throw new IllegalArgumentException("Only in-flight pipeline runs can be stopped: " + pipelineRunId);
+        }
+    }
+
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
         return pipelineDefinitionRepo.findById(pipelineId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
@@ -516,10 +607,48 @@ public class PipelineExecutionService {
                         executionJob -> executionJob));
     }
 
+    private Long findRunningBatchExecutionId(Long pipelineRunId, Long pipelineRunExecutionId) {
+        Long currentExecutionId = pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(pipelineRunExecutionId).stream()
+                .filter(pipelineRunExecutionJob -> PipelineRunStatus.STARTED.equals(pipelineRunExecutionJob.getStatus()))
+                .map(PipelineRunExecutionJob::getLastJobExecutionId)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        if (currentExecutionId != null) {
+            return currentExecutionId;
+        }
+
+        return pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId).stream()
+                .map(PipelineRunJob::getJobName)
+                .flatMap(jobName -> jobExplorer.findRunningJobExecutions(jobName).stream())
+                .filter(jobExecution -> matchesPipelineExecution(jobExecution, pipelineRunId, pipelineRunExecutionId))
+                .map(JobExecution::getId)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+    }
+
+    private boolean matchesPipelineExecution(JobExecution jobExecution, Long pipelineRunId, Long pipelineRunExecutionId) {
+        Long jobPipelineRunId = jobExecution.getJobParameters().getLong("pipeline.run.id");
+        Long jobPipelineRunExecutionId = jobExecution.getJobParameters().getLong("pipeline.run.execution.id");
+        return Objects.equals(pipelineRunId, jobPipelineRunId)
+                && Objects.equals(pipelineRunExecutionId, jobPipelineRunExecutionId);
+    }
+
     private boolean isTerminalFailure(PipelineRunStatus pipelineRunStatus) {
         return pipelineRunStatus == PipelineRunStatus.FAILED
                 || pipelineRunStatus == PipelineRunStatus.STOPPED
                 || pipelineRunStatus == PipelineRunStatus.ABANDONED
                 || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
+    }
+
+    private boolean isStoppableStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.STARTING
+                || pipelineRunStatus == PipelineRunStatus.STARTED
+                || pipelineRunStatus == PipelineRunStatus.STOPPING;
+    }
+
+    private boolean isStopState(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.STOPPING
+                || pipelineRunStatus == PipelineRunStatus.STOPPED;
     }
 }

@@ -86,13 +86,23 @@ The pattern is:
 
 This keeps sync and async trigger behavior consistent.
 
-## 8. Current Missing Pattern: Stop Control
+## 8. Cooperative Stop Control
 
-The runtime model already contains `STOPPING` and `STOPPED`, but stop control is not implemented yet.
+Stop is now modeled as a cooperative control path instead of a destructive cancel.
 
-A correct stop design should combine:
+The pattern combines:
 
 - a public pipeline stop command
-- actual Spring Batch stop propagation
+- lifecycle projection to `STOPPING`
+- Spring Batch stop propagation through `JobOperator.stop(...)`
 - sequence-first guards to prevent the next job from starting after a stop request
-- lifecycle projection for `STOPPING`, `STOPPED`, and downstream `NOT_RUN`
+- lifecycle projection for final `STOPPED` state and downstream `NOT_RUN`
+
+This keeps stop compatible with the existing runtime model:
+
+- `execute` creates a new run
+- `stop` interrupts the current attempt without deleting lineage
+- `resume` continues the same run from the stopped point
+- `rerun` still creates a new run from a copied snapshot
+
+If stop lands between jobs, resume can continue from the first `NOT_RUN` node rather than requiring a failed node record.
