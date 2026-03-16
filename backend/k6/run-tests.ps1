@@ -26,6 +26,7 @@ $testCatalog = [ordered]@{
     "pipeline-stop-async-job" = @{ Name = "Sync Pipeline Async Stop Job"; Path = "pipeline/sync-pipeline-stop-job-async.test.js" }
     "pipeline-stop-async-mixed" = @{ Name = "Sync Pipeline Async Stop Mixed"; Path = "pipeline/sync-pipeline-stop-mixed-async.test.js" }
     "pipeline-delete-guard" = @{ Name = "Sync Pipeline Delete Guard"; Path = "pipeline/sync-pipeline-delete-guard-async.test.js" }
+    "pipeline-observe-timeline" = @{ Name = "Sync Pipeline Attempt Timeline"; Path = "pipeline/sync-pipeline-observe-timeline.test.js" }
     "pipeline-rerun-sync" = @{ Name = "Sync Pipeline Rerun"; Path = "pipeline/sync-pipeline-rerun.test.js" }
     "pipeline-rerun-async" = @{ Name = "Sync Pipeline Async Rerun"; Path = "pipeline/sync-pipeline-rerun-async.test.js" }
     "pipeline-control-flow" = @{ Name = "Sync Pipeline Async Control Flow"; Path = "pipeline/sync-pipeline-control-flow-async.test.js" }
@@ -63,6 +64,9 @@ $suiteCatalog = [ordered]@{
     )
     "pipeline-operator-safety" = @(
         "pipeline-delete-guard"
+    )
+    "pipeline-observability" = @(
+        "pipeline-observe-timeline"
     )
     "pipeline-rerun" = @(
         "pipeline-rerun-sync",

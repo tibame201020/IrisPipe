@@ -13,15 +13,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import irispipe.core.service.PipelineExecutionService;
+import irispipe.core.service.PipelineRunQueryService;
 import irispipe.model.dto.SyncPipelineDTO;
 
 @RestController
 @RequestMapping("/api/v1/sync-pipeline")
 public class SyncPipelineAPI {
     private final PipelineExecutionService pipelineExecutionService;
+    private final PipelineRunQueryService pipelineRunQueryService;
 
-    public SyncPipelineAPI(PipelineExecutionService pipelineExecutionService) {
+    public SyncPipelineAPI(PipelineExecutionService pipelineExecutionService,
+            PipelineRunQueryService pipelineRunQueryService) {
         this.pipelineExecutionService = pipelineExecutionService;
+        this.pipelineRunQueryService = pipelineRunQueryService;
     }
 
     @PostMapping
@@ -57,12 +61,12 @@ public class SyncPipelineAPI {
 
     @GetMapping
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunsByIds(@RequestParam("ids") List<Long> ids) {
-        return pipelineExecutionService.getPipelineRunSummaries(ids);
+        return pipelineRunQueryService.getPipelineRunSummaries(ids);
     }
 
     @GetMapping("/{pipelineRunId}")
     public SyncPipelineDTO.PipelineRunDetailInfo getPipelineRunDetail(@PathVariable("pipelineRunId") Long pipelineRunId) {
-        return pipelineExecutionService.getPipelineRunDetail(pipelineRunId);
+        return pipelineRunQueryService.getPipelineRunDetail(pipelineRunId);
     }
 
     @DeleteMapping("/{pipelineRunId}")

@@ -14,6 +14,7 @@ import irispipe.infrastructure.entity.PipelineRunExecution;
 import irispipe.infrastructure.entity.PipelineRunExecutionJob;
 import irispipe.infrastructure.entity.PipelineRunJob;
 import irispipe.model.AtomicLevel;
+import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
 
 public interface SyncPipelineDTO {
@@ -67,11 +68,13 @@ public interface SyncPipelineDTO {
             LocalDateTime createdAt,
             LocalDateTime startTime,
             LocalDateTime endTime,
-            List<PipelineRunJobInfo> jobs) {
+            List<PipelineRunJobInfo> jobs,
+            List<PipelineRunAttemptInfo> attempts) {
 
         public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, PipelineRun pipelineRun,
                 PipelineRunExecution pipelineRunExecution,
-                List<PipelineRunJobInfo> jobs) {
+                List<PipelineRunJobInfo> jobs,
+                List<PipelineRunAttemptInfo> attempts) {
             return new PipelineRunDetailInfo(
                     pipelineRun.getId(),
                     pipelineDefinition.getId(),
@@ -82,6 +85,31 @@ public interface SyncPipelineDTO {
                     pipelineRun.getCreatedAt(),
                     pipelineRunExecution == null ? pipelineRun.getStartTime() : pipelineRunExecution.getStartTime(),
                     pipelineRunExecution == null ? pipelineRun.getEndTime() : pipelineRunExecution.getEndTime(),
+                    jobs,
+                    attempts);
+        }
+    }
+
+    record PipelineRunAttemptInfo(
+            Long executionId,
+            Integer executionNo,
+            PipelineRunExecutionKind executionKind,
+            PipelineRunStatus status,
+            Boolean requestedAsync,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            List<PipelineRunJobInfo> jobs) {
+
+        public static PipelineRunAttemptInfo render(PipelineRunExecution pipelineRunExecution,
+                List<PipelineRunJobInfo> jobs) {
+            return new PipelineRunAttemptInfo(
+                    pipelineRunExecution.getId(),
+                    pipelineRunExecution.getExecutionNo(),
+                    pipelineRunExecution.getExecutionKind(),
+                    pipelineRunExecution.getStatus(),
+                    pipelineRunExecution.getRequestedAsync(),
+                    pipelineRunExecution.getStartTime(),
+                    pipelineRunExecution.getEndTime(),
                     jobs);
         }
     }

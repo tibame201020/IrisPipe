@@ -284,46 +284,6 @@ public class PipelineExecutionService {
         }
     }
 
-    public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunSummaries(List<Long> pipelineRunIds) {
-        return pipelineRunIds.stream()
-                .map(pipelineRunRepo::findById)
-                .flatMap(java.util.Optional::stream)
-                .map(pipelineRun -> SyncPipelineDTO.PipelineRunSummaryInfo.render(
-                        getPipelineDefinition(pipelineRun.getPipelineId()),
-                        pipelineRun))
-                .toList();
-    }
-
-    public SyncPipelineDTO.PipelineRunDetailInfo getPipelineRunDetail(Long pipelineRunId) {
-        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
-        PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineRun.getPipelineId());
-        PipelineRunExecution latestExecution = getLatestExecution(pipelineRun);
-        Map<Long, PipelineRunExecutionJob> executionJobsByRunJobId = latestExecution == null
-                ? Map.of()
-                : pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(latestExecution.getId()).stream()
-                        .collect(Collectors.toMap(
-                                PipelineRunExecutionJob::getPipelineRunJobId,
-                                executionJob -> executionJob));
-
-        List<SyncPipelineDTO.PipelineRunJobInfo> jobs = pipelineRunJobRepo
-                .findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId)
-                .stream()
-                .map(pipelineRunJob -> {
-                    PipelineRunExecutionJob executionJob = executionJobsByRunJobId.get(pipelineRunJob.getId());
-                    Long lastJobExecutionId = executionJob == null
-                            ? pipelineRunJob.getLastJobExecutionId()
-                            : executionJob.getLastJobExecutionId();
-
-                    return SyncPipelineDTO.PipelineRunJobInfo.render(
-                            pipelineRunJob,
-                            executionJob,
-                            lastJobExecutionId == null ? null : jobExplorer.getJobExecution(lastJobExecutionId));
-                })
-                .toList();
-
-        return SyncPipelineDTO.PipelineRunDetailInfo.render(pipelineDefinition, pipelineRun, latestExecution, jobs);
-    }
-
     @Transactional
     public void deletePipelineRun(Long pipelineRunId) {
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);

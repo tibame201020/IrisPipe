@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 11 (Partial): Attempt Timeline and Query Service] - 2026-03-16
+
+### Added
+- **Attempt Timeline Detail API**: Extended `GET /api/v1/sync-pipeline/{pipelineRunId}` with top-level `attempts` so operators can inspect per-attempt execution kind, status, async request mode, timing, and job-level outcomes without losing the existing latest-projection `jobs`.
+- **Timeline Regression Coverage**: Added `sync-pipeline-observe-timeline.test.js` and a dedicated `pipeline-observability` K6 suite to lock down `execute -> stop -> resume` and `rerun -> stop -> resume` timeline behavior end to end.
+
+### Changed
+- **Query Service Boundary**: Introduced `PipelineRunQueryService` so summary/detail read-model assembly now lives outside `PipelineExecutionService`, keeping control operations and query composition on separate paths.
+- **Additive Detail Contract**: The detail payload remains backward compatible at the top level while now surfacing attempt history ordered by `executionNo`, with each attempt preserving job order by `jobSequenceOrder`.
+
+### Verified
+- **Targeted Timeline Validation**: Re-ran `mvn -q -DskipTests compile` and the targeted K6 `pipeline-observability` suite to confirm attempt ordering, latest-job projection compatibility, rerun lineage preservation, and correct attempt-level statuses after stop/resume flows.
+
+---
+
 ## [Phase 11 (Partial): Delete In-Flight Guard] - 2026-03-16
 
 ### Added
