@@ -22,3 +22,9 @@ spring:
 
 config:
   accept-path: jobs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus

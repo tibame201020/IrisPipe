@@ -19,6 +19,7 @@ import org.springframework.batch.core.launch.JobExecutionNotRunningException;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.launch.NoSuchJobExecutionException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,7 @@ import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
 import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncPipelineDTO;
+import irispipe.observability.event.PipelineRunTriggeredObservationEvent;
 
 @Service
 public class PipelineExecutionService {
@@ -67,6 +69,7 @@ public class PipelineExecutionService {
     private final JobMetadataService jobMetadataService;
     private final PipelineRunLifecycleService pipelineRunLifecycleService;
     private final PipelineRunSnapshotService pipelineRunSnapshotService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public PipelineExecutionService(JobLauncher jobLauncher,
             TaskExecutor pipelineTaskExecutor,
@@ -83,7 +86,8 @@ public class PipelineExecutionService {
             ExecutionRecordService executionRecordService,
             JobMetadataService jobMetadataService,
             PipelineRunLifecycleService pipelineRunLifecycleService,
-            PipelineRunSnapshotService pipelineRunSnapshotService) {
+            PipelineRunSnapshotService pipelineRunSnapshotService,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.jobLauncher = jobLauncher;
         this.pipelineTaskExecutor = pipelineTaskExecutor;
         this.jobExplorer = jobExplorer;
@@ -100,6 +104,7 @@ public class PipelineExecutionService {
         this.jobMetadataService = jobMetadataService;
         this.pipelineRunLifecycleService = pipelineRunLifecycleService;
         this.pipelineRunSnapshotService = pipelineRunSnapshotService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public SyncPipelineDTO.PipelineRunSummaryInfo execute(Long pipelineId, Boolean useAsyncLauncher) {
@@ -140,6 +145,7 @@ public class PipelineExecutionService {
         List<PipelineRunExecutionJob> pipelineRunExecutionJobs = createInitialPipelineRunExecutionJobs(
                 pipelineRunExecution.getId(),
                 pipelineRunJobs);
+        applicationEventPublisher.publishEvent(new PipelineRunTriggeredObservationEvent(requestedAsync));
 
         if (requestedAsync) {
             pipelineTaskExecutor.execute(

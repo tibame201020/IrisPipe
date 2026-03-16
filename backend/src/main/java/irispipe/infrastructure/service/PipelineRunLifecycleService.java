@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,10 @@ import irispipe.infrastructure.repo.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.PipelineRunRepo;
+import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunStatus;
+import irispipe.observability.event.PipelineExecutionObservationEvent;
+import irispipe.observability.event.PipelineJobObservationEvent;
 
 @Service
 public class PipelineRunLifecycleService {
@@ -26,15 +30,18 @@ public class PipelineRunLifecycleService {
     private final PipelineRunExecutionRepo pipelineRunExecutionRepo;
     private final PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo;
     private final PipelineRunJobRepo pipelineRunJobRepo;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public PipelineRunLifecycleService(PipelineRunRepo pipelineRunRepo,
             PipelineRunExecutionRepo pipelineRunExecutionRepo,
             PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
-            PipelineRunJobRepo pipelineRunJobRepo) {
+            PipelineRunJobRepo pipelineRunJobRepo,
+            ApplicationEventPublisher applicationEventPublisher) {
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
         this.pipelineRunExecutionJobRepo = pipelineRunExecutionJobRepo;
         this.pipelineRunJobRepo = pipelineRunJobRepo;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Transactional
@@ -108,6 +115,7 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
+        publishJobObservation(pipelineRunJob, pipelineRunExecutionJob);
 
         if (isTerminalFailure(jobStatus)) {
             pipelineRunExecution.setStatus(jobStatus);
@@ -117,6 +125,9 @@ public class PipelineRunLifecycleService {
 
             syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
             pipelineRunRepo.save(pipelineRun);
+            if (PipelineRunStatus.FAILED.equals(jobStatus)) {
+                publishExecutionObservation(pipelineRunExecution);
+            }
             return;
         }
 
@@ -138,6 +149,9 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
+        if (PipelineRunStatus.COMPLETED.equals(pipelineRunExecution.getStatus())) {
+            publishExecutionObservation(pipelineRunExecution);
+        }
     }
 
     @Transactional
@@ -160,6 +174,7 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
+        publishJobObservation(pipelineRunJob, pipelineRunExecutionJob);
 
         if (pipelineRunExecution.getStartTime() == null) {
             pipelineRunExecution.setStartTime(now);
@@ -171,6 +186,7 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
+        publishExecutionObservation(pipelineRunExecution);
     }
 
     @Transactional
@@ -199,6 +215,7 @@ public class PipelineRunLifecycleService {
         LocalDateTime now = LocalDateTime.now();
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
         PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        boolean alreadyStopped = PipelineRunStatus.STOPPED.equals(pipelineRunExecution.getStatus());
 
         pipelineRunExecution.setStatus(PipelineRunStatus.STOPPED);
         pipelineRunExecution.setEndTime(pipelineRunExecution.getEndTime() == null ? now : pipelineRunExecution.getEndTime());
@@ -207,6 +224,9 @@ public class PipelineRunLifecycleService {
 
         syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
+        if (!alreadyStopped) {
+            publishExecutionObservation(pipelineRunExecution);
+        }
     }
 
     @Transactional
@@ -314,5 +334,44 @@ public class PipelineRunLifecycleService {
             throw new IllegalArgumentException("Missing JobParameter: " + key);
         }
         return value;
+    }
+
+    private void publishExecutionObservation(PipelineRunExecution pipelineRunExecution) {
+        if (!isObservedExecutionStatus(pipelineRunExecution.getStatus())) {
+            return;
+        }
+        applicationEventPublisher.publishEvent(new PipelineExecutionObservationEvent(
+                pipelineRunExecution.getExecutionKind(),
+                Boolean.TRUE.equals(pipelineRunExecution.getRequestedAsync()),
+                pipelineRunExecution.getStatus(),
+                pipelineRunExecution.getStartTime(),
+                pipelineRunExecution.getEndTime()));
+    }
+
+    private void publishJobObservation(PipelineRunJob pipelineRunJob, PipelineRunExecutionJob pipelineRunExecutionJob) {
+        if (!isObservedJobStatus(pipelineRunExecutionJob.getStatus())) {
+            return;
+        }
+        AtomicLevel atomicLevel = pipelineRunJob.getAtomicLevel();
+        if (atomicLevel == null) {
+            return;
+        }
+        applicationEventPublisher.publishEvent(new PipelineJobObservationEvent(
+                atomicLevel,
+                pipelineRunExecutionJob.getStatus(),
+                pipelineRunExecutionJob.getStartTime(),
+                pipelineRunExecutionJob.getEndTime()));
+    }
+
+    private boolean isObservedExecutionStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED;
+    }
+
+    private boolean isObservedJobStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED;
     }
 }

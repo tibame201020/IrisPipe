@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 11 (Partial): Observability V1] - 2026-03-16
+
+### Added
+- **Actuator and Prometheus Endpoints**: Added Spring Boot actuator and Prometheus registry support so the backend now exposes `/actuator/health`, `/actuator/metrics`, and `/actuator/prometheus`.
+- **Runtime Metrics Publisher**: Added an `observability` package with lifecycle-driven observation events and a Micrometer publisher for pipeline run, execution, and job counters, gauges, and timers.
+- **Observability Smoke Coverage**: Added `sync-pipeline-observability-smoke.test.js` plus management endpoint helpers so K6 can verify actuator reachability, IrisPipe metric registration, Prometheus scrape output, and active-gauge recovery after a pipeline run completes.
+
+### Changed
+- **Lifecycle-Based Metrics Emission**: Runtime observability now derives from `PipelineExecutionService` and `PipelineRunLifecycleService` transitions instead of controller-layer inference, keeping persistence flow and metrics flow aligned.
+- **Active Runtime Gauges**: `PipelineRunRepo` and `PipelineRunExecutionRepo` now expose active-status counts so gauges can reflect in-flight logical runs and execution attempts without introducing high-cardinality tags.
+
+### Verified
+- **Targeted Observability Validation**: Re-ran `mvn -q -DskipTests compile` and the K6 `pipeline-observability` suite to confirm attempt timeline coverage still passes alongside health, metrics, Prometheus, counters, gauges, and duration timers.
+
+---
+
 ## [Phase 11 (Partial): Attempt Timeline and Query Service] - 2026-03-16
 
 ### Added
