@@ -145,13 +145,16 @@ The pipeline boundary stays at `PipelineRun`, but the recovery strategy is still
 
 ## 7. Current Observation Model
 
-`PipelineRun` summary and detail currently expose the latest execution projection.
+`PipelineRun` summary still exposes the latest execution projection.
+`PipelineRun` detail now exposes both:
+
+- latest projected job state in top-level `jobs`
+- ordered execution attempt history in top-level `attempts`
 
 This is enough for:
 
 - latest run status
 - latest job statuses
+- attempt history across `INITIAL` and `RESUME`
 - root/last Spring Batch linkage
 - delete cleanup
-
-It is not yet a full public attempt history API.

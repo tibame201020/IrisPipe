@@ -161,9 +161,35 @@ Two implementation details matter:
 ### Current query surface
 
 - summary query returns latest projected run state
-- detail query returns latest projected job state plus step executions from `JobExplorer`
+- detail query uses `PipelineRunQueryService` to return:
+  - latest projected job state in top-level `jobs`
+  - ordered attempt history in top-level `attempts`
+  - step executions enriched from `JobExplorer`
 
-Current detail is intentionally simple and does not yet expose the full attempt history list.
+### Current observability surface
+
+Management endpoints now expose:
+
+- `GET /actuator/health`
+- `GET /actuator/metrics`
+- `GET /actuator/prometheus`
+
+Current lifecycle-derived metrics include:
+
+- counters
+  - `irispipe.pipeline.run.triggered`
+  - `irispipe.pipeline.execution.completed`
+  - `irispipe.pipeline.execution.failed`
+  - `irispipe.pipeline.execution.stopped`
+  - `irispipe.pipeline.job.completed`
+  - `irispipe.pipeline.job.failed`
+  - `irispipe.pipeline.job.stopped`
+- gauges
+  - `irispipe.pipeline.runs.active`
+  - `irispipe.pipeline.executions.active`
+- timers
+  - `irispipe.pipeline.execution.duration`
+  - `irispipe.pipeline.job.duration`
 
 ## 9. Current K6 Protection
 
@@ -185,17 +211,18 @@ Protected runtime cases include:
 - sync rerun
 - async rerun
 - composite async control flow covering `execute -> stop -> resume -> rerun -> stop -> resume`
+- async delete guard
+- attempt timeline detail
+- observability smoke for health, metrics, and Prometheus scrape
 
 This means the public pipeline runtime contract is already under regression protection while internal restart mechanics continue evolving.
 
 ## 10. Current Gaps and Near-Term Work
 
-### Attempt history in public detail
+### Monitoring productization
 
-The internal model already keeps attempt history.
-The public detail response still exposes only the latest projection.
+The app now emits a usable metrics surface, but dashboards and alert routing are still external work.
 
-### In-flight delete rules
+### Runtime health depth
 
-Delete already cleans the whole run lineage.
-It should eventually be paired with an explicit guard for `STARTING`, `STARTED`, or `STOPPING` runs.
+Actuator is present, but custom health indicators and tracing are still future improvements.

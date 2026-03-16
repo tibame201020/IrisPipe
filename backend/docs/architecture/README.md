@@ -39,9 +39,15 @@ These APIs manage the static `Pipeline` definition stored in normalized tables.
 - `GET /api/v1/sync-pipeline?ids=...`
   - Query pipeline run summaries
 - `GET /api/v1/sync-pipeline/{pipelineRunId}`
-  - Query latest detail for a pipeline run
+  - Query pipeline run detail with latest projection and ordered attempt timeline
 - `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
-  - Delete a pipeline run lineage and related Spring Batch metadata
+  - Delete a terminal pipeline run lineage and related Spring Batch metadata
+
+### Operational Endpoints
+
+- `GET /actuator/health`
+- `GET /actuator/metrics`
+- `GET /actuator/prometheus`
 
 ## Data Model Layers
 
@@ -70,10 +76,13 @@ These APIs manage the static `Pipeline` definition stored in normalized tables.
 | `core` | Runtime orchestration, batch assembly, shared runtime utilities |
 | `infrastructure` | JPA entities/repos, file providers, persistence services, exception handling |
 | `model` | Domain models, enums, DTOs, records |
+| `observability` | Lifecycle-derived observation events, meter publishing, actuator-facing metrics |
 
 ## Current Runtime Notes
 
-- `PipelineRunDetailInfo` currently exposes the latest execution projection, not a full attempt timeline.
+- `PipelineRunDetailInfo` now exposes:
+  - top-level `jobs` as the latest execution projection
+  - top-level `attempts` as the ordered execution timeline for the run
 - `JOB` and `CHUNK` are both supported in resume flow:
   - `JOB` resumes by replaying the whole failed job.
   - `CHUNK` resumes by restarting the failed Spring Batch job instance.
@@ -94,9 +103,17 @@ These APIs manage the static `Pipeline` definition stored in normalized tables.
   - sync rerun
   - async rerun
   - composite async control flow (`execute -> stop -> resume -> rerun -> stop -> resume`)
+  - async delete guard
+  - attempt timeline detail
+  - observability smoke (`health`, `metrics`, `prometheus`)
+- Delete now rejects in-flight runs in `STARTING`, `STARTED`, or `STOPPING`.
+- Observability v1 is now available through actuator and Prometheus scrape endpoints:
+  - lifecycle-driven counters for run triggers and terminal execution/job outcomes
+  - active run and execution gauges
+  - execution and job duration timers
 - Remaining documented gaps:
-  - latest detail is still a projection, not a full attempt timeline
-  - delete still lacks an explicit in-flight guard for `STARTING` / `STARTED` / `STOPPING`
+  - dashboards and alert routing are not part of the app yet
+  - tracing and custom runtime health indicators are still future work
 
 ## Document Map
 

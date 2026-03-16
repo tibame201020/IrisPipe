@@ -94,12 +94,13 @@ If stop lands between jobs, the execution can move directly from `STOPPING` to `
 `GET /api/v1/sync-pipeline/{pipelineRunId}`
 
 - Loads `PipelineRun`
-- Resolves `latest_execution_id`
-- Loads latest `PipelineRunExecutionJob` rows
-- Uses `JobExplorer` to enrich the latest `last_job_execution_id`
-- Returns latest run-job detail with step executions
-
-Current detail is latest-attempt oriented, not a full attempt history payload.
+- Uses `PipelineRunQueryService` to assemble the read model
+- Loads all `PipelineRunExecution` rows ordered by `executionNo`
+- Loads execution-job rows for each attempt in stable `jobSequenceOrder`
+- Uses `JobExplorer` to enrich each attempt job from `last_job_execution_id`
+- Returns:
+  - top-level latest run-job detail in `jobs`
+  - ordered attempt history in `attempts`
 
 ## 6. Delete Flow
 
@@ -107,16 +108,19 @@ Current detail is latest-attempt oriented, not a full attempt history payload.
 
 Current delete behavior:
 
-1. Load all `PipelineRunExecution` rows for the run
-2. Load all `PipelineRunExecutionJob` rows across the run lineage
-3. Delete related Spring Batch metadata for distinct `last_job_execution_id`
-4. Delete execution-job rows
-5. Delete execution rows
-6. Delete run-job rows
-7. Delete run snapshot
-8. Delete run
+1. Load the latest `PipelineRunExecution`
+2. Reject delete unless the latest execution is terminal
+3. Load all `PipelineRunExecution` rows for the run
+4. Load all `PipelineRunExecutionJob` rows across the run lineage
+5. Delete related Spring Batch metadata for distinct `last_job_execution_id`
+6. Delete execution-job rows
+7. Delete execution rows
+8. Delete run-job rows
+9. Delete run snapshot
+10. Delete run
 
 Delete is lineage-aware for the whole run, not only the latest projection.
+Delete returns `400` for `STARTING`, `STARTED`, or `STOPPING` runs.
 
 ## 7. Lifecycle Ownership
 
@@ -130,10 +134,31 @@ Runtime status writes are listener-driven:
 - `PipelineRunLifecycleService`
   - updates attempt rows first
   - then syncs the latest projection back to `PipelineRun` and `PipelineRunJob`
+- `PipelineRunQueryService`
+  - assembles summary and detail read models without growing the control service
+- `observability`
+  - listens to lifecycle-derived observation events and publishes meters
 
 This keeps sync and async trigger paths on the same lifecycle path.
 
-## 8. Remaining Gaps
+## 8. Operational Observability
 
-- Public detail still exposes only the latest execution projection, not the full attempt timeline.
-- Delete is lineage-aware, but it still lacks an explicit in-flight guard for `STARTING`, `STARTED`, or `STOPPING` runs.
+- `GET /actuator/health`
+  - app health and readiness surface
+- `GET /actuator/metrics`
+  - Micrometer metric discovery and point-in-time values
+- `GET /actuator/prometheus`
+  - Prometheus scrape surface
+
+Current metric families include:
+
+- run trigger counters
+- terminal execution counters
+- terminal job counters
+- active run and execution gauges
+- execution and job duration timers
+
+## 9. Remaining Gaps
+
+- Dashboards and alert routing are still external follow-up work.
+- Tracing and custom runtime health indicators are not implemented yet.

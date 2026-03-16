@@ -7,6 +7,10 @@ The current implementation exposes a lightweight but usable observability surfac
 - application logs
 - Spring Batch metadata
 - pipeline run summary and detail APIs
+- ordered attempt timeline in pipeline run detail
+- actuator health and metrics endpoints
+- Prometheus scrape endpoint
+- Micrometer counters, gauges, and timers derived from runtime lifecycle events
 - persisted runtime tables for run, execution, and job projection
 - K6 regression coverage for public runtime behavior
 
@@ -14,6 +18,12 @@ The main runtime metadata endpoints are:
 
 - `GET /api/v1/sync-pipeline?ids=...`
 - `GET /api/v1/sync-pipeline/{pipelineRunId}`
+
+The management endpoints are:
+
+- `GET /actuator/health`
+- `GET /actuator/metrics`
+- `GET /actuator/prometheus`
 
 The control endpoints are also part of the operational surface because they change observable runtime state:
 
@@ -29,10 +39,12 @@ With the current code, an operator or external platform can:
 - start a new run
 - poll latest status for known pipeline run ids
 - inspect latest per-job status and step execution detail
+- inspect ordered attempt history for a run across `INITIAL` and `RESUME` executions
 - stop an in-flight run
 - resume a failed or stopped run
 - rerun a historical snapshot as a new run
 - delete lineage after cleanup is safe
+- scrape Prometheus-compatible metrics from the app
 
 This is enough for basic operational workflows and external dashboards that poll the public runtime API.
 
@@ -40,13 +52,11 @@ This is enough for basic operational workflows and external dashboards that poll
 
 The current code still does not provide:
 
-- Micrometer or Prometheus metrics
 - Grafana dashboards
 - webhook or chat alert dispatch
 - SLO-based alert rules
-- a public attempt-history timeline in detail responses
-
-Detail responses remain latest-execution projections rather than a full historical timeline across attempts.
+- custom health indicators for downstream systems
+- tracing spans or distributed trace export
 
 ## Operational interpretation
 
@@ -55,11 +65,13 @@ Operators should treat the runtime API like this:
 - summary endpoint
   - latest run status and timestamps
 - detail endpoint
-  - latest projected job state plus step execution detail for the latest batch execution
+  - latest projected job state plus ordered attempt timeline with step execution detail
+- actuator endpoints
+  - health, metric discovery, and Prometheus scrape for runtime monitoring
 - runtime tables
   - internal source of truth for lineage and execution attempts
 - K6 suite
-  - regression protection for execute, resume, rerun, stop, and core runtime semantics
+  - regression protection for execute, resume, rerun, stop, delete guard, attempt timeline, and observability smoke
 
 ## Recommended next steps
 
@@ -67,4 +79,4 @@ Any future observability design should start from the current runtime model:
 
 1. derive metrics from `PipelineRun`, `PipelineRunExecution`, and `PipelineRunExecutionJob`
 2. keep alerts aligned with pipeline-level state transitions instead of raw Spring Batch internals
-3. add public attempt-history payloads before building a rich UI timeline
+3. add dashboards, alert rules, and custom health indicators on top of the current actuator and Prometheus surface

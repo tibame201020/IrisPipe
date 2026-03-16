@@ -85,11 +85,11 @@ The application database remains the owner of watermark persistence through `iri
 
 The current implementation still does not provide:
 
-1. Full attempt history in the public detail API.
-   The runtime model stores execution history internally, but detail responses still expose the latest execution projection only.
+1. Dashboarding and alert routing.
+   Runtime data and metrics exist, but Grafana dashboards and alert channel integration are still external follow-up work.
 
-2. An explicit in-flight delete guard.
-   Delete is lineage-aware, but there is not yet a dedicated rule blocking deletion of `STARTING`, `STARTED`, or `STOPPING` runs.
+2. Deeper runtime health and tracing.
+   Actuator is available, but custom health indicators and tracing export are not implemented yet.
 
 3. DAG-style orchestration.
    Runtime execution remains sequence-first rather than graph-scheduled.
