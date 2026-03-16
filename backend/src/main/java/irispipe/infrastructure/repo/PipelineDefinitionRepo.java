@@ -15,5 +15,11 @@ public interface PipelineDefinitionRepo extends JpaRepository<PipelineDefinition
 
     Optional<PipelineDefinition> findByConfigPath(String configPath);
 
+    boolean existsByFolderIdAndPipelineName(Long folderId, String pipelineName);
+
+    Optional<PipelineDefinition> findByFolderIdAndPipelineName(Long folderId, String pipelineName);
+
     List<PipelineDefinition> findAllByOrderByIdAsc();
+
+    List<PipelineDefinition> findByFolderIdOrderByPipelineNameAsc(Long folderId);
 }

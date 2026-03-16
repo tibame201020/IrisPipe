@@ -40,17 +40,24 @@ public interface SyncPipelineDTO {
             Long pipelineId,
             String path,
             String fileName,
+            Long folderId,
+            String folderPath,
+            String pipelineName,
             PipelineRunStatus status,
             LocalDateTime createdAt,
             LocalDateTime startTime,
             LocalDateTime endTime) {
 
-        public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, PipelineRun pipelineRun) {
+        public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, String folderPath,
+                PipelineRun pipelineRun) {
             return new PipelineRunSummaryInfo(
                     pipelineRun.getId(),
                     pipelineDefinition.getId(),
                     pipelineDefinition.getConfigPath(),
                     pipelineDefinition.getFileName(),
+                    pipelineDefinition.getFolderId(),
+                    folderPath,
+                    pipelineDefinition.getPipelineName(),
                     pipelineRun.getStatus(),
                     pipelineRun.getCreatedAt(),
                     pipelineRun.getStartTime(),
@@ -63,6 +70,9 @@ public interface SyncPipelineDTO {
             Long pipelineId,
             String path,
             String fileName,
+            Long folderId,
+            String folderPath,
+            String pipelineName,
             Boolean requestedAsync,
             PipelineRunStatus status,
             LocalDateTime createdAt,
@@ -71,7 +81,8 @@ public interface SyncPipelineDTO {
             List<PipelineRunJobInfo> jobs,
             List<PipelineRunAttemptInfo> attempts) {
 
-        public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, PipelineRun pipelineRun,
+        public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, String folderPath,
+                PipelineRun pipelineRun,
                 PipelineRunExecution pipelineRunExecution,
                 List<PipelineRunJobInfo> jobs,
                 List<PipelineRunAttemptInfo> attempts) {
@@ -80,6 +91,9 @@ public interface SyncPipelineDTO {
                     pipelineDefinition.getId(),
                     pipelineDefinition.getConfigPath(),
                     pipelineDefinition.getFileName(),
+                    pipelineDefinition.getFolderId(),
+                    folderPath,
+                    pipelineDefinition.getPipelineName(),
                     pipelineRunExecution == null ? pipelineRun.getRequestedAsync() : pipelineRunExecution.getRequestedAsync(),
                     pipelineRunExecution == null ? pipelineRun.getStatus() : pipelineRunExecution.getStatus(),
                     pipelineRun.getCreatedAt(),

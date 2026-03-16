@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,6 +43,15 @@ public class SyncConfigAPI {
         return jobConfigService.createSyncConfig(path, file);
     }
 
+    @PostMapping(consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public SyncConfigDTO.ConfigPipelineInfo createConfig(
+            @RequestBody SyncConfigDTO.ConfigPipelineUpsertRequest configPipelineUpsertRequest) {
+        return jobConfigService.createSyncConfig(
+                configPipelineUpsertRequest.folderId(),
+                configPipelineUpsertRequest.pipelineName(),
+                configPipelineUpsertRequest.jobs());
+    }
+
     @PutMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public SyncConfigDTO.ConfigPipelineInfo updateConfig(
             @PathVariable("pipelineId") Long pipelineId,
@@ -50,12 +60,34 @@ public class SyncConfigAPI {
         return jobConfigService.updateSyncConfig(pipelineId, path, file);
     }
 
+    @PutMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public SyncConfigDTO.ConfigPipelineInfo updateConfig(
+            @PathVariable("pipelineId") Long pipelineId,
+            @RequestBody SyncConfigDTO.ConfigPipelineUpsertRequest configPipelineUpsertRequest) {
+        return jobConfigService.updateSyncConfig(
+                pipelineId,
+                configPipelineUpsertRequest.folderId(),
+                configPipelineUpsertRequest.pipelineName(),
+                configPipelineUpsertRequest.jobs());
+    }
+
     @PatchMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public SyncConfigDTO.ConfigPipelineInfo patchConfig(
             @PathVariable("pipelineId") Long pipelineId,
             @RequestParam("path") String path,
             @RequestParam("file") MultipartFile file) {
         return jobConfigService.patchSyncConfig(pipelineId, path, file);
+    }
+
+    @PatchMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public SyncConfigDTO.ConfigPipelineInfo patchConfig(
+            @PathVariable("pipelineId") Long pipelineId,
+            @RequestBody SyncConfigDTO.ConfigPipelineUpsertRequest configPipelineUpsertRequest) {
+        return jobConfigService.patchSyncConfig(
+                pipelineId,
+                configPipelineUpsertRequest.folderId(),
+                configPipelineUpsertRequest.pipelineName(),
+                configPipelineUpsertRequest.jobs());
     }
 
     @DeleteMapping("/{pipelineId}")

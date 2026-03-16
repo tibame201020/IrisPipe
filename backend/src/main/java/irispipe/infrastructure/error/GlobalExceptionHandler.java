@@ -2,6 +2,7 @@ package irispipe.infrastructure.error;
 
 import irispipe.infrastructure.error.exception.ConfigFileException;
 import irispipe.infrastructure.error.exception.ConfigValidationException;
+import irispipe.infrastructure.error.exception.ConflictException;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,5 +36,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", "Illegal Argument", "message", e.getMessage()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<?> handleConflict(ConflictException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Conflict", "message", e.getMessage()));
     }
 }

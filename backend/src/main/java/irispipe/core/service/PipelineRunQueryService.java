@@ -23,6 +23,7 @@ import irispipe.infrastructure.repo.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.PipelineRunRepo;
+import irispipe.infrastructure.service.PipelineFolderService;
 import irispipe.model.dto.SyncPipelineDTO;
 
 @Service
@@ -32,6 +33,7 @@ public class PipelineRunQueryService {
     private final PipelineRunExecutionRepo pipelineRunExecutionRepo;
     private final PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo;
     private final PipelineRunJobRepo pipelineRunJobRepo;
+    private final PipelineFolderService pipelineFolderService;
     private final JobExplorer jobExplorer;
 
     public PipelineRunQueryService(PipelineDefinitionRepo pipelineDefinitionRepo,
@@ -39,12 +41,14 @@ public class PipelineRunQueryService {
             PipelineRunExecutionRepo pipelineRunExecutionRepo,
             PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
             PipelineRunJobRepo pipelineRunJobRepo,
+            PipelineFolderService pipelineFolderService,
             JobExplorer jobExplorer) {
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
         this.pipelineRunExecutionJobRepo = pipelineRunExecutionJobRepo;
         this.pipelineRunJobRepo = pipelineRunJobRepo;
+        this.pipelineFolderService = pipelineFolderService;
         this.jobExplorer = jobExplorer;
     }
 
@@ -55,6 +59,7 @@ public class PipelineRunQueryService {
                 .flatMap(Optional::stream)
                 .map(pipelineRun -> SyncPipelineDTO.PipelineRunSummaryInfo.render(
                         getPipelineDefinition(pipelineRun.getPipelineId()),
+                        pipelineFolderService.buildFolderPath(getPipelineDefinition(pipelineRun.getPipelineId()).getFolderId()),
                         pipelineRun))
                 .toList();
     }
@@ -88,6 +93,7 @@ public class PipelineRunQueryService {
 
         return SyncPipelineDTO.PipelineRunDetailInfo.render(
                 pipelineDefinition,
+                pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                 pipelineRun,
                 latestExecution,
                 latestJobs,

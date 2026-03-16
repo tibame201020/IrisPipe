@@ -14,4 +14,6 @@ public interface PipelineRunRepo extends JpaRepository<PipelineRun, Long> {
     List<PipelineRun> findAllByOrderByIdAsc();
 
     long countByStatusIn(Collection<PipelineRunStatus> statuses);
+
+    long countByPipelineId(Long pipelineId);
 }

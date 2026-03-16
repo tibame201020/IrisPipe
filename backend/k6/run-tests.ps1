@@ -13,6 +13,7 @@ Set-Location $PSScriptRoot
 $testCatalog = [ordered]@{
     "config-validation" = @{ Name = "Config API Validation"; Path = "config/sync-config-validation.test.js" }
     "config-crud" = @{ Name = "Config API CRUD"; Path = "config/sync-config.test.js" }
+    "config-tree" = @{ Name = "Config Tree and JSON Contract"; Path = "config/sync-config-tree.test.js" }
     "pipeline-api" = @{ Name = "Sync Pipeline API"; Path = "pipeline/sync-pipeline-api.test.js" }
     "pipeline-async-trigger" = @{ Name = "Sync Pipeline Async Trigger"; Path = "pipeline/sync-pipeline-async.test.js" }
     "pipeline-resume-job" = @{ Name = "Sync Pipeline Resume"; Path = "pipeline/sync-pipeline-resume.test.js" }
@@ -43,7 +44,8 @@ $testCatalog = [ordered]@{
 $suiteCatalog = [ordered]@{
     "config" = @(
         "config-validation",
-        "config-crud"
+        "config-crud",
+        "config-tree"
     )
     "pipeline-core" = @(
         "pipeline-api",

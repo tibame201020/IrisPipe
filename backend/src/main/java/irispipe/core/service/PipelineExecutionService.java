@@ -41,6 +41,7 @@ import irispipe.infrastructure.repo.PipelineRunRepo;
 import irispipe.infrastructure.service.ExecutionRecordService;
 import irispipe.infrastructure.service.JobConfigService;
 import irispipe.infrastructure.service.JobMetadataService;
+import irispipe.infrastructure.service.PipelineFolderService;
 import irispipe.infrastructure.service.PipelineRunLifecycleService;
 import irispipe.infrastructure.service.PipelineRunSnapshotService;
 import irispipe.model.AtomicLevel;
@@ -67,6 +68,7 @@ public class PipelineExecutionService {
     private final SyncJobFactory syncJobFactory;
     private final ExecutionRecordService executionRecordService;
     private final JobMetadataService jobMetadataService;
+    private final PipelineFolderService pipelineFolderService;
     private final PipelineRunLifecycleService pipelineRunLifecycleService;
     private final PipelineRunSnapshotService pipelineRunSnapshotService;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -85,6 +87,7 @@ public class PipelineExecutionService {
             SyncJobFactory syncJobFactory,
             ExecutionRecordService executionRecordService,
             JobMetadataService jobMetadataService,
+            PipelineFolderService pipelineFolderService,
             PipelineRunLifecycleService pipelineRunLifecycleService,
             PipelineRunSnapshotService pipelineRunSnapshotService,
             ApplicationEventPublisher applicationEventPublisher) {
@@ -102,6 +105,7 @@ public class PipelineExecutionService {
         this.syncJobFactory = syncJobFactory;
         this.executionRecordService = executionRecordService;
         this.jobMetadataService = jobMetadataService;
+        this.pipelineFolderService = pipelineFolderService;
         this.pipelineRunLifecycleService = pipelineRunLifecycleService;
         this.pipelineRunSnapshotService = pipelineRunSnapshotService;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -151,12 +155,18 @@ public class PipelineExecutionService {
             pipelineTaskExecutor.execute(
                     () -> executePipelineRun(pipelineDefinition.getId(), syncJobs, pipelineRunExecution, pipelineRunJobs,
                             pipelineRunExecutionJobs, 0));
-            return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRun.getId()));
+            return SyncPipelineDTO.PipelineRunSummaryInfo.render(
+                    pipelineDefinition,
+                    pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
+                    getPipelineRun(pipelineRun.getId()));
         }
 
         executePipelineRun(pipelineDefinition.getId(), syncJobs, pipelineRunExecution, pipelineRunJobs, pipelineRunExecutionJobs,
                 0);
-        return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRun.getId()));
+        return SyncPipelineDTO.PipelineRunSummaryInfo.render(
+                pipelineDefinition,
+                pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
+                getPipelineRun(pipelineRun.getId()));
     }
 
     public SyncPipelineDTO.PipelineRunSummaryInfo resume(Long pipelineRunId, Boolean useAsyncLauncher) {
@@ -197,7 +207,10 @@ public class PipelineExecutionService {
                             pipelineRunJobs,
                             pipelineRunExecutionJobs,
                             resumeJobSequence));
-            return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
+            return SyncPipelineDTO.PipelineRunSummaryInfo.render(
+                    pipelineDefinition,
+                    pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
+                    getPipelineRun(pipelineRunId));
         }
 
         executePipelineRun(
@@ -207,7 +220,10 @@ public class PipelineExecutionService {
                 pipelineRunJobs,
                 pipelineRunExecutionJobs,
                 resumeJobSequence);
-        return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
+        return SyncPipelineDTO.PipelineRunSummaryInfo.render(
+                pipelineDefinition,
+                pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
+                getPipelineRun(pipelineRunId));
     }
 
     public SyncPipelineDTO.PipelineRunSummaryInfo stop(Long pipelineRunId) {
@@ -235,7 +251,10 @@ public class PipelineExecutionService {
             }
         }
 
-        return SyncPipelineDTO.PipelineRunSummaryInfo.render(pipelineDefinition, getPipelineRun(pipelineRunId));
+        return SyncPipelineDTO.PipelineRunSummaryInfo.render(
+                pipelineDefinition,
+                pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
+                getPipelineRun(pipelineRunId));
     }
 
     private void executePipelineRun(Long pipelineId, List<SyncJobDefinition> syncJobs,

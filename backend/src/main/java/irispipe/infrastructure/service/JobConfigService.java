@@ -27,6 +27,7 @@ import irispipe.infrastructure.entity.PipelineExecutionDefinition;
 import irispipe.infrastructure.entity.PipelineExecutionParameter;
 import irispipe.infrastructure.entity.PipelineJobConnection;
 import irispipe.infrastructure.entity.PipelineJobDefinition;
+import irispipe.infrastructure.error.exception.ConflictException;
 import irispipe.infrastructure.error.exception.ConfigFileException;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
 import irispipe.infrastructure.provider.FileProvider;
@@ -56,6 +57,8 @@ public class JobConfigService {
     private final PipelineExecutionDefinitionRepo pipelineExecutionDefinitionRepo;
     private final PipelineExecutionParameterRepo pipelineExecutionParameterRepo;
     private final ObjectMapper objectMapper;
+    private final PipelineFolderService pipelineFolderService;
+    private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;
 
     public JobConfigService(JsonFileProvider jsonFileProvider,
             YamlFileProvider yamlFileProvider,
@@ -64,6 +67,8 @@ public class JobConfigService {
             PipelineJobConnectionRepo pipelineJobConnectionRepo,
             PipelineExecutionDefinitionRepo pipelineExecutionDefinitionRepo,
             PipelineExecutionParameterRepo pipelineExecutionParameterRepo,
+            PipelineFolderService pipelineFolderService,
+            PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
         this.jsonFileProvider = jsonFileProvider;
         this.yamlFileProvider = yamlFileProvider;
@@ -72,15 +77,14 @@ public class JobConfigService {
         this.pipelineJobConnectionRepo = pipelineJobConnectionRepo;
         this.pipelineExecutionDefinitionRepo = pipelineExecutionDefinitionRepo;
         this.pipelineExecutionParameterRepo = pipelineExecutionParameterRepo;
+        this.pipelineFolderService = pipelineFolderService;
+        this.pipelineDefinitionPersistenceService = pipelineDefinitionPersistenceService;
         this.objectMapper = objectMapper;
     }
 
     public List<SyncConfigDTO.ConfigPipelineSummary> listSyncConfig() {
         return pipelineDefinitionRepo.findAllByOrderByIdAsc().stream()
-                .map(pipeline -> new SyncConfigDTO.ConfigPipelineSummary(
-                        pipeline.getId(),
-                        pipeline.getConfigPath(),
-                        pipeline.getFileName()))
+                .map(pipelineFolderService::toConfigPipelineSummary)
                 .toList();
     }
 
@@ -92,11 +96,7 @@ public class JobConfigService {
     public SyncConfigDTO.ConfigPipelineInfo getConfigFileInfo(Long pipelineId) {
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         List<SyncJobDefinition> jobs = renderSyncJobs(pipelineId);
-        return new SyncConfigDTO.ConfigPipelineInfo(
-                pipeline.getId(),
-                pipeline.getConfigPath(),
-                pipeline.getFileName(),
-                jobs);
+        return renderConfigPipelineInfo(pipeline, jobs);
     }
 
     @Transactional
@@ -107,17 +107,20 @@ public class JobConfigService {
         }
 
         PersistedConfig persistedConfig = createTempFileAndValidate(normalizedConfigPath, file);
+        Long folderId = pipelineFolderService.resolveOrCreateFolderIdFromLegacyPath(normalizedConfigPath);
         LocalDateTime now = LocalDateTime.now();
 
         PipelineDefinition pipeline = new PipelineDefinition();
         pipeline.setConfigPath(persistedConfig.configPath());
         pipeline.setFileName(persistedConfig.fileName());
+        pipeline.setFolderId(folderId);
+        pipeline.setPipelineName(pipelineFolderService.renderLegacyPipelineName(normalizedConfigPath));
         pipeline.setContentHash(persistedConfig.contentHash());
         pipeline.setCreatedAt(now);
         pipeline.setUpdatedAt(now);
 
         PipelineDefinition savedPipeline = pipelineDefinitionRepo.save(pipeline);
-        persistJobs(savedPipeline.getId(), persistedConfig.syncJobs());
+        pipelineDefinitionPersistenceService.persistJobs(savedPipeline.getId(), persistedConfig.syncJobs());
         return getConfigFileInfo(savedPipeline.getId());
     }
 
@@ -132,14 +135,16 @@ public class JobConfigService {
                 });
 
         PersistedConfig persistedConfig = createTempFileAndValidate(normalizedConfigPath, file);
+        Long folderId = pipelineFolderService.resolveOrCreateFolderIdFromLegacyPath(normalizedConfigPath);
         pipeline.setConfigPath(persistedConfig.configPath());
         pipeline.setFileName(persistedConfig.fileName());
+        pipeline.setFolderId(folderId);
+        pipeline.setPipelineName(pipelineFolderService.renderLegacyPipelineName(normalizedConfigPath));
         pipeline.setContentHash(persistedConfig.contentHash());
         pipeline.setUpdatedAt(LocalDateTime.now());
         pipelineDefinitionRepo.save(pipeline);
 
-        deletePipelineChildren(pipelineId);
-        persistJobs(pipelineId, persistedConfig.syncJobs());
+        pipelineDefinitionPersistenceService.replacePipelineJobs(pipelineId, persistedConfig.syncJobs());
         return getConfigFileInfo(pipelineId);
     }
 
@@ -150,9 +155,64 @@ public class JobConfigService {
 
     @Transactional
     public void deleteSyncConfig(Long pipelineId) {
+        getPipelineDefinition(pipelineId);
+        pipelineDefinitionPersistenceService.deletePipelineDefinition(pipelineId);
+    }
+
+    @Transactional
+    public SyncConfigDTO.ConfigPipelineInfo createSyncConfig(Long folderId, String pipelineName,
+            List<SyncJobDefinition> syncJobs) {
+        String normalizedPipelineName = normalizePipelineName(pipelineName);
+        List<SyncJobDefinition> validatedSyncJobs = validateAndNormalizeSyncJobs(syncJobs);
+        Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
+        if (pipelineDefinitionRepo.existsByFolderIdAndPipelineName(targetFolderId, normalizedPipelineName)) {
+            throw new ConflictException("Pipeline already exists in target folder");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        PipelineDefinition pipeline = new PipelineDefinition();
+        pipeline.setFolderId(targetFolderId);
+        pipeline.setPipelineName(normalizedPipelineName);
+        pipeline.setConfigPath(pipelineFolderService.renderLogicalConfigPath(targetFolderId, normalizedPipelineName));
+        pipeline.setFileName(normalizedPipelineName);
+        pipeline.setContentHash(renderContentHash(validatedSyncJobs));
+        pipeline.setCreatedAt(now);
+        pipeline.setUpdatedAt(now);
+
+        PipelineDefinition savedPipeline = pipelineDefinitionRepo.save(pipeline);
+        pipelineDefinitionPersistenceService.persistJobs(savedPipeline.getId(), validatedSyncJobs);
+        return getConfigFileInfo(savedPipeline.getId());
+    }
+
+    @Transactional
+    public SyncConfigDTO.ConfigPipelineInfo updateSyncConfig(Long pipelineId, Long folderId, String pipelineName,
+            List<SyncJobDefinition> syncJobs) {
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
-        deletePipelineChildren(pipelineId);
-        pipelineDefinitionRepo.delete(pipeline);
+        String normalizedPipelineName = normalizePipelineName(pipelineName);
+        List<SyncJobDefinition> validatedSyncJobs = validateAndNormalizeSyncJobs(syncJobs);
+        Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
+        pipelineDefinitionRepo.findByFolderIdAndPipelineName(targetFolderId, normalizedPipelineName)
+                .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
+                .ifPresent(existingPipeline -> {
+                    throw new ConflictException("Pipeline already exists in target folder");
+                });
+
+        pipeline.setFolderId(targetFolderId);
+        pipeline.setPipelineName(normalizedPipelineName);
+        pipeline.setConfigPath(pipelineFolderService.renderLogicalConfigPath(targetFolderId, normalizedPipelineName));
+        pipeline.setFileName(normalizedPipelineName);
+        pipeline.setContentHash(renderContentHash(validatedSyncJobs));
+        pipeline.setUpdatedAt(LocalDateTime.now());
+        pipelineDefinitionRepo.save(pipeline);
+
+        pipelineDefinitionPersistenceService.replacePipelineJobs(pipelineId, validatedSyncJobs);
+        return getConfigFileInfo(pipelineId);
+    }
+
+    @Transactional
+    public SyncConfigDTO.ConfigPipelineInfo patchSyncConfig(Long pipelineId, Long folderId, String pipelineName,
+            List<SyncJobDefinition> syncJobs) {
+        return updateSyncConfig(pipelineId, folderId, pipelineName, syncJobs);
     }
 
     private List<SyncJobDefinition> readSyncJobs(Path path) {
@@ -397,6 +457,17 @@ public class JobConfigService {
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
     }
 
+    private SyncConfigDTO.ConfigPipelineInfo renderConfigPipelineInfo(PipelineDefinition pipeline, List<SyncJobDefinition> jobs) {
+        return new SyncConfigDTO.ConfigPipelineInfo(
+                pipeline.getId(),
+                pipeline.getConfigPath(),
+                pipeline.getFileName(),
+                pipeline.getFolderId(),
+                pipelineFolderService.buildFolderPath(pipeline.getFolderId()),
+                pipeline.getPipelineName(),
+                jobs);
+    }
+
     private String normalizeConfigPath(String configPath) {
         if (configPath == null || configPath.isBlank()) {
             throw new IllegalArgumentException("path can not be blank");
@@ -418,6 +489,14 @@ public class JobConfigService {
         }
     }
 
+    private String renderContentHash(List<SyncJobDefinition> syncJobs) {
+        try {
+            return renderContentHash(objectMapper.writeValueAsBytes(syncJobs));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to hash config content", e);
+        }
+    }
+
     private String resolveFileName(String configPath, MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
         if (originalFilename != null && !originalFilename.isBlank()) {
@@ -434,6 +513,24 @@ public class JobConfigService {
             return yamlFileProvider;
         }
         throw new IllegalArgumentException("not support file provider with " + path);
+    }
+
+    private List<SyncJobDefinition> validateAndNormalizeSyncJobs(List<SyncJobDefinition> syncJobs) {
+        if (syncJobs == null || syncJobs.isEmpty()) {
+            throw new IllegalArgumentException("jobs can not be empty");
+        }
+        syncJobs.forEach(SyncJobDefinition::validate);
+        return syncJobs;
+    }
+
+    private String normalizePipelineName(String pipelineName) {
+        if (pipelineName == null || pipelineName.isBlank()) {
+            throw new IllegalArgumentException("pipelineName can not be blank");
+        }
+        if (pipelineName.contains("/") || pipelineName.contains("\\")) {
+            throw new IllegalArgumentException("pipelineName contains unsupported characters");
+        }
+        return pipelineName.trim();
     }
 
     private record PersistedConfig(
