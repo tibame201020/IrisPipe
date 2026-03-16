@@ -669,3 +669,151 @@ IrisPipe 現在缺的已經不是控制面，而是營運面。
 - single app
 - clear package boundary
 - additive API evolution
+
+---
+
+## Phase 12: Config Tree and GUI Contract Foundation
+
+## 目標
+
+把 config domain 從 file-centric contract 改成 GUI 可直接對接的 tree/resource contract。
+
+Phase 12 只處理下一階段必需的 backend 工作，不延伸到 user/tenant/platform service。
+
+## 已定邊界
+
+- root 是單一虛擬 root
+- pipeline 可以直接放在 root 底下
+- folder 允許巢狀
+- `pipelineId` 繼續作為唯一 PK
+- pipeline 唯一性改為同 folder 內 `pipelineName` 唯一
+- folder 唯一性改為同 parent 下 `folderName` 唯一
+- DB 內部使用 hidden root row 承接 top-level folders / pipelines
+- recursive delete 允許，但只能是顯式操作
+- recursive delete 只刪 config tree，不刪 `PipelineRun` lineage
+- 若 subtree 內存在 run history，preview 必須顯示 blocker，真正 delete 必須回 `409`
+
+## Phase 12 交付項目
+
+### 1. Schema foundation
+
+- 新增 `iris_pipeline_folder`
+- 在 `iris_pipeline` 新增 `folder_id`
+- 在 `iris_pipeline` 新增 `pipeline_name`
+- 建 hidden root row migration
+- 新增 `(parent_id, folder_name)` 與 `(folder_id, pipeline_name)` 唯一約束
+- 先保留 `config_path` / `file_name` 作為過渡欄位
+
+### 2. Backfill migration
+
+- 從既有 `config_path` 回填 folder tree
+- 將 top-level folders / pipelines 掛到 hidden root
+- 以 `file_name` 保守回填 `pipeline_name`
+- 處理同層命名衝突，避免 migration 失敗
+
+### 3. Folder APIs
+
+- `GET /api/v1/pipeline-tree`
+- `POST /api/v1/pipeline-folders`
+- `PUT /api/v1/pipeline-folders/{folderId}`
+- `GET /api/v1/pipeline-folders/{folderId}/delete-preview`
+- `DELETE /api/v1/pipeline-folders/{folderId}`
+- `DELETE /api/v1/pipeline-folders/{folderId}?recursive=true`
+
+delete contract：
+
+- 空 folder 才允許一般 `DELETE`
+- 非空 folder 未指定 `recursive=true` 回 `409`
+- subtree 內存在 run history blocker 時，preview 顯示 blocker，真正 delete 回 `409`
+- root 不可刪
+
+### 4. Config APIs
+
+將 `/api/v1/sync-config` 主 contract 改為 resource-oriented：
+
+- `GET /api/v1/sync-config`
+- `GET /api/v1/sync-config/{pipelineId}`
+- `POST /api/v1/sync-config`
+- `PUT /api/v1/sync-config/{pipelineId}`
+- `PATCH /api/v1/sync-config/{pipelineId}`
+- `DELETE /api/v1/sync-config/{pipelineId}`
+
+主 request body 至少包含：
+
+- `folderId`（可空，空代表 root）
+- `pipelineName`
+- `jobs`
+
+### 5. Import APIs
+
+保留 file import，但降級為 optional workflow：
+
+- `POST /api/v1/sync-config/import`
+- `PUT /api/v1/sync-config/{pipelineId}/import`
+
+import request 至少包含：
+
+- `folderId`（可空）
+- `pipelineName`
+- `file`
+- `format`
+
+### 6. DTO / service alignment
+
+- `SyncConfigDTO` 改為 `pipelineName` / `folderId` / `folderPath`
+- `SyncPipelineDTO` summary/detail 同步改為 GUI 可用欄位
+- 拆開 config CRUD 與 file parsing，不再讓 `configPath` 驅動整個流程
+
+### 7. K6 coverage
+
+重寫 config helper，從 path-based 改為 folder/name-based。
+
+K6 必須覆蓋：
+
+- JSON config create / update / patch / delete
+- import create / replace
+- tree query
+- folder create / rename / move
+- folder delete preview
+- empty folder delete
+- recursive delete success
+- recursive delete blocked by run history
+- runtime summary/detail 新欄位
+- 既有 execute / resume / rerun / stop / delete guard / timeline / observability regression
+
+### 8. Cleanup
+
+- 移除 `config_path` 相關 repo/service/K6 假設
+- 移除 `file_name` 持久化欄位
+- 更新 `docs/architecture`
+- 更新 `docs/feature`
+- 更新 `CHANGELOG`
+
+## 實作順序
+
+1. Schema foundation
+2. Backfill migration
+3. Folder entity / repo / service
+4. Folder APIs
+5. Config API 改為 JSON body 主流程
+6. Import API 拆成輔助入口
+7. DTO / runtime contract alignment
+8. K6 helper 重構與情境補齊
+9. Cleanup migration 與文件更新
+
+## 非目標
+
+- user / tenant service
+- platform-level authz / membership
+- GUI implementation
+- runtime lineage cascade delete
+
+## 完成條件
+
+- backend 不再以外部檔案 path 作為 pipeline identity
+- GUI 可直接操作 folder tree 與 pipeline resource
+- `/api/v1/sync-config` 以 JSON body 為主 contract
+- import from file 成為 optional workflow
+- folder recursive delete 具備 preview / confirm / blocker semantics
+- runtime API 回傳穩定的 pipeline display metadata
+- K6 對新舊核心流程都維持保護
