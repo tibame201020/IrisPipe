@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 11 (Partial): Delete In-Flight Guard] - 2026-03-16
+
+### Added
+- **Delete Guard Regression Coverage**: Added `sync-pipeline-delete-guard-async.test.js` and a dedicated `pipeline-operator-safety` K6 suite to verify that in-flight runs are protected while terminal runs can still be cleaned up safely.
+
+### Changed
+- **Terminal-Only Delete Semantics**: `DELETE /api/v1/sync-pipeline/{pipelineRunId}` now rejects `STARTING`, `STARTED`, and `STOPPING` runs, and only allows cleanup for terminal pipeline runs.
+- **Consistent Error Contract**: The new delete guard intentionally reuses the existing `IllegalArgumentException -> 400` API mapping so operator safety improves without expanding the public error model yet.
+
+### Verified
+- **Targeted Operator Safety Validation**: Re-ran `mvn -q -DskipTests compile` and the targeted K6 `pipeline-operator-safety` suite to confirm rejected in-flight deletes, successful terminal deletes, and intact stop/resume behavior after a rejected delete.
+
+---
+
 ## [Phase 10: Pipeline Stop Control Loop] - 2026-03-13
 
 ### Added

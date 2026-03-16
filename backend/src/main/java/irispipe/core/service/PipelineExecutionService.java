@@ -327,6 +327,8 @@ public class PipelineExecutionService {
     @Transactional
     public void deletePipelineRun(Long pipelineRunId) {
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution latestExecution = getLatestExecution(pipelineRun);
+        validateDeletablePipelineRun(pipelineRunId, pipelineRun, latestExecution);
         List<PipelineRunExecution> pipelineRunExecutions = pipelineRunExecutionRepo
                 .findByPipelineRunIdOrderByExecutionNoAsc(pipelineRunId);
         List<Long> pipelineRunExecutionIds = pipelineRunExecutions.stream()
@@ -595,6 +597,14 @@ public class PipelineExecutionService {
         }
     }
 
+    private void validateDeletablePipelineRun(Long pipelineRunId, PipelineRun pipelineRun,
+            PipelineRunExecution latestExecution) {
+        PipelineRunStatus pipelineRunStatus = latestExecution == null ? pipelineRun.getStatus() : latestExecution.getStatus();
+        if (!isDeletableStatus(pipelineRunStatus)) {
+            throw new IllegalArgumentException("Only terminal pipeline runs can be deleted: " + pipelineRunId);
+        }
+    }
+
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
         return pipelineDefinitionRepo.findById(pipelineId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
@@ -645,6 +655,14 @@ public class PipelineExecutionService {
         return pipelineRunStatus == PipelineRunStatus.STARTING
                 || pipelineRunStatus == PipelineRunStatus.STARTED
                 || pipelineRunStatus == PipelineRunStatus.STOPPING;
+    }
+
+    private boolean isDeletableStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED
+                || pipelineRunStatus == PipelineRunStatus.ABANDONED
+                || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
     }
 
     private boolean isStopState(PipelineRunStatus pipelineRunStatus) {
