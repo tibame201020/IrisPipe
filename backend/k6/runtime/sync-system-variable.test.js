@@ -1,6 +1,6 @@
 import { check } from 'k6';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -17,7 +17,7 @@ export const options = {
 
 const yamlContent = open('../testfiles/job-watermark.yml');
 const fileName = 'job-watermark.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 
 export function setup() {
     executeStatementsOrFail([

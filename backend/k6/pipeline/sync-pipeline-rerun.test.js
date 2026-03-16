@@ -1,7 +1,7 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUpdated,
@@ -18,7 +18,7 @@ export const options = singleRunOptions;
 const yamlContentV1 = open('../testfiles/job-pipeline-rerun-v1.yml');
 const yamlContentV2 = open('../testfiles/job-pipeline-rerun-v2.yml');
 const fileName = 'job-pipeline-rerun.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 
 export function setup() {
     executeStatementsOrFail([

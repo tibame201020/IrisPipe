@@ -1,13 +1,14 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     getPipelineRunDetailOrFail,
     getPipelineRunsOrFail,
+    hasNoLegacyPathFields,
     runPipelineAndGetSummary,
 } from '../utils/test-helpers.js';
 
@@ -15,7 +16,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-success.yml');
 const fileName = 'job-success.yml';
-const filePath = configPathFor(`pipeline-api-${fileName}`);
+const filePath = pipelineNameFor(`pipeline-api-${fileName}`);
 
 export function setup() {
     executeStatementsOrFail([
@@ -28,7 +29,7 @@ export function setup() {
     ]);
 
     const pipeline = ensureConfigUploaded(filePath, fileName, yamlContent);
-    return { pipelineId: pipeline.id };
+    return { pipelineId: pipeline.id, pipelineName: pipeline.pipelineName };
 }
 
 export default function (data) {
@@ -39,10 +40,15 @@ export default function (data) {
     check(summary, {
         'Pipeline run marked as COMPLETED': (item) => item.status === 'COMPLETED',
         'Pipeline run summary keeps pipeline id': (item) => item.pipelineId === data.pipelineId,
+        'Pipeline run summary keeps root metadata without hidden root id': (item) =>
+            item.pipelineName === data.pipelineName && item.folderId == null && item.folderPath === '/',
+        'Pipeline execute response no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
     check(summaries, {
         'Pipeline summary query returns one run': (items) => Array.isArray(items) && items.length === 1,
         'Pipeline summary query returns the same run id': (items) => items.length === 1 && items[0].id === summary.id,
+        'Pipeline summary query no longer exposes path/fileName fields': (items) =>
+            Array.isArray(items) && items.every((item) => hasNoLegacyPathFields(item)),
     });
     check(detail, {
         'Pipeline detail marks requestedAsync as false': (item) => item.requestedAsync === false,
@@ -54,6 +60,9 @@ export default function (data) {
             item.jobs.length === 1 && Number.isInteger(item.jobs[0].lastJobExecutionId) && item.jobs[0].lastJobExecutionId > 0,
         'Pipeline detail includes step executions': (item) =>
             item.jobs.length === 1 && Array.isArray(item.jobs[0].stepExecutionInfos) && item.jobs[0].stepExecutionInfos.length > 0,
+        'Pipeline detail keeps root metadata without hidden root id': (item) =>
+            item.pipelineName === data.pipelineName && item.folderId == null && item.folderPath === '/',
+        'Pipeline detail no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
 
     deletePipelineRunOrFail(summary.id, 'pipeline run delete');

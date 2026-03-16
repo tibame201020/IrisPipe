@@ -1,7 +1,7 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -14,7 +14,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-no-watermark.yml');
 const fileName = 'job-no-watermark.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 
 export function setup() {
     executeStatementsOrFail([

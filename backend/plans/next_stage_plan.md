@@ -808,6 +808,196 @@ K6 必須覆蓋：
 - GUI implementation
 - runtime lineage cascade delete
 
+---
+
+## Phase 13: Desktop GUI Readiness Gaps
+
+## 焦點
+
+Phase 12 完成後，backend 已經具備 config tree、pipeline control、attempt timeline、metrics 與 Prometheus。
+但若要支撐 desktop GUI 的第一版操作面，還有兩個 backend 缺口需要補齊：
+
+1. P1: run history browser API
+2. P2: rich recursive delete preview
+
+這一階段仍維持目前定位：
+
+- backend 是 single-app pipeline core engine
+- 不引入 user / tenant / platform service
+- 目標是支撐 docker compose / Electron 類型的 local desktop GUI
+
+## P1. Run History Browser API
+
+## 問題
+
+目前 `GET /api/v1/sync-pipeline` 只支援 `ids=...` lookup。
+這代表 GUI 可以查「已知 runId」的 summary/detail，但不能直接做：
+
+- 某條 pipeline 的執行歷史列表
+- 全域 recent activity / recent runs 面板
+
+若沒有這層 API，前端只能自行保存 run ids，不能把 backend 當成完整的 runtime source of truth。
+
+## API 設計
+
+### 保留既有 lookup mode
+
+- `GET /api/v1/sync-pipeline?ids=101&ids=102`
+  - 保持既有行為
+  - 回傳 `List<PipelineRunSummaryInfo>`
+
+### 新增 pipeline history mode
+
+- `GET /api/v1/sync-pipeline?pipelineId=123&limit=20&beforeRunId=456`
+  - 依 pipelineId 查歷史 runs
+  - 依 `id desc` 回傳，最新在前
+  - `beforeRunId` 做 keyset pagination
+
+### 新增 recent activity mode
+
+- `GET /api/v1/sync-pipeline/recent?limit=20&beforeRunId=456`
+  - 回傳全域最近 runs
+  - 同樣依 `id desc` 排序
+  - 供 GUI 首頁或 activity panel 使用
+
+### 參數規則
+
+- `ids` mode 與 `pipelineId` mode 互斥
+- `limit` 預設 20，需設上限避免單次 payload 過大
+- query 組合不合法時回 `400`
+
+## 實作項目
+
+### Controller / query service
+
+- `SyncPipelineAPI`
+  - 擴充 `GET /api/v1/sync-pipeline`
+  - 新增 `GET /api/v1/sync-pipeline/recent`
+- `PipelineRunQueryService`
+  - 保留既有 `ids` lookup
+  - 新增 pipeline history query
+  - 新增 recent runs query
+
+### Repository
+
+- `PipelineRunRepo`
+  - 新增 `pipelineId + beforeRunId + limit` 查詢
+  - 新增全域 recent runs 查詢
+  - 排序固定使用 `id desc`
+
+### DTO / contract
+
+- 優先重用既有 `PipelineRunSummaryInfo`
+- 不新增 path/fileName 類 legacy 欄位
+- 保持 `pipelineName / folderId / folderPath / status / createdAt / startTime / endTime`
+
+## K6 證據
+
+新增 K6 情境至少包含：
+
+- 同一 `pipelineId` 連續 execute 2~3 次，history list 依新到舊排序
+- `resume` 不建立新 logical run，不應出現在 pipeline history 的新 run 列表中
+- `rerun` 會建立新 logical run，應出現在 history 中，且 `rerun_from_pipeline_run_id` 對應正確
+- `recent` endpoint 能看見多條 pipeline 的最新 runs
+- `ids` lookup 舊模式不回歸
+- history / recent payload 明確驗證不含 `path` / `fileName` / `configPath`
+
+## 完成條件
+
+- GUI 不需自己保存 run ids，就能做 pipeline 歷史列表與 recent activity 面板
+- `GET /api/v1/sync-pipeline` 的既有 `ids` mode 維持相容
+- K6 對 history / recent / ids 三種模式都有獨立保護
+
+## P2. Rich Recursive Delete Preview
+
+## 問題
+
+目前 `GET /api/v1/pipeline-folders/{folderId}/delete-preview` 只有 count/blocker 摘要：
+
+- `folderCount`
+- `pipelineCount`
+- `pipelinesWithRunHistory`
+- `hasBlockers`
+
+這對 safety 足夠，但對 GUI 的 delete confirmation dialog 不夠。
+使用者在 approve recursive delete 前，應該能看到具體有哪些 folders / pipelines 會受影響，以及哪些 pipelines 是 blocker。
+
+## API 設計
+
+### 擴充既有 preview response
+
+保留既有 count 欄位，並新增明細欄位：
+
+- `folders`
+  - `id`
+  - `folderName`
+  - `folderPath`
+- `pipelines`
+  - `id`
+  - `pipelineName`
+  - `folderId`
+  - `folderPath`
+  - `hasRunHistory`
+- `blockingPipelines`
+  - 只列 `hasRunHistory = true` 的 pipelines
+- `truncated`
+  - 若 preview item 過多時，標示明細是否被截斷
+
+### 建議 query 參數
+
+- `GET /api/v1/pipeline-folders/{folderId}/delete-preview?limit=100`
+  - counts 永遠是完整值
+  - item lists 可依 `limit` 截斷
+
+### delete semantics 保持不變
+
+- `DELETE /api/v1/pipeline-folders/{folderId}`
+  - 只允許刪空 folder
+- `DELETE /api/v1/pipeline-folders/{folderId}?recursive=true`
+  - 明確 recursive delete
+  - subtree 內只要有 run history blocker，就回 `409`
+
+## 實作項目
+
+### Service / repo
+
+- `PipelineFolderService`
+  - 擴充 subtree collect 邏輯
+  - 回傳 folders / pipelines / blocker 明細
+  - 補 `truncated` 計算
+- `PipelineRunRepo`
+  - 提供批次查哪些 pipeline ids 有 run history 的查詢
+
+### DTO
+
+- 擴充 `FolderDeletePreviewInfo`
+- 新增 preview item DTO
+  - `FolderDeletePreviewFolderInfo`
+  - `FolderDeletePreviewPipelineInfo`
+
+### API
+
+- `PipelineFolderAPI`
+  - 擴充 `delete-preview` query param 與 response
+
+## K6 證據
+
+新增或擴充 K6 情境至少包含：
+
+- 建立多層 folder tree 與多條 pipelines
+- delete preview 回傳正確的 `folderCount / pipelineCount`
+- preview 明細列出受影響 folders / pipelines
+- 有 run history 的 pipeline 會出現在 `blockingPipelines`
+- `recursive=true` 在 blocker 存在時回 `409`
+- 刪除 blocker run 後，preview blocker 清空且 recursive delete 成功
+- preview payload 明確驗證不含 legacy path/fileName 欄位，僅使用 `folderPath + pipelineName`
+
+## 完成條件
+
+- GUI 的 recursive delete confirmation dialog 能直接使用 backend preview response 呈現影響範圍
+- backend contract 自身已表達 approve-before-delete 的必要資訊，不依賴前端自行推導
+- K6 對 preview summary、preview detail、blocker、delete success/failure 都有證據
+
 ## 完成條件
 
 - backend 不再以外部檔案 path 作為 pipeline identity

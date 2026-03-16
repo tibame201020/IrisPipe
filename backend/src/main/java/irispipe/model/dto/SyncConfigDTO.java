@@ -19,8 +19,6 @@ public interface SyncConfigDTO {
 
     record ConfigPipelineSummary(
             Long id,
-            String path,
-            String fileName,
             Long folderId,
             String folderPath,
             String pipelineName) {
@@ -28,8 +26,6 @@ public interface SyncConfigDTO {
 
     record ConfigPipelineInfo(
             Long id,
-            String path,
-            String fileName,
             Long folderId,
             String folderPath,
             String pipelineName,
@@ -59,7 +55,25 @@ public interface SyncConfigDTO {
             Integer folderCount,
             Integer pipelineCount,
             Integer pipelinesWithRunHistory,
-            Boolean hasBlockers) {
+            Boolean hasBlockers,
+            List<FolderDeletePreviewFolderInfo> folders,
+            List<FolderDeletePreviewPipelineInfo> pipelines,
+            List<FolderDeletePreviewPipelineInfo> blockingPipelines,
+            Boolean truncated) {
+    }
+
+    record FolderDeletePreviewFolderInfo(
+            Long id,
+            String folderName,
+            String folderPath) {
+    }
+
+    record FolderDeletePreviewPipelineInfo(
+            Long id,
+            Long folderId,
+            String folderPath,
+            String pipelineName,
+            Boolean hasRunHistory) {
     }
 
     record PipelineTreeInfo(

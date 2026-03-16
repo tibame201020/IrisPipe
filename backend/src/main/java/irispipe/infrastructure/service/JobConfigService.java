@@ -1,8 +1,6 @@
 package irispipe.infrastructure.service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -100,60 +98,6 @@ public class JobConfigService {
     }
 
     @Transactional
-    public SyncConfigDTO.ConfigPipelineInfo createSyncConfig(String configFilePath, MultipartFile file) {
-        String normalizedConfigPath = normalizeConfigPath(configFilePath);
-        if (pipelineDefinitionRepo.existsByConfigPath(normalizedConfigPath)) {
-            throw new IllegalArgumentException("Pipeline already exists: " + normalizedConfigPath);
-        }
-
-        PersistedConfig persistedConfig = createTempFileAndValidate(normalizedConfigPath, file);
-        Long folderId = pipelineFolderService.resolveOrCreateFolderIdFromLegacyPath(normalizedConfigPath);
-        LocalDateTime now = LocalDateTime.now();
-
-        PipelineDefinition pipeline = new PipelineDefinition();
-        pipeline.setConfigPath(persistedConfig.configPath());
-        pipeline.setFileName(persistedConfig.fileName());
-        pipeline.setFolderId(folderId);
-        pipeline.setPipelineName(pipelineFolderService.renderLegacyPipelineName(normalizedConfigPath));
-        pipeline.setContentHash(persistedConfig.contentHash());
-        pipeline.setCreatedAt(now);
-        pipeline.setUpdatedAt(now);
-
-        PipelineDefinition savedPipeline = pipelineDefinitionRepo.save(pipeline);
-        pipelineDefinitionPersistenceService.persistJobs(savedPipeline.getId(), persistedConfig.syncJobs());
-        return getConfigFileInfo(savedPipeline.getId());
-    }
-
-    @Transactional
-    public SyncConfigDTO.ConfigPipelineInfo updateSyncConfig(Long pipelineId, String configFilePath, MultipartFile file) {
-        PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
-        String normalizedConfigPath = normalizeConfigPath(configFilePath);
-        pipelineDefinitionRepo.findByConfigPath(normalizedConfigPath)
-                .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
-                .ifPresent(existingPipeline -> {
-                    throw new IllegalArgumentException("Pipeline path already exists: " + normalizedConfigPath);
-                });
-
-        PersistedConfig persistedConfig = createTempFileAndValidate(normalizedConfigPath, file);
-        Long folderId = pipelineFolderService.resolveOrCreateFolderIdFromLegacyPath(normalizedConfigPath);
-        pipeline.setConfigPath(persistedConfig.configPath());
-        pipeline.setFileName(persistedConfig.fileName());
-        pipeline.setFolderId(folderId);
-        pipeline.setPipelineName(pipelineFolderService.renderLegacyPipelineName(normalizedConfigPath));
-        pipeline.setContentHash(persistedConfig.contentHash());
-        pipeline.setUpdatedAt(LocalDateTime.now());
-        pipelineDefinitionRepo.save(pipeline);
-
-        pipelineDefinitionPersistenceService.replacePipelineJobs(pipelineId, persistedConfig.syncJobs());
-        return getConfigFileInfo(pipelineId);
-    }
-
-    @Transactional
-    public SyncConfigDTO.ConfigPipelineInfo patchSyncConfig(Long pipelineId, String configFilePath, MultipartFile file) {
-        return updateSyncConfig(pipelineId, configFilePath, file);
-    }
-
-    @Transactional
     public void deleteSyncConfig(Long pipelineId) {
         getPipelineDefinition(pipelineId);
         pipelineDefinitionPersistenceService.deletePipelineDefinition(pipelineId);
@@ -173,8 +117,6 @@ public class JobConfigService {
         PipelineDefinition pipeline = new PipelineDefinition();
         pipeline.setFolderId(targetFolderId);
         pipeline.setPipelineName(normalizedPipelineName);
-        pipeline.setConfigPath(pipelineFolderService.renderLogicalConfigPath(targetFolderId, normalizedPipelineName));
-        pipeline.setFileName(normalizedPipelineName);
         pipeline.setContentHash(renderContentHash(validatedSyncJobs));
         pipeline.setCreatedAt(now);
         pipeline.setUpdatedAt(now);
@@ -199,8 +141,6 @@ public class JobConfigService {
 
         pipeline.setFolderId(targetFolderId);
         pipeline.setPipelineName(normalizedPipelineName);
-        pipeline.setConfigPath(pipelineFolderService.renderLogicalConfigPath(targetFolderId, normalizedPipelineName));
-        pipeline.setFileName(normalizedPipelineName);
         pipeline.setContentHash(renderContentHash(validatedSyncJobs));
         pipeline.setUpdatedAt(LocalDateTime.now());
         pipelineDefinitionRepo.save(pipeline);
@@ -215,57 +155,68 @@ public class JobConfigService {
         return updateSyncConfig(pipelineId, folderId, pipelineName, syncJobs);
     }
 
-    private List<SyncJobDefinition> readSyncJobs(Path path) {
-        FileProvider fileProvider = getFileProvider(path);
-        return fileProvider.readPathToClass(path, new TypeReference<List<SyncJobDefinition>>() {
-        });
+    @Transactional
+    public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long folderId, String pipelineName, String format,
+            MultipartFile file) {
+        PersistedConfig persistedConfig = parseImportConfig(folderId, pipelineName, format, file);
+
+        if (pipelineDefinitionRepo.existsByFolderIdAndPipelineName(persistedConfig.folderId(), persistedConfig.pipelineName())) {
+            throw new ConflictException("Pipeline already exists in target folder");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        PipelineDefinition pipeline = new PipelineDefinition();
+        pipeline.setFolderId(persistedConfig.folderId());
+        pipeline.setPipelineName(persistedConfig.pipelineName());
+        pipeline.setContentHash(persistedConfig.contentHash());
+        pipeline.setCreatedAt(now);
+        pipeline.setUpdatedAt(now);
+
+        PipelineDefinition savedPipeline = pipelineDefinitionRepo.save(pipeline);
+        pipelineDefinitionPersistenceService.persistJobs(savedPipeline.getId(), persistedConfig.syncJobs());
+        return getConfigFileInfo(savedPipeline.getId());
     }
 
-    private PersistedConfig createTempFileAndValidate(String configPath, MultipartFile file) {
+    @Transactional
+    public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long pipelineId, Long folderId, String pipelineName, String format,
+            MultipartFile file) {
+        PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
+        PersistedConfig persistedConfig = parseImportConfig(folderId, pipelineName, format, file);
+
+        pipelineDefinitionRepo.findByFolderIdAndPipelineName(persistedConfig.folderId(), persistedConfig.pipelineName())
+                .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
+                .ifPresent(existingPipeline -> {
+                    throw new ConflictException("Pipeline already exists in target folder");
+                });
+
+        pipeline.setFolderId(persistedConfig.folderId());
+        pipeline.setPipelineName(persistedConfig.pipelineName());
+        pipeline.setContentHash(persistedConfig.contentHash());
+        pipeline.setUpdatedAt(LocalDateTime.now());
+        pipelineDefinitionRepo.save(pipeline);
+
+        pipelineDefinitionPersistenceService.replacePipelineJobs(pipelineId, persistedConfig.syncJobs());
+        return getConfigFileInfo(pipelineId);
+    }
+
+    private PersistedConfig parseImportConfig(Long folderId, String pipelineName, String format, MultipartFile file) {
         try {
-            byte[] fileBytes = file.getBytes();
-            String extension = FilenameUtils.getExtension(configPath);
-            String uuid = UUID.randomUUID().toString();
-            Path tempPath = Files.createTempFile(uuid, "." + extension);
-            try {
-                Files.write(tempPath, fileBytes);
-                List<SyncJobDefinition> syncJobs = readSyncJobs(tempPath);
-                syncJobs.forEach(SyncJobDefinition::validate);
-                return new PersistedConfig(
-                        configPath,
-                        resolveFileName(configPath, file),
-                        renderContentHash(fileBytes),
-                        syncJobs);
-            } finally {
-                Files.deleteIfExists(tempPath);
-            }
+            Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
+            String normalizedPipelineName = normalizePipelineName(pipelineName);
+            String resolvedFormat = resolveImportFormat(format, file);
+            String fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
+            List<SyncJobDefinition> syncJobs = readSyncJobs(fileContent, resolvedFormat);
+            syncJobs.forEach(SyncJobDefinition::validate);
+
+            return new PersistedConfig(
+                    targetFolderId,
+                    normalizedPipelineName,
+                    renderContentHash(file.getBytes()),
+                    syncJobs);
         } catch (irispipe.infrastructure.error.exception.ConfigValidationException e) {
             throw e;
         } catch (Exception e) {
-            if (e.getMessage() != null && e.getMessage().contains("YAML")) {
-                throw new irispipe.infrastructure.error.exception.ConfigValidationException(configPath, "", e.getMessage());
-            }
-            throw new ConfigFileException(configPath, e.getMessage());
-        }
-    }
-
-    private void persistJobs(Long pipelineId, List<SyncJobDefinition> syncJobs) {
-        for (int jobOrder = 0; jobOrder < syncJobs.size(); jobOrder++) {
-            SyncJobDefinition syncJob = syncJobs.get(jobOrder);
-            JobSetting setting = syncJob.getSetting();
-
-            PipelineJobDefinition jobDefinition = new PipelineJobDefinition();
-            jobDefinition.setPipelineId(pipelineId);
-            jobDefinition.setSequenceOrder(jobOrder);
-            jobDefinition.setJobName(syncJob.getJobName());
-            jobDefinition.setFetchSize(setting.fetchSize());
-            jobDefinition.setBatchSize(setting.batchSize());
-            jobDefinition.setDeleteThreshold(setting.deleteThreshold());
-            jobDefinition.setAtomicLevel(setting.atomicLevel());
-            PipelineJobDefinition savedJob = pipelineJobDefinitionRepo.save(jobDefinition);
-
-            persistJobConnections(savedJob.getId(), syncJob.getDatabase());
-            persistExecutions(savedJob.getId(), syncJob.getExecutions());
+            throw new ConfigFileException(pipelineName, e.getMessage());
         }
     }
 
@@ -406,33 +357,6 @@ public class JobConfigService {
                 connectionsByRole.get(PipelineConnectionRole.DEST));
     }
 
-    private void deletePipelineChildren(Long pipelineId) {
-        List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo.findByPipelineIdOrderBySequenceOrder(pipelineId);
-        if (jobDefinitions.isEmpty()) {
-            return;
-        }
-
-        List<Long> jobIds = jobDefinitions.stream().map(PipelineJobDefinition::getId).toList();
-        List<PipelineExecutionDefinition> executionDefinitions = pipelineExecutionDefinitionRepo
-                .findByJobIdInOrderByJobIdAscSequenceOrderAsc(jobIds);
-        if (!executionDefinitions.isEmpty()) {
-            List<Long> executionIds = executionDefinitions.stream().map(PipelineExecutionDefinition::getId).toList();
-            List<PipelineExecutionParameter> executionParameters = pipelineExecutionParameterRepo
-                    .findByExecutionIdInOrderByExecutionIdAscSequenceOrderAsc(executionIds);
-            if (!executionParameters.isEmpty()) {
-                pipelineExecutionParameterRepo.deleteAllInBatch(executionParameters);
-            }
-            pipelineExecutionDefinitionRepo.deleteAllInBatch(executionDefinitions);
-        }
-
-        List<PipelineJobConnection> pipelineJobConnections = pipelineJobConnectionRepo.findByJobIdIn(jobIds);
-        if (!pipelineJobConnections.isEmpty()) {
-            pipelineJobConnectionRepo.deleteAllInBatch(pipelineJobConnections);
-        }
-
-        pipelineJobDefinitionRepo.deleteAllInBatch(jobDefinitions);
-    }
-
     private String renderParameterValue(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
@@ -460,24 +384,16 @@ public class JobConfigService {
     private SyncConfigDTO.ConfigPipelineInfo renderConfigPipelineInfo(PipelineDefinition pipeline, List<SyncJobDefinition> jobs) {
         return new SyncConfigDTO.ConfigPipelineInfo(
                 pipeline.getId(),
-                pipeline.getConfigPath(),
-                pipeline.getFileName(),
-                pipeline.getFolderId(),
+                pipelineFolderService.renderPublicFolderId(pipeline.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipeline.getFolderId()),
                 pipeline.getPipelineName(),
                 jobs);
     }
 
-    private String normalizeConfigPath(String configPath) {
-        if (configPath == null || configPath.isBlank()) {
-            throw new IllegalArgumentException("path can not be blank");
-        }
-
-        String normalizedConfigPath = configPath.replace("\\", "/");
-        if (normalizedConfigPath.contains("..")) {
-            throw new ConfigFileException(configPath, "not support relative filepath");
-        }
-        return normalizedConfigPath;
+    private List<SyncJobDefinition> readSyncJobs(String content, String format) {
+        FileProvider fileProvider = getFileProvider(format);
+        return fileProvider.convertContentToClass(content, new TypeReference<List<SyncJobDefinition>>() {
+        });
     }
 
     private String renderContentHash(byte[] fileBytes) {
@@ -497,22 +413,12 @@ public class JobConfigService {
         }
     }
 
-    private String resolveFileName(String configPath, MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename != null && !originalFilename.isBlank()) {
-            return Path.of(originalFilename).getFileName().toString();
-        }
-        return Path.of(configPath).getFileName().toString();
-    }
-
-    private FileProvider getFileProvider(Path path) {
-        if (jsonFileProvider.supports(path)) {
-            return jsonFileProvider;
-        }
-        if (yamlFileProvider.supports(path)) {
-            return yamlFileProvider;
-        }
-        throw new IllegalArgumentException("not support file provider with " + path);
+    private FileProvider getFileProvider(String format) {
+        return switch (format.toLowerCase()) {
+            case "json" -> jsonFileProvider;
+            case "yaml", "yml" -> yamlFileProvider;
+            default -> throw new IllegalArgumentException("Unsupported import format: " + format);
+        };
     }
 
     private List<SyncJobDefinition> validateAndNormalizeSyncJobs(List<SyncJobDefinition> syncJobs) {
@@ -533,9 +439,31 @@ public class JobConfigService {
         return pipelineName.trim();
     }
 
+    private String resolveImportFormat(String format, MultipartFile file) {
+        if (format != null && !format.isBlank()) {
+            return normalizeImportFormat(format);
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename != null && !originalFilename.isBlank()) {
+            return normalizeImportFormat(FilenameUtils.getExtension(originalFilename));
+        }
+
+        throw new IllegalArgumentException("format is required when file name has no extension");
+    }
+
+    private String normalizeImportFormat(String format) {
+        String normalizedFormat = format.trim().toLowerCase();
+        return switch (normalizedFormat) {
+            case "yaml", "yml" -> "yaml";
+            case "json" -> "json";
+            default -> throw new IllegalArgumentException("Unsupported import format: " + format);
+        };
+    }
+
     private record PersistedConfig(
-            String configPath,
-            String fileName,
+            Long folderId,
+            String pipelineName,
             String contentHash,
             List<SyncJobDefinition> syncJobs) {
     }

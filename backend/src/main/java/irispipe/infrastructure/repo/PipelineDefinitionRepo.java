@@ -11,10 +11,6 @@ import irispipe.infrastructure.entity.PipelineDefinition;
 @Repository
 public interface PipelineDefinitionRepo extends JpaRepository<PipelineDefinition, Long> {
 
-    boolean existsByConfigPath(String configPath);
-
-    Optional<PipelineDefinition> findByConfigPath(String configPath);
-
     boolean existsByFolderIdAndPipelineName(Long folderId, String pipelineName);
 
     Optional<PipelineDefinition> findByFolderIdAndPipelineName(Long folderId, String pipelineName);

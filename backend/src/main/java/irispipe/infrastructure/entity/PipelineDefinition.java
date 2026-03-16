@@ -23,12 +23,6 @@ public class PipelineDefinition {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "config_path")
-    private String configPath;
-
-    @Column(name = "file_name")
-    private String fileName;
-
     @Column(name = "folder_id")
     private Long folderId;
 

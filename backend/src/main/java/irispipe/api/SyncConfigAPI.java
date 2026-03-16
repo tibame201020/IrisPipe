@@ -36,13 +36,6 @@ public class SyncConfigAPI {
         return jobConfigService.getConfigFileInfo(pipelineId);
     }
 
-    @PostMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public SyncConfigDTO.ConfigPipelineInfo createConfig(
-            @RequestParam("path") String path,
-            @RequestParam("file") MultipartFile file) {
-        return jobConfigService.createSyncConfig(path, file);
-    }
-
     @PostMapping(consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
     public SyncConfigDTO.ConfigPipelineInfo createConfig(
             @RequestBody SyncConfigDTO.ConfigPipelineUpsertRequest configPipelineUpsertRequest) {
@@ -52,12 +45,13 @@ public class SyncConfigAPI {
                 configPipelineUpsertRequest.jobs());
     }
 
-    @PutMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public SyncConfigDTO.ConfigPipelineInfo updateConfig(
-            @PathVariable("pipelineId") Long pipelineId,
-            @RequestParam("path") String path,
+    @PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public SyncConfigDTO.ConfigPipelineInfo importConfig(
+            @RequestParam(name = "folderId", required = false) Long folderId,
+            @RequestParam("pipelineName") String pipelineName,
+            @RequestParam(name = "format", required = false) String format,
             @RequestParam("file") MultipartFile file) {
-        return jobConfigService.updateSyncConfig(pipelineId, path, file);
+        return jobConfigService.importSyncConfig(folderId, pipelineName, format, file);
     }
 
     @PutMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
@@ -71,14 +65,6 @@ public class SyncConfigAPI {
                 configPipelineUpsertRequest.jobs());
     }
 
-    @PatchMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public SyncConfigDTO.ConfigPipelineInfo patchConfig(
-            @PathVariable("pipelineId") Long pipelineId,
-            @RequestParam("path") String path,
-            @RequestParam("file") MultipartFile file) {
-        return jobConfigService.patchSyncConfig(pipelineId, path, file);
-    }
-
     @PatchMapping(value = "/{pipelineId}", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
     public SyncConfigDTO.ConfigPipelineInfo patchConfig(
             @PathVariable("pipelineId") Long pipelineId,
@@ -88,6 +74,16 @@ public class SyncConfigAPI {
                 configPipelineUpsertRequest.folderId(),
                 configPipelineUpsertRequest.pipelineName(),
                 configPipelineUpsertRequest.jobs());
+    }
+
+    @PutMapping(value = "/{pipelineId}/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public SyncConfigDTO.ConfigPipelineInfo importConfig(
+            @PathVariable("pipelineId") Long pipelineId,
+            @RequestParam(name = "folderId", required = false) Long folderId,
+            @RequestParam("pipelineName") String pipelineName,
+            @RequestParam(name = "format", required = false) String format,
+            @RequestParam("file") MultipartFile file) {
+        return jobConfigService.importSyncConfig(pipelineId, folderId, pipelineName, format, file);
     }
 
     @DeleteMapping("/{pipelineId}")

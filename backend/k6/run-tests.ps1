@@ -14,8 +14,10 @@ $testCatalog = [ordered]@{
     "config-validation" = @{ Name = "Config API Validation"; Path = "config/sync-config-validation.test.js" }
     "config-crud" = @{ Name = "Config API CRUD"; Path = "config/sync-config.test.js" }
     "config-tree" = @{ Name = "Config Tree and JSON Contract"; Path = "config/sync-config-tree.test.js" }
+    "config-import" = @{ Name = "Config Import Contract"; Path = "config/sync-config-import.test.js" }
     "pipeline-api" = @{ Name = "Sync Pipeline API"; Path = "pipeline/sync-pipeline-api.test.js" }
     "pipeline-async-trigger" = @{ Name = "Sync Pipeline Async Trigger"; Path = "pipeline/sync-pipeline-async.test.js" }
+    "pipeline-history-browser" = @{ Name = "Sync Pipeline History Browser"; Path = "pipeline/sync-pipeline-history-browser.test.js" }
     "pipeline-resume-job" = @{ Name = "Sync Pipeline Resume"; Path = "pipeline/sync-pipeline-resume.test.js" }
     "pipeline-resume-chunk" = @{ Name = "Sync Pipeline Chunk Resume"; Path = "pipeline/sync-pipeline-resume-chunk.test.js" }
     "pipeline-resume-async" = @{ Name = "Sync Pipeline Async Resume"; Path = "pipeline/sync-pipeline-resume-async.test.js" }
@@ -45,11 +47,13 @@ $suiteCatalog = [ordered]@{
     "config" = @(
         "config-validation",
         "config-crud",
-        "config-tree"
+        "config-tree",
+        "config-import"
     )
     "pipeline-core" = @(
         "pipeline-api",
-        "pipeline-async-trigger"
+        "pipeline-async-trigger",
+        "pipeline-history-browser"
     )
     "pipeline-resume" = @(
         "pipeline-resume-job",

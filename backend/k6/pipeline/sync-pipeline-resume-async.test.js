@@ -1,7 +1,7 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -17,7 +17,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-pipeline-resume.yml');
 const fileName = 'job-pipeline-resume.yml';
-const filePath = configPathFor(`async-${fileName}`);
+const filePath = pipelineNameFor(`async-${fileName}`);
 
 export function setup() {
     executeStatementsOrFail([

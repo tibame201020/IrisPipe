@@ -1,10 +1,10 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
-import { configPathFor, jsonOrFallback } from '../utils/test-helpers.js';
+import { hasNoLegacyPathFields, jsonOrFallback, pipelineNameFor } from '../utils/test-helpers.js';
 import {
-    createConfig,
-    updateConfig,
-    patchConfig,
+    createConfigFromBody,
+    updateConfigFromBody,
+    patchConfigFromBody,
     getConfigDetail,
     listConfigs,
     deleteConfig,
@@ -12,13 +12,108 @@ import {
 
 export const options = singleRunOptions;
 
-const yamlContent = open('../testfiles/test-config.yml');
-const fileName = 'test-config.yml';
-const filePath = configPathFor(fileName);
-const normalizedListPath = filePath.replace(/\//g, '\\');
+const initialPipelineName = pipelineNameFor('test-config-v1');
+const updatedPipelineName = pipelineNameFor('test-config-v2');
+const patchedPipelineName = pipelineNameFor('test-config-v3');
+const initialJobs = [
+    {
+        jobName: 'k6_test_config_v1',
+        setting: {
+            fetchSize: 100,
+            batchSize: 100,
+            atomicLevel: 'JOB',
+        },
+        database: {
+            source: {
+                driver: 'org.h2.Driver',
+                url: 'jdbc:h2:./h2data/data',
+                username: 'sa',
+                password: 'sa',
+            },
+            dest: {
+                driver: 'org.h2.Driver',
+                url: 'jdbc:h2:./h2data/data',
+                username: 'sa',
+                password: 'sa',
+            },
+        },
+        executions: [
+            {
+                type: 'INSERT',
+                name: 'test_exec_v1',
+                sql: 'SELECT 1',
+                destTable: 'test_table',
+            },
+        ],
+    },
+];
+const updatedJobs = [
+    {
+        jobName: 'k6_test_config_v2',
+        setting: {
+            fetchSize: 200,
+            batchSize: 200,
+            atomicLevel: 'JOB',
+        },
+        database: {
+            source: {
+                driver: 'org.h2.Driver',
+                url: 'jdbc:h2:./h2data/data',
+                username: 'sa',
+                password: 'sa',
+            },
+            dest: {
+                driver: 'org.h2.Driver',
+                url: 'jdbc:h2:./h2data/data',
+                username: 'sa',
+                password: 'sa',
+            },
+        },
+        executions: [
+            {
+                type: 'INSERT',
+                name: 'test_exec_v2',
+                sql: 'SELECT 2',
+                destTable: 'test_table_v2',
+            },
+        ],
+    },
+];
+const patchedJobs = [
+    {
+        jobName: 'k6_test_config_v3',
+        setting: {
+            fetchSize: 300,
+            batchSize: 300,
+            atomicLevel: 'JOB',
+        },
+        database: {
+            source: {
+                driver: 'org.h2.Driver',
+                url: 'jdbc:h2:./h2data/data',
+                username: 'sa',
+                password: 'sa',
+            },
+            dest: {
+                driver: 'org.h2.Driver',
+                url: 'jdbc:h2:./h2data/data',
+                username: 'sa',
+                password: 'sa',
+            },
+        },
+        executions: [
+            {
+                type: 'INSERT',
+                name: 'test_exec_v3',
+                sql: 'SELECT 3',
+                destTable: 'test_table_v3',
+            },
+        ],
+    },
+];
 
 export default function () {
-    let response = createConfig(filePath, fileName, yamlContent);
+    let response = createConfigFromBody(null, initialPipelineName, initialJobs);
     let payload = jsonOrFallback(response, {});
     const pipelineId = payload.id;
     check(response, {
@@ -26,8 +121,11 @@ export default function () {
     });
     check(payload, {
         'create config response returns pipeline id': (body) => Number.isInteger(body.id) && body.id > 0,
-        'create config response returns requested path': (body) => body.path === filePath,
-        'create config response returns file name': (body) => body.fileName === fileName,
+        'create config response returns root pipeline metadata': (body) =>
+            body.pipelineName === initialPipelineName
+            && body.folderId === null
+            && body.folderPath === '/',
+        'create config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
     response = getConfigDetail(pipelineId);
@@ -38,7 +136,12 @@ export default function () {
     check(payload, {
         'config detail returns requested pipeline id': (body) => body.id === pipelineId,
         'config detail returns uploaded job': (body) =>
-            Array.isArray(body.jobs) && body.jobs.length === 1 && body.jobs[0].jobName === 'k6_test_config',
+            Array.isArray(body.jobs) && body.jobs.length === 1 && body.jobs[0].jobName === 'k6_test_config_v1',
+        'config detail keeps root metadata without hidden root id': (body) =>
+            body.pipelineName === initialPipelineName
+            && body.folderId === null
+            && body.folderPath === '/',
+        'config detail no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
     response = listConfigs();
@@ -51,18 +154,39 @@ export default function () {
             Array.isArray(pipelines)
             && pipelines.some((pipeline) =>
                 pipeline.id === pipelineId
-                && (pipeline.path === filePath || pipeline.path === normalizedListPath)
-                && pipeline.fileName === fileName),
+                && pipeline.pipelineName === initialPipelineName
+                && pipeline.folderId === null
+                && pipeline.folderPath === '/'),
+        'list configs no longer exposes path/fileName fields': (pipelines) =>
+            Array.isArray(pipelines) && pipelines.every((pipeline) => hasNoLegacyPathFields(pipeline)),
     });
 
-    response = updateConfig(pipelineId, filePath, fileName, yamlContent);
+    response = updateConfigFromBody(pipelineId, null, updatedPipelineName, updatedJobs);
+    payload = jsonOrFallback(response, {});
     check(response, {
         'update config status is 200': (res) => res.status === 200,
     });
+    check(payload, {
+        'update config renames pipeline and replaces jobs': (body) =>
+            body.pipelineName === updatedPipelineName
+            && body.folderId === null
+            && body.folderPath === '/'
+            && body.jobs[0].jobName === 'k6_test_config_v2',
+        'update config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
+    });
 
-    response = patchConfig(pipelineId, filePath, fileName, yamlContent);
+    response = patchConfigFromBody(pipelineId, null, patchedPipelineName, patchedJobs);
+    payload = jsonOrFallback(response, {});
     check(response, {
         'patch config status is 200': (res) => res.status === 200,
+    });
+    check(payload, {
+        'patch config keeps root contract and latest payload': (body) =>
+            body.pipelineName === patchedPipelineName
+            && body.folderId === null
+            && body.folderPath === '/'
+            && body.jobs[0].jobName === 'k6_test_config_v3',
+        'patch config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
     response = deleteConfig(pipelineId);

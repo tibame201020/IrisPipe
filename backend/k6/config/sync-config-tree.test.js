@@ -4,6 +4,7 @@ import {
     deletePipelineRunOrFail,
     executeStatementsOrFail,
     getPipelineRunDetailOrFail,
+    hasNoLegacyPathFields,
     jsonOrFallback,
     runPipelineAndGetSummary,
     waitForPipelineCompletion,
@@ -131,6 +132,7 @@ export default function () {
             body.pipelineName === pipelineName
             && body.folderId === childFolderId
             && body.folderPath === `/${rootFolderName}/${childFolderName}`,
+        'config json create no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
     response = getPipelineTree();
@@ -168,6 +170,7 @@ export default function () {
         'config detail reflects renamed folder path': (body) =>
             body.pipelineName === pipelineName
             && body.folderPath === `/${rootFolderName}/${renamedChildFolderName}`,
+        'config detail in tree flow no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
     const { summary } = runPipelineAndGetSummary(pipelineId);
@@ -178,14 +181,16 @@ export default function () {
         'runtime summary includes pipeline metadata': (item) =>
             item.pipelineName === pipelineName
             && item.folderPath === `/${rootFolderName}/${renamedChildFolderName}`,
+        'runtime summary in tree flow no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
     check(runDetail, {
         'runtime detail includes pipeline metadata': (item) =>
             item.pipelineName === pipelineName
             && item.folderPath === `/${rootFolderName}/${renamedChildFolderName}`,
+        'runtime detail in tree flow no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
 
-    response = getFolderDeletePreview(rootFolderId);
+    response = getFolderDeletePreview(rootFolderId, 100);
     payload = jsonOrFallback(response, {});
     check(response, {
         'delete preview status is 200': (res) => res.status === 200,
@@ -196,6 +201,37 @@ export default function () {
             && body.pipelineCount === 1
             && body.pipelinesWithRunHistory === 1
             && body.hasBlockers === true,
+        'delete preview lists affected folders': (body) =>
+            Array.isArray(body.folders)
+            && body.folders.length === 2
+            && body.folders.some((folder) => folder.id === rootFolderId && folder.folderPath === `/${rootFolderName}`)
+            && body.folders.some((folder) => folder.id === childFolderId && folder.folderPath === `/${rootFolderName}/${renamedChildFolderName}`),
+        'delete preview lists affected pipelines and blocker details': (body) =>
+            Array.isArray(body.pipelines)
+            && body.pipelines.length === 1
+            && body.pipelines[0].id === pipelineId
+            && body.pipelines[0].pipelineName === pipelineName
+            && body.pipelines[0].folderId === childFolderId
+            && body.pipelines[0].folderPath === `/${rootFolderName}/${renamedChildFolderName}`
+            && body.pipelines[0].hasRunHistory === true
+            && Array.isArray(body.blockingPipelines)
+            && body.blockingPipelines.length === 1
+            && body.blockingPipelines[0].id === pipelineId,
+        'delete preview detail no longer exposes path/fileName fields': (body) =>
+            Array.isArray(body.pipelines)
+            && body.pipelines.every((pipeline) => hasNoLegacyPathFields(pipeline))
+            && Array.isArray(body.folders),
+    });
+
+    response = getFolderDeletePreview(rootFolderId, 1);
+    payload = jsonOrFallback(response, {});
+    check(payload, {
+        'delete preview supports truncation for GUI dialogs': (body) =>
+            body.folderCount === 2
+            && body.pipelineCount === 1
+            && body.truncated === true
+            && Array.isArray(body.folders)
+            && body.folders.length === 1,
     });
 
     response = deleteFolder(rootFolderId, true);
@@ -205,11 +241,14 @@ export default function () {
 
     deletePipelineRunOrFail(summary.id, 'phase12 pipeline run delete');
 
-    response = getFolderDeletePreview(rootFolderId);
+    response = getFolderDeletePreview(rootFolderId, 100);
     payload = jsonOrFallback(response, {});
     check(payload, {
         'delete preview clears blockers after run delete': (body) =>
-            body.pipelinesWithRunHistory === 0 && body.hasBlockers === false,
+            body.pipelinesWithRunHistory === 0
+            && body.hasBlockers === false
+            && Array.isArray(body.blockingPipelines)
+            && body.blockingPipelines.length === 0,
     });
 
     response = deleteFolder(rootFolderId, true);

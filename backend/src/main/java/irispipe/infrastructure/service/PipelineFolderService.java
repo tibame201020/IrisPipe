@@ -26,6 +26,8 @@ import irispipe.model.dto.SyncConfigDTO;
 @Service
 public class PipelineFolderService {
     private static final String ROOT_FOLDER_NAME = "__root__";
+    private static final int DEFAULT_DELETE_PREVIEW_LIMIT = 100;
+    private static final int MAX_DELETE_PREVIEW_LIMIT = 200;
 
     private final PipelineFolderRepo pipelineFolderRepo;
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
@@ -112,28 +114,62 @@ public class PipelineFolderService {
     }
 
     @Transactional(readOnly = true)
-    public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(Long folderId) {
+    public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(Long folderId, Integer limit) {
         PipelineFolder folder = getFolder(folderId);
         if (Boolean.TRUE.equals(folder.getSystemRoot())) {
             throw new IllegalArgumentException("Root folder can not be deleted");
         }
 
-        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folder.getId());
+        int normalizedLimit = normalizeDeletePreviewLimit(limit);
+        List<PipelineFolder> allFolders = pipelineFolderRepo.findAllByOrderByIdAsc();
+        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folder.getId(), allFolders);
+        List<PipelineFolder> subtreeFolders = allFolders.stream()
+                .filter(existingFolder -> subtreeFolderIds.contains(existingFolder.getId()))
+                .filter(existingFolder -> !Boolean.TRUE.equals(existingFolder.getSystemRoot()))
+                .sorted(Comparator.comparing(existingFolder -> buildFolderPath(existingFolder.getId())))
+                .toList();
         List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByOrderByIdAsc().stream()
                 .filter(pipelineDefinition -> subtreeFolderIds.contains(pipelineDefinition.getFolderId()))
+                .sorted(Comparator
+                        .comparing((PipelineDefinition pipelineDefinition) -> buildFolderPath(pipelineDefinition.getFolderId()))
+                        .thenComparing(PipelineDefinition::getPipelineName))
                 .toList();
-        int pipelinesWithRunHistory = (int) subtreePipelines.stream()
-                .filter(pipelineDefinition -> pipelineRunRepo.countByPipelineId(pipelineDefinition.getId()) > 0)
-                .count();
+        Set<Long> pipelineIdsWithRunHistory = subtreePipelines.isEmpty()
+                ? Set.of()
+                : new HashSet<>(pipelineRunRepo.findPipelineIdsWithRunHistory(
+                        subtreePipelines.stream().map(PipelineDefinition::getId).toList()));
+        List<SyncConfigDTO.FolderDeletePreviewFolderInfo> folderPreviewItems = subtreeFolders.stream()
+                .limit(normalizedLimit)
+                .map(this::toDeletePreviewFolderInfo)
+                .toList();
+        List<SyncConfigDTO.FolderDeletePreviewPipelineInfo> pipelinePreviewItems = subtreePipelines.stream()
+                .limit(normalizedLimit)
+                .map(pipelineDefinition -> toDeletePreviewPipelineInfo(
+                        pipelineDefinition,
+                        pipelineIdsWithRunHistory.contains(pipelineDefinition.getId())))
+                .toList();
+        List<SyncConfigDTO.FolderDeletePreviewPipelineInfo> blockingPipelineItems = subtreePipelines.stream()
+                .filter(pipelineDefinition -> pipelineIdsWithRunHistory.contains(pipelineDefinition.getId()))
+                .limit(normalizedLimit)
+                .map(pipelineDefinition -> toDeletePreviewPipelineInfo(pipelineDefinition, true))
+                .toList();
+        int pipelinesWithRunHistory = pipelineIdsWithRunHistory.size();
+        boolean truncated = subtreeFolders.size() > normalizedLimit
+                || subtreePipelines.size() > normalizedLimit
+                || pipelinesWithRunHistory > normalizedLimit;
 
         return new SyncConfigDTO.FolderDeletePreviewInfo(
                 folder.getId(),
                 folder.getFolderName(),
                 buildFolderPath(folder.getId()),
-                subtreeFolderIds.size(),
+                subtreeFolders.size(),
                 subtreePipelines.size(),
                 pipelinesWithRunHistory,
-                pipelinesWithRunHistory > 0);
+                pipelinesWithRunHistory > 0,
+                folderPreviewItems,
+                pipelinePreviewItems,
+                blockingPipelineItems,
+                truncated);
     }
 
     @Transactional
@@ -143,7 +179,7 @@ public class PipelineFolderService {
             throw new IllegalArgumentException("Root folder can not be deleted");
         }
 
-        SyncConfigDTO.FolderDeletePreviewInfo preview = getDeletePreview(folderId);
+        SyncConfigDTO.FolderDeletePreviewInfo preview = getDeletePreview(folderId, null);
         boolean hasChildren = preview.folderCount() > 1 || preview.pipelineCount() > 0;
         if (!recursive && hasChildren) {
             throw new ConflictException("Folder is not empty; use delete preview and recursive delete");
@@ -152,7 +188,8 @@ public class PipelineFolderService {
             throw new ConflictException("Folder contains pipelines with run history and can not be recursively deleted");
         }
 
-        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folderId);
+        List<PipelineFolder> allFolders = pipelineFolderRepo.findAllByOrderByIdAsc();
+        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folderId, allFolders);
         List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByOrderByIdAsc().stream()
                 .filter(pipelineDefinition -> subtreeFolderIds.contains(pipelineDefinition.getFolderId()))
                 .sorted(Comparator.comparing(PipelineDefinition::getId))
@@ -161,7 +198,7 @@ public class PipelineFolderService {
             pipelineDefinitionPersistenceService.deletePipelineDefinition(pipelineDefinition.getId());
         }
 
-        List<PipelineFolder> foldersToDelete = pipelineFolderRepo.findAllByOrderByIdAsc().stream()
+        List<PipelineFolder> foldersToDelete = allFolders.stream()
                 .filter(existingFolder -> subtreeFolderIds.contains(existingFolder.getId()))
                 .filter(existingFolder -> !Boolean.TRUE.equals(existingFolder.getSystemRoot()))
                 .sorted(Comparator.comparingInt((PipelineFolder folderNode) -> buildFolderPath(folderNode.getId()).length())
@@ -170,36 +207,6 @@ public class PipelineFolderService {
         for (PipelineFolder folderNode : foldersToDelete) {
             pipelineFolderRepo.delete(folderNode);
         }
-    }
-
-    @Transactional
-    public Long resolveOrCreateFolderIdFromLegacyPath(String normalizedConfigPath) {
-        String folderPath = extractFolderPath(normalizedConfigPath);
-        if (folderPath.isBlank()) {
-            return getRootFolder().getId();
-        }
-
-        Long currentParentId = getRootFolder().getId();
-        for (String segment : folderPath.split("/")) {
-            if (segment.isBlank()) {
-                continue;
-            }
-            Long parentId = currentParentId;
-            PipelineFolder nextFolder = pipelineFolderRepo.findByParentIdAndFolderName(parentId, segment)
-                    .orElseGet(() -> {
-                        LocalDateTime now = LocalDateTime.now();
-                        PipelineFolder createdFolder = new PipelineFolder();
-                        createdFolder.setParentId(parentId);
-                        createdFolder.setFolderName(segment);
-                        createdFolder.setSystemRoot(false);
-                        createdFolder.setCreatedAt(now);
-                        createdFolder.setUpdatedAt(now);
-                        return pipelineFolderRepo.save(createdFolder);
-                    });
-            currentParentId = nextFolder.getId();
-        }
-
-        return currentParentId;
     }
 
     @Transactional(readOnly = true)
@@ -225,26 +232,16 @@ public class PipelineFolderService {
     }
 
     @Transactional(readOnly = true)
-    public String renderLogicalConfigPath(Long folderId, String pipelineName) {
-        String folderPath = buildFolderPath(folderId);
-        if ("/".equals(folderPath)) {
-            return pipelineName;
-        }
-        return folderPath.substring(1) + "/" + pipelineName;
-    }
-
-    public String renderLegacyPipelineName(String normalizedConfigPath) {
-        int separatorIndex = normalizedConfigPath.lastIndexOf('/');
-        return separatorIndex >= 0 ? normalizedConfigPath.substring(separatorIndex + 1) : normalizedConfigPath;
+    public Long renderPublicFolderId(Long folderId) {
+        PipelineFolder folder = getFolder(folderId);
+        return Boolean.TRUE.equals(folder.getSystemRoot()) ? null : folder.getId();
     }
 
     @Transactional(readOnly = true)
     public SyncConfigDTO.ConfigPipelineSummary toConfigPipelineSummary(PipelineDefinition pipelineDefinition) {
         return new SyncConfigDTO.ConfigPipelineSummary(
                 pipelineDefinition.getId(),
-                pipelineDefinition.getConfigPath(),
-                pipelineDefinition.getFileName(),
-                pipelineDefinition.getFolderId(),
+                renderPublicFolderId(pipelineDefinition.getFolderId()),
                 buildFolderPath(pipelineDefinition.getFolderId()),
                 pipelineDefinition.getPipelineName());
     }
@@ -285,14 +282,13 @@ public class PipelineFolderService {
             throw new IllegalArgumentException("Folder can not be moved under itself");
         }
 
-        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folder.getId());
+        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folder.getId(), pipelineFolderRepo.findAllByOrderByIdAsc());
         if (subtreeFolderIds.contains(targetParentId)) {
             throw new IllegalArgumentException("Folder can not be moved under its descendant");
         }
     }
 
-    private Set<Long> collectSubtreeFolderIds(Long folderId) {
-        List<PipelineFolder> folders = pipelineFolderRepo.findAllByOrderByIdAsc();
+    private Set<Long> collectSubtreeFolderIds(Long folderId, List<PipelineFolder> folders) {
         Map<Long, List<PipelineFolder>> foldersByParentId = new HashMap<>();
         for (PipelineFolder folder : folders) {
             foldersByParentId.computeIfAbsent(folder.getParentId(), key -> new ArrayList<>()).add(folder);
@@ -313,6 +309,23 @@ public class PipelineFolderService {
         return subtreeFolderIds;
     }
 
+    private SyncConfigDTO.FolderDeletePreviewFolderInfo toDeletePreviewFolderInfo(PipelineFolder folder) {
+        return new SyncConfigDTO.FolderDeletePreviewFolderInfo(
+                folder.getId(),
+                folder.getFolderName(),
+                buildFolderPath(folder.getId()));
+    }
+
+    private SyncConfigDTO.FolderDeletePreviewPipelineInfo toDeletePreviewPipelineInfo(PipelineDefinition pipelineDefinition,
+            boolean hasRunHistory) {
+        return new SyncConfigDTO.FolderDeletePreviewPipelineInfo(
+                pipelineDefinition.getId(),
+                renderPublicFolderId(pipelineDefinition.getFolderId()),
+                buildFolderPath(pipelineDefinition.getFolderId()),
+                pipelineDefinition.getPipelineName(),
+                hasRunHistory);
+    }
+
     private PipelineFolder resolveFolderOrRoot(Long folderId) {
         return folderId == null ? getRootFolder() : getFolder(folderId);
     }
@@ -327,11 +340,6 @@ public class PipelineFolderService {
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline folder", "Pipeline folder not found"));
     }
 
-    private String extractFolderPath(String normalizedConfigPath) {
-        int separatorIndex = normalizedConfigPath.lastIndexOf('/');
-        return separatorIndex < 0 ? "" : normalizedConfigPath.substring(0, separatorIndex);
-    }
-
     private String normalizeFolderName(String folderName) {
         if (folderName == null || folderName.isBlank()) {
             throw new IllegalArgumentException("folderName can not be blank");
@@ -340,5 +348,15 @@ public class PipelineFolderService {
             throw new IllegalArgumentException("folderName contains unsupported characters");
         }
         return folderName.trim();
+    }
+
+    private int normalizeDeletePreviewLimit(Integer limit) {
+        if (limit == null) {
+            return DEFAULT_DELETE_PREVIEW_LIMIT;
+        }
+        if (limit <= 0 || limit > MAX_DELETE_PREVIEW_LIMIT) {
+            throw new IllegalArgumentException("limit must be between 1 and 200");
+        }
+        return limit;
     }
 }

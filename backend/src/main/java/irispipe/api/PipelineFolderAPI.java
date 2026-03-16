@@ -41,8 +41,10 @@ public class PipelineFolderAPI {
     }
 
     @GetMapping("/pipeline-folders/{folderId}/delete-preview")
-    public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(@PathVariable("folderId") Long folderId) {
-        return pipelineFolderService.getDeletePreview(folderId);
+    public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(
+            @PathVariable("folderId") Long folderId,
+            @RequestParam(name = "limit", required = false) Integer limit) {
+        return pipelineFolderService.getDeletePreview(folderId, limit);
     }
 
     @DeleteMapping("/pipeline-folders/{folderId}")

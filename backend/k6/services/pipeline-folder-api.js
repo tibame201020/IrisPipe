@@ -25,8 +25,8 @@ export function updateFolder(folderId, parentFolderId, folderName) {
     });
 }
 
-export function getFolderDeletePreview(folderId) {
-    return http.get(buildApiUrl(`/pipeline-folders/${folderId}/delete-preview`));
+export function getFolderDeletePreview(folderId, limit = null) {
+    return http.get(buildApiUrl(`/pipeline-folders/${folderId}/delete-preview`, { limit }));
 }
 
 export function deleteFolder(folderId, recursive = false) {

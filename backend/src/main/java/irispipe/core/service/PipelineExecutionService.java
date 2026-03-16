@@ -157,6 +157,7 @@ public class PipelineExecutionService {
                             pipelineRunExecutionJobs, 0));
             return SyncPipelineDTO.PipelineRunSummaryInfo.render(
                     pipelineDefinition,
+                    pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                     pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                     getPipelineRun(pipelineRun.getId()));
         }
@@ -165,6 +166,7 @@ public class PipelineExecutionService {
                 0);
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(
                 pipelineDefinition,
+                pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                 getPipelineRun(pipelineRun.getId()));
     }
@@ -209,6 +211,7 @@ public class PipelineExecutionService {
                             resumeJobSequence));
             return SyncPipelineDTO.PipelineRunSummaryInfo.render(
                     pipelineDefinition,
+                    pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                     pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                     getPipelineRun(pipelineRunId));
         }
@@ -222,6 +225,7 @@ public class PipelineExecutionService {
                 resumeJobSequence);
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(
                 pipelineDefinition,
+                pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                 getPipelineRun(pipelineRunId));
     }
@@ -253,6 +257,7 @@ public class PipelineExecutionService {
 
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(
                 pipelineDefinition,
+                pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                 getPipelineRun(pipelineRunId));
     }

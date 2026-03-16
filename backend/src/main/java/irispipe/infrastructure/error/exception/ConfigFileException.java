@@ -4,15 +4,15 @@ import lombok.Getter;
 
 @Getter
 public class ConfigFileException extends RuntimeException {
-    private final String configPath;
+    private final String pipelineName;
 
-    public ConfigFileException(String configPath, String message) {
-        super(String.format("Config file error at [%s]: %s", configPath, message));
-        this.configPath = configPath;
+    public ConfigFileException(String pipelineName, String message) {
+        super(String.format("Config import error for pipeline [%s]: %s", pipelineName, message));
+        this.pipelineName = pipelineName;
     }
 
-    public ConfigFileException(String configPath, String message, Throwable cause) {
-        super(String.format("Config file error at [%s]: %s", configPath, message), cause);
-        this.configPath = configPath;
+    public ConfigFileException(String pipelineName, String message, Throwable cause) {
+        super(String.format("Config import error for pipeline [%s]: %s", pipelineName, message), cause);
+        this.pipelineName = pipelineName;
     }
 }

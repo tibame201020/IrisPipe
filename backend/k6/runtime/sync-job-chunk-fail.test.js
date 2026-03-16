@@ -1,7 +1,7 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -15,7 +15,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-chunk-fail.yml');
 const fileName = 'job-chunk-fail.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 
 export function setup() {
     executeStatementsOrFail([

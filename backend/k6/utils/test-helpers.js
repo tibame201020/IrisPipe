@@ -1,21 +1,23 @@
 import { check, sleep } from 'k6';
 
-import { createConfig, deleteConfig, listConfigs, updateConfig } from '../services/sync-config-api.js';
+import { deleteConfig, importConfig, listConfigs, replaceConfigFromImport } from '../services/sync-config-api.js';
 import {
     deletePipelineRun,
     executePipeline,
     getPipelineRunDetail,
+    getPipelineRunsByPipelineId,
     getPipelineRunsByIds,
+    getRecentPipelineRuns,
     rerunPipeline,
     resumePipeline,
     stopPipeline,
 } from '../services/sync-pipeline-api.js';
 import { executeStatement, querySql } from '../services/test-support-api.js';
 
-const configPathPrefix = __ENV.IRISPIPE_CONFIG_PREFIX || `${Date.now()}`;
+const pipelineNamePrefix = __ENV.IRISPIPE_PIPELINE_NAME_PREFIX || `${Date.now()}`;
 
-export function configPathFor(fileName) {
-    return `k6-tests/${configPathPrefix}-${fileName}`;
+export function pipelineNameFor(fileName) {
+    return `k6-${pipelineNamePrefix}-${fileName}`.replace(/[\\/\s]+/g, '-');
 }
 
 export function responseSummary(response) {
@@ -30,13 +32,20 @@ export function jsonOrFallback(response, fallback = null) {
     }
 }
 
-export function ensureConfigUploaded(filePath, fileName, fileContent) {
-    const existingPipeline = findConfigByPath(filePath);
+export function hasNoLegacyPathFields(item) {
+    return item
+        && !Object.prototype.hasOwnProperty.call(item, 'path')
+        && !Object.prototype.hasOwnProperty.call(item, 'fileName')
+        && !Object.prototype.hasOwnProperty.call(item, 'configPath');
+}
+
+export function ensureConfigUploaded(pipelineName, fileName, fileContent) {
+    const existingPipeline = findConfigByPipelineName(pipelineName);
     if (existingPipeline) {
         ensureConfigDeleted(existingPipeline.id);
     }
 
-    const response = createConfig(filePath, fileName, fileContent);
+    const response = importConfig(null, pipelineName, null, fileName, fileContent);
     const payload = jsonOrFallback(response, {});
     const uploaded = check(response, {
         [`upload ${fileName} succeeded`]: (res) => res.status === 200,
@@ -53,8 +62,8 @@ export function ensureConfigUploaded(filePath, fileName, fileContent) {
     return payload;
 }
 
-export function ensureConfigUpdated(pipelineId, filePath, fileName, fileContent) {
-    const response = updateConfig(pipelineId, filePath, fileName, fileContent);
+export function ensureConfigUpdated(pipelineId, pipelineName, fileName, fileContent) {
+    const response = replaceConfigFromImport(pipelineId, null, pipelineName, null, fileName, fileContent);
     const updated = check(response, {
         [`update ${fileName} succeeded`]: (res) => res.status === 200,
     });
@@ -198,18 +207,19 @@ export function stopPipelineRunAndGetSummary(pipelineRunId) {
     };
 }
 
-export function findConfigByPath(filePath) {
+export function findConfigByPipelineName(pipelineName, folderPath = '/') {
     const response = listConfigs();
     const listed = check(response, {
         'list configs succeeded during lookup': (res) => res.status === 200,
     });
 
     if (!listed) {
-        throw new Error(`Failed to list configs while looking up ${filePath}: ${responseSummary(response)}`);
+        throw new Error(`Failed to list configs while looking up ${pipelineName}: ${responseSummary(response)}`);
     }
 
     const pipelines = jsonOrFallback(response, []);
-    return pipelines.find((pipeline) => pipeline.path === filePath) || null;
+    return pipelines.find((pipeline) =>
+        pipeline.pipelineName === pipelineName && pipeline.folderPath === folderPath) || null;
 }
 
 export function getPipelineRunsOrFail(pipelineRunIds, label = 'pipeline summary query') {
@@ -220,6 +230,32 @@ export function getPipelineRunsOrFail(pipelineRunIds, label = 'pipeline summary 
 
     if (!queried) {
         throw new Error(`Failed to fetch pipeline summaries for ${pipelineRunIds}: ${responseSummary(response)}`);
+    }
+
+    return jsonOrFallback(response, []);
+}
+
+export function getPipelineRunHistoryOrFail(pipelineId, limit = null, beforeRunId = null, label = 'pipeline history query') {
+    const response = getPipelineRunsByPipelineId(pipelineId, limit, beforeRunId);
+    const queried = check(response, {
+        [`${label} succeeded`]: (res) => res.status === 200,
+    });
+
+    if (!queried) {
+        throw new Error(`Failed to fetch pipeline history for ${pipelineId}: ${responseSummary(response)}`);
+    }
+
+    return jsonOrFallback(response, []);
+}
+
+export function getRecentPipelineRunsOrFail(limit = null, beforeRunId = null, label = 'recent pipeline query') {
+    const response = getRecentPipelineRuns(limit, beforeRunId);
+    const queried = check(response, {
+        [`${label} succeeded`]: (res) => res.status === 200,
+    });
+
+    if (!queried) {
+        throw new Error(`Failed to fetch recent pipeline runs: ${responseSummary(response)}`);
     }
 
     return jsonOrFallback(response, []);

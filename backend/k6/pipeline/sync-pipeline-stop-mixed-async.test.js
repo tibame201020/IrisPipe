@@ -1,7 +1,7 @@
 import { check, sleep } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -18,7 +18,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-pipeline-stop-mixed.yml');
 const fileName = 'job-pipeline-stop-mixed.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 const middleRows = Number.parseInt(__ENV.IRISPIPE_STOP_MIXED_ROWS || '1500000', 10);
 const firstRows = 1000;
 const thirdRows = 3;

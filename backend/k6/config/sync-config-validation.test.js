@@ -1,16 +1,16 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
-import { jsonOrFallback } from '../utils/test-helpers.js';
-import { createConfig } from '../services/sync-config-api.js';
+import { jsonOrFallback, pipelineNameFor } from '../utils/test-helpers.js';
+import { importConfig } from '../services/sync-config-api.js';
 
 export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/test-config-invalid-format.yml');
 const fileName = 'test-config-invalid-format.yml';
-const filePath = `k6-tests/${fileName}`;
+const pipelineName = pipelineNameFor(fileName);
 
 export default function () {
-    const response = createConfig(filePath, fileName, yamlContent);
+    const response = importConfig(null, pipelineName, null, fileName, yamlContent);
     const payload = jsonOrFallback(response, {});
 
     check(response, {

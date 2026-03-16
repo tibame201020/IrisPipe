@@ -2,6 +2,45 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 13: Desktop GUI Readiness Gaps] - 2026-03-16
+
+### Added
+- **Run History Browser API**: Expanded `GET /api/v1/sync-pipeline` so it now supports `pipelineId`, `limit`, and `beforeRunId` for per-pipeline logical run history, and added `GET /api/v1/sync-pipeline/recent` for recent activity browsing across pipelines while keeping `ids` lookup compatible.
+- **Rich Recursive Delete Preview**: Expanded `GET /api/v1/pipeline-folders/{folderId}/delete-preview` so GUI clients can preview affected folders, pipelines, blocker pipelines with run history, and payload truncation for confirmation dialogs before recursive delete.
+- **Phase 13 K6 Coverage**: Added `sync-pipeline-history-browser.test.js` and extended folder-tree tests so K6 now proves run history browsing, recent activity browsing, ids lookup compatibility, detailed delete preview payloads, and truncation/blocker behavior end to end.
+
+### Changed
+- **Pipeline Query Surface for GUI**: `SyncPipelineAPI` now cleanly separates three browsing modes: ids lookup for known runs, per-pipeline history for timeline panels, and recent-run browsing for activity feeds.
+- **Delete Preview Payload for Desktop UX**: Folder delete preview responses now include concrete folder and pipeline metadata instead of only counts, while keeping the existing blocker semantics that prevent deleting config trees with run lineage.
+- **Long-Running Stop Test Robustness**: The async chunk stop/resume K6 scenario now uses a dedicated configurable completion timeout so the evidence suite remains stable under full-regression load without weakening runtime assertions.
+
+### Verified
+- **Full Regression Validation**: Re-ran `mvn -q -DskipTests compile`, the targeted K6 `pipeline-stop` suite after tightening the async chunk timeout policy, and then the full K6 suite to confirm config tree management, import, control flows, run history browsing, delete preview evidence, observability, and runtime semantics all pass together.
+
+---
+
+## [Phase 12: Folder Tree Config Contract] - 2026-03-16
+
+### Added
+- **Folder Tree Foundation**: Added `iris_pipeline_folder`, a hidden root row strategy, folder CRUD APIs, tree query support, and recursive-delete preview so configuration can move from file-path identity to a real folder tree model.
+- **JSON-First Config CRUD**: Added folder-aware JSON create/update flows on `/api/v1/sync-config` using `folderId`, `pipelineName`, and `jobs` as the primary contract for future GUI integration.
+- **Optional Import Workflow**: Added `POST /api/v1/sync-config/import` and `PUT /api/v1/sync-config/{pipelineId}/import` so YAML/JSON files remain a supported import path without defining pipeline identity.
+- **Phase 12 K6 Coverage**: Added folder-tree and import scenarios, and updated shared K6 helpers so config, pipeline, and runtime suites now validate the folder-aware contract end to end.
+
+### Changed
+- **Folder-Aware Metadata Surface**: Config and runtime DTOs now expose `pipelineName`, `folderId`, and `folderPath`; root pipelines render as `folderId = null` and `folderPath = '/'` so the hidden root row stays internal.
+- **Contract Shift Away From Path Identity**: `sync-config` no longer treats `path` and uploaded file names as the public identity model; uniqueness now follows folder scope plus `pipelineName`.
+- **Runtime Readability for GUI**: Pipeline summary and detail responses now align with the config model so future GUI views can identify pipelines without reconstructing file-system-style paths.
+
+### Removed
+- **Legacy Multipart Path Contract**: Removed the old `path + file` create/update/patch endpoints from `/api/v1/sync-config`; multipart is now only used by the explicit import endpoints.
+- **Legacy Path Columns**: Dropped `config_path` and `file_name` from `iris_pipeline`, completing the persistence cleanup after the folder-tree migration.
+
+### Verified
+- **Full Regression Validation**: Re-ran `mvn -q -DskipTests compile` and the full K6 suite against the default backend H2 database to confirm folder-tree config CRUD, import flows, runtime metadata, rerun/resume/stop/delete behavior, and observability coverage remain intact.
+
+---
+
 ## [Phase 11 (Partial): Observability V1] - 2026-03-16
 
 ### Added

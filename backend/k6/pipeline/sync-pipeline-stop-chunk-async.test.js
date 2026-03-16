@@ -1,7 +1,7 @@
 import { check, sleep } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -18,9 +18,13 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-pipeline-stop-chunk.yml');
 const fileName = 'job-pipeline-stop-chunk.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_ROWS || '2000000', 10);
 const downstreamRows = 3;
+const resumeCompletionTimeoutSeconds = Number.parseInt(
+    __ENV.IRISPIPE_STOP_CHUNK_RESUME_TIMEOUT_SECONDS || '180',
+    10,
+);
 
 export function setup() {
     executeStatementsOrFail([
@@ -113,7 +117,12 @@ export default function (data) {
     });
 
     const { summary: resumedSummary } = resumePipelineRunAndGetSummary(summary.id, true);
-    const completedSummary = waitForPipelineStatus(summary.id, ['COMPLETED'], 120, 0.5);
+    const completedSummary = waitForPipelineStatus(
+        summary.id,
+        ['COMPLETED'],
+        resumeCompletionTimeoutSeconds,
+        0.5,
+    );
     const completedDetail = getPipelineRunDetailOrFail(summary.id, 'resumed chunk pipeline detail query');
     const completedDestACount = queryScalarOrFail(
         'SELECT COUNT(*) AS CNT FROM test_stop_chunk_dest_a',

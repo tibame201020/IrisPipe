@@ -1,20 +1,27 @@
 import http from 'k6/http';
 import { buildApiUrl, getJsonHeaders, getMultipartHeaders } from './api-client.js';
 
-function buildMultipartPayload(filePath, fileName, fileContent) {
+function buildMultipartPayload(fields, fileName, fileContent, fileContentType = 'application/x-yaml') {
     const boundary = `----IrisPipeK6Boundary${Math.random().toString(16).slice(2)}`;
-    const parts = [
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="path"',
-        '',
-        filePath,
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
-        'Content-Type: application/x-yaml',
-        '',
-        fileContent,
-        `--${boundary}--`,
-    ];
+    const parts = [];
+
+    Object.entries(fields).forEach(([key, value]) => {
+        if (value === null || value === undefined) {
+            return;
+        }
+
+        parts.push(`--${boundary}`);
+        parts.push(`Content-Disposition: form-data; name="${key}"`);
+        parts.push('');
+        parts.push(String(value));
+    });
+
+    parts.push(`--${boundary}`);
+    parts.push(`Content-Disposition: form-data; name="file"; filename="${fileName}"`);
+    parts.push(`Content-Type: ${fileContentType}`);
+    parts.push('');
+    parts.push(fileContent);
+    parts.push(`--${boundary}--`);
 
     return {
         boundary,
@@ -22,8 +29,18 @@ function buildMultipartPayload(filePath, fileName, fileContent) {
     };
 }
 
-function requestConfig(method, path, filePath, fileName, fileContent) {
-    const { boundary, body } = buildMultipartPayload(filePath, fileName, fileContent);
+function requestConfigImport(method, path, folderId, pipelineName, format, fileName, fileContent) {
+    const contentType = format === 'json' ? 'application/json' : 'application/x-yaml';
+    const { boundary, body } = buildMultipartPayload(
+        {
+            folderId,
+            pipelineName,
+            format,
+        },
+        fileName,
+        fileContent,
+        contentType,
+    );
 
     return http.request(method, buildApiUrl(path), body, {
         headers: getMultipartHeaders(boundary),
@@ -34,18 +51,6 @@ function requestConfigJson(method, path, payload) {
     return http.request(method, buildApiUrl(path), JSON.stringify(payload), {
         headers: getJsonHeaders(),
     });
-}
-
-export function createConfig(filePath, fileName, fileContent) {
-    return requestConfig('POST', '/sync-config', filePath, fileName, fileContent);
-}
-
-export function updateConfig(pipelineId, filePath, fileName, fileContent) {
-    return requestConfig('PUT', `/sync-config/${pipelineId}`, filePath, fileName, fileContent);
-}
-
-export function patchConfig(pipelineId, filePath, fileName, fileContent) {
-    return requestConfig('PATCH', `/sync-config/${pipelineId}`, filePath, fileName, fileContent);
 }
 
 export function createConfigFromBody(folderId, pipelineName, jobs) {
@@ -70,6 +75,22 @@ export function patchConfigFromBody(pipelineId, folderId, pipelineName, jobs) {
         pipelineName,
         jobs,
     });
+}
+
+export function importConfig(folderId, pipelineName, format, fileName, fileContent) {
+    return requestConfigImport('POST', '/sync-config/import', folderId, pipelineName, format, fileName, fileContent);
+}
+
+export function replaceConfigFromImport(pipelineId, folderId, pipelineName, format, fileName, fileContent) {
+    return requestConfigImport(
+        'PUT',
+        `/sync-config/${pipelineId}/import`,
+        folderId,
+        pipelineName,
+        format,
+        fileName,
+        fileContent,
+    );
 }
 
 export function getConfigDetail(pipelineId) {

@@ -1,19 +1,46 @@
 import http from 'k6/http';
 import { buildApiUrl, getJsonHeaders } from './api-client.js';
 
+const syncRequestTimeout = __ENV.IRISPIPE_SYNC_REQUEST_TIMEOUT || '10m';
+
+function buildExecutionRequestOptions(useAsyncLaucher = false) {
+    const options = {
+        headers: getJsonHeaders(),
+    };
+
+    if (!useAsyncLaucher) {
+        options.timeout = syncRequestTimeout;
+    }
+
+    return options;
+}
+
 export function executePipeline(pipelineId, useAsyncLaucher = false) {
     const payload = JSON.stringify({
         pipelineId: pipelineId,
         useAsyncLaucher: useAsyncLaucher,
     });
 
-    return http.post(buildApiUrl('/sync-pipeline'), payload, {
-        headers: getJsonHeaders(),
-    });
+    return http.post(buildApiUrl('/sync-pipeline'), payload, buildExecutionRequestOptions(useAsyncLaucher));
 }
 
 export function getPipelineRunsByIds(pipelineRunIds) {
     return http.get(buildApiUrl('/sync-pipeline', { ids: pipelineRunIds }));
+}
+
+export function getPipelineRunsByPipelineId(pipelineId, limit = null, beforeRunId = null) {
+    return http.get(buildApiUrl('/sync-pipeline', {
+        pipelineId,
+        limit,
+        beforeRunId,
+    }));
+}
+
+export function getRecentPipelineRuns(limit = null, beforeRunId = null) {
+    return http.get(buildApiUrl('/sync-pipeline/recent', {
+        limit,
+        beforeRunId,
+    }));
 }
 
 export function getPipelineRunDetail(pipelineRunId) {
@@ -25,9 +52,11 @@ export function resumePipeline(pipelineRunId, useAsyncLaucher = false) {
         useAsyncLaucher: useAsyncLaucher,
     });
 
-    return http.post(buildApiUrl(`/sync-pipeline/${pipelineRunId}/resume`), payload, {
-        headers: getJsonHeaders(),
-    });
+    return http.post(
+        buildApiUrl(`/sync-pipeline/${pipelineRunId}/resume`),
+        payload,
+        buildExecutionRequestOptions(useAsyncLaucher),
+    );
 }
 
 export function rerunPipeline(pipelineRunId, useAsyncLaucher = false) {
@@ -35,9 +64,11 @@ export function rerunPipeline(pipelineRunId, useAsyncLaucher = false) {
         useAsyncLaucher: useAsyncLaucher,
     });
 
-    return http.post(buildApiUrl(`/sync-pipeline/${pipelineRunId}/rerun`), payload, {
-        headers: getJsonHeaders(),
-    });
+    return http.post(
+        buildApiUrl(`/sync-pipeline/${pipelineRunId}/rerun`),
+        payload,
+        buildExecutionRequestOptions(useAsyncLaucher),
+    );
 }
 
 export function deletePipelineRun(pipelineRunId) {

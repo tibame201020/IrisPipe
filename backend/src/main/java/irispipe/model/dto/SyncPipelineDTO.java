@@ -38,8 +38,6 @@ public interface SyncPipelineDTO {
     record PipelineRunSummaryInfo(
             Long id,
             Long pipelineId,
-            String path,
-            String fileName,
             Long folderId,
             String folderPath,
             String pipelineName,
@@ -48,14 +46,12 @@ public interface SyncPipelineDTO {
             LocalDateTime startTime,
             LocalDateTime endTime) {
 
-        public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, String folderPath,
+        public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
                 PipelineRun pipelineRun) {
             return new PipelineRunSummaryInfo(
                     pipelineRun.getId(),
                     pipelineDefinition.getId(),
-                    pipelineDefinition.getConfigPath(),
-                    pipelineDefinition.getFileName(),
-                    pipelineDefinition.getFolderId(),
+                    folderId,
                     folderPath,
                     pipelineDefinition.getPipelineName(),
                     pipelineRun.getStatus(),
@@ -68,8 +64,6 @@ public interface SyncPipelineDTO {
     record PipelineRunDetailInfo(
             Long id,
             Long pipelineId,
-            String path,
-            String fileName,
             Long folderId,
             String folderPath,
             String pipelineName,
@@ -81,7 +75,7 @@ public interface SyncPipelineDTO {
             List<PipelineRunJobInfo> jobs,
             List<PipelineRunAttemptInfo> attempts) {
 
-        public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, String folderPath,
+        public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
                 PipelineRun pipelineRun,
                 PipelineRunExecution pipelineRunExecution,
                 List<PipelineRunJobInfo> jobs,
@@ -89,9 +83,7 @@ public interface SyncPipelineDTO {
             return new PipelineRunDetailInfo(
                     pipelineRun.getId(),
                     pipelineDefinition.getId(),
-                    pipelineDefinition.getConfigPath(),
-                    pipelineDefinition.getFileName(),
-                    pipelineDefinition.getFolderId(),
+                    folderId,
                     folderPath,
                     pipelineDefinition.getPipelineName(),
                     pipelineRunExecution == null ? pipelineRun.getRequestedAsync() : pipelineRunExecution.getRequestedAsync(),

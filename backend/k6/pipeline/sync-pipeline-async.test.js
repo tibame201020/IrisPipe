@@ -1,12 +1,13 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
     executeStatementsOrFail,
     getPipelineRunDetailOrFail,
+    hasNoLegacyPathFields,
     runPipelineAndGetSummary,
     waitForPipelineCompletion,
 } from '../utils/test-helpers.js';
@@ -15,7 +16,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-success.yml');
 const fileName = 'job-success.yml';
-const filePath = configPathFor(`pipeline-async-${fileName}`);
+const filePath = pipelineNameFor(`pipeline-async-${fileName}`);
 
 export function setup() {
     executeStatementsOrFail([
@@ -40,14 +41,17 @@ export default function (data) {
         'Async trigger returns a pipeline run id': (item) => Number.isInteger(item.id) && item.id > 0,
         'Async trigger returns a valid pipeline status': (item) =>
             ['STARTING', 'STARTED', 'COMPLETED'].includes(item.status),
+        'Async execute response no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
     check(completedSummary, {
         'Async pipeline eventually completes': (item) => item.status === 'COMPLETED',
+        'Async completion summary no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
     check(detail, {
         'Async pipeline detail marks requestedAsync': (item) => item.requestedAsync === true,
         'Async pipeline detail keeps completed status': (item) => item.status === 'COMPLETED',
         'Async pipeline detail includes one job node': (item) => Array.isArray(item.jobs) && item.jobs.length === 1,
+        'Async pipeline detail no longer exposes path/fileName fields': (item) => hasNoLegacyPathFields(item),
     });
 
     deletePipelineRunOrFail(summary.id, 'async pipeline run delete');

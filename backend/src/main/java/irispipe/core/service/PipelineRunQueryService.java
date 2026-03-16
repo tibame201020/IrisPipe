@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,10 +58,33 @@ public class PipelineRunQueryService {
         return pipelineRunIds.stream()
                 .map(pipelineRunRepo::findById)
                 .flatMap(Optional::stream)
-                .map(pipelineRun -> SyncPipelineDTO.PipelineRunSummaryInfo.render(
-                        getPipelineDefinition(pipelineRun.getPipelineId()),
-                        pipelineFolderService.buildFolderPath(getPipelineDefinition(pipelineRun.getPipelineId()).getFolderId()),
-                        pipelineRun))
+                .map(this::toPipelineRunSummaryInfo)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunHistory(Long pipelineId, Integer limit, Long beforeRunId) {
+        getPipelineDefinition(pipelineId);
+        int normalizedLimit = normalizeLimit(limit);
+        List<PipelineRun> pipelineRuns = beforeRunId == null
+                ? pipelineRunRepo.findByPipelineIdOrderByIdDesc(pipelineId, PageRequest.of(0, normalizedLimit))
+                : pipelineRunRepo.findByPipelineIdAndIdLessThanOrderByIdDesc(
+                        pipelineId,
+                        beforeRunId,
+                        PageRequest.of(0, normalizedLimit));
+        return pipelineRuns.stream()
+                .map(this::toPipelineRunSummaryInfo)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SyncPipelineDTO.PipelineRunSummaryInfo> getRecentPipelineRuns(Integer limit, Long beforeRunId) {
+        int normalizedLimit = normalizeLimit(limit);
+        List<PipelineRun> pipelineRuns = beforeRunId == null
+                ? pipelineRunRepo.findAllByOrderByIdDesc(PageRequest.of(0, normalizedLimit))
+                : pipelineRunRepo.findByIdLessThanOrderByIdDesc(beforeRunId, PageRequest.of(0, normalizedLimit));
+        return pipelineRuns.stream()
+                .map(this::toPipelineRunSummaryInfo)
                 .toList();
     }
 
@@ -93,6 +117,7 @@ public class PipelineRunQueryService {
 
         return SyncPipelineDTO.PipelineRunDetailInfo.render(
                 pipelineDefinition,
+                pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                 pipelineRun,
                 latestExecution,
@@ -171,8 +196,27 @@ public class PipelineRunQueryService {
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline run", "Pipeline run not found"));
     }
 
+    private SyncPipelineDTO.PipelineRunSummaryInfo toPipelineRunSummaryInfo(PipelineRun pipelineRun) {
+        PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineRun.getPipelineId());
+        return SyncPipelineDTO.PipelineRunSummaryInfo.render(
+                pipelineDefinition,
+                pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
+                pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
+                pipelineRun);
+    }
+
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
         return pipelineDefinitionRepo.findById(pipelineId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
+    }
+
+    private int normalizeLimit(Integer limit) {
+        if (limit == null) {
+            return 20;
+        }
+        if (limit <= 0 || limit > 100) {
+            throw new IllegalArgumentException("limit must be between 1 and 100");
+        }
+        return limit;
     }
 }

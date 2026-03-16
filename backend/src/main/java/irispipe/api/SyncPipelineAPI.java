@@ -60,8 +60,32 @@ public class SyncPipelineAPI {
     }
 
     @GetMapping
-    public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunsByIds(@RequestParam("ids") List<Long> ids) {
-        return pipelineRunQueryService.getPipelineRunSummaries(ids);
+    public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRuns(
+            @RequestParam(name = "ids", required = false) List<Long> ids,
+            @RequestParam(name = "pipelineId", required = false) Long pipelineId,
+            @RequestParam(name = "limit", required = false) Integer limit,
+            @RequestParam(name = "beforeRunId", required = false) Long beforeRunId) {
+        boolean hasIds = ids != null && !ids.isEmpty();
+        boolean hasPipelineId = pipelineId != null;
+
+        if (hasIds == hasPipelineId) {
+            throw new IllegalArgumentException("Specify exactly one of ids or pipelineId");
+        }
+        if (hasIds) {
+            if (limit != null || beforeRunId != null) {
+                throw new IllegalArgumentException("limit and beforeRunId are not supported with ids lookup");
+            }
+            return pipelineRunQueryService.getPipelineRunSummaries(ids);
+        }
+
+        return pipelineRunQueryService.getPipelineRunHistory(pipelineId, limit, beforeRunId);
+    }
+
+    @GetMapping("/recent")
+    public List<SyncPipelineDTO.PipelineRunSummaryInfo> getRecentPipelineRuns(
+            @RequestParam(name = "limit", required = false) Integer limit,
+            @RequestParam(name = "beforeRunId", required = false) Long beforeRunId) {
+        return pipelineRunQueryService.getRecentPipelineRuns(limit, beforeRunId);
     }
 
     @GetMapping("/{pipelineRunId}")

@@ -1,7 +1,7 @@
 import { check, sleep } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -18,7 +18,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-pipeline-stop-job.yml');
 const fileName = 'job-pipeline-stop-job.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_JOB_ROWS || '1000000', 10);
 const downstreamRows = 3;
 

@@ -1,7 +1,7 @@
 import { check, sleep } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUpdated,
@@ -21,7 +21,7 @@ export const options = singleRunOptions;
 const yamlContentV1 = open('../testfiles/job-pipeline-control-flow-v1.yml');
 const yamlContentV2 = open('../testfiles/job-pipeline-control-flow-v2.yml');
 const fileName = 'job-pipeline-control-flow.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 const firstRows = 1000;
 const middleRows = Number.parseInt(__ENV.IRISPIPE_CONTROL_FLOW_ROWS || '1500000', 10);
 const thirdRowsV1 = 3;

@@ -7,7 +7,7 @@ import {
 } from '../services/management-api.js';
 import { singleRunOptions } from '../utils/test-options.js';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -22,7 +22,7 @@ export const options = singleRunOptions;
 
 const yamlContent = open('../testfiles/job-pipeline-rerun-v1.yml');
 const fileName = 'job-pipeline-observability-smoke.yml';
-const filePath = configPathFor(fileName);
+const filePath = pipelineNameFor(fileName);
 const expectedMetricNames = [
     'irispipe.pipeline.run.triggered',
     'irispipe.pipeline.execution.completed',

@@ -28,12 +28,27 @@ Each `SyncJobDefinition` becomes one ordered node in the pipeline.
 
 ## 3. Static Persistence Tables
 
-The uploaded YAML or JSON file is normalized into the following tables:
+The persisted pipeline definition is now organized around a folder tree plus a named pipeline resource.
+File import is optional and only one way to create or replace the stored definition.
+
+### `iris_pipeline_folder`
+
+- One row per logical folder node
+- Stores:
+  - `parent_id`
+  - `folder_name`
+- The backend keeps one hidden root row internally
+- Public API still exposes root as a virtual `/`
 
 ### `iris_pipeline`
 
-- One row per uploaded pipeline
-- Stores logical path, file name, and latest `content_hash`
+- One row per persisted pipeline definition
+- Stores:
+  - `folder_id`
+  - `pipeline_name`
+  - latest `content_hash`
+- `pipeline_id` remains the stable technical identifier
+- `pipeline_name` is only unique inside one folder
 
 ### `iris_pipeline_job`
 
@@ -52,7 +67,7 @@ The uploaded YAML or JSON file is normalized into the following tables:
 
 - Stores execution step parameters
 
-This schema remains the source of truth for fresh `execute`.
+This schema remains the source of truth for fresh `execute`, whether the config arrived through JSON body CRUD or optional file import.
 
 ## 4. Runtime Persistence Model
 

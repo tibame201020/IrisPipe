@@ -1,6 +1,6 @@
 import { check, sleep } from 'k6';
 import {
-    configPathFor,
+    pipelineNameFor,
     deletePipelineRunOrFail,
     ensureConfigDeleted,
     ensureConfigUploaded,
@@ -37,7 +37,7 @@ export const options = {
 
 const yamlContent = open('../testfiles/job-pipeline-stop-mixed.yml');
 const fileName = 'job-pipeline-stop-mixed.yml';
-const filePath = configPathFor(`sync-${fileName}`);
+const filePath = pipelineNameFor(`sync-${fileName}`);
 const middleRows = Number.parseInt(__ENV.IRISPIPE_STOP_SYNC_MIXED_ROWS || '1500000', 10);
 const firstRows = 1000;
 const thirdRows = 3;
