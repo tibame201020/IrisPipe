@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Phase 14: Workspace-Scoped Engine Boundary] - 2026-03-17
+
+### Added
+- **Workspace Domain and Seed**: Added `iris_workspace`, a default workspace seed, `Workspace` entity/repository/service, and `/api/v1/workspaces` APIs so the core engine can be scoped without introducing user, tenant, or auth models.
+- **Workspace Header Contract**: Added request-scoped workspace resolution through `X-Iris-Workspace-Key`, with `default` fallback for desktop and local Compose usage.
+- **Workspace Isolation Coverage**: Added workspace-aware K6 clients plus `sync-workspace-boundary.test.js` so the regression suite now proves workspace isolation for folder tree, config CRUD, run history, recent activity, run detail, and cross-workspace access denial.
+
+### Changed
+- **Per-Workspace Core Tables**: `iris_pipeline_folder`, `iris_pipeline`, and `iris_pipeline_run` now carry `workspace_id`, and every workspace owns its own hidden root folder row.
+- **Scoped Config and Tree Queries**: Folder tree, folder mutation, delete preview, config list/detail, config create/update/import, and uniqueness checks now execute inside the current workspace instead of assuming one global namespace.
+- **Scoped Runtime Control and Browsing**: Execute, stop, resume, rerun, run detail, pipeline history, recent runs, and ids lookup now all resolve through the current workspace boundary while preserving the public pipeline/run contract.
+- **Desktop Compatibility Preservation**: The existing single-user desktop path still works without frontend changes because missing workspace headers fall back to `default`.
+
+### Verified
+- **Workspace Regression Validation**: Re-ran `mvn -q -DskipTests compile`, the targeted K6 `workspace` suite, the targeted `config` and `pipeline-core` suites, and then the full K6 suite to confirm workspace isolation and default-workspace fallback both hold across all existing config, control, observability, and runtime scenarios.
+
+---
+
 ## [Phase 13: Desktop GUI Readiness Gaps] - 2026-03-16
 
 ### Added

@@ -2,6 +2,7 @@ package irispipe.infrastructure.repo;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
@@ -16,13 +17,19 @@ import irispipe.model.PipelineRunStatus;
 public interface PipelineRunRepo extends JpaRepository<PipelineRun, Long> {
     List<PipelineRun> findAllByOrderByIdAsc();
 
-    List<PipelineRun> findAllByOrderByIdDesc(Pageable pageable);
+    Optional<PipelineRun> findByIdAndWorkspaceId(Long id, Long workspaceId);
 
-    List<PipelineRun> findByIdLessThanOrderByIdDesc(Long beforeRunId, Pageable pageable);
+    List<PipelineRun> findAllByWorkspaceIdOrderByIdDesc(Long workspaceId, Pageable pageable);
 
-    List<PipelineRun> findByPipelineIdOrderByIdDesc(Long pipelineId, Pageable pageable);
+    List<PipelineRun> findByWorkspaceIdAndIdLessThanOrderByIdDesc(Long workspaceId, Long beforeRunId, Pageable pageable);
 
-    List<PipelineRun> findByPipelineIdAndIdLessThanOrderByIdDesc(Long pipelineId, Long beforeRunId, Pageable pageable);
+    List<PipelineRun> findByWorkspaceIdAndPipelineIdOrderByIdDesc(Long workspaceId, Long pipelineId, Pageable pageable);
+
+    List<PipelineRun> findByWorkspaceIdAndPipelineIdAndIdLessThanOrderByIdDesc(
+            Long workspaceId,
+            Long pipelineId,
+            Long beforeRunId,
+            Pageable pageable);
 
     long countByStatusIn(Collection<PipelineRunStatus> statuses);
 

@@ -16,24 +16,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "iris_pipeline")
-public class PipelineDefinition {
+@Table(name = "iris_workspace")
+public class Workspace {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "workspace_id")
-    private Long workspaceId;
+    @Column(name = "workspace_key")
+    private String workspaceKey;
 
-    @Column(name = "folder_id")
-    private Long folderId;
+    @Column(name = "workspace_name")
+    private String workspaceName;
 
-    @Column(name = "pipeline_name")
-    private String pipelineName;
-
-    @Column(name = "content_hash")
-    private String contentHash;
+    @Column(name = "system_default")
+    private Boolean systemDefault;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

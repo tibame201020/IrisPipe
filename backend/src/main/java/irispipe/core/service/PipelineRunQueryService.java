@@ -25,6 +25,7 @@ import irispipe.infrastructure.repo.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.PipelineRunRepo;
 import irispipe.infrastructure.service.PipelineFolderService;
+import irispipe.infrastructure.service.WorkspaceContextService;
 import irispipe.model.dto.SyncPipelineDTO;
 
 @Service
@@ -35,6 +36,7 @@ public class PipelineRunQueryService {
     private final PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo;
     private final PipelineRunJobRepo pipelineRunJobRepo;
     private final PipelineFolderService pipelineFolderService;
+    private final WorkspaceContextService workspaceContextService;
     private final JobExplorer jobExplorer;
 
     public PipelineRunQueryService(PipelineDefinitionRepo pipelineDefinitionRepo,
@@ -43,6 +45,7 @@ public class PipelineRunQueryService {
             PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
             PipelineRunJobRepo pipelineRunJobRepo,
             PipelineFolderService pipelineFolderService,
+            WorkspaceContextService workspaceContextService,
             JobExplorer jobExplorer) {
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineRunRepo = pipelineRunRepo;
@@ -50,13 +53,15 @@ public class PipelineRunQueryService {
         this.pipelineRunExecutionJobRepo = pipelineRunExecutionJobRepo;
         this.pipelineRunJobRepo = pipelineRunJobRepo;
         this.pipelineFolderService = pipelineFolderService;
+        this.workspaceContextService = workspaceContextService;
         this.jobExplorer = jobExplorer;
     }
 
     @Transactional(readOnly = true)
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunSummaries(List<Long> pipelineRunIds) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         return pipelineRunIds.stream()
-                .map(pipelineRunRepo::findById)
+                .map(pipelineRunId -> pipelineRunRepo.findByIdAndWorkspaceId(pipelineRunId, workspaceId))
                 .flatMap(Optional::stream)
                 .map(this::toPipelineRunSummaryInfo)
                 .toList();
@@ -64,11 +69,16 @@ public class PipelineRunQueryService {
 
     @Transactional(readOnly = true)
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRunHistory(Long pipelineId, Integer limit, Long beforeRunId) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         getPipelineDefinition(pipelineId);
         int normalizedLimit = normalizeLimit(limit);
         List<PipelineRun> pipelineRuns = beforeRunId == null
-                ? pipelineRunRepo.findByPipelineIdOrderByIdDesc(pipelineId, PageRequest.of(0, normalizedLimit))
-                : pipelineRunRepo.findByPipelineIdAndIdLessThanOrderByIdDesc(
+                ? pipelineRunRepo.findByWorkspaceIdAndPipelineIdOrderByIdDesc(
+                        workspaceId,
+                        pipelineId,
+                        PageRequest.of(0, normalizedLimit))
+                : pipelineRunRepo.findByWorkspaceIdAndPipelineIdAndIdLessThanOrderByIdDesc(
+                        workspaceId,
                         pipelineId,
                         beforeRunId,
                         PageRequest.of(0, normalizedLimit));
@@ -79,10 +89,14 @@ public class PipelineRunQueryService {
 
     @Transactional(readOnly = true)
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getRecentPipelineRuns(Integer limit, Long beforeRunId) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         int normalizedLimit = normalizeLimit(limit);
         List<PipelineRun> pipelineRuns = beforeRunId == null
-                ? pipelineRunRepo.findAllByOrderByIdDesc(PageRequest.of(0, normalizedLimit))
-                : pipelineRunRepo.findByIdLessThanOrderByIdDesc(beforeRunId, PageRequest.of(0, normalizedLimit));
+                ? pipelineRunRepo.findAllByWorkspaceIdOrderByIdDesc(workspaceId, PageRequest.of(0, normalizedLimit))
+                : pipelineRunRepo.findByWorkspaceIdAndIdLessThanOrderByIdDesc(
+                        workspaceId,
+                        beforeRunId,
+                        PageRequest.of(0, normalizedLimit));
         return pipelineRuns.stream()
                 .map(this::toPipelineRunSummaryInfo)
                 .toList();
@@ -192,7 +206,8 @@ public class PipelineRunQueryService {
     }
 
     private PipelineRun getPipelineRun(Long pipelineRunId) {
-        return pipelineRunRepo.findById(pipelineRunId)
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return pipelineRunRepo.findByIdAndWorkspaceId(pipelineRunId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline run", "Pipeline run not found"));
     }
 
@@ -206,7 +221,8 @@ public class PipelineRunQueryService {
     }
 
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
-        return pipelineDefinitionRepo.findById(pipelineId)
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return pipelineDefinitionRepo.findByIdAndWorkspaceId(pipelineId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
     }
 

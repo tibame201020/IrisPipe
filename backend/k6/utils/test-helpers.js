@@ -39,13 +39,13 @@ export function hasNoLegacyPathFields(item) {
         && !Object.prototype.hasOwnProperty.call(item, 'configPath');
 }
 
-export function ensureConfigUploaded(pipelineName, fileName, fileContent) {
-    const existingPipeline = findConfigByPipelineName(pipelineName);
+export function ensureConfigUploaded(pipelineName, fileName, fileContent, workspaceKey = null) {
+    const existingPipeline = findConfigByPipelineName(pipelineName, '/', workspaceKey);
     if (existingPipeline) {
-        ensureConfigDeleted(existingPipeline.id);
+        ensureConfigDeleted(existingPipeline.id, workspaceKey);
     }
 
-    const response = importConfig(null, pipelineName, null, fileName, fileContent);
+    const response = importConfig(null, pipelineName, null, fileName, fileContent, workspaceKey);
     const payload = jsonOrFallback(response, {});
     const uploaded = check(response, {
         [`upload ${fileName} succeeded`]: (res) => res.status === 200,
@@ -62,8 +62,8 @@ export function ensureConfigUploaded(pipelineName, fileName, fileContent) {
     return payload;
 }
 
-export function ensureConfigUpdated(pipelineId, pipelineName, fileName, fileContent) {
-    const response = replaceConfigFromImport(pipelineId, null, pipelineName, null, fileName, fileContent);
+export function ensureConfigUpdated(pipelineId, pipelineName, fileName, fileContent, workspaceKey = null) {
+    const response = replaceConfigFromImport(pipelineId, null, pipelineName, null, fileName, fileContent, workspaceKey);
     const updated = check(response, {
         [`update ${fileName} succeeded`]: (res) => res.status === 200,
     });
@@ -76,12 +76,12 @@ export function ensureConfigUpdated(pipelineId, pipelineName, fileName, fileCont
     return payload;
 }
 
-export function ensureConfigDeleted(pipelineId) {
+export function ensureConfigDeleted(pipelineId, workspaceKey = null) {
     if (!pipelineId) {
         return;
     }
 
-    const response = deleteConfig(pipelineId);
+    const response = deleteConfig(pipelineId, workspaceKey);
     check(response, {
         [`delete pipeline ${pipelineId} succeeded`]: (res) => res.status === 200 || res.status === 204,
     });
@@ -103,8 +103,8 @@ export function executeStatementsOrFail(statements) {
         });
 }
 
-export function runPipelineAndGetSummary(pipelineId, useAsyncLaucher = false) {
-    const response = executePipeline(pipelineId, useAsyncLaucher);
+export function runPipelineAndGetSummary(pipelineId, useAsyncLaucher = false, workspaceKey = null) {
+    const response = executePipeline(pipelineId, useAsyncLaucher, workspaceKey);
     const requestAccepted = check(response, {
         'sync-pipeline request succeeded': (res) => res.status === 200,
     });
@@ -129,8 +129,8 @@ export function runPipelineAndGetSummary(pipelineId, useAsyncLaucher = false) {
     };
 }
 
-export function resumePipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false) {
-    const response = resumePipeline(pipelineRunId, useAsyncLaucher);
+export function resumePipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false, workspaceKey = null) {
+    const response = resumePipeline(pipelineRunId, useAsyncLaucher, workspaceKey);
     const requestAccepted = check(response, {
         'sync-pipeline resume request succeeded': (res) => res.status === 200,
     });
@@ -155,8 +155,8 @@ export function resumePipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = 
     };
 }
 
-export function rerunPipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false) {
-    const response = rerunPipeline(pipelineRunId, useAsyncLaucher);
+export function rerunPipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = false, workspaceKey = null) {
+    const response = rerunPipeline(pipelineRunId, useAsyncLaucher, workspaceKey);
     const requestAccepted = check(response, {
         'sync-pipeline rerun request succeeded': (res) => res.status === 200,
     });
@@ -181,8 +181,8 @@ export function rerunPipelineRunAndGetSummary(pipelineRunId, useAsyncLaucher = f
     };
 }
 
-export function stopPipelineRunAndGetSummary(pipelineRunId) {
-    const response = stopPipeline(pipelineRunId);
+export function stopPipelineRunAndGetSummary(pipelineRunId, workspaceKey = null) {
+    const response = stopPipeline(pipelineRunId, workspaceKey);
     const requestAccepted = check(response, {
         'sync-pipeline stop request succeeded': (res) => res.status === 200,
     });
@@ -207,8 +207,8 @@ export function stopPipelineRunAndGetSummary(pipelineRunId) {
     };
 }
 
-export function findConfigByPipelineName(pipelineName, folderPath = '/') {
-    const response = listConfigs();
+export function findConfigByPipelineName(pipelineName, folderPath = '/', workspaceKey = null) {
+    const response = listConfigs(workspaceKey);
     const listed = check(response, {
         'list configs succeeded during lookup': (res) => res.status === 200,
     });
@@ -222,8 +222,8 @@ export function findConfigByPipelineName(pipelineName, folderPath = '/') {
         pipeline.pipelineName === pipelineName && pipeline.folderPath === folderPath) || null;
 }
 
-export function getPipelineRunsOrFail(pipelineRunIds, label = 'pipeline summary query') {
-    const response = getPipelineRunsByIds(pipelineRunIds);
+export function getPipelineRunsOrFail(pipelineRunIds, label = 'pipeline summary query', workspaceKey = null) {
+    const response = getPipelineRunsByIds(pipelineRunIds, workspaceKey);
     const queried = check(response, {
         [`${label} succeeded`]: (res) => res.status === 200,
     });
@@ -235,8 +235,14 @@ export function getPipelineRunsOrFail(pipelineRunIds, label = 'pipeline summary 
     return jsonOrFallback(response, []);
 }
 
-export function getPipelineRunHistoryOrFail(pipelineId, limit = null, beforeRunId = null, label = 'pipeline history query') {
-    const response = getPipelineRunsByPipelineId(pipelineId, limit, beforeRunId);
+export function getPipelineRunHistoryOrFail(
+    pipelineId,
+    limit = null,
+    beforeRunId = null,
+    label = 'pipeline history query',
+    workspaceKey = null,
+) {
+    const response = getPipelineRunsByPipelineId(pipelineId, limit, beforeRunId, workspaceKey);
     const queried = check(response, {
         [`${label} succeeded`]: (res) => res.status === 200,
     });
@@ -248,8 +254,8 @@ export function getPipelineRunHistoryOrFail(pipelineId, limit = null, beforeRunI
     return jsonOrFallback(response, []);
 }
 
-export function getRecentPipelineRunsOrFail(limit = null, beforeRunId = null, label = 'recent pipeline query') {
-    const response = getRecentPipelineRuns(limit, beforeRunId);
+export function getRecentPipelineRunsOrFail(limit = null, beforeRunId = null, label = 'recent pipeline query', workspaceKey = null) {
+    const response = getRecentPipelineRuns(limit, beforeRunId, workspaceKey);
     const queried = check(response, {
         [`${label} succeeded`]: (res) => res.status === 200,
     });
@@ -261,8 +267,8 @@ export function getRecentPipelineRunsOrFail(limit = null, beforeRunId = null, la
     return jsonOrFallback(response, []);
 }
 
-export function getPipelineRunDetailOrFail(pipelineRunId, label = 'pipeline detail query') {
-    const response = getPipelineRunDetail(pipelineRunId);
+export function getPipelineRunDetailOrFail(pipelineRunId, label = 'pipeline detail query', workspaceKey = null) {
+    const response = getPipelineRunDetail(pipelineRunId, workspaceKey);
     const queried = check(response, {
         [`${label} succeeded`]: (res) => res.status === 200,
     });
@@ -274,8 +280,8 @@ export function getPipelineRunDetailOrFail(pipelineRunId, label = 'pipeline deta
     return jsonOrFallback(response, {});
 }
 
-export function deletePipelineRunOrFail(pipelineRunId, label = 'pipeline run delete') {
-    const response = deletePipelineRun(pipelineRunId);
+export function deletePipelineRunOrFail(pipelineRunId, label = 'pipeline run delete', workspaceKey = null) {
+    const response = deletePipelineRun(pipelineRunId, workspaceKey);
     const deleted = check(response, {
         [`${label} succeeded`]: (res) => res.status === 204,
     });
@@ -285,15 +291,27 @@ export function deletePipelineRunOrFail(pipelineRunId, label = 'pipeline run del
     }
 }
 
-export function waitForPipelineCompletion(pipelineRunId, expectedStatus = 'COMPLETED', timeoutSeconds = 10, intervalSeconds = 0.2) {
-    return waitForPipelineStatus(pipelineRunId, [expectedStatus], timeoutSeconds, intervalSeconds);
+export function waitForPipelineCompletion(
+    pipelineRunId,
+    expectedStatus = 'COMPLETED',
+    timeoutSeconds = 10,
+    intervalSeconds = 0.2,
+    workspaceKey = null,
+) {
+    return waitForPipelineStatus(pipelineRunId, [expectedStatus], timeoutSeconds, intervalSeconds, workspaceKey);
 }
 
-export function waitForPipelineStatus(pipelineRunId, expectedStatuses, timeoutSeconds = 10, intervalSeconds = 0.2) {
+export function waitForPipelineStatus(
+    pipelineRunId,
+    expectedStatuses,
+    timeoutSeconds = 10,
+    intervalSeconds = 0.2,
+    workspaceKey = null,
+) {
     const maxAttempts = Math.ceil(timeoutSeconds / intervalSeconds);
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        const summaries = getPipelineRunsOrFail([pipelineRunId], `poll pipeline ${pipelineRunId}`);
+        const summaries = getPipelineRunsOrFail([pipelineRunId], `poll pipeline ${pipelineRunId}`, workspaceKey);
         if (summaries.length > 0 && expectedStatuses.includes(summaries[0].status)) {
             return summaries[0];
         }

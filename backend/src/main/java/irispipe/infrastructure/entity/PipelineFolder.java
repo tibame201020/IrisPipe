@@ -23,6 +23,9 @@ public class PipelineFolder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "workspace_id")
+    private Long workspaceId;
+
     @Column(name = "parent_id")
     private Long parentId;
 

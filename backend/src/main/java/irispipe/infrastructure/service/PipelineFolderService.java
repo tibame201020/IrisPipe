@@ -33,22 +33,26 @@ public class PipelineFolderService {
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineRunRepo pipelineRunRepo;
     private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;
+    private final WorkspaceContextService workspaceContextService;
 
     public PipelineFolderService(PipelineFolderRepo pipelineFolderRepo,
             PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineRunRepo pipelineRunRepo,
-            PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService) {
+            PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService,
+            WorkspaceContextService workspaceContextService) {
         this.pipelineFolderRepo = pipelineFolderRepo;
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineDefinitionPersistenceService = pipelineDefinitionPersistenceService;
+        this.workspaceContextService = workspaceContextService;
     }
 
     @Transactional(readOnly = true)
     public SyncConfigDTO.PipelineTreeInfo getPipelineTree() {
-        PipelineFolder rootFolder = getRootFolder();
-        List<PipelineFolder> folders = pipelineFolderRepo.findAllByOrderByIdAsc();
-        List<PipelineDefinition> pipelines = pipelineDefinitionRepo.findAllByOrderByIdAsc();
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        PipelineFolder rootFolder = getRootFolder(workspaceId);
+        List<PipelineFolder> folders = pipelineFolderRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId);
+        List<PipelineDefinition> pipelines = pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId);
         Map<Long, List<PipelineFolder>> foldersByParentId = new HashMap<>();
         Map<Long, List<PipelineDefinition>> pipelinesByFolderId = new HashMap<>();
 
@@ -74,14 +78,19 @@ public class PipelineFolderService {
 
     @Transactional
     public SyncConfigDTO.FolderInfo createFolder(Long parentFolderId, String folderName) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         String normalizedFolderName = normalizeFolderName(folderName);
-        PipelineFolder parentFolder = resolveFolderOrRoot(parentFolderId);
-        if (pipelineFolderRepo.existsByParentIdAndFolderName(parentFolder.getId(), normalizedFolderName)) {
+        PipelineFolder parentFolder = resolveFolderOrRoot(parentFolderId, workspaceId);
+        if (pipelineFolderRepo.existsByWorkspaceIdAndParentIdAndFolderName(
+                workspaceId,
+                parentFolder.getId(),
+                normalizedFolderName)) {
             throw new ConflictException("Folder already exists in target parent");
         }
 
         LocalDateTime now = LocalDateTime.now();
         PipelineFolder folder = new PipelineFolder();
+        folder.setWorkspaceId(workspaceId);
         folder.setParentId(parentFolder.getId());
         folder.setFolderName(normalizedFolderName);
         folder.setSystemRoot(false);
@@ -92,16 +101,17 @@ public class PipelineFolderService {
 
     @Transactional
     public SyncConfigDTO.FolderInfo updateFolder(Long folderId, Long parentFolderId, String folderName) {
-        PipelineFolder folder = getFolder(folderId);
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        PipelineFolder folder = getFolder(folderId, workspaceId);
         if (Boolean.TRUE.equals(folder.getSystemRoot())) {
             throw new IllegalArgumentException("Root folder can not be updated");
         }
 
         String normalizedFolderName = normalizeFolderName(folderName);
-        PipelineFolder targetParent = resolveFolderOrRoot(parentFolderId);
-        validateFolderMove(folder, targetParent.getId());
+        PipelineFolder targetParent = resolveFolderOrRoot(parentFolderId, workspaceId);
+        validateFolderMove(folder, targetParent.getId(), workspaceId);
 
-        pipelineFolderRepo.findByParentIdAndFolderName(targetParent.getId(), normalizedFolderName)
+        pipelineFolderRepo.findByWorkspaceIdAndParentIdAndFolderName(workspaceId, targetParent.getId(), normalizedFolderName)
                 .filter(existingFolder -> !Objects.equals(existingFolder.getId(), folderId))
                 .ifPresent(existingFolder -> {
                     throw new ConflictException("Folder already exists in target parent");
@@ -115,23 +125,26 @@ public class PipelineFolderService {
 
     @Transactional(readOnly = true)
     public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(Long folderId, Integer limit) {
-        PipelineFolder folder = getFolder(folderId);
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        PipelineFolder folder = getFolder(folderId, workspaceId);
         if (Boolean.TRUE.equals(folder.getSystemRoot())) {
             throw new IllegalArgumentException("Root folder can not be deleted");
         }
 
         int normalizedLimit = normalizeDeletePreviewLimit(limit);
-        List<PipelineFolder> allFolders = pipelineFolderRepo.findAllByOrderByIdAsc();
+        List<PipelineFolder> allFolders = pipelineFolderRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId);
         Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folder.getId(), allFolders);
         List<PipelineFolder> subtreeFolders = allFolders.stream()
                 .filter(existingFolder -> subtreeFolderIds.contains(existingFolder.getId()))
                 .filter(existingFolder -> !Boolean.TRUE.equals(existingFolder.getSystemRoot()))
-                .sorted(Comparator.comparing(existingFolder -> buildFolderPath(existingFolder.getId())))
+                .sorted(Comparator.comparing(existingFolder -> buildFolderPath(existingFolder.getId(), workspaceId)))
                 .toList();
-        List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByOrderByIdAsc().stream()
+        List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId).stream()
                 .filter(pipelineDefinition -> subtreeFolderIds.contains(pipelineDefinition.getFolderId()))
                 .sorted(Comparator
-                        .comparing((PipelineDefinition pipelineDefinition) -> buildFolderPath(pipelineDefinition.getFolderId()))
+                        .comparing((PipelineDefinition pipelineDefinition) -> buildFolderPath(
+                                pipelineDefinition.getFolderId(),
+                                workspaceId))
                         .thenComparing(PipelineDefinition::getPipelineName))
                 .toList();
         Set<Long> pipelineIdsWithRunHistory = subtreePipelines.isEmpty()
@@ -161,7 +174,7 @@ public class PipelineFolderService {
         return new SyncConfigDTO.FolderDeletePreviewInfo(
                 folder.getId(),
                 folder.getFolderName(),
-                buildFolderPath(folder.getId()),
+                buildFolderPath(folder.getId(), workspaceId),
                 subtreeFolders.size(),
                 subtreePipelines.size(),
                 pipelinesWithRunHistory,
@@ -174,7 +187,8 @@ public class PipelineFolderService {
 
     @Transactional
     public void deleteFolder(Long folderId, boolean recursive) {
-        PipelineFolder folder = getFolder(folderId);
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        PipelineFolder folder = getFolder(folderId, workspaceId);
         if (Boolean.TRUE.equals(folder.getSystemRoot())) {
             throw new IllegalArgumentException("Root folder can not be deleted");
         }
@@ -188,9 +202,9 @@ public class PipelineFolderService {
             throw new ConflictException("Folder contains pipelines with run history and can not be recursively deleted");
         }
 
-        List<PipelineFolder> allFolders = pipelineFolderRepo.findAllByOrderByIdAsc();
+        List<PipelineFolder> allFolders = pipelineFolderRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId);
         Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folderId, allFolders);
-        List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByOrderByIdAsc().stream()
+        List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId).stream()
                 .filter(pipelineDefinition -> subtreeFolderIds.contains(pipelineDefinition.getFolderId()))
                 .sorted(Comparator.comparing(PipelineDefinition::getId))
                 .toList();
@@ -201,7 +215,9 @@ public class PipelineFolderService {
         List<PipelineFolder> foldersToDelete = allFolders.stream()
                 .filter(existingFolder -> subtreeFolderIds.contains(existingFolder.getId()))
                 .filter(existingFolder -> !Boolean.TRUE.equals(existingFolder.getSystemRoot()))
-                .sorted(Comparator.comparingInt((PipelineFolder folderNode) -> buildFolderPath(folderNode.getId()).length())
+                .sorted(Comparator.comparingInt((PipelineFolder folderNode) -> buildFolderPath(
+                        folderNode.getId(),
+                        workspaceId).length())
                         .reversed())
                 .toList();
         for (PipelineFolder folderNode : foldersToDelete) {
@@ -211,12 +227,18 @@ public class PipelineFolderService {
 
     @Transactional(readOnly = true)
     public Long resolveFolderIdOrRoot(Long folderId) {
-        return resolveFolderOrRoot(folderId).getId();
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return resolveFolderOrRoot(folderId, workspaceId).getId();
     }
 
     @Transactional(readOnly = true)
     public String buildFolderPath(Long folderId) {
-        PipelineFolder folder = getFolder(folderId);
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return buildFolderPath(folderId, workspaceId);
+    }
+
+    private String buildFolderPath(Long folderId, Long workspaceId) {
+        PipelineFolder folder = getFolder(folderId, workspaceId);
         if (Boolean.TRUE.equals(folder.getSystemRoot())) {
             return "/";
         }
@@ -225,7 +247,7 @@ public class PipelineFolderService {
         PipelineFolder current = folder;
         while (current != null && !Boolean.TRUE.equals(current.getSystemRoot())) {
             segments.addFirst(current.getFolderName());
-            current = current.getParentId() == null ? null : getFolder(current.getParentId());
+            current = current.getParentId() == null ? null : getFolder(current.getParentId(), workspaceId);
         }
 
         return "/" + String.join("/", segments);
@@ -233,7 +255,8 @@ public class PipelineFolderService {
 
     @Transactional(readOnly = true)
     public Long renderPublicFolderId(Long folderId) {
-        PipelineFolder folder = getFolder(folderId);
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        PipelineFolder folder = getFolder(folderId, workspaceId);
         return Boolean.TRUE.equals(folder.getSystemRoot()) ? null : folder.getId();
     }
 
@@ -248,7 +271,10 @@ public class PipelineFolderService {
 
     @Transactional(readOnly = true)
     public SyncConfigDTO.FolderInfo toFolderInfo(PipelineFolder folder) {
-        Long parentFolderId = Boolean.TRUE.equals(folder.getSystemRoot()) ? null : folder.getParentId();
+        Long parentFolderId = null;
+        if (!Boolean.TRUE.equals(folder.getSystemRoot()) && folder.getParentId() != null) {
+            parentFolderId = renderPublicFolderId(folder.getParentId());
+        }
         return new SyncConfigDTO.FolderInfo(
                 folder.getId(),
                 parentFolderId,
@@ -277,12 +303,14 @@ public class PipelineFolderService {
                 childPipelines);
     }
 
-    private void validateFolderMove(PipelineFolder folder, Long targetParentId) {
+    private void validateFolderMove(PipelineFolder folder, Long targetParentId, Long workspaceId) {
         if (Objects.equals(folder.getId(), targetParentId)) {
             throw new IllegalArgumentException("Folder can not be moved under itself");
         }
 
-        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(folder.getId(), pipelineFolderRepo.findAllByOrderByIdAsc());
+        Set<Long> subtreeFolderIds = collectSubtreeFolderIds(
+                folder.getId(),
+                pipelineFolderRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId));
         if (subtreeFolderIds.contains(targetParentId)) {
             throw new IllegalArgumentException("Folder can not be moved under its descendant");
         }
@@ -326,17 +354,17 @@ public class PipelineFolderService {
                 hasRunHistory);
     }
 
-    private PipelineFolder resolveFolderOrRoot(Long folderId) {
-        return folderId == null ? getRootFolder() : getFolder(folderId);
+    private PipelineFolder resolveFolderOrRoot(Long folderId, Long workspaceId) {
+        return folderId == null ? getRootFolder(workspaceId) : getFolder(folderId, workspaceId);
     }
 
-    private PipelineFolder getRootFolder() {
-        return pipelineFolderRepo.findBySystemRootTrue()
+    private PipelineFolder getRootFolder(Long workspaceId) {
+        return pipelineFolderRepo.findByWorkspaceIdAndSystemRootTrue(workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline folder", "Root folder not found"));
     }
 
-    private PipelineFolder getFolder(Long folderId) {
-        return pipelineFolderRepo.findById(folderId)
+    private PipelineFolder getFolder(Long folderId, Long workspaceId) {
+        return pipelineFolderRepo.findByIdAndWorkspaceId(folderId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline folder", "Pipeline folder not found"));
     }
 

@@ -1,5 +1,5 @@
 import http from 'k6/http';
-import { buildApiUrl, getJsonHeaders, getMultipartHeaders } from './api-client.js';
+import { buildApiUrl, getJsonHeaders, getMultipartHeaders, withWorkspaceOptions } from './api-client.js';
 
 function buildMultipartPayload(fields, fileName, fileContent, fileContentType = 'application/x-yaml') {
     const boundary = `----IrisPipeK6Boundary${Math.random().toString(16).slice(2)}`;
@@ -29,7 +29,7 @@ function buildMultipartPayload(fields, fileName, fileContent, fileContentType = 
     };
 }
 
-function requestConfigImport(method, path, folderId, pipelineName, format, fileName, fileContent) {
+function requestConfigImport(method, path, folderId, pipelineName, format, fileName, fileContent, workspaceKey = null) {
     const contentType = format === 'json' ? 'application/json' : 'application/x-yaml';
     const { boundary, body } = buildMultipartPayload(
         {
@@ -43,45 +43,53 @@ function requestConfigImport(method, path, folderId, pipelineName, format, fileN
     );
 
     return http.request(method, buildApiUrl(path), body, {
-        headers: getMultipartHeaders(boundary),
+        headers: getMultipartHeaders(boundary, workspaceKey),
     });
 }
 
-function requestConfigJson(method, path, payload) {
+function requestConfigJson(method, path, payload, workspaceKey = null) {
     return http.request(method, buildApiUrl(path), JSON.stringify(payload), {
-        headers: getJsonHeaders(),
+        headers: getJsonHeaders(workspaceKey),
     });
 }
 
-export function createConfigFromBody(folderId, pipelineName, jobs) {
+export function createConfigFromBody(folderId, pipelineName, jobs, workspaceKey = null) {
     return requestConfigJson('POST', '/sync-config', {
         folderId,
         pipelineName,
         jobs,
-    });
+    }, workspaceKey);
 }
 
-export function updateConfigFromBody(pipelineId, folderId, pipelineName, jobs) {
+export function updateConfigFromBody(pipelineId, folderId, pipelineName, jobs, workspaceKey = null) {
     return requestConfigJson('PUT', `/sync-config/${pipelineId}`, {
         folderId,
         pipelineName,
         jobs,
-    });
+    }, workspaceKey);
 }
 
-export function patchConfigFromBody(pipelineId, folderId, pipelineName, jobs) {
+export function patchConfigFromBody(pipelineId, folderId, pipelineName, jobs, workspaceKey = null) {
     return requestConfigJson('PATCH', `/sync-config/${pipelineId}`, {
         folderId,
         pipelineName,
         jobs,
-    });
+    }, workspaceKey);
 }
 
-export function importConfig(folderId, pipelineName, format, fileName, fileContent) {
-    return requestConfigImport('POST', '/sync-config/import', folderId, pipelineName, format, fileName, fileContent);
+export function importConfig(folderId, pipelineName, format, fileName, fileContent, workspaceKey = null) {
+    return requestConfigImport('POST', '/sync-config/import', folderId, pipelineName, format, fileName, fileContent, workspaceKey);
 }
 
-export function replaceConfigFromImport(pipelineId, folderId, pipelineName, format, fileName, fileContent) {
+export function replaceConfigFromImport(
+    pipelineId,
+    folderId,
+    pipelineName,
+    format,
+    fileName,
+    fileContent,
+    workspaceKey = null,
+) {
     return requestConfigImport(
         'PUT',
         `/sync-config/${pipelineId}/import`,
@@ -90,17 +98,18 @@ export function replaceConfigFromImport(pipelineId, folderId, pipelineName, form
         format,
         fileName,
         fileContent,
+        workspaceKey,
     );
 }
 
-export function getConfigDetail(pipelineId) {
-    return http.get(buildApiUrl(`/sync-config/${pipelineId}`));
+export function getConfigDetail(pipelineId, workspaceKey = null) {
+    return http.get(buildApiUrl(`/sync-config/${pipelineId}`), withWorkspaceOptions({}, workspaceKey));
 }
 
-export function listConfigs() {
-    return http.get(buildApiUrl('/sync-config'));
+export function listConfigs(workspaceKey = null) {
+    return http.get(buildApiUrl('/sync-config'), withWorkspaceOptions({}, workspaceKey));
 }
 
-export function deleteConfig(pipelineId) {
-    return http.del(buildApiUrl(`/sync-config/${pipelineId}`));
+export function deleteConfig(pipelineId, workspaceKey = null) {
+    return http.del(buildApiUrl(`/sync-config/${pipelineId}`), null, withWorkspaceOptions({}, workspaceKey));
 }

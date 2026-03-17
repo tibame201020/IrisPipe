@@ -44,6 +44,7 @@ import irispipe.infrastructure.service.JobMetadataService;
 import irispipe.infrastructure.service.PipelineFolderService;
 import irispipe.infrastructure.service.PipelineRunLifecycleService;
 import irispipe.infrastructure.service.PipelineRunSnapshotService;
+import irispipe.infrastructure.service.WorkspaceContextService;
 import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
@@ -71,6 +72,7 @@ public class PipelineExecutionService {
     private final PipelineFolderService pipelineFolderService;
     private final PipelineRunLifecycleService pipelineRunLifecycleService;
     private final PipelineRunSnapshotService pipelineRunSnapshotService;
+    private final WorkspaceContextService workspaceContextService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public PipelineExecutionService(JobLauncher jobLauncher,
@@ -90,6 +92,7 @@ public class PipelineExecutionService {
             PipelineFolderService pipelineFolderService,
             PipelineRunLifecycleService pipelineRunLifecycleService,
             PipelineRunSnapshotService pipelineRunSnapshotService,
+            WorkspaceContextService workspaceContextService,
             ApplicationEventPublisher applicationEventPublisher) {
         this.jobLauncher = jobLauncher;
         this.pipelineTaskExecutor = pipelineTaskExecutor;
@@ -108,6 +111,7 @@ public class PipelineExecutionService {
         this.pipelineFolderService = pipelineFolderService;
         this.pipelineRunLifecycleService = pipelineRunLifecycleService;
         this.pipelineRunSnapshotService = pipelineRunSnapshotService;
+        this.workspaceContextService = workspaceContextService;
         this.applicationEventPublisher = applicationEventPublisher;
     }
 
@@ -355,8 +359,10 @@ public class PipelineExecutionService {
 
     private PipelineRun createPipelineRun(Long pipelineId, boolean requestedAsync, Long rerunFromPipelineRunId) {
         LocalDateTime now = LocalDateTime.now();
+        PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineId);
 
         PipelineRun pipelineRun = new PipelineRun();
+        pipelineRun.setWorkspaceId(pipelineDefinition.getWorkspaceId());
         pipelineRun.setPipelineId(pipelineId);
         pipelineRun.setRerunFromPipelineRunId(rerunFromPipelineRunId);
         pipelineRun.setLatestExecutionId(null);
@@ -560,7 +566,8 @@ public class PipelineExecutionService {
     }
 
     private PipelineRun getPipelineRun(Long pipelineRunId) {
-        return pipelineRunRepo.findById(pipelineRunId)
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return pipelineRunRepo.findByIdAndWorkspaceId(pipelineRunId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline run", "Pipeline run not found"));
     }
 
@@ -596,7 +603,8 @@ public class PipelineExecutionService {
     }
 
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
-        return pipelineDefinitionRepo.findById(pipelineId)
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return pipelineDefinitionRepo.findByIdAndWorkspaceId(pipelineId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
     }
 

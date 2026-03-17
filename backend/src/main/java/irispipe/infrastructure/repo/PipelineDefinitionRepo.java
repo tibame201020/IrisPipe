@@ -11,11 +11,13 @@ import irispipe.infrastructure.entity.PipelineDefinition;
 @Repository
 public interface PipelineDefinitionRepo extends JpaRepository<PipelineDefinition, Long> {
 
-    boolean existsByFolderIdAndPipelineName(Long folderId, String pipelineName);
+    Optional<PipelineDefinition> findByIdAndWorkspaceId(Long id, Long workspaceId);
 
-    Optional<PipelineDefinition> findByFolderIdAndPipelineName(Long folderId, String pipelineName);
+    boolean existsByWorkspaceIdAndFolderIdAndPipelineName(Long workspaceId, Long folderId, String pipelineName);
 
-    List<PipelineDefinition> findAllByOrderByIdAsc();
+    Optional<PipelineDefinition> findByWorkspaceIdAndFolderIdAndPipelineName(Long workspaceId, Long folderId, String pipelineName);
 
-    List<PipelineDefinition> findByFolderIdOrderByPipelineNameAsc(Long folderId);
+    List<PipelineDefinition> findAllByWorkspaceIdOrderByIdAsc(Long workspaceId);
+
+    List<PipelineDefinition> findByWorkspaceIdAndFolderIdOrderByPipelineNameAsc(Long workspaceId, Long folderId);
 }

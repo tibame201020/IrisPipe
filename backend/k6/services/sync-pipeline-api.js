@@ -1,11 +1,11 @@
 import http from 'k6/http';
-import { buildApiUrl, getJsonHeaders } from './api-client.js';
+import { buildApiUrl, getJsonHeaders, withWorkspaceOptions } from './api-client.js';
 
 const syncRequestTimeout = __ENV.IRISPIPE_SYNC_REQUEST_TIMEOUT || '10m';
 
-function buildExecutionRequestOptions(useAsyncLaucher = false) {
+function buildExecutionRequestOptions(useAsyncLaucher = false, workspaceKey = null) {
     const options = {
-        headers: getJsonHeaders(),
+        headers: getJsonHeaders(workspaceKey),
     };
 
     if (!useAsyncLaucher) {
@@ -15,39 +15,39 @@ function buildExecutionRequestOptions(useAsyncLaucher = false) {
     return options;
 }
 
-export function executePipeline(pipelineId, useAsyncLaucher = false) {
+export function executePipeline(pipelineId, useAsyncLaucher = false, workspaceKey = null) {
     const payload = JSON.stringify({
         pipelineId: pipelineId,
         useAsyncLaucher: useAsyncLaucher,
     });
 
-    return http.post(buildApiUrl('/sync-pipeline'), payload, buildExecutionRequestOptions(useAsyncLaucher));
+    return http.post(buildApiUrl('/sync-pipeline'), payload, buildExecutionRequestOptions(useAsyncLaucher, workspaceKey));
 }
 
-export function getPipelineRunsByIds(pipelineRunIds) {
-    return http.get(buildApiUrl('/sync-pipeline', { ids: pipelineRunIds }));
+export function getPipelineRunsByIds(pipelineRunIds, workspaceKey = null) {
+    return http.get(buildApiUrl('/sync-pipeline', { ids: pipelineRunIds }), withWorkspaceOptions({}, workspaceKey));
 }
 
-export function getPipelineRunsByPipelineId(pipelineId, limit = null, beforeRunId = null) {
+export function getPipelineRunsByPipelineId(pipelineId, limit = null, beforeRunId = null, workspaceKey = null) {
     return http.get(buildApiUrl('/sync-pipeline', {
         pipelineId,
         limit,
         beforeRunId,
-    }));
+    }), withWorkspaceOptions({}, workspaceKey));
 }
 
-export function getRecentPipelineRuns(limit = null, beforeRunId = null) {
+export function getRecentPipelineRuns(limit = null, beforeRunId = null, workspaceKey = null) {
     return http.get(buildApiUrl('/sync-pipeline/recent', {
         limit,
         beforeRunId,
-    }));
+    }), withWorkspaceOptions({}, workspaceKey));
 }
 
-export function getPipelineRunDetail(pipelineRunId) {
-    return http.get(buildApiUrl(`/sync-pipeline/${pipelineRunId}`));
+export function getPipelineRunDetail(pipelineRunId, workspaceKey = null) {
+    return http.get(buildApiUrl(`/sync-pipeline/${pipelineRunId}`), withWorkspaceOptions({}, workspaceKey));
 }
 
-export function resumePipeline(pipelineRunId, useAsyncLaucher = false) {
+export function resumePipeline(pipelineRunId, useAsyncLaucher = false, workspaceKey = null) {
     const payload = JSON.stringify({
         useAsyncLaucher: useAsyncLaucher,
     });
@@ -55,11 +55,11 @@ export function resumePipeline(pipelineRunId, useAsyncLaucher = false) {
     return http.post(
         buildApiUrl(`/sync-pipeline/${pipelineRunId}/resume`),
         payload,
-        buildExecutionRequestOptions(useAsyncLaucher),
+        buildExecutionRequestOptions(useAsyncLaucher, workspaceKey),
     );
 }
 
-export function rerunPipeline(pipelineRunId, useAsyncLaucher = false) {
+export function rerunPipeline(pipelineRunId, useAsyncLaucher = false, workspaceKey = null) {
     const payload = JSON.stringify({
         useAsyncLaucher: useAsyncLaucher,
     });
@@ -67,16 +67,16 @@ export function rerunPipeline(pipelineRunId, useAsyncLaucher = false) {
     return http.post(
         buildApiUrl(`/sync-pipeline/${pipelineRunId}/rerun`),
         payload,
-        buildExecutionRequestOptions(useAsyncLaucher),
+        buildExecutionRequestOptions(useAsyncLaucher, workspaceKey),
     );
 }
 
-export function deletePipelineRun(pipelineRunId) {
-    return http.del(buildApiUrl(`/sync-pipeline/${pipelineRunId}`));
+export function deletePipelineRun(pipelineRunId, workspaceKey = null) {
+    return http.del(buildApiUrl(`/sync-pipeline/${pipelineRunId}`), null, withWorkspaceOptions({}, workspaceKey));
 }
 
-export function stopPipeline(pipelineRunId) {
+export function stopPipeline(pipelineRunId, workspaceKey = null) {
     return http.post(buildApiUrl(`/sync-pipeline/${pipelineRunId}/stop`), null, {
-        headers: getJsonHeaders(),
+        headers: getJsonHeaders(workspaceKey),
     });
 }

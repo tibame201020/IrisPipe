@@ -26,6 +26,9 @@ public class PipelineRun {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "workspace_id")
+    private Long workspaceId;
+
     @Column(name = "pipeline_id")
     private Long pipelineId;
 

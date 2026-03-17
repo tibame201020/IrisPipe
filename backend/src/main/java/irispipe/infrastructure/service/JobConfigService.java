@@ -57,6 +57,7 @@ public class JobConfigService {
     private final ObjectMapper objectMapper;
     private final PipelineFolderService pipelineFolderService;
     private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;
+    private final WorkspaceContextService workspaceContextService;
 
     public JobConfigService(JsonFileProvider jsonFileProvider,
             YamlFileProvider yamlFileProvider,
@@ -67,6 +68,7 @@ public class JobConfigService {
             PipelineExecutionParameterRepo pipelineExecutionParameterRepo,
             PipelineFolderService pipelineFolderService,
             PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService,
+            WorkspaceContextService workspaceContextService,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
         this.jsonFileProvider = jsonFileProvider;
         this.yamlFileProvider = yamlFileProvider;
@@ -77,11 +79,13 @@ public class JobConfigService {
         this.pipelineExecutionParameterRepo = pipelineExecutionParameterRepo;
         this.pipelineFolderService = pipelineFolderService;
         this.pipelineDefinitionPersistenceService = pipelineDefinitionPersistenceService;
+        this.workspaceContextService = workspaceContextService;
         this.objectMapper = objectMapper;
     }
 
     public List<SyncConfigDTO.ConfigPipelineSummary> listSyncConfig() {
-        return pipelineDefinitionRepo.findAllByOrderByIdAsc().stream()
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId).stream()
                 .map(pipelineFolderService::toConfigPipelineSummary)
                 .toList();
     }
@@ -106,15 +110,20 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo createSyncConfig(Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         String normalizedPipelineName = normalizePipelineName(pipelineName);
         List<SyncJobDefinition> validatedSyncJobs = validateAndNormalizeSyncJobs(syncJobs);
         Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
-        if (pipelineDefinitionRepo.existsByFolderIdAndPipelineName(targetFolderId, normalizedPipelineName)) {
+        if (pipelineDefinitionRepo.existsByWorkspaceIdAndFolderIdAndPipelineName(
+                workspaceId,
+                targetFolderId,
+                normalizedPipelineName)) {
             throw new ConflictException("Pipeline already exists in target folder");
         }
 
         LocalDateTime now = LocalDateTime.now();
         PipelineDefinition pipeline = new PipelineDefinition();
+        pipeline.setWorkspaceId(workspaceId);
         pipeline.setFolderId(targetFolderId);
         pipeline.setPipelineName(normalizedPipelineName);
         pipeline.setContentHash(renderContentHash(validatedSyncJobs));
@@ -129,16 +138,18 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo updateSyncConfig(Long pipelineId, Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         String normalizedPipelineName = normalizePipelineName(pipelineName);
         List<SyncJobDefinition> validatedSyncJobs = validateAndNormalizeSyncJobs(syncJobs);
         Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
-        pipelineDefinitionRepo.findByFolderIdAndPipelineName(targetFolderId, normalizedPipelineName)
+        pipelineDefinitionRepo.findByWorkspaceIdAndFolderIdAndPipelineName(workspaceId, targetFolderId, normalizedPipelineName)
                 .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
                 .ifPresent(existingPipeline -> {
                     throw new ConflictException("Pipeline already exists in target folder");
                 });
 
+        pipeline.setWorkspaceId(workspaceId);
         pipeline.setFolderId(targetFolderId);
         pipeline.setPipelineName(normalizedPipelineName);
         pipeline.setContentHash(renderContentHash(validatedSyncJobs));
@@ -158,14 +169,19 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long folderId, String pipelineName, String format,
             MultipartFile file) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PersistedConfig persistedConfig = parseImportConfig(folderId, pipelineName, format, file);
 
-        if (pipelineDefinitionRepo.existsByFolderIdAndPipelineName(persistedConfig.folderId(), persistedConfig.pipelineName())) {
+        if (pipelineDefinitionRepo.existsByWorkspaceIdAndFolderIdAndPipelineName(
+                workspaceId,
+                persistedConfig.folderId(),
+                persistedConfig.pipelineName())) {
             throw new ConflictException("Pipeline already exists in target folder");
         }
 
         LocalDateTime now = LocalDateTime.now();
         PipelineDefinition pipeline = new PipelineDefinition();
+        pipeline.setWorkspaceId(workspaceId);
         pipeline.setFolderId(persistedConfig.folderId());
         pipeline.setPipelineName(persistedConfig.pipelineName());
         pipeline.setContentHash(persistedConfig.contentHash());
@@ -180,15 +196,20 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long pipelineId, Long folderId, String pipelineName, String format,
             MultipartFile file) {
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         PersistedConfig persistedConfig = parseImportConfig(folderId, pipelineName, format, file);
 
-        pipelineDefinitionRepo.findByFolderIdAndPipelineName(persistedConfig.folderId(), persistedConfig.pipelineName())
+        pipelineDefinitionRepo.findByWorkspaceIdAndFolderIdAndPipelineName(
+                workspaceId,
+                persistedConfig.folderId(),
+                persistedConfig.pipelineName())
                 .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
                 .ifPresent(existingPipeline -> {
                     throw new ConflictException("Pipeline already exists in target folder");
                 });
 
+        pipeline.setWorkspaceId(workspaceId);
         pipeline.setFolderId(persistedConfig.folderId());
         pipeline.setPipelineName(persistedConfig.pipelineName());
         pipeline.setContentHash(persistedConfig.contentHash());
@@ -377,7 +398,8 @@ public class JobConfigService {
     }
 
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
-        return pipelineDefinitionRepo.findById(pipelineId)
+        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
+        return pipelineDefinitionRepo.findByIdAndWorkspaceId(pipelineId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
     }
 

@@ -11,13 +11,15 @@ import irispipe.infrastructure.entity.PipelineFolder;
 @Repository
 public interface PipelineFolderRepo extends JpaRepository<PipelineFolder, Long> {
 
-    Optional<PipelineFolder> findBySystemRootTrue();
+    Optional<PipelineFolder> findByWorkspaceIdAndSystemRootTrue(Long workspaceId);
 
-    List<PipelineFolder> findAllByOrderByIdAsc();
+    Optional<PipelineFolder> findByIdAndWorkspaceId(Long id, Long workspaceId);
 
-    List<PipelineFolder> findByParentIdOrderByFolderNameAsc(Long parentId);
+    List<PipelineFolder> findAllByWorkspaceIdOrderByIdAsc(Long workspaceId);
 
-    Optional<PipelineFolder> findByParentIdAndFolderName(Long parentId, String folderName);
+    List<PipelineFolder> findByWorkspaceIdAndParentIdOrderByFolderNameAsc(Long workspaceId, Long parentId);
 
-    boolean existsByParentIdAndFolderName(Long parentId, String folderName);
+    Optional<PipelineFolder> findByWorkspaceIdAndParentIdAndFolderName(Long workspaceId, Long parentId, String folderName);
+
+    boolean existsByWorkspaceIdAndParentIdAndFolderName(Long workspaceId, Long parentId, String folderName);
 }
