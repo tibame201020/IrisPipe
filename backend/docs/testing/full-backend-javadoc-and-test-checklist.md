@@ -197,15 +197,15 @@ Review status:
 
 ## infrastructure.service.config
 
-- [ ] `irispipe/infrastructure/service/config/PipelineConfigCommandService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineConfigImportService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineConfigReadModelService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineConfigRequestPolicy.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
-- [ ] `irispipe/infrastructure/service/config/PipelineConfigService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineDefinitionAggregatePersistenceService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineDefinitionDeleteGuardService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineDefinitionPersistenceService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/config/PipelineParameterValueSerializationService.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
+- [x] `irispipe/infrastructure/service/config/PipelineConfigCommandService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineConfigImportService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineConfigReadModelService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineConfigRequestPolicy.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
+- [x] `irispipe/infrastructure/service/config/PipelineConfigService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineDefinitionAggregatePersistenceService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineDefinitionDeleteGuardService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineDefinitionPersistenceService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/config/PipelineParameterValueSerializationService.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
 
 ## infrastructure.service.folder
 

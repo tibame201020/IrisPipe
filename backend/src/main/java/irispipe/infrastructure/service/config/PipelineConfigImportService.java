@@ -17,10 +17,10 @@ import irispipe.infrastructure.provider.YamlFileProvider;
 import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.model.SyncJobDefinition;
 
-@Service
 /**
  * Parses imported config files and computes stable config content hashes.
  */
+@Service
 public class PipelineConfigImportService {
     private final JsonFileProvider jsonFileProvider;
     private final YamlFileProvider yamlFileProvider;

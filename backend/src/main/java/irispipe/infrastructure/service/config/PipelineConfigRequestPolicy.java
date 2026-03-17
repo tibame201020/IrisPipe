@@ -8,10 +8,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import irispipe.model.SyncJobDefinition;
 
-@Service
 /**
- * Applies request-level normalization and shallow config policy for pipeline config operations.
+ * Applies request-level normalization and shallow config policy for pipeline
+ * config operations.
  */
+@Service
 public class PipelineConfigRequestPolicy {
 
     /**
@@ -64,6 +65,12 @@ public class PipelineConfigRequestPolicy {
         throw new IllegalArgumentException("format is required when file name has no extension");
     }
 
+    /**
+     * Normalizes a supported import format value.
+     *
+     * @param format explicit format or file extension
+     * @return normalized import format
+     */
     private String normalizeImportFormat(String format) {
         String normalizedFormat = format.trim().toLowerCase();
         return switch (normalizedFormat) {

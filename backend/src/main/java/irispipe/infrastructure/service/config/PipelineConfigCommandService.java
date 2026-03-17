@@ -12,10 +12,11 @@ import irispipe.infrastructure.repo.config.PipelineDefinitionRepo;
 import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 import irispipe.model.SyncJobDefinition;
 
-@Service
 /**
- * Applies create and replace mutations for pipeline config header rows and job payloads.
+ * Applies create and replace mutations for pipeline config header rows and job
+ * payloads.
  */
+@Service
 public class PipelineConfigCommandService {
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;

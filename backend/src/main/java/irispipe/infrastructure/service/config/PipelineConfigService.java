@@ -15,10 +15,11 @@ import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncConfigDTO;
 
-@Service
 /**
- * Provides workspace-scoped pipeline config query, CRUD, and import operations.
+ * Provides workspace-scoped pipeline config query, CRUD, and import
+ * operations.
  */
+@Service
 public class PipelineConfigService {
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineFolderService pipelineFolderService;

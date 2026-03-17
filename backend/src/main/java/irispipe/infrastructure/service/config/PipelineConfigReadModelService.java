@@ -30,10 +30,10 @@ import irispipe.model.JobSetting;
 import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncConfigDTO;
 
-@Service
 /**
  * Rebuilds config read models from persisted pipeline rows.
  */
+@Service
 public class PipelineConfigReadModelService {
     private final PipelineJobDefinitionRepo pipelineJobDefinitionRepo;
     private final PipelineJobConnectionRepo pipelineJobConnectionRepo;

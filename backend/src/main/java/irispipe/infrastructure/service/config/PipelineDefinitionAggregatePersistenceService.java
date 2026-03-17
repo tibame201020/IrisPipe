@@ -21,6 +21,10 @@ import irispipe.model.JobParameter;
 import irispipe.model.JobSetting;
 import irispipe.model.SyncJobDefinition;
 
+/**
+ * Persists and removes the child aggregate rows that belong to one pipeline
+ * definition.
+ */
 @Service
 public class PipelineDefinitionAggregatePersistenceService {
     private final PipelineJobDefinitionRepo pipelineJobDefinitionRepo;
@@ -29,6 +33,15 @@ public class PipelineDefinitionAggregatePersistenceService {
     private final PipelineExecutionParameterRepo pipelineExecutionParameterRepo;
     private final PipelineParameterValueSerializationService pipelineParameterValueSerializationService;
 
+    /**
+     * Creates the aggregate persistence service.
+     *
+     * @param pipelineJobDefinitionRepo pipeline job repository
+     * @param pipelineJobConnectionRepo pipeline job connection repository
+     * @param pipelineExecutionDefinitionRepo pipeline execution repository
+     * @param pipelineExecutionParameterRepo pipeline execution parameter repository
+     * @param pipelineParameterValueSerializationService parameter serialization helper
+     */
     public PipelineDefinitionAggregatePersistenceService(PipelineJobDefinitionRepo pipelineJobDefinitionRepo,
             PipelineJobConnectionRepo pipelineJobConnectionRepo,
             PipelineExecutionDefinitionRepo pipelineExecutionDefinitionRepo,
@@ -41,12 +54,24 @@ public class PipelineDefinitionAggregatePersistenceService {
         this.pipelineParameterValueSerializationService = pipelineParameterValueSerializationService;
     }
 
+    /**
+     * Replaces all child rows for one pipeline definition.
+     *
+     * @param pipelineId target pipeline id
+     * @param syncJobs replacement job payload
+     */
     @Transactional
     public void replacePipelineJobs(Long pipelineId, List<SyncJobDefinition> syncJobs) {
         deletePipelineChildren(pipelineId);
         persistJobs(pipelineId, syncJobs);
     }
 
+    /**
+     * Persists job, connection, execution, and parameter rows for one pipeline.
+     *
+     * @param pipelineId target pipeline id
+     * @param syncJobs normalized job payload
+     */
     public void persistJobs(Long pipelineId, List<SyncJobDefinition> syncJobs) {
         for (int jobOrder = 0; jobOrder < syncJobs.size(); jobOrder++) {
             SyncJobDefinition syncJob = syncJobs.get(jobOrder);
@@ -67,6 +92,11 @@ public class PipelineDefinitionAggregatePersistenceService {
         }
     }
 
+    /**
+     * Deletes all child rows that belong to one pipeline definition.
+     *
+     * @param pipelineId target pipeline id
+     */
     public void deletePipelineChildren(Long pipelineId) {
         List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo.findByPipelineIdOrderBySequenceOrder(pipelineId);
         if (jobDefinitions.isEmpty()) {
@@ -94,6 +124,12 @@ public class PipelineDefinitionAggregatePersistenceService {
         pipelineJobDefinitionRepo.deleteAllInBatch(jobDefinitions);
     }
 
+    /**
+     * Persists source and destination connection rows for one job.
+     *
+     * @param jobId target job id
+     * @param databaseConfig database config payload
+     */
     private void persistJobConnections(Long jobId, DatabaseConfig databaseConfig) {
         if (databaseConfig == null) {
             return;
@@ -103,6 +139,13 @@ public class PipelineDefinitionAggregatePersistenceService {
         saveJobConnection(jobId, PipelineConnectionRole.DEST, databaseConfig.dest());
     }
 
+    /**
+     * Persists one connection row when the connection payload exists.
+     *
+     * @param jobId target job id
+     * @param connectionRole source or destination role
+     * @param connectionInfo connection payload
+     */
     private void saveJobConnection(Long jobId, PipelineConnectionRole connectionRole, ConnectionInfo connectionInfo) {
         if (connectionInfo == null) {
             return;
@@ -118,6 +161,12 @@ public class PipelineDefinitionAggregatePersistenceService {
         pipelineJobConnectionRepo.save(pipelineJobConnection);
     }
 
+    /**
+     * Persists execution rows for one job.
+     *
+     * @param jobId target job id
+     * @param executions normalized execution payload
+     */
     private void persistExecutions(Long jobId, List<ExecutionStep> executions) {
         for (int executionOrder = 0; executionOrder < executions.size(); executionOrder++) {
             ExecutionStep execution = executions.get(executionOrder);
@@ -135,6 +184,12 @@ public class PipelineDefinitionAggregatePersistenceService {
         }
     }
 
+    /**
+     * Persists parameter rows for one execution step.
+     *
+     * @param executionId target execution id
+     * @param parameters normalized parameter payload
+     */
     private void persistParameters(Long executionId, List<JobParameter> parameters) {
         for (int parameterOrder = 0; parameterOrder < parameters.size(); parameterOrder++) {
             JobParameter parameter = parameters.get(parameterOrder);
