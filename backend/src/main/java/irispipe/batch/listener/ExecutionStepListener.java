@@ -14,20 +14,40 @@ import irispipe.model.StepExecutionRecord;
 import irispipe.model.ExecutionStep;
 import io.micrometer.common.util.StringUtils;
 
+/**
+ * Captures per-step watermark state and updates summary counters after step
+ * completion.
+ */
 public class ExecutionStepListener implements StepExecutionListener {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final ExecutionStep execution;
 
+    /**
+     * Creates the step listener.
+     *
+     * @param execution logical execution step definition
+     */
     public ExecutionStepListener(ExecutionStep execution) {
         this.execution = execution;
     }
 
+    /**
+     * Logs step start.
+     *
+     * @param stepExecution Spring Batch step execution
+     */
     @Override
     public void beforeStep(StepExecution stepExecution) {
         logger.info("------- start step {}", stepExecution.getStepName());
     }
 
+    /**
+     * Persists watermark context and summary counters after step completion.
+     *
+     * @param stepExecution Spring Batch step execution
+     * @return exit status delegated from the default listener implementation
+     */
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
         if (stepExecution.getStatus().equals(BatchStatus.COMPLETED)

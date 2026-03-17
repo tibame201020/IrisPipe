@@ -8,6 +8,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * JPA mapping for Spring Batch job instance rows.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

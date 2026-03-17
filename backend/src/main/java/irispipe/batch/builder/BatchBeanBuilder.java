@@ -20,9 +20,22 @@ import org.springframework.stereotype.Component;
 import irispipe.model.JobParameter;
 import irispipe.core.utility.CollectionHelper;
 
+/**
+ * Builds Spring Batch reader and writer beans from runtime execution metadata.
+ */
 @Component
 public class BatchBeanBuilder {
 
+    /**
+     * Builds a cursor reader for one SQL statement and parameter set.
+     *
+     * @param dataSource source data source
+     * @param readerName logical reader name
+     * @param querySql query SQL
+     * @param parameters SQL parameters
+     * @param fetchSize JDBC fetch size
+     * @return configured cursor reader
+     */
     public JdbcCursorItemReader<Map<String, Object>> creatJdbcCursorItemReader(DataSource dataSource, String readerName,
             String querySql, List<JobParameter> parameters, int fetchSize) {
         ParsedSql parsedSql = NamedParameterUtils.parseSqlStatement(querySql);
@@ -55,6 +68,13 @@ public class BatchBeanBuilder {
                 .build();
     }
 
+    /**
+     * Builds a batch writer for one insert or update SQL statement.
+     *
+     * @param dataSource destination data source
+     * @param insertOrUpdateSql SQL statement with named parameters
+     * @return configured batch writer
+     */
     public JdbcBatchItemWriter<Map<String, Object>> createJdbcBatchItemWriter(DataSource dataSource,
             String insertOrUpdateSql) {
         ParsedSql parsedSql = NamedParameterUtils.parseSqlStatement(insertOrUpdateSql);

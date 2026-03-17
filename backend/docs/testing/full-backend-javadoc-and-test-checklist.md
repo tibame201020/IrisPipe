@@ -49,42 +49,42 @@ Review status:
 
 ## batch.builder
 
-- [ ] `irispipe/batch/builder/BatchBeanBuilder.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/builder/BatchBeanBuilder.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
 
 ## batch.entity
 
-- [ ] `irispipe/batch/entity/BatchJobExecution.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/entity/BatchJobExecutionContext.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/entity/BatchJobExecutionParams.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/entity/BatchJobExecutionParamsId.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/entity/BatchJobInstance.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/entity/BatchStepExecution.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/entity/BatchStepExecutionContext.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchJobExecution.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchJobExecutionContext.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchJobExecutionParams.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchJobExecutionParamsId.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchJobInstance.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchStepExecution.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/entity/BatchStepExecutionContext.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 
 ## batch.listener
 
-- [ ] `irispipe/batch/listener/CustomJobListener.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
-- [ ] `irispipe/batch/listener/ExecutionStepListener.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/listener/CustomJobListener.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/listener/ExecutionStepListener.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
 
 ## batch.repo
 
-- [ ] `irispipe/batch/repo/BatchJobExecutionContextRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/repo/BatchJobExecutionParamsRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/repo/BatchJobExecutionRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/repo/BatchJobInstanceRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/repo/BatchStepExecutionContextRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/batch/repo/BatchStepExecutionRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/repo/BatchJobExecutionContextRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/repo/BatchJobExecutionParamsRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/repo/BatchJobExecutionRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/repo/BatchJobInstanceRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/repo/BatchStepExecutionContextRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/batch/repo/BatchStepExecutionRepo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 
 ## batch.tasklet
 
-- [ ] `irispipe/batch/tasklet/DeleteTasklet.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
-- [ ] `irispipe/batch/tasklet/ExecuteTasklet.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/tasklet/DeleteTasklet.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/tasklet/ExecuteTasklet.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
 
 ## batch.writer
 
-- [ ] `irispipe/batch/writer/BatchInsertWriter.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
-- [ ] `irispipe/batch/writer/BatchUpdateWriter.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
-- [ ] `irispipe/batch/writer/BatchUpsertWriter.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/writer/BatchInsertWriter.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/writer/BatchUpdateWriter.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/batch/writer/BatchUpsertWriter.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
 
 ## core.factory
 

@@ -17,16 +17,33 @@ import irispipe.infrastructure.context.SyncJobContext;
 import irispipe.model.ExecutionStep;
 import irispipe.model.JobParameter;
 
+/**
+ * Executes a destination-side SQL statement inside one transaction.
+ */
 public class ExecuteTasklet implements Tasklet {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final SyncJobContext syncJobContext;
     private final ExecutionStep execution;
 
+    /**
+     * Creates the execute tasklet.
+     *
+     * @param syncJobContext runtime sync job context
+     * @param execution logical execution step definition
+     */
     public ExecuteTasklet(SyncJobContext syncJobContext, ExecutionStep execution) {
         this.syncJobContext = syncJobContext;
         this.execution = execution;
     }
 
+    /**
+     * Executes the configured SQL statement.
+     *
+     * @param contribution step contribution
+     * @param chunkContext chunk context
+     * @return finished repeat status
+     * @throws Exception when execution fails
+     */
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         String jobName = syncJobContext.syncJob().getJobName();

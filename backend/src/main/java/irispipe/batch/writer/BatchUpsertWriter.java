@@ -18,6 +18,10 @@ import org.springframework.jdbc.core.namedparam.ParsedSql;
 import irispipe.model.SummaryInfo;
 import irispipe.core.utility.SqlSyntaxHelper;
 
+/**
+ * Splits one chunk into update and insert subsets based on destination primary
+ * keys.
+ */
 public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final JdbcBatchItemWriter<Map<String, Object>> insertWriter;
@@ -27,6 +31,16 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
     private final String destTable;
     private final SummaryInfo summaryInfo;
 
+    /**
+     * Creates the upsert writer.
+     *
+     * @param insertWriter insert writer
+     * @param updateWriter update writer
+     * @param sqlSyntaxHelper SQL helper with primary-key metadata
+     * @param queryTemplate JDBC template used to probe existing rows
+     * @param destTable destination table name
+     * @param summaryInfo mutable summary counters
+     */
     public BatchUpsertWriter(JdbcBatchItemWriter<Map<String, Object>> insertWriter,
             JdbcBatchItemWriter<Map<String, Object>> updateWriter, SqlSyntaxHelper sqlSyntaxHelper,
             JdbcTemplate queryTemplate, String destTable, SummaryInfo summaryInfo) {
@@ -40,6 +54,12 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
         this.summaryInfo = summaryInfo;
     }
 
+    /**
+     * Writes one chunk through upsert splitting logic.
+     *
+     * @param chunk chunk payload
+     * @throws Exception when writing fails
+     */
     @Override
     public void write(Chunk<? extends Map<String, Object>> chunk) throws Exception {
         updateOrInsertChunck(chunk);
@@ -47,6 +67,12 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
                 summaryInfo.processed.get(), summaryInfo.updated.get(), summaryInfo.inserted.get(), destTable);
     }
 
+    /**
+     * Splits one chunk into update and insert subsets.
+     *
+     * @param chunk chunk payload
+     * @throws Exception when writing fails
+     */
     private void updateOrInsertChunck(Chunk<? extends Map<String, Object>> chunk) throws Exception {
         List<String> rowList = queryIdentifierList(chunk);
         int foundCount = rowList.size();
@@ -80,6 +106,12 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
         insertChunk(insertChunk);
     }
 
+    /**
+     * Queries existing primary-key identifiers for the current chunk.
+     *
+     * @param chunk chunk payload
+     * @return list of identifiers already present in the destination table
+     */
     private List<String> queryIdentifierList(Chunk<? extends Map<String, Object>> chunk) {
         List<String> primaryKeys = sqlSyntaxHelper.primaryColumns;
         int querySize = chunk.size();
@@ -105,6 +137,13 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
         return queryTemplate.query(sql, rowMapper, checkParams.toArray());
     }
 
+    /**
+     * Builds a stable identifier string from primary-key values.
+     *
+     * @param item row payload
+     * @param primaryKeys primary-key column names
+     * @return composite primary-key identifier
+     */
     private String generateCompositePkIdentifier(Map<String, Object> item, List<String> primaryKeys) {
         StringBuilder sb = new StringBuilder();
         for (String primaryKey : primaryKeys) {
@@ -113,6 +152,12 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
         return sb.toString();
     }
 
+    /**
+     * Writes the update subset when it is not empty.
+     *
+     * @param chunk update subset
+     * @throws Exception when writing fails
+     */
     private void updateChunk(Chunk<? extends Map<String, Object>> chunk) throws Exception {
         if (chunk.isEmpty()) {
             return;
@@ -124,6 +169,12 @@ public class BatchUpsertWriter implements ItemWriter<Map<String, Object>> {
         summaryInfo.updated.addAndGet(chunk.size());
     }
 
+    /**
+     * Writes the insert subset when it is not empty.
+     *
+     * @param chunk insert subset
+     * @throws Exception when writing fails
+     */
     private void insertChunk(Chunk<? extends Map<String, Object>> chunk) throws Exception {
         if (chunk.isEmpty()) {
             return;

@@ -15,11 +15,23 @@ import org.springframework.jdbc.core.namedparam.ParsedSql;
 
 import irispipe.model.SummaryInfo;
 
+/**
+ * Writes update batches and derives affected-row counters from JDBC update
+ * counts.
+ */
 public class BatchUpdateWriter extends JdbcBatchItemWriter<Map<String, Object>> {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final String destTable;
     private final SummaryInfo summaryInfo;
 
+    /**
+     * Creates the update writer.
+     *
+     * @param destTable destination table name
+     * @param summaryInfo mutable summary counters
+     * @param dataSource destination data source
+     * @param updateSql update SQL with named parameters
+     */
     public BatchUpdateWriter(String destTable, SummaryInfo summaryInfo, DataSource dataSource, String updateSql) {
         this.destTable = destTable;
         this.summaryInfo = summaryInfo;
@@ -41,11 +53,22 @@ public class BatchUpdateWriter extends JdbcBatchItemWriter<Map<String, Object>> 
         super.afterPropertiesSet();
     }
 
+    /**
+     * Writes one update chunk.
+     *
+     * @param chunk chunk payload
+     * @throws Exception when writing fails
+     */
     @Override
     public void write(Chunk<? extends Map<String, Object>> chunk) throws Exception {
         super.write(chunk);
     }
 
+    /**
+     * Updates summary counters from JDBC update counts.
+     *
+     * @param updateCounts JDBC update counts
+     */
     @Override
     protected void processUpdateCounts(int[] updateCounts) {
         summaryInfo.processed.addAndGet(updateCounts.length);

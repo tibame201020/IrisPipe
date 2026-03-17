@@ -22,16 +22,35 @@ import irispipe.model.JobParameter;
 import irispipe.infrastructure.error.exception.CustomJobExecutionException;
 import irispipe.core.utility.SqlSyntaxHelper;
 
+/**
+ * Streams matching rows and deletes them in batches against the destination
+ * table.
+ */
 public class DeleteTasklet implements Tasklet {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final SyncJobContext syncJobContext;
     private final ExecutionStep execution;
 
+    /**
+     * Creates the delete tasklet.
+     *
+     * @param syncJobContext runtime sync job context
+     * @param execution logical execution step definition
+     */
     public DeleteTasklet(SyncJobContext syncJobContext, ExecutionStep execution) {
         this.syncJobContext = syncJobContext;
         this.execution = execution;
     }
 
+    /**
+     * Executes the delete workflow with threshold checks and batched destination
+     * deletes.
+     *
+     * @param contribution step contribution
+     * @param chunkContext chunk context
+     * @return finished repeat status
+     * @throws Exception when execution fails
+     */
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         String jobName = syncJobContext.syncJob().getJobName();
@@ -111,6 +130,13 @@ public class DeleteTasklet implements Tasklet {
         return RepeatStatus.FINISHED;
     }
 
+    /**
+     * Executes one batched delete statement.
+     *
+     * @param namedParameterJdbcTemplate destination JDBC template
+     * @param sql delete SQL
+     * @param batch batch parameter payload
+     */
     private void executeBatch(NamedParameterJdbcTemplate namedParameterJdbcTemplate, String sql,
             List<MapSqlParameterSource> batch) {
         namedParameterJdbcTemplate.batchUpdate(sql, batch.toArray(new MapSqlParameterSource[0]));

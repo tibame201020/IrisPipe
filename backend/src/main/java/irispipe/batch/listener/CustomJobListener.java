@@ -20,6 +20,10 @@ import irispipe.model.StepExecutionRecord;
 import irispipe.model.SummaryInfo;
 import irispipe.infrastructure.service.runtime.ExecutionRecordService;
 
+/**
+ * Coordinates transaction handling, watermark persistence, and runtime
+ * lifecycle callbacks for one Spring Batch job execution.
+ */
 public class CustomJobListener implements JobExecutionListener {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final PlatformTransactionManager transactionManager;
@@ -29,6 +33,15 @@ public class CustomJobListener implements JobExecutionListener {
     private final PipelineRunLifecycleService pipelineRunLifecycleService;
     private TransactionStatus transactionStatus;
 
+    /**
+     * Creates the job listener.
+     *
+     * @param transactionManager transaction manager for atomic job mode
+     * @param openJobTransaction whether the job should run inside one transaction
+     * @param syncJobContext runtime sync job context
+     * @param executionRecordService watermark persistence service
+     * @param pipelineRunLifecycleService pipeline runtime lifecycle service
+     */
     public CustomJobListener(PlatformTransactionManager transactionManager, boolean openJobTransaction,
             SyncJobContext syncJobContext, ExecutionRecordService executionRecordService,
             PipelineRunLifecycleService pipelineRunLifecycleService) {
@@ -39,6 +52,11 @@ public class CustomJobListener implements JobExecutionListener {
         this.pipelineRunLifecycleService = pipelineRunLifecycleService;
     }
 
+    /**
+     * Opens runtime transaction scope and marks the job as started.
+     *
+     * @param jobExecution Spring Batch job execution
+     */
     @Override
     public void beforeJob(JobExecution jobExecution) {
         logger.info("start job {}", jobExecution);
@@ -57,6 +75,12 @@ public class CustomJobListener implements JobExecutionListener {
         pipelineRunLifecycleService.markJobStarted(jobExecution);
     }
 
+    /**
+     * Finalizes transaction state, persists watermark updates, logs summaries, and
+     * marks the job as finished.
+     *
+     * @param jobExecution Spring Batch job execution
+     */
     @Override
     public void afterJob(JobExecution jobExecution) {
         logger.info("end job {}", jobExecution);
@@ -102,6 +126,11 @@ public class CustomJobListener implements JobExecutionListener {
         }
     }
 
+    /**
+     * Commits or rolls back the atomic job transaction.
+     *
+     * @param jobExecution Spring Batch job execution
+     */
     private void handleAtomicJobTransaction(JobExecution jobExecution) {
         if (jobExecution.getStatus().equals(BatchStatus.COMPLETED)) {
             logger.info("-------------- commit job {}", jobExecution);
@@ -118,6 +147,11 @@ public class CustomJobListener implements JobExecutionListener {
         this.syncJobContext.close();
     }
 
+    /**
+     * Persists step execution watermark records from step execution context.
+     *
+     * @param jobExecution Spring Batch job execution
+     */
     private void persistStepExecutionRecords(JobExecution jobExecution) {
         jobExecution.getStepExecutions().stream()
                 .map(stepExecution -> stepExecution.getExecutionContext().get(StepExecutionRecord.contextKey(),

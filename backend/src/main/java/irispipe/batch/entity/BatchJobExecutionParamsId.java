@@ -5,6 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Composite id for Spring Batch job execution parameter rows.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
