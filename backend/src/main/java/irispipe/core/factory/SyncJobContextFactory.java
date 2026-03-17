@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import irispipe.core.utility.BatchIdentityHelper;
 import irispipe.infrastructure.context.DatabaseContext;
 import irispipe.infrastructure.context.SyncJobContext;
-import irispipe.infrastructure.service.ExecutionRecordService;
+import irispipe.infrastructure.service.runtime.ExecutionRecordService;
 import irispipe.model.*;
 import org.springframework.stereotype.Service;
 

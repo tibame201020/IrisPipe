@@ -1,4 +1,4 @@
-package irispipe.infrastructure.service;
+package irispipe.infrastructure.service.workspace;
 
 import java.time.LocalDateTime;
 import java.util.List;

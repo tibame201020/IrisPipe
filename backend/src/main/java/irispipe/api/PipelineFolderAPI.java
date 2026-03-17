@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import irispipe.infrastructure.service.PipelineFolderService;
+import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.model.dto.SyncConfigDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;

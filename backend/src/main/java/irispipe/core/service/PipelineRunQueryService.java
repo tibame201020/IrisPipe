@@ -24,8 +24,8 @@ import irispipe.infrastructure.repo.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.PipelineRunRepo;
-import irispipe.infrastructure.service.PipelineFolderService;
-import irispipe.infrastructure.service.WorkspaceContextService;
+import irispipe.infrastructure.service.folder.PipelineFolderService;
+import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 import irispipe.model.dto.SyncPipelineDTO;
 
 @Service

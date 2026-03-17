@@ -20,7 +20,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import irispipe.infrastructure.error.GlobalExceptionHandler;
-import irispipe.infrastructure.service.JobConfigService;
+import irispipe.infrastructure.service.config.JobConfigService;
 
 @WebMvcTest(SyncConfigAPI.class)
 @Import(GlobalExceptionHandler.class)

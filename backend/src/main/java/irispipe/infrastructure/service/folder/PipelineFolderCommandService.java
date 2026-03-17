@@ -1,4 +1,4 @@
-package irispipe.infrastructure.service;
+package irispipe.infrastructure.service.folder;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -14,6 +14,7 @@ import irispipe.infrastructure.entity.PipelineFolder;
 import irispipe.infrastructure.error.exception.ConflictException;
 import irispipe.infrastructure.repo.PipelineDefinitionRepo;
 import irispipe.infrastructure.repo.PipelineFolderRepo;
+import irispipe.infrastructure.service.config.PipelineDefinitionPersistenceService;
 import irispipe.model.dto.SyncConfigDTO;
 
 @Service

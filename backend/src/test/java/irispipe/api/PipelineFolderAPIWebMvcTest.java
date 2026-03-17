@@ -16,7 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import irispipe.infrastructure.error.GlobalExceptionHandler;
-import irispipe.infrastructure.service.PipelineFolderService;
+import irispipe.infrastructure.service.folder.PipelineFolderService;
 
 @WebMvcTest(PipelineFolderAPI.class)
 @Import(GlobalExceptionHandler.class)

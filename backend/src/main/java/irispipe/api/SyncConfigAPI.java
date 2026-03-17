@@ -21,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import irispipe.model.dto.SyncConfigDTO;
-import irispipe.infrastructure.service.JobConfigService;
+import irispipe.infrastructure.service.config.JobConfigService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

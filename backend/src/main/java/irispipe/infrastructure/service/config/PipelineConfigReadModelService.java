@@ -1,4 +1,4 @@
-package irispipe.infrastructure.service;
+package irispipe.infrastructure.service.config;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -21,6 +21,7 @@ import irispipe.infrastructure.repo.PipelineExecutionDefinitionRepo;
 import irispipe.infrastructure.repo.PipelineExecutionParameterRepo;
 import irispipe.infrastructure.repo.PipelineJobConnectionRepo;
 import irispipe.infrastructure.repo.PipelineJobDefinitionRepo;
+import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.model.ConnectionInfo;
 import irispipe.model.DatabaseConfig;
 import irispipe.model.ExecutionStep;

@@ -1,4 +1,4 @@
-package irispipe.infrastructure.service;
+package irispipe.infrastructure.service.config;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -14,6 +14,7 @@ import irispipe.infrastructure.error.exception.ConfigFileException;
 import irispipe.infrastructure.provider.FileProvider;
 import irispipe.infrastructure.provider.JsonFileProvider;
 import irispipe.infrastructure.provider.YamlFileProvider;
+import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.model.SyncJobDefinition;
 
 @Service

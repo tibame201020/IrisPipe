@@ -14,7 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import irispipe.infrastructure.error.GlobalExceptionHandler;
-import irispipe.infrastructure.service.WorkspaceService;
+import irispipe.infrastructure.service.workspace.WorkspaceService;
 
 @WebMvcTest(WorkspaceAPI.class)
 @Import(GlobalExceptionHandler.class)

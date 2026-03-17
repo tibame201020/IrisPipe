@@ -1,4 +1,4 @@
-package irispipe.infrastructure.service;
+package irispipe.infrastructure.service.config;
 
 import org.springframework.stereotype.Service;
 

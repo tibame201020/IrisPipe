@@ -1,4 +1,4 @@
-package irispipe.infrastructure.service;
+package irispipe.infrastructure.service.config;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import irispipe.infrastructure.entity.PipelineDefinition;
 import irispipe.infrastructure.error.exception.ConflictException;
 import irispipe.infrastructure.repo.PipelineDefinitionRepo;
+import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 import irispipe.model.SyncJobDefinition;
 
 @Service

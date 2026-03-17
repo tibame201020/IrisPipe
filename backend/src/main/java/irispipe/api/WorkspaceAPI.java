@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import irispipe.infrastructure.service.WorkspaceService;
+import irispipe.infrastructure.service.workspace.WorkspaceService;
 import irispipe.model.dto.WorkspaceDTO;
 import jakarta.validation.Valid;
 
