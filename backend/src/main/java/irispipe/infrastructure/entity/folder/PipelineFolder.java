@@ -12,6 +12,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent folder row used to build the workspace folder tree.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

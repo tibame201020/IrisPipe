@@ -15,6 +15,9 @@ import lombok.NoArgsConstructor;
 
 import irispipe.model.ExecutionType;
 
+/**
+ * Persistent execution-step row belonging to one pipeline job definition.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

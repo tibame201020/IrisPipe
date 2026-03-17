@@ -16,6 +16,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent execution-attempt row belonging to one logical pipeline run.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

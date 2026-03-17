@@ -1,5 +1,8 @@
 package irispipe.core.service;
 
+/**
+ * Shared defaults for paged pipeline run query endpoints.
+ */
 public final class PipelineRunQueryDefaults {
     public static final int DEFAULT_LIMIT = 20;
     public static final int MAX_LIMIT = 100;

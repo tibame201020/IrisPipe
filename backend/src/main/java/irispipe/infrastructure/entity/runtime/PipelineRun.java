@@ -15,6 +15,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent logical pipeline run row.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

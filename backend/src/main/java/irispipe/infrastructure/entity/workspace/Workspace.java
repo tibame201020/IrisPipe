@@ -12,6 +12,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent workspace row used to scope folders, configs, and runtime data.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

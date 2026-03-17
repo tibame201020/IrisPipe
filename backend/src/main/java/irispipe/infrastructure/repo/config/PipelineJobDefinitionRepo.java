@@ -7,6 +7,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.config.PipelineJobDefinition;
 
+/**
+ * JPA repository for persisted pipeline job definition rows.
+ */
 @Repository
 public interface PipelineJobDefinitionRepo extends JpaRepository<PipelineJobDefinition, Long> {
 

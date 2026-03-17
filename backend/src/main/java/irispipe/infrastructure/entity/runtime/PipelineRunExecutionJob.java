@@ -15,6 +15,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent job row scoped to one execution attempt.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

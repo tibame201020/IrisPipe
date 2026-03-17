@@ -8,6 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.workspace.Workspace;
 
+/**
+ * JPA repository for workspace rows.
+ */
 @Repository
 public interface WorkspaceRepo extends JpaRepository<Workspace, Long> {
 

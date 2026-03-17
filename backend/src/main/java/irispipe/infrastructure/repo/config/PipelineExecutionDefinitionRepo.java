@@ -7,6 +7,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.config.PipelineExecutionDefinition;
 
+/**
+ * JPA repository for persisted pipeline execution-step definitions.
+ */
 @Repository
 public interface PipelineExecutionDefinitionRepo extends JpaRepository<PipelineExecutionDefinition, Long> {
 

@@ -15,6 +15,9 @@ import lombok.NoArgsConstructor;
 
 import irispipe.model.SupportType;
 
+/**
+ * Persistent parameter row belonging to one execution step definition.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

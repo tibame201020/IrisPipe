@@ -14,6 +14,9 @@ import lombok.NoArgsConstructor;
 
 import irispipe.model.AtomicLevel;
 
+/**
+ * Persistent job row belonging to one pipeline definition.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

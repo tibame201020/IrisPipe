@@ -7,6 +7,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.config.PipelineExecutionParameter;
 
+/**
+ * JPA repository for persisted execution parameter rows.
+ */
 @Repository
 public interface PipelineExecutionParameterRepo extends JpaRepository<PipelineExecutionParameter, Long> {
 

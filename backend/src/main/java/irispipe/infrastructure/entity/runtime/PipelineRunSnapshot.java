@@ -13,6 +13,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent snapshot row storing the materialized job payload for one pipeline
+ * run.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

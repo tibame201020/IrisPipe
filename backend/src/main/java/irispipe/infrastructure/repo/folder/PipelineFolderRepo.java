@@ -8,6 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.folder.PipelineFolder;
 
+/**
+ * JPA repository for workspace folder tree rows.
+ */
 @Repository
 public interface PipelineFolderRepo extends JpaRepository<PipelineFolder, Long> {
 

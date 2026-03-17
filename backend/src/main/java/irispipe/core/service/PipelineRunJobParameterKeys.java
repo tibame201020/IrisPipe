@@ -1,5 +1,8 @@
 package irispipe.core.service;
 
+/**
+ * Shared Spring Batch job parameter keys used for pipeline run launches.
+ */
 public final class PipelineRunJobParameterKeys {
     public static final String PIPELINE_RUN_JOB_ID = "pipeline.run.job.id";
     public static final String PIPELINE_ID = "pipeline.id";

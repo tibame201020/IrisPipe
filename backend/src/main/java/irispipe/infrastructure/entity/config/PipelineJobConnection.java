@@ -12,6 +12,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent source or destination connection row for one pipeline job
+ * definition.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

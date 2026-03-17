@@ -12,6 +12,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Persistent header row for one workspace-scoped pipeline definition.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

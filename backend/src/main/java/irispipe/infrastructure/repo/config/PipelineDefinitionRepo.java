@@ -8,6 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.config.PipelineDefinition;
 
+/**
+ * JPA repository for workspace-scoped pipeline definition header rows.
+ */
 @Repository
 public interface PipelineDefinitionRepo extends JpaRepository<PipelineDefinition, Long> {
 

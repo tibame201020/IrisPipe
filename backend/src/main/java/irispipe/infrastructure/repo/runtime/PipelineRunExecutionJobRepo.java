@@ -7,6 +7,9 @@ import org.springframework.stereotype.Repository;
 
 import irispipe.infrastructure.entity.runtime.PipelineRunExecutionJob;
 
+/**
+ * JPA repository for execution-scoped pipeline run job rows.
+ */
 @Repository
 public interface PipelineRunExecutionJobRepo extends JpaRepository<PipelineRunExecutionJob, Long> {
     List<PipelineRunExecutionJob> findByPipelineRunExecutionId(Long pipelineRunExecutionId);

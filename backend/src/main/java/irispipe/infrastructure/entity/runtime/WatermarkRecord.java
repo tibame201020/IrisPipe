@@ -13,6 +13,10 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * Persistent execution watermark row keyed by execution, table, and watermark
+ * column.
+ */
 @Entity
 @Table(name = "iris_watermark_record")
 @Data
@@ -47,6 +51,9 @@ public class WatermarkRecord {
     private LocalDateTime lastUpdateTime;
 }
 
+/**
+ * Composite id for one persisted watermark record.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -102,10 +102,10 @@ Review status:
 - [x] `irispipe/core/service/PipelineExecutionService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 - [x] `irispipe/core/service/PipelineRunCommandService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 - [x] `irispipe/core/service/PipelineRunControlPolicy.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
-- [ ] `irispipe/core/service/PipelineRunJobParameterKeys.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/core/service/PipelineRunJobParameterKeys.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 - [x] `irispipe/core/service/PipelineRunLaunchRequest.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
 - [x] `irispipe/core/service/PipelineRunLaunchService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/core/service/PipelineRunQueryDefaults.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/core/service/PipelineRunQueryDefaults.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 - [x] `irispipe/core/service/PipelineRunQueryService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 
 ## core.utility
@@ -128,29 +128,29 @@ Review status:
 
 ## infrastructure.entity.config
 
-- [ ] `irispipe/infrastructure/entity/config/PipelineConnectionRole.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/config/PipelineDefinition.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/config/PipelineExecutionDefinition.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/config/PipelineExecutionParameter.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/config/PipelineJobConnection.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/config/PipelineJobDefinition.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/config/PipelineConnectionRole.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/config/PipelineDefinition.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/config/PipelineExecutionDefinition.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/config/PipelineExecutionParameter.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/config/PipelineJobConnection.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/config/PipelineJobDefinition.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 
 ## infrastructure.entity.folder
 
-- [ ] `irispipe/infrastructure/entity/folder/PipelineFolder.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/folder/PipelineFolder.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 
 ## infrastructure.entity.runtime
 
-- [ ] `irispipe/infrastructure/entity/runtime/PipelineRun.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/runtime/PipelineRunExecution.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/runtime/PipelineRunExecutionJob.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/runtime/PipelineRunJob.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/runtime/PipelineRunSnapshot.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/entity/runtime/WatermarkRecord.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/runtime/PipelineRun.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/runtime/PipelineRunExecution.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/runtime/PipelineRunExecutionJob.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/runtime/PipelineRunJob.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/runtime/PipelineRunSnapshot.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/runtime/WatermarkRecord.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 
 ## infrastructure.entity.workspace
 
-- [ ] `irispipe/infrastructure/entity/workspace/Workspace.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/entity/workspace/Workspace.java` - Javadoc: `Class only` - Test spec: `No direct test target`
 
 ## infrastructure.error
 
@@ -172,28 +172,28 @@ Review status:
 
 ## infrastructure.repo.config
 
-- [ ] `irispipe/infrastructure/repo/config/PipelineDefinitionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/config/PipelineExecutionDefinitionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/config/PipelineExecutionParameterRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/config/PipelineJobConnectionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/config/PipelineJobDefinitionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/config/PipelineDefinitionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/config/PipelineExecutionDefinitionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/config/PipelineExecutionParameterRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/config/PipelineJobConnectionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/config/PipelineJobDefinitionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
 
 ## infrastructure.repo.folder
 
-- [ ] `irispipe/infrastructure/repo/folder/PipelineFolderRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/folder/PipelineFolderRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
 
 ## infrastructure.repo.runtime
 
-- [ ] `irispipe/infrastructure/repo/runtime/PipelineRunExecutionJobRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/runtime/PipelineRunExecutionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/runtime/PipelineRunJobRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/runtime/PipelineRunRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/runtime/PipelineRunSnapshotRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
-- [ ] `irispipe/infrastructure/repo/runtime/WatermarkRecordRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/runtime/PipelineRunExecutionJobRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/runtime/PipelineRunExecutionRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/runtime/PipelineRunJobRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/runtime/PipelineRunRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/runtime/PipelineRunSnapshotRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/runtime/WatermarkRecordRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
 
 ## infrastructure.repo.workspace
 
-- [ ] `irispipe/infrastructure/repo/workspace/WorkspaceRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
+- [x] `irispipe/infrastructure/repo/workspace/WorkspaceRepo.java` - Javadoc: `Class only` - Test spec: `DataJpaTest`
 
 ## infrastructure.service.config
 

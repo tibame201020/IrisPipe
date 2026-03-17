@@ -13,6 +13,9 @@ import org.springframework.stereotype.Repository;
 import irispipe.infrastructure.entity.runtime.PipelineRun;
 import irispipe.model.PipelineRunStatus;
 
+/**
+ * JPA repository for logical pipeline run rows and run history queries.
+ */
 @Repository
 public interface PipelineRunRepo extends JpaRepository<PipelineRun, Long> {
     List<PipelineRun> findAllByOrderByIdAsc();
