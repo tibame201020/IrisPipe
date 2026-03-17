@@ -1,4 +1,4 @@
-package irispipe.infrastructure.entity;
+package irispipe.infrastructure.entity.config;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,39 +13,33 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import irispipe.model.ExecutionType;
+import irispipe.model.SupportType;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "iris_pipeline_execution")
-public class PipelineExecutionDefinition {
+@Table(name = "iris_pipeline_execution_parameter")
+public class PipelineExecutionParameter {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "job_id")
-    private Long jobId;
+    @Column(name = "execution_id")
+    private Long executionId;
 
     @Column(name = "sequence_order")
     private Integer sequenceOrder;
 
-    @Column(name = "execution_name")
-    private String executionName;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "execution_type")
-    private ExecutionType executionType;
+    @Column(name = "param_name")
+    private String paramName;
 
     @Lob
-    @Column(name = "sql_statement")
-    private String sqlStatement;
+    @Column(name = "param_value")
+    private String paramValue;
 
-    @Column(name = "dest_table")
-    private String destTable;
-
-    @Column(name = "watermark_column")
-    private String watermarkColumn;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "param_type")
+    private SupportType paramType;
 }

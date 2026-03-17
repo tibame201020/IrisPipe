@@ -1,8 +1,8 @@
 package irispipe.infrastructure.service.runtime;
 
 import irispipe.model.SystemProvideVariable;
-import irispipe.model.WatermarkRecord;
-import irispipe.infrastructure.repo.WatermarkRecordRepo;
+import irispipe.infrastructure.entity.runtime.WatermarkRecord;
+import irispipe.infrastructure.repo.runtime.WatermarkRecordRepo;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;

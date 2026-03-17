@@ -7,11 +7,11 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import irispipe.infrastructure.entity.PipelineFolder;
-import irispipe.infrastructure.entity.Workspace;
+import irispipe.infrastructure.entity.folder.PipelineFolder;
+import irispipe.infrastructure.entity.workspace.Workspace;
 import irispipe.infrastructure.error.exception.ConflictException;
-import irispipe.infrastructure.repo.PipelineFolderRepo;
-import irispipe.infrastructure.repo.WorkspaceRepo;
+import irispipe.infrastructure.repo.folder.PipelineFolderRepo;
+import irispipe.infrastructure.repo.workspace.WorkspaceRepo;
 import irispipe.model.dto.WorkspaceDTO;
 
 @Service

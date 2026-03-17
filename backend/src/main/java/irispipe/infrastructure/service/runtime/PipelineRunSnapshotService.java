@@ -11,8 +11,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import irispipe.core.utility.BatchIdentityHelper;
-import irispipe.infrastructure.entity.PipelineRunSnapshot;
-import irispipe.infrastructure.repo.PipelineRunSnapshotRepo;
+import irispipe.infrastructure.entity.runtime.PipelineRunSnapshot;
+import irispipe.infrastructure.repo.runtime.PipelineRunSnapshotRepo;
 import irispipe.model.ConnectionInfo;
 import irispipe.model.DatabaseConfig;
 import irispipe.model.ExecutionStep;

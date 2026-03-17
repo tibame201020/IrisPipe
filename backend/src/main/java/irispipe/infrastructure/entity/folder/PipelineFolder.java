@@ -1,4 +1,4 @@
-package irispipe.infrastructure.entity;
+package irispipe.infrastructure.entity.folder;
 
 import java.time.LocalDateTime;
 

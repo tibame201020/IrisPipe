@@ -11,16 +11,16 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import irispipe.infrastructure.entity.PipelineConnectionRole;
-import irispipe.infrastructure.entity.PipelineDefinition;
-import irispipe.infrastructure.entity.PipelineExecutionDefinition;
-import irispipe.infrastructure.entity.PipelineExecutionParameter;
-import irispipe.infrastructure.entity.PipelineJobConnection;
-import irispipe.infrastructure.entity.PipelineJobDefinition;
-import irispipe.infrastructure.repo.PipelineExecutionDefinitionRepo;
-import irispipe.infrastructure.repo.PipelineExecutionParameterRepo;
-import irispipe.infrastructure.repo.PipelineJobConnectionRepo;
-import irispipe.infrastructure.repo.PipelineJobDefinitionRepo;
+import irispipe.infrastructure.entity.config.PipelineConnectionRole;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
+import irispipe.infrastructure.entity.config.PipelineExecutionDefinition;
+import irispipe.infrastructure.entity.config.PipelineExecutionParameter;
+import irispipe.infrastructure.entity.config.PipelineJobConnection;
+import irispipe.infrastructure.entity.config.PipelineJobDefinition;
+import irispipe.infrastructure.repo.config.PipelineExecutionDefinitionRepo;
+import irispipe.infrastructure.repo.config.PipelineExecutionParameterRepo;
+import irispipe.infrastructure.repo.config.PipelineJobConnectionRepo;
+import irispipe.infrastructure.repo.config.PipelineJobDefinitionRepo;
 import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.model.ConnectionInfo;
 import irispipe.model.DatabaseConfig;

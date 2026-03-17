@@ -1,4 +1,4 @@
-package irispipe.infrastructure.repo;
+package irispipe.infrastructure.repo.workspace;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import irispipe.infrastructure.entity.Workspace;
+import irispipe.infrastructure.entity.workspace.Workspace;
 
 @Repository
 public interface WorkspaceRepo extends JpaRepository<Workspace, Long> {

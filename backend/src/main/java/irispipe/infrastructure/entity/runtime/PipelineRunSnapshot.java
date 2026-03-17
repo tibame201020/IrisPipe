@@ -1,4 +1,4 @@
-package irispipe.infrastructure.entity;
+package irispipe.infrastructure.entity.runtime;
 
 import java.time.LocalDateTime;
 
@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,28 +17,26 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "iris_pipeline")
-public class PipelineDefinition {
+@Table(name = "iris_pipeline_run_snapshot")
+public class PipelineRunSnapshot {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "workspace_id")
-    private Long workspaceId;
+    @Column(name = "pipeline_run_id")
+    private Long pipelineRunId;
 
-    @Column(name = "folder_id")
-    private Long folderId;
+    @Column(name = "snapshot_schema_version")
+    private Integer snapshotSchemaVersion;
 
-    @Column(name = "pipeline_name")
-    private String pipelineName;
+    @Column(name = "pipeline_content_hash")
+    private String pipelineContentHash;
 
-    @Column(name = "content_hash")
-    private String contentHash;
+    @Lob
+    @Column(name = "materialized_job_json")
+    private String materializedJobJson;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 }

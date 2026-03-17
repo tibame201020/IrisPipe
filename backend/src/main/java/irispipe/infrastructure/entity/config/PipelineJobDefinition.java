@@ -1,4 +1,4 @@
-package irispipe.infrastructure.entity;
+package irispipe.infrastructure.entity.config;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

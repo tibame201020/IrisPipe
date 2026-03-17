@@ -1,4 +1,4 @@
-package irispipe.model;
+package irispipe.infrastructure.entity.runtime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

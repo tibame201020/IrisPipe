@@ -3,7 +3,7 @@ package irispipe.infrastructure.service.folder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import irispipe.infrastructure.repo.PipelineFolderRepo;
+import irispipe.infrastructure.repo.folder.PipelineFolderRepo;
 import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 
 @Service

@@ -3,9 +3,9 @@ package irispipe.infrastructure.service.runtime;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import irispipe.infrastructure.entity.PipelineRunExecution;
-import irispipe.infrastructure.entity.PipelineRunExecutionJob;
-import irispipe.infrastructure.entity.PipelineRunJob;
+import irispipe.infrastructure.entity.runtime.PipelineRunExecution;
+import irispipe.infrastructure.entity.runtime.PipelineRunExecutionJob;
+import irispipe.infrastructure.entity.runtime.PipelineRunJob;
 import irispipe.model.AtomicLevel;
 import irispipe.observability.event.PipelineExecutionObservationEvent;
 import irispipe.observability.event.PipelineJobObservationEvent;

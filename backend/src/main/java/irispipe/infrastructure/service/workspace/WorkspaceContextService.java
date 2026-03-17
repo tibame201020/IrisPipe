@@ -7,9 +7,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import irispipe.infrastructure.entity.Workspace;
+import irispipe.infrastructure.entity.workspace.Workspace;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
-import irispipe.infrastructure.repo.WorkspaceRepo;
+import irispipe.infrastructure.repo.workspace.WorkspaceRepo;
 
 @Service
 public class WorkspaceContextService {

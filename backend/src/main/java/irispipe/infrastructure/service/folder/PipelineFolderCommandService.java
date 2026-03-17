@@ -9,11 +9,11 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import irispipe.infrastructure.entity.PipelineDefinition;
-import irispipe.infrastructure.entity.PipelineFolder;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
+import irispipe.infrastructure.entity.folder.PipelineFolder;
 import irispipe.infrastructure.error.exception.ConflictException;
-import irispipe.infrastructure.repo.PipelineDefinitionRepo;
-import irispipe.infrastructure.repo.PipelineFolderRepo;
+import irispipe.infrastructure.repo.config.PipelineDefinitionRepo;
+import irispipe.infrastructure.repo.folder.PipelineFolderRepo;
 import irispipe.infrastructure.service.config.PipelineDefinitionPersistenceService;
 import irispipe.model.dto.SyncConfigDTO;
 

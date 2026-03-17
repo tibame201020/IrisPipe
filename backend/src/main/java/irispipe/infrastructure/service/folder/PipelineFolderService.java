@@ -2,8 +2,8 @@ package irispipe.infrastructure.service.folder;
 
 import org.springframework.stereotype.Service;
 
-import irispipe.infrastructure.entity.PipelineDefinition;
-import irispipe.infrastructure.entity.PipelineFolder;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
+import irispipe.infrastructure.entity.folder.PipelineFolder;
 import irispipe.model.dto.SyncConfigDTO;
 
 @Service

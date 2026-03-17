@@ -3,7 +3,7 @@ package irispipe.infrastructure.service.config;
 import org.springframework.stereotype.Service;
 
 import irispipe.infrastructure.error.exception.ConflictException;
-import irispipe.infrastructure.repo.PipelineRunRepo;
+import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
 
 @Service
 public class PipelineDefinitionDeleteGuardService {

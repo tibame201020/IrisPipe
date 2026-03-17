@@ -1,4 +1,4 @@
-package irispipe.infrastructure.repo;
+package irispipe.infrastructure.repo.config;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import irispipe.infrastructure.entity.PipelineDefinition;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
 
 @Repository
 public interface PipelineDefinitionRepo extends JpaRepository<PipelineDefinition, Long> {

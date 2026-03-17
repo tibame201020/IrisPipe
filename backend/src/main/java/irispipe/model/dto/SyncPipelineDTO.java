@@ -8,11 +8,11 @@ import org.springframework.batch.core.StepExecution;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import irispipe.infrastructure.entity.PipelineDefinition;
-import irispipe.infrastructure.entity.PipelineRun;
-import irispipe.infrastructure.entity.PipelineRunExecution;
-import irispipe.infrastructure.entity.PipelineRunExecutionJob;
-import irispipe.infrastructure.entity.PipelineRunJob;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
+import irispipe.infrastructure.entity.runtime.PipelineRun;
+import irispipe.infrastructure.entity.runtime.PipelineRunExecution;
+import irispipe.infrastructure.entity.runtime.PipelineRunExecutionJob;
+import irispipe.infrastructure.entity.runtime.PipelineRunJob;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import irispipe.model.AtomicLevel;

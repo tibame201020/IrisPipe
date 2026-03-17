@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import irispipe.infrastructure.entity.PipelineFolder;
+import irispipe.infrastructure.entity.folder.PipelineFolder;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
 
 final class PipelineFolderWorkspaceState {

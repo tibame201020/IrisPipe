@@ -1,6 +1,6 @@
-package irispipe.infrastructure.repo;
+package irispipe.infrastructure.repo.runtime;
 
-import irispipe.model.WatermarkRecord;
+import irispipe.infrastructure.entity.runtime.WatermarkRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

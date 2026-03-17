@@ -1,4 +1,4 @@
-package irispipe.infrastructure.repo;
+package irispipe.infrastructure.repo.runtime;
 
 import java.util.Collection;
 import java.util.List;
@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import irispipe.infrastructure.entity.PipelineRun;
+import irispipe.infrastructure.entity.runtime.PipelineRun;
 import irispipe.model.PipelineRunStatus;
 
 @Repository

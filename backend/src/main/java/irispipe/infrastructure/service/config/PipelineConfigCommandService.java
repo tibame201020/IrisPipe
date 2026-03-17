@@ -6,9 +6,9 @@ import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 
-import irispipe.infrastructure.entity.PipelineDefinition;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
 import irispipe.infrastructure.error.exception.ConflictException;
-import irispipe.infrastructure.repo.PipelineDefinitionRepo;
+import irispipe.infrastructure.repo.config.PipelineDefinitionRepo;
 import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 import irispipe.model.SyncJobDefinition;
 

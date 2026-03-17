@@ -1,8 +1,8 @@
-package irispipe.infrastructure.entity;
+package irispipe.infrastructure.entity.runtime;
 
 import java.time.LocalDateTime;
 
-import irispipe.model.PipelineRunExecutionKind;
+import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "iris_pipeline_run_execution")
-public class PipelineRunExecution {
+@Table(name = "iris_pipeline_run_job")
+public class PipelineRunJob {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,19 +30,25 @@ public class PipelineRunExecution {
     @Column(name = "pipeline_run_id")
     private Long pipelineRunId;
 
-    @Column(name = "execution_no")
-    private Integer executionNo;
+    @Column(name = "job_sequence_order")
+    private Integer jobSequenceOrder;
+
+    @Column(name = "job_name")
+    private String jobName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "execution_kind")
-    private PipelineRunExecutionKind executionKind;
-
-    @Column(name = "requested_async")
-    private Boolean requestedAsync;
+    @Column(name = "atomic_level")
+    private AtomicLevel atomicLevel;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private PipelineRunStatus status;
+
+    @Column(name = "root_job_instance_id")
+    private Long rootJobInstanceId;
+
+    @Column(name = "last_job_execution_id")
+    private Long lastJobExecutionId;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

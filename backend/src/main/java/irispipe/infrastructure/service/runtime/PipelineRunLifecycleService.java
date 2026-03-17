@@ -10,14 +10,14 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import irispipe.infrastructure.entity.PipelineRun;
-import irispipe.infrastructure.entity.PipelineRunExecution;
-import irispipe.infrastructure.entity.PipelineRunExecutionJob;
-import irispipe.infrastructure.entity.PipelineRunJob;
-import irispipe.infrastructure.repo.PipelineRunExecutionJobRepo;
-import irispipe.infrastructure.repo.PipelineRunExecutionRepo;
-import irispipe.infrastructure.repo.PipelineRunJobRepo;
-import irispipe.infrastructure.repo.PipelineRunRepo;
+import irispipe.infrastructure.entity.runtime.PipelineRun;
+import irispipe.infrastructure.entity.runtime.PipelineRunExecution;
+import irispipe.infrastructure.entity.runtime.PipelineRunExecutionJob;
+import irispipe.infrastructure.entity.runtime.PipelineRunJob;
+import irispipe.infrastructure.repo.runtime.PipelineRunExecutionJobRepo;
+import irispipe.infrastructure.repo.runtime.PipelineRunExecutionRepo;
+import irispipe.infrastructure.repo.runtime.PipelineRunJobRepo;
+import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
 import irispipe.model.PipelineRunStatus;
 
 @Service

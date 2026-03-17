@@ -10,10 +10,10 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import irispipe.infrastructure.entity.PipelineDefinition;
-import irispipe.infrastructure.entity.PipelineFolder;
-import irispipe.infrastructure.repo.PipelineDefinitionRepo;
-import irispipe.infrastructure.repo.PipelineRunRepo;
+import irispipe.infrastructure.entity.config.PipelineDefinition;
+import irispipe.infrastructure.entity.folder.PipelineFolder;
+import irispipe.infrastructure.repo.config.PipelineDefinitionRepo;
+import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
 import irispipe.model.dto.SyncConfigDTO;
 
 @Service
