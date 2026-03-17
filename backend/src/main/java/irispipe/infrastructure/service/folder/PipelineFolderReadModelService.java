@@ -18,9 +18,6 @@ import irispipe.model.dto.SyncConfigDTO;
 
 @Service
 public class PipelineFolderReadModelService {
-    private static final int DEFAULT_DELETE_PREVIEW_LIMIT = 100;
-    private static final int MAX_DELETE_PREVIEW_LIMIT = 200;
-
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineRunRepo pipelineRunRepo;
     private final PipelineFolderStructureService pipelineFolderStructureService;
@@ -200,10 +197,10 @@ public class PipelineFolderReadModelService {
 
     private int normalizeDeletePreviewLimit(Integer limit) {
         if (limit == null) {
-            return DEFAULT_DELETE_PREVIEW_LIMIT;
+            return PipelineFolderConstants.DEFAULT_DELETE_PREVIEW_LIMIT;
         }
-        if (limit <= 0 || limit > MAX_DELETE_PREVIEW_LIMIT) {
-            throw new IllegalArgumentException("limit must be between 1 and 200");
+        if (limit <= 0 || limit > PipelineFolderConstants.MAX_DELETE_PREVIEW_LIMIT) {
+            throw new IllegalArgumentException(PipelineFolderConstants.DELETE_PREVIEW_LIMIT_VALIDATION_MESSAGE);
         }
         return limit;
     }

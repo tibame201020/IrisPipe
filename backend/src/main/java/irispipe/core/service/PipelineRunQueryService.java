@@ -228,10 +228,10 @@ public class PipelineRunQueryService {
 
     private int normalizeLimit(Integer limit) {
         if (limit == null) {
-            return 20;
+            return PipelineRunQueryDefaults.DEFAULT_LIMIT;
         }
-        if (limit <= 0 || limit > 100) {
-            throw new IllegalArgumentException("limit must be between 1 and 100");
+        if (limit <= 0 || limit > PipelineRunQueryDefaults.MAX_LIMIT) {
+            throw new IllegalArgumentException(PipelineRunQueryDefaults.LIMIT_VALIDATION_MESSAGE);
         }
         return limit;
     }

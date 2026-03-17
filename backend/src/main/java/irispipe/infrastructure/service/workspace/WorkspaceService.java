@@ -12,12 +12,11 @@ import irispipe.infrastructure.entity.workspace.Workspace;
 import irispipe.infrastructure.error.exception.ConflictException;
 import irispipe.infrastructure.repo.folder.PipelineFolderRepo;
 import irispipe.infrastructure.repo.workspace.WorkspaceRepo;
+import irispipe.infrastructure.service.folder.PipelineFolderConstants;
 import irispipe.model.dto.WorkspaceDTO;
 
 @Service
 public class WorkspaceService {
-    private static final String ROOT_FOLDER_NAME = "__root__";
-
     private final WorkspaceRepo workspaceRepo;
     private final PipelineFolderRepo pipelineFolderRepo;
     private final WorkspaceContextService workspaceContextService;
@@ -62,7 +61,7 @@ public class WorkspaceService {
         PipelineFolder rootFolder = new PipelineFolder();
         rootFolder.setWorkspaceId(savedWorkspace.getId());
         rootFolder.setParentId(null);
-        rootFolder.setFolderName(ROOT_FOLDER_NAME);
+        rootFolder.setFolderName(PipelineFolderConstants.ROOT_FOLDER_NAME);
         rootFolder.setSystemRoot(true);
         rootFolder.setCreatedAt(now);
         rootFolder.setUpdatedAt(now);

@@ -18,6 +18,7 @@ import irispipe.infrastructure.repo.runtime.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
+import irispipe.core.service.PipelineRunJobParameterKeys;
 import irispipe.model.PipelineRunStatus;
 
 @Service
@@ -48,10 +49,14 @@ public class PipelineRunLifecycleService {
 
     @Transactional
     public void markJobStarted(JobExecution jobExecution) {
-        Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.id");
-        Long pipelineRunExecutionId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.id");
-        Long pipelineRunExecutionJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.job.id");
-        Long pipelineRunJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.job.id");
+        Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), PipelineRunJobParameterKeys.PIPELINE_RUN_ID);
+        Long pipelineRunExecutionId = getRequiredLong(
+                jobExecution.getJobParameters(),
+                PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID);
+        Long pipelineRunExecutionJobId = getRequiredLong(
+                jobExecution.getJobParameters(),
+                PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_JOB_ID);
+        Long pipelineRunJobId = getRequiredLong(jobExecution.getJobParameters(), PipelineRunJobParameterKeys.PIPELINE_RUN_JOB_ID);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = jobExecution.getStartTime() != null ? jobExecution.getStartTime() : now;
 
@@ -83,7 +88,9 @@ public class PipelineRunLifecycleService {
 
     @Transactional(readOnly = true)
     public boolean isStopRequested(JobExecution jobExecution) {
-        return isStopRequested(getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.id"));
+        return isStopRequested(getRequiredLong(
+                jobExecution.getJobParameters(),
+                PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID));
     }
 
     @Transactional(readOnly = true)
@@ -93,10 +100,14 @@ public class PipelineRunLifecycleService {
 
     @Transactional
     public void markJobFinished(JobExecution jobExecution) {
-        Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.id");
-        Long pipelineRunExecutionId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.id");
-        Long pipelineRunExecutionJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.execution.job.id");
-        Long pipelineRunJobId = getRequiredLong(jobExecution.getJobParameters(), "pipeline.run.job.id");
+        Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), PipelineRunJobParameterKeys.PIPELINE_RUN_ID);
+        Long pipelineRunExecutionId = getRequiredLong(
+                jobExecution.getJobParameters(),
+                PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID);
+        Long pipelineRunExecutionJobId = getRequiredLong(
+                jobExecution.getJobParameters(),
+                PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_JOB_ID);
+        Long pipelineRunJobId = getRequiredLong(jobExecution.getJobParameters(), PipelineRunJobParameterKeys.PIPELINE_RUN_JOB_ID);
         LocalDateTime now = LocalDateTime.now();
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);

@@ -20,7 +20,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import irispipe.infrastructure.error.GlobalExceptionHandler;
-import irispipe.infrastructure.service.config.JobConfigService;
+import irispipe.infrastructure.service.config.PipelineConfigService;
 
 @WebMvcTest(SyncConfigAPI.class)
 @Import(GlobalExceptionHandler.class)
@@ -30,7 +30,7 @@ class SyncConfigAPIWebMvcTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private JobConfigService jobConfigService;
+    private PipelineConfigService pipelineConfigService;
 
     @Test
     void createConfigShouldRejectBlankPipelineName() throws Exception {

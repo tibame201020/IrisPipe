@@ -19,7 +19,7 @@ import irispipe.model.dto.SyncConfigDTO;
 /**
  * Provides workspace-scoped pipeline config query, CRUD, and import operations.
  */
-public class JobConfigService {
+public class PipelineConfigService {
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineFolderService pipelineFolderService;
     private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;
@@ -41,7 +41,7 @@ public class JobConfigService {
      * @param pipelineConfigReadModelService config hydration and detail rendering helper
      * @param pipelineConfigCommandService command-side config mutation helper
      */
-    public JobConfigService(PipelineDefinitionRepo pipelineDefinitionRepo,
+    public PipelineConfigService(PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineFolderService pipelineFolderService,
             PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService,
             WorkspaceContextService workspaceContextService,
@@ -88,7 +88,7 @@ public class JobConfigService {
      * @param pipelineId pipeline id in the current workspace
      * @return folder-aware pipeline detail for editor and inspection screens
      */
-    public SyncConfigDTO.ConfigPipelineInfo getConfigFileInfo(Long pipelineId) {
+    public SyncConfigDTO.ConfigPipelineInfo getPipelineConfigInfo(Long pipelineId) {
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         List<SyncJobDefinition> jobs = pipelineConfigReadModelService.renderSyncJobs(pipelineId);
         return pipelineConfigReadModelService.renderConfigPipelineInfo(pipeline, jobs);
@@ -118,7 +118,7 @@ public class JobConfigService {
             List<SyncJobDefinition> syncJobs) {
         PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, syncJobs);
         Long pipelineId = pipelineConfigCommandService.createConfig(command);
-        return getConfigFileInfo(pipelineId);
+        return getPipelineConfigInfo(pipelineId);
     }
 
     /**
@@ -136,7 +136,7 @@ public class JobConfigService {
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, syncJobs);
         pipelineConfigCommandService.replaceConfig(pipeline, command);
-        return getConfigFileInfo(pipelineId);
+        return getPipelineConfigInfo(pipelineId);
     }
 
     /**
@@ -175,7 +175,7 @@ public class JobConfigService {
                 file);
         PipelineConfigCommandService.PipelineConfigCommand command = toCommand(persistedConfig);
         Long pipelineId = pipelineConfigCommandService.createConfig(command);
-        return getConfigFileInfo(pipelineId);
+        return getPipelineConfigInfo(pipelineId);
     }
 
     /**
@@ -199,7 +199,7 @@ public class JobConfigService {
                 file);
         PipelineConfigCommandService.PipelineConfigCommand command = toCommand(persistedConfig);
         pipelineConfigCommandService.replaceConfig(pipeline, command);
-        return getConfigFileInfo(pipelineId);
+        return getPipelineConfigInfo(pipelineId);
     }
 
     /**

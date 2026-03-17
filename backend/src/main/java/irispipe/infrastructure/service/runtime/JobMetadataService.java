@@ -44,13 +44,13 @@ public class JobMetadataService {
         public String getJobKeyByJobId(Long jobId) {
                 return batchJobInstanceRepo.findById(jobId)
                                 .map(BatchJobInstance::getJobKey)
-                                .orElseThrow(() -> new ResourceNotFoundException("Job finding", "Job not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("job metadata lookup", "Job not found"));
         }
 
         @Transactional
         public void deleteByJobExecution(JobExecution jobExecution) {
                 if (jobExecution == null) {
-                        throw new ResourceNotFoundException("Job metadata deletion", "Job Execution not found");
+                        throw new ResourceNotFoundException("job metadata deletion", "Job execution not found");
                 }
                 Long jobExecutionId = jobExecution.getId();
                 Long jobInstanceId = jobExecution.getJobInstance().getId();

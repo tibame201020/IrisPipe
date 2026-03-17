@@ -19,8 +19,6 @@ import irispipe.model.dto.SyncConfigDTO;
 
 @Service
 public class PipelineFolderCommandService {
-    private static final String ROOT_FOLDER_NAME = "__root__";
-
     private final PipelineFolderRepo pipelineFolderRepo;
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;
@@ -143,7 +141,7 @@ public class PipelineFolderCommandService {
         if (folderName == null || folderName.isBlank()) {
             throw new IllegalArgumentException("folderName can not be blank");
         }
-        if (ROOT_FOLDER_NAME.equals(folderName) || folderName.contains("/") || folderName.contains("\\")) {
+        if (PipelineFolderConstants.ROOT_FOLDER_NAME.equals(folderName) || folderName.contains("/") || folderName.contains("\\")) {
             throw new IllegalArgumentException("folderName contains unsupported characters");
         }
         return folderName.trim();

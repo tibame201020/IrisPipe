@@ -1,6 +1,6 @@
 package irispipe.model;
 
-public enum SystemProvideVariable {
+public enum SystemProvidedVariable {
     _LAST_WATERMARK,
     _LAST_START,
     _LAST_END,

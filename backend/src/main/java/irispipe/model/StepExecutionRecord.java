@@ -12,7 +12,9 @@ public record StepExecutionRecord(
     LocalDateTime endTime,
     LocalDateTime updateTime
 ) implements Serializable {
+    private static final String CONTEXT_KEY = "StepExecutionRecordForWatermark";
+
     public static String contextKey() {
-        return "StepExecutionRecordForWatermark";
+        return CONTEXT_KEY;
     }
 }

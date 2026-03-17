@@ -164,12 +164,12 @@ public class PipelineRunLaunchService {
                 && AtomicLevel.JOB.equals(syncJob.getSetting().atomicLevel());
 
         return new JobParametersBuilder()
-                .addLong("pipeline.run.job.id", pipelineRunJob.getId(), !replayJobInstance)
-                .addLong("pipeline.id", pipelineId, false)
-                .addLong("pipeline.run.id", pipelineRunJob.getPipelineRunId(), false)
-                .addLong("pipeline.run.execution.id", pipelineRunExecution.getId(), false)
-                .addLong("pipeline.run.execution.job.id", pipelineRunExecutionJob.getId(), replayJobInstance)
-                .addLong("job.sequence", Long.valueOf(jobSequence), false)
+                .addLong(PipelineRunJobParameterKeys.PIPELINE_RUN_JOB_ID, pipelineRunJob.getId(), !replayJobInstance)
+                .addLong(PipelineRunJobParameterKeys.PIPELINE_ID, pipelineId, false)
+                .addLong(PipelineRunJobParameterKeys.PIPELINE_RUN_ID, pipelineRunJob.getPipelineRunId(), false)
+                .addLong(PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID, pipelineRunExecution.getId(), false)
+                .addLong(PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_JOB_ID, pipelineRunExecutionJob.getId(), replayJobInstance)
+                .addLong(PipelineRunJobParameterKeys.JOB_SEQUENCE, Long.valueOf(jobSequence), false)
                 .toJobParameters();
     }
 
@@ -228,8 +228,9 @@ public class PipelineRunLaunchService {
     }
 
     private boolean matchesPipelineExecution(JobExecution jobExecution, Long pipelineRunId, Long pipelineRunExecutionId) {
-        Long jobPipelineRunId = jobExecution.getJobParameters().getLong("pipeline.run.id");
-        Long jobPipelineRunExecutionId = jobExecution.getJobParameters().getLong("pipeline.run.execution.id");
+        Long jobPipelineRunId = jobExecution.getJobParameters().getLong(PipelineRunJobParameterKeys.PIPELINE_RUN_ID);
+        Long jobPipelineRunExecutionId = jobExecution.getJobParameters()
+                .getLong(PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID);
         return Objects.equals(pipelineRunId, jobPipelineRunId)
                 && Objects.equals(pipelineRunExecutionId, jobPipelineRunExecutionId);
     }

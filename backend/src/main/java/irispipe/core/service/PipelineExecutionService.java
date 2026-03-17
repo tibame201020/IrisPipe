@@ -19,7 +19,7 @@ import irispipe.infrastructure.repo.runtime.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
-import irispipe.infrastructure.service.config.JobConfigService;
+import irispipe.infrastructure.service.config.PipelineConfigService;
 import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.infrastructure.service.runtime.PipelineRunSnapshotService;
 import irispipe.infrastructure.service.workspace.WorkspaceContextService;
@@ -35,7 +35,7 @@ public class PipelineExecutionService {
     private final PipelineRunExecutionRepo pipelineRunExecutionRepo;
     private final PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo;
     private final PipelineRunJobRepo pipelineRunJobRepo;
-    private final JobConfigService jobConfigService;
+    private final PipelineConfigService pipelineConfigService;
     private final PipelineFolderService pipelineFolderService;
     private final PipelineRunSnapshotService pipelineRunSnapshotService;
     private final WorkspaceContextService workspaceContextService;
@@ -49,7 +49,7 @@ public class PipelineExecutionService {
             PipelineRunExecutionRepo pipelineRunExecutionRepo,
             PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
             PipelineRunJobRepo pipelineRunJobRepo,
-            JobConfigService jobConfigService,
+            PipelineConfigService pipelineConfigService,
             PipelineFolderService pipelineFolderService,
             PipelineRunSnapshotService pipelineRunSnapshotService,
             WorkspaceContextService workspaceContextService,
@@ -62,7 +62,7 @@ public class PipelineExecutionService {
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
         this.pipelineRunExecutionJobRepo = pipelineRunExecutionJobRepo;
         this.pipelineRunJobRepo = pipelineRunJobRepo;
-        this.jobConfigService = jobConfigService;
+        this.pipelineConfigService = pipelineConfigService;
         this.pipelineFolderService = pipelineFolderService;
         this.pipelineRunSnapshotService = pipelineRunSnapshotService;
         this.workspaceContextService = workspaceContextService;
@@ -75,7 +75,7 @@ public class PipelineExecutionService {
     public SyncPipelineDTO.PipelineRunSummaryInfo execute(Long pipelineId, Boolean useAsyncLauncher) {
         boolean requestedAsync = Boolean.TRUE.equals(useAsyncLauncher);
         PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineId);
-        List<SyncJobDefinition> syncJobs = jobConfigService.getSyncJobs(pipelineId);
+        List<SyncJobDefinition> syncJobs = pipelineConfigService.getSyncJobs(pipelineId);
         syncJobs.forEach(SyncJobDefinition::validate);
 
         PipelineRun pipelineRun = pipelineRunCommandService.createPipelineRun(pipelineDefinition, requestedAsync, null);

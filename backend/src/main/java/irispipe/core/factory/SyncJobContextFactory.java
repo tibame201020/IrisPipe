@@ -20,8 +20,8 @@ public class SyncJobContextFactory {
 
     public SyncJobContext initialSyncJobContext(SyncJobDefinition syncJob, ExecutionRecordService executionRecordService) {
         int fetchSize = Objects.nonNull(syncJob.getSetting()) ? syncJob.getSetting().fetchSize() : Integer.MAX_VALUE;
-        DatabaseContext sourceContext = generDatabaseContext(syncJob.getDatabase().source(), fetchSize);
-        DatabaseContext destContext = generDatabaseContext(syncJob.getDatabase().dest(), fetchSize);
+        DatabaseContext sourceContext = generateDatabaseContext(syncJob.getDatabase().source(), fetchSize);
+        DatabaseContext destContext = generateDatabaseContext(syncJob.getDatabase().dest(), fetchSize);
 
         List<String> executionNames = BatchIdentityHelper.materializeExecutionNames(
                 syncJob.getJobName(),
@@ -33,7 +33,7 @@ public class SyncJobContextFactory {
                     String executionName = executionNames.get(executionOrder);
                     SummaryInfo executionSummaryInfo = new SummaryInfo(executionName, SummaryInfoLayer.STEP);
 
-                    List<JobParameter> parameters = renderSystemProvoderVariable(
+                    List<JobParameter> parameters = renderSystemProvidedVariables(
                             originalExecution,
                             executionRecordService,
                             executionName);
@@ -57,17 +57,17 @@ public class SyncJobContextFactory {
         return new SyncJobContext(sourceContext, destContext, syncJob, summaryInfo);
     }
 
-    private List<JobParameter> renderSystemProvoderVariable(ExecutionStep execution,
+    private List<JobParameter> renderSystemProvidedVariables(ExecutionStep execution,
                                                             ExecutionRecordService executionRecordService, String executionName) {
-        List<String> dyamicParameters = Arrays.stream(SystemProvideVariable.values()).map(Enum::name)
+        List<String> dynamicParameters = Arrays.stream(SystemProvidedVariable.values()).map(Enum::name)
                 .toList();
         return execution.parameters().stream().map(parameter -> {
-                    if (dyamicParameters.contains(parameter.param())) {
+                    if (dynamicParameters.contains(parameter.param())) {
                         Object value = executionRecordService.fetchValue(
                                 executionName,
                                 execution.destTable(),
                                 execution.watermarkColumn(),
-                                SystemProvideVariable.valueOf(parameter.param()));
+                                SystemProvidedVariable.valueOf(parameter.param()));
 
                         if (Objects.nonNull(value)) {
                             return new JobParameter(parameter.param(), value, parameter.type());
@@ -79,7 +79,7 @@ public class SyncJobContextFactory {
 
     }
 
-    private DatabaseContext generDatabaseContext(ConnectionInfo connectionInfo, int fetchSize) {
+    private DatabaseContext generateDatabaseContext(ConnectionInfo connectionInfo, int fetchSize) {
         if (null == connectionInfo) {
             return null;
         }

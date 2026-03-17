@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import irispipe.core.service.PipelineExecutionService;
+import irispipe.core.service.PipelineRunQueryDefaults;
 import irispipe.core.service.PipelineRunQueryService;
 import irispipe.model.dto.SyncPipelineDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -78,7 +79,9 @@ public class SyncPipelineAPI {
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getPipelineRuns(
             @RequestParam(name = "ids", required = false) List<@Positive(message = "ids must contain only positive values") Long> ids,
             @RequestParam(name = "pipelineId", required = false) @Positive(message = "pipelineId must be positive") Long pipelineId,
-            @RequestParam(name = "limit", required = false) @Min(value = 1, message = "limit must be between 1 and 100") @Max(value = 100, message = "limit must be between 1 and 100") Integer limit,
+            @RequestParam(name = "limit", required = false)
+            @Min(value = 1, message = PipelineRunQueryDefaults.LIMIT_VALIDATION_MESSAGE)
+            @Max(value = PipelineRunQueryDefaults.MAX_LIMIT, message = PipelineRunQueryDefaults.LIMIT_VALIDATION_MESSAGE) Integer limit,
             @RequestParam(name = "beforeRunId", required = false) @Positive(message = "beforeRunId must be positive") Long beforeRunId) {
         boolean hasIds = ids != null && !ids.isEmpty();
         boolean hasPipelineId = pipelineId != null;
@@ -99,7 +102,9 @@ public class SyncPipelineAPI {
     @GetMapping("/recent")
     @Operation(summary = "List recent pipeline runs", description = "Returns recent pipeline runs for the current workspace.")
     public List<SyncPipelineDTO.PipelineRunSummaryInfo> getRecentPipelineRuns(
-            @RequestParam(name = "limit", required = false) @Min(value = 1, message = "limit must be between 1 and 100") @Max(value = 100, message = "limit must be between 1 and 100") Integer limit,
+            @RequestParam(name = "limit", required = false)
+            @Min(value = 1, message = PipelineRunQueryDefaults.LIMIT_VALIDATION_MESSAGE)
+            @Max(value = PipelineRunQueryDefaults.MAX_LIMIT, message = PipelineRunQueryDefaults.LIMIT_VALIDATION_MESSAGE) Integer limit,
             @RequestParam(name = "beforeRunId", required = false) @Positive(message = "beforeRunId must be positive") Long beforeRunId) {
         return pipelineRunQueryService.getRecentPipelineRuns(limit, beforeRunId);
     }

@@ -1,12 +1,13 @@
 package irispipe.infrastructure.service.runtime;
 
-import irispipe.model.SystemProvideVariable;
-import irispipe.infrastructure.entity.runtime.WatermarkRecord;
-import irispipe.infrastructure.repo.runtime.WatermarkRecordRepo;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import irispipe.infrastructure.entity.runtime.WatermarkRecord;
+import irispipe.infrastructure.repo.runtime.WatermarkRecordRepo;
+import irispipe.model.SystemProvidedVariable;
 
 @Service
 public class ExecutionRecordService {
@@ -18,10 +19,10 @@ public class ExecutionRecordService {
     }
 
     public Object fetchValue(String executionName, String tableName, String watermarkColumn,
-            SystemProvideVariable systemProvideVariable) {
+            SystemProvidedVariable systemProvidedVariable) {
         WatermarkRecord record = watermarkRecordRepo
                 .findByExecutionNameAndTableNameAndWatermarkColumn(executionName, tableName, watermarkColumn);
-        return Optional.ofNullable(record).map(r -> switch (systemProvideVariable) {
+        return Optional.ofNullable(record).map(r -> switch (systemProvidedVariable) {
             case _LAST_WATERMARK -> r.getLastValue();
             case _LAST_START -> r.getLastStartTime();
             case _LAST_END -> r.getLastEndTime();

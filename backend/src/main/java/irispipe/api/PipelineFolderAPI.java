@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import irispipe.infrastructure.service.folder.PipelineFolderConstants;
 import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.model.dto.SyncConfigDTO;
 import jakarta.validation.Valid;
@@ -56,7 +57,9 @@ public class PipelineFolderAPI {
     @Operation(summary = "Preview recursive folder delete", description = "Returns affected folders, pipelines, and blockers before a recursive folder delete.")
     public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(
             @PathVariable("folderId") @Positive(message = "folderId must be positive") Long folderId,
-            @RequestParam(name = "limit", required = false) @Min(value = 1, message = "limit must be between 1 and 200") @Max(value = 200, message = "limit must be between 1 and 200") Integer limit) {
+            @RequestParam(name = "limit", required = false)
+            @Min(value = 1, message = PipelineFolderConstants.DELETE_PREVIEW_LIMIT_VALIDATION_MESSAGE)
+            @Max(value = PipelineFolderConstants.MAX_DELETE_PREVIEW_LIMIT, message = PipelineFolderConstants.DELETE_PREVIEW_LIMIT_VALIDATION_MESSAGE) Integer limit) {
         return pipelineFolderService.getDeletePreview(folderId, limit);
     }
 
