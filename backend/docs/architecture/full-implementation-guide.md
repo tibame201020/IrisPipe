@@ -1,228 +1,219 @@
 # IrisPipe Full Implementation Guide
 
-## 1. Current System State
+## 1. Package-Level Layout
+
+Current backend packages are organized like this:
+
+- `api`
+  - controller layer
+  - request validation boundary
+- `batch`
+  - Spring Batch integration layer
+- `core.factory`
+  - runtime assembly for jobs, steps, readers, writers, and listeners
+- `core.service`
+  - pipeline control and pipeline run query orchestration
+- `core.utility`
+  - SQL and runtime helpers
+- `infrastructure.entity.*`
+  - JPA mappings grouped by domain
+- `infrastructure.repo.*`
+  - repositories grouped by domain
+- `infrastructure.service.config`
+  - config application collaborators
+- `infrastructure.service.folder`
+  - folder tree collaborators
+- `infrastructure.service.runtime`
+  - lifecycle, snapshot, metadata, and watermark collaborators
+- `infrastructure.service.workspace`
+  - workspace scope and provisioning
+- `model`
+  - domain records and enums
+- `model.dto`
+  - request and response DTOs
+- `observability`
+  - metric publishing and observation events
+
+## 2. Controller Layer
+
+### Config
+
+- `SyncConfigAPI`
+  - list
+  - detail
+  - JSON create
+  - JSON replace
+  - JSON patch
+  - import create
+  - import replace
+  - delete
+
+### Folder
+
+- `PipelineFolderAPI`
+  - tree query
+  - folder create
+  - folder update
+  - delete preview
+  - delete
+
+### Workspace
+
+- `WorkspaceAPI`
+  - list
+  - current workspace
+  - create workspace
+
+### Runtime
+
+- `SyncPipelineAPI`
+  - execute
+  - resume
+  - rerun
+  - stop
+  - ids lookup
+  - pipeline history
+  - recent runs
+  - detail
+  - run delete
+
+## 3. Config Implementation
+
+Config behavior is centered on `PipelineConfigService`, which now acts as a facade.
+
+Main collaborators:
+
+- `PipelineConfigRequestPolicy`
+  - request normalization and shallow validation
+- `PipelineConfigImportService`
+  - JSON or YAML parsing
+  - content hashing
+- `PipelineConfigCommandService`
+  - create and replace mutation flow
+- `PipelineConfigReadModelService`
+  - hydration from normalized persistence rows
+- `PipelineDefinitionPersistenceService`
+  - child aggregate persistence and config delete
+
+Static config storage is normalized, but runtime creation always reconstructs `SyncJobDefinition` before use.
+
+## 4. Folder Implementation
+
+Folder behavior is centered on `PipelineFolderService`, which delegates to:
+
+- `PipelineFolderStructureService`
+  - current workspace folder state
+  - root resolution
+  - path rendering
+- `PipelineFolderReadModelService`
+  - tree response
+  - delete preview response
+  - folder-aware pipeline summaries
+- `PipelineFolderCommandService`
+  - create
+  - update
+  - delete
+  - move validation
 
-IrisPipe is now split into two clearly different layers:
+The hidden root row remains internal.
+Public APIs always map root back to `/` and `folderId = null` where appropriate.
 
-- static pipeline configuration
-- runtime pipeline execution
+## 5. Runtime Command Implementation
 
-The static layer is managed through `/api/v1/sync-config`.
-The runtime layer is managed through `/api/v1/sync-pipeline`.
+Runtime command orchestration is centered on `PipelineExecutionService`.
 
-This is the main architectural shift compared with the earlier job-centric runtime design.
+Main collaborators:
 
-## 2. Static Configuration Flow
+- `PipelineRunControlPolicy`
+  - stop, resume, rerun, and delete guards
+- `PipelineRunCommandService`
+  - creation of logical run, execution, and run-job rows
+- `PipelineRunLaunchService`
+  - Spring Batch launch and stop bridge
+- `PipelineRunSnapshotService`
+  - snapshot creation, copy, and delete
+- `PipelineConfigService`
+  - reconstruction of `SyncJobDefinition`
+- `JobMetadataService`
+  - Spring Batch metadata cleanup
 
-### Upload and persistence
+Key runtime semantics:
 
-1. Caller uploads YAML or JSON through `POST /api/v1/sync-config`
-2. File provider deserializes it into `SyncJobDefinition`
-3. `validate()` runs in-memory
-4. Existing normalized rows are replaced
-5. The pipeline definition becomes queryable by `pipelineId`
+- execute reads latest config
+- resume reuses snapshot of the same run
+- rerun copies snapshot into a new run
+- delete is terminal-only
 
-### Static tables
+## 6. Runtime Query Implementation
 
-- `iris_pipeline`
-- `iris_pipeline_job`
-- `iris_pipeline_job_connection`
-- `iris_pipeline_execution`
-- `iris_pipeline_execution_parameter`
+Runtime query assembly is centered on `PipelineRunQueryService`.
 
-These tables are the source of truth only for fresh `execute`.
+Responsibilities:
 
-## 3. Runtime Model
+- ids lookup
+- pipeline history
+- recent runs
+- run detail
+- attempt timeline assembly
+- latest job projection assembly
 
-The runtime model is pipeline-level and lineage-aware.
+It does not own control-side mutation.
 
-### `PipelineRun`
+## 7. Listener and Lifecycle Implementation
 
-- logical run
-- public runtime resource
-- owns the immutable snapshot
+Spring Batch callbacks are integrated through:
 
-### `PipelineRunSnapshot`
+- `CustomJobListener`
+- `ExecutionStepListener`
 
-- persisted one-to-one with `PipelineRun`
-- contains materialized job JSON
-- protects resume and rerun from config drift
+Persistent lifecycle ownership lives in:
 
-### `PipelineRunJob`
+- `PipelineRunLifecycleService`
+- `PipelineRunProjectionService`
+- `PipelineRunObservationService`
+- `PipelineRunStatusPolicy`
 
-- logical job node for a run
-- sequence-first node identity
-- latest projected Spring Batch linkage
+This split keeps lifecycle writes, latest projection sync, and metric publishing isolated.
 
-### `PipelineRunExecution`
+## 8. Batch Execution Integration
 
-- execution attempt
-- stores execution number, kind, async flag, and status
+Spring Batch integration remains in the `batch` package:
 
-### `PipelineRunExecutionJob`
+- `BatchBeanBuilder`
+  - reader and writer construction
+- tasklets
+  - execute and delete
+- writers
+  - insert, update, upsert
+- entity and repo mappings
+  - Spring Batch metadata access used by lifecycle cleanup and detail enrichment
 
-- attempt result for each run job
-- stores latest batch linkage for that attempt row
+These classes are infrastructure glue, not the primary product boundary.
 
-## 4. Fresh Execute
+## 9. Observability Implementation
 
-Fresh execute currently works like this:
+Observability v1 is implemented through lifecycle events and Micrometer.
 
-1. `PipelineExecutionService.execute(...)` loads the latest `PipelineDefinition`
-2. `JobConfigService` reconstructs `SyncJobDefinition` objects
-3. execution names are materialized into a stable snapshot form
-4. a new `PipelineRun` is created
-5. a new `PipelineRunSnapshot` is created from the latest config
-6. run jobs are created
-7. first execution and execution jobs are created
-8. the pipeline is executed sequence-first
+Key pieces:
 
-If async is requested, the same runtime rows are created first and execution continues on the task executor.
+- `PipelineExecutionObservationEvent`
+- `PipelineJobObservationEvent`
+- `PipelineRunTriggeredObservationEvent`
+- `PipelineMetricsPublisher`
+- `PipelineMetricNames`
 
-## 5. Resume
+The metrics surface is currently operational rather than product-dashboard specific.
 
-Resume works on a failed or stopped run.
+## 10. Test and Refactor Context
 
-1. load the existing `PipelineRun`
-2. load the run snapshot
-3. load the latest failed or stopped execution
-4. find the first failed or stopped run job, or the first `NOT_RUN` node when stop landed between jobs
-5. create a new `PipelineRunExecution`
-6. create new execution-job rows
-7. mark upstream completed nodes as `SKIPPED`
-8. continue from the stopped or failed point
+Recent refactors intentionally decomposed large services into collaborator-based seams.
 
-Per-node strategy:
+Practical outcome:
 
-- `JOB`
-  - replay the whole failed job as a fresh batch instance
-- `CHUNK`
-  - restart the failed batch instance with stable identifying parameters
+- service boundaries are clearer
+- unit-test slices are more realistic
+- K6 remains the black-box acceptance guardrail
 
-## 6. Rerun
+The test-spec planning document for follow-up lightweight tests is:
 
-Rerun intentionally differs from execute.
-
-1. load the source `PipelineRun`
-2. create a brand new `PipelineRun`
-3. copy the source snapshot to the new run
-4. create new run jobs
-5. create `PipelineRunExecution(execution_no = 1, kind = INITIAL)`
-6. run the pipeline from the beginning
-
-Important semantic rule:
-
-- rerun does not use the latest pipeline config
-- rerun replays the source run snapshot
-
-This keeps rerun closer to CI/CD replay semantics than to a new deployment.
-
-## 7. Stop Control
-
-Manual stop is now part of the public pipeline runtime surface.
-
-Current flow:
-
-1. `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
-2. load the latest `PipelineRunExecution`
-3. mark the execution as `STOPPING`
-4. locate the active Spring Batch `JobExecution`
-5. request stop through `JobOperator.stop(...)`
-6. let listener-driven lifecycle updates converge to `STOPPED`
-7. mark downstream pending nodes as `NOT_RUN`
-
-Two implementation details matter:
-
-- stop is cooperative, not a force-kill
-- orchestration checks stop state both before launching the next job and immediately after the current job returns
-
-## 8. Lifecycle and Observability
-
-### Listener ownership
-
-`CustomJobListener` is the runtime bridge between Spring Batch and IrisPipe runtime tables.
-
-- `beforeJob`
-  - marks job started
-  - respects an already requested stop before reopening normal in-flight status
-- `afterJob`
-  - persists watermark records when appropriate
-  - marks job finished
-
-### Projection service
-
-`PipelineRunLifecycleService` updates:
-
-1. `PipelineRunExecutionJob`
-2. `PipelineRunExecution`
-3. latest projection on `PipelineRunJob`
-4. latest projection on `PipelineRun`
-
-### Current query surface
-
-- summary query returns latest projected run state
-- detail query uses `PipelineRunQueryService` to return:
-  - latest projected job state in top-level `jobs`
-  - ordered attempt history in top-level `attempts`
-  - step executions enriched from `JobExplorer`
-
-### Current observability surface
-
-Management endpoints now expose:
-
-- `GET /actuator/health`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
-
-Current lifecycle-derived metrics include:
-
-- counters
-  - `irispipe.pipeline.run.triggered`
-  - `irispipe.pipeline.execution.completed`
-  - `irispipe.pipeline.execution.failed`
-  - `irispipe.pipeline.execution.stopped`
-  - `irispipe.pipeline.job.completed`
-  - `irispipe.pipeline.job.failed`
-  - `irispipe.pipeline.job.stopped`
-- gauges
-  - `irispipe.pipeline.runs.active`
-  - `irispipe.pipeline.executions.active`
-- timers
-  - `irispipe.pipeline.execution.duration`
-  - `irispipe.pipeline.job.duration`
-
-## 9. Current K6 Protection
-
-The K6 suite is now organized by concern:
-
-- `backend/k6/config`
-- `backend/k6/pipeline`
-- `backend/k6/runtime`
-
-Protected runtime cases include:
-
-- sync execute
-- async execute
-- `JOB` resume
-- `CHUNK` resume
-- mixed resume
-- sync stop (`JOB`, `CHUNK`, mixed)
-- async stop (`JOB`, `CHUNK`, mixed)
-- sync rerun
-- async rerun
-- composite async control flow covering `execute -> stop -> resume -> rerun -> stop -> resume`
-- async delete guard
-- attempt timeline detail
-- observability smoke for health, metrics, and Prometheus scrape
-
-This means the public pipeline runtime contract is already under regression protection while internal restart mechanics continue evolving.
-
-## 10. Current Gaps and Near-Term Work
-
-### Monitoring productization
-
-The app now emits a usable metrics surface, but dashboards and alert routing are still external work.
-
-### Runtime health depth
-
-Actuator is present, but custom health indicators and tracing are still future improvements.
+- [lightweight-unit-test-spec.md](/C:/Users/16/Downloads/codes/IrisPipe/backend/docs/testing/lightweight-unit-test-spec.md)

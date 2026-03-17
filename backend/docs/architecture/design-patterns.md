@@ -1,108 +1,157 @@
 # Design Patterns
 
-## 1. Pipeline-First Public Boundary
+## 1. Workspace-Scoped Engine
 
-IrisPipe now treats `PipelineRun` as the public runtime resource.
+The backend is now scoped by workspace, not global singleton state.
 
-- External callers trigger and observe pipelines
-- Internal runtime still executes Spring Batch jobs
-- Spring Batch `JobExecution` is infrastructure detail, not the main public API resource
+Design choice:
 
-This keeps the product model aligned with the actual user mental model.
+- keep multi-tenant concerns out of the core engine
+- resolve workspace through request scope
+- keep desktop mode viable through the default workspace fallback
 
-## 2. Sequence-First Orchestration
+This gives the engine a stable boundary for both desktop and future platform composition.
 
-Pipeline execution is intentionally sequence-first.
+## 2. Folder Tree as First-Class Model
 
-- Each `SyncJobDefinition` becomes one ordered node
-- The pipeline stops on the first non-completed node
-- Resume continues from the first failed node
+Pipeline organization is no longer a path-string convention.
 
-This is simpler than a full DAG while still leaving room for future graph expansion.
+Design choice:
 
-## 3. Snapshot-Driven Runtime
+- persist folders explicitly
+- keep one hidden root row per workspace
+- expose root as virtual `/`
+- enforce sibling-local uniqueness
 
-Every `PipelineRun` has an immutable runtime snapshot.
+This supports move, rename, preview, and recursive delete without overloading string parsing.
 
-This solves two important problems:
+## 3. JSON CRUD as Primary Contract
 
-- resume must not drift to the latest pipeline config
-- rerun must replay the historical run definition instead of behaving like fresh execute
+Config management is body-driven first and file import second.
 
-Current semantics:
+Design choice:
 
-- `execute` -> new run, new snapshot from latest config
-- `resume` -> same run, existing snapshot
-- `rerun` -> new run, copied snapshot from source run
+- JSON CRUD is the primary product contract
+- import remains available as an adapter
+- stored pipeline identity is folder plus pipeline name, not file path
 
-## 4. Stable Internal Batch Identity
+This keeps GUI integration cleaner and prevents file-origin concerns from leaking into the domain model.
 
-Spring Batch identity is stabilized explicitly:
+## 4. Facade Plus Collaborator Services
 
-- execution names are materialized before snapshot persistence
-- step names are generated from stable execution identity, not only from step type
-- job launch parameters use stable identifying keys for `CHUNK` restart
+Recent refactors intentionally moved away from large mixed-responsibility services.
 
-This reduces collision risk in:
+Current pattern:
 
-- Spring Batch metadata
-- watermark lookup
-- restart lineage
+- facade services remain at the application boundary
+- collaborators own narrower responsibilities
 
-## 5. Projection Plus History
+Examples:
 
-Runtime persistence uses a mixed model:
+- config:
+  - `PipelineConfigService`
+  - `PipelineConfigCommandService`
+  - `PipelineConfigImportService`
+  - `PipelineConfigReadModelService`
+  - `PipelineConfigRequestPolicy`
+- folder:
+  - `PipelineFolderService`
+  - `PipelineFolderCommandService`
+  - `PipelineFolderReadModelService`
+  - `PipelineFolderStructureService`
+- runtime:
+  - `PipelineExecutionService`
+  - `PipelineRunCommandService`
+  - `PipelineRunControlPolicy`
+  - `PipelineRunLaunchService`
 
-- `PipelineRunExecution` and `PipelineRunExecutionJob`
-  - full attempt history
-- `PipelineRun` and `PipelineRunJob`
-  - latest projection for efficient summary/detail reads
+This is not interface-heavy SOLID for its own sake.
+It is a pragmatic split intended to reduce service coupling and make slice/unit tests feasible.
 
-This keeps the public API simple without losing internal lineage.
+## 5. Query and Command Separation
 
-## 6. Atomic Strategy per Job Node
+Pipeline run query assembly is intentionally split from runtime control.
 
-`atomicLevel` is still a per-job concern:
+Design choice:
+
+- `PipelineExecutionService` owns command orchestration
+- `PipelineRunQueryService` owns summary/history/detail assembly
+
+This keeps control flow from absorbing read-model complexity.
+
+## 6. Snapshot-Driven Runtime
+
+Each logical run owns an immutable snapshot.
+
+Design choice:
+
+- execute reads latest persisted config
+- resume reuses the same run snapshot
+- rerun copies the source snapshot
+
+This prevents config drift from silently changing resume or rerun behavior.
+
+## 7. Projection Plus History
+
+Runtime persistence intentionally mixes latest projection and full history.
+
+Design choice:
+
+- latest projection lives on `PipelineRun` and `PipelineRunJob`
+- full attempt history lives on `PipelineRunExecution` and `PipelineRunExecutionJob`
+
+This makes both:
+
+- cheap summary/read APIs
+- detailed attempt history
+
+possible without overloading one table for both purposes.
+
+## 8. Atomic Strategy per Job
+
+`atomicLevel` remains a job-level concern.
 
 - `JOB`
-  - one outer transaction
-  - resume strategy is replay
+  - replay-style resume
+  - whole-job rollback semantics
 - `CHUNK`
-  - native Spring Batch chunk commit
-  - resume strategy is restart
+  - restart-style resume
+  - chunk commit semantics
 
-The pipeline layer decides where to continue.
-The job layer decides how that failed node should continue.
+The run layer decides where to continue.
+The job layer decides how that node continues.
 
-## 7. Listener-Driven Lifecycle
+## 9. Listener-Driven Runtime Truth
 
-Runtime lifecycle updates are not owned by the trigger API path.
+Trigger APIs do not directly own final runtime status.
 
-The pattern is:
+Design choice:
 
-- orchestration service creates runtime rows and launches work
-- `CustomJobListener` reports actual batch transitions
-- `PipelineRunLifecycleService` writes run and job status changes
+- command services create rows and launch work
+- listeners report actual batch transitions
+- lifecycle service projects runtime truth back into persistent run state
 
-This keeps sync and async trigger behavior consistent.
+This keeps sync and async paths on the same lifecycle model.
 
-## 8. Cooperative Stop Control
+## 10. Observability from Lifecycle Events
 
-Stop is now modeled as a cooperative control path instead of a destructive cancel.
+Observability is built from domain-adjacent lifecycle events, not from controller logic.
 
-The pattern combines:
+Design choice:
 
-- a public pipeline stop command
-- lifecycle projection to `STOPPING`
-- Spring Batch stop propagation through `JobOperator.stop(...)`
-- sequence-first guards to prevent the next job from starting after a stop request
-- lifecycle projection for final `STOPPED` state and downstream `NOT_RUN`
+- runtime lifecycle publishes observation events
+- metrics publisher listens and records counters/gauges/timers
 
-This keeps stop compatible with the existing runtime model:
+This keeps actuator metrics additive and avoids polluting controllers or DTOs with meter logic.
 
-- `execute` creates a new run
-- `stop` interrupts the current attempt without deleting lineage
-- `resume` continues the same run from the stopped point
-- `rerun` still creates a new run from a copied snapshot
+## 11. K6 as Acceptance Guardrail
 
-If stop lands between jobs, resume can continue from the first `NOT_RUN` node rather than requiring a failed node record.
+The backend uses K6 as black-box regression protection while internal services are refactored.
+
+Design choice:
+
+- refactor internal structure freely
+- preserve public behavior
+- keep K6 unchanged during refactor-focused work
+
+This has been the main guardrail during the recent service decomposition.

@@ -1,126 +1,156 @@
 # IrisPipe Backend Architecture
 
-IrisPipe is a Spring Boot and Spring Batch based data synchronization engine.
-Static configuration is managed as a `Pipeline`. Runtime execution is managed as a `PipelineRun`.
+IrisPipe is a workspace-scoped pipeline engine built on Spring Boot and Spring Batch.
+It owns three product-facing resource layers:
 
-## Current Architecture Summary
+- `Workspace`
+- `Pipeline` config, organized by folder tree
+- `PipelineRun` runtime lineage
 
-- `Pipeline` is the external configuration boundary.
-- `PipelineRun` is the external runtime boundary.
-- `Job` remains an internal Spring Batch boundary used to execute one atomic node inside a pipeline.
-- Runtime execution is snapshot-driven:
-  - `execute` uses the latest persisted pipeline config and creates a new snapshot.
-  - `resume` uses the failed run's existing snapshot.
-  - `rerun` creates a brand new run but clones the source run's snapshot.
-- Runtime state is sequence-first and persisted explicitly through run, run-job, execution, and execution-job tables.
+The backend is intentionally not a tenant platform by itself.
+Desktop mode uses the default workspace fallback.
+Future platform mode can scope requests through `X-Iris-Workspace-Key` without changing the core engine model.
 
-## Runtime Surface
+## Current System Shape
 
-### Configuration APIs
+- Static config is managed through JSON body CRUD on `/api/v1/sync-config`
+- File import is optional through `/api/v1/sync-config/import` and `PUT /api/v1/sync-config/{pipelineId}/import`
+- Folder organization is first-class through `/api/v1/pipeline-tree` and `/api/v1/pipeline-folders`
+- Runtime control is first-class through `/api/v1/sync-pipeline`
+- Runtime observation uses:
+  - run summary/history/recent/detail endpoints
+  - ordered attempt timeline on run detail
+  - actuator and Prometheus metrics
 
-- `GET /api/v1/sync-config`
-- `POST /api/v1/sync-config`
-- `PUT /api/v1/sync-config/{id}`
-- `PATCH /api/v1/sync-config/{id}`
-- `DELETE /api/v1/sync-config/{id}`
+## Public Resource Model
 
-These APIs manage the static `Pipeline` definition stored in normalized tables.
+### Workspace
 
-### Runtime APIs
+- Resolved from `X-Iris-Workspace-Key`
+- Missing header falls back to `default`
+- Provisioning endpoints:
+  - `GET /api/v1/workspaces`
+  - `GET /api/v1/workspaces/current`
+  - `POST /api/v1/workspaces`
 
-- `POST /api/v1/sync-pipeline`
-  - Trigger a brand new `PipelineRun`
-- `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
-  - Continue a failed or stopped run from its failed node using the run snapshot
-- `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
-  - Create a brand new run that replays the source run snapshot
-- `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
-  - Cooperatively stop an in-flight run and keep the run lineage resumable
-- `GET /api/v1/sync-pipeline?ids=...`
-  - Query pipeline run summaries
-- `GET /api/v1/sync-pipeline/{pipelineRunId}`
-  - Query pipeline run detail with latest projection and ordered attempt timeline
-- `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
-  - Delete a terminal pipeline run lineage and related Spring Batch metadata
+### Folder Tree
 
-### Operational Endpoints
+- One hidden root folder row exists per workspace
+- Public API still exposes root as virtual `/`
+- Pipelines can live directly under root or inside nested folders
+- Folder endpoints:
+  - `GET /api/v1/pipeline-tree`
+  - `POST /api/v1/pipeline-folders`
+  - `PUT /api/v1/pipeline-folders/{folderId}`
+  - `GET /api/v1/pipeline-folders/{folderId}/delete-preview`
+  - `DELETE /api/v1/pipeline-folders/{folderId}?recursive=true|false`
 
-- `GET /actuator/health`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
+### Pipeline Config
 
-## Data Model Layers
+- `pipelineId` is the stable technical identifier
+- `pipelineName` is the user-facing identifier
+- Uniqueness is folder-local, not global
+- Config endpoints:
+  - `GET /api/v1/sync-config`
+  - `GET /api/v1/sync-config/{pipelineId}`
+  - `POST /api/v1/sync-config`
+  - `PUT /api/v1/sync-config/{pipelineId}`
+  - `PATCH /api/v1/sync-config/{pipelineId}`
+  - `DELETE /api/v1/sync-config/{pipelineId}`
+  - `POST /api/v1/sync-config/import`
+  - `PUT /api/v1/sync-config/{pipelineId}/import`
 
-### Static Configuration
+### Pipeline Run
 
+- `execute` creates a new logical run
+- `resume` creates a new execution attempt inside the same run
+- `rerun` creates a brand new logical run from an existing snapshot
+- Runtime endpoints:
+  - `POST /api/v1/sync-pipeline`
+  - `POST /api/v1/sync-pipeline/{pipelineRunId}/resume`
+  - `POST /api/v1/sync-pipeline/{pipelineRunId}/rerun`
+  - `POST /api/v1/sync-pipeline/{pipelineRunId}/stop`
+  - `GET /api/v1/sync-pipeline?ids=...`
+  - `GET /api/v1/sync-pipeline?pipelineId=...&limit=...&beforeRunId=...`
+  - `GET /api/v1/sync-pipeline/recent?limit=...&beforeRunId=...`
+  - `GET /api/v1/sync-pipeline/{pipelineRunId}`
+  - `DELETE /api/v1/sync-pipeline/{pipelineRunId}`
+
+## Persistence Overview
+
+### Config Tables
+
+- `iris_workspace`
+- `iris_pipeline_folder`
 - `iris_pipeline`
 - `iris_pipeline_job`
 - `iris_pipeline_job_connection`
 - `iris_pipeline_execution`
 - `iris_pipeline_execution_parameter`
 
-### Runtime Execution
+### Runtime Tables
 
 - `iris_pipeline_run`
 - `iris_pipeline_run_snapshot`
 - `iris_pipeline_run_job`
 - `iris_pipeline_run_execution`
 - `iris_pipeline_run_execution_job`
+- `iris_watermark_record`
+
+### Spring Batch Metadata
+
+IrisPipe still uses Spring Batch metadata tables for execution internals, but those tables are infrastructure detail.
+Product-facing runtime semantics are expressed through the `iris_pipeline_run*` tables.
 
 ## Package Map
 
 | Package | Responsibility |
 | --- | --- |
-| `api` | REST endpoints for config and pipeline runtime |
-| `batch` | Spring Batch listeners, step strategies, tasklets, metadata repositories |
-| `core` | Runtime orchestration, batch assembly, shared runtime utilities |
-| `infrastructure` | JPA entities/repos, file providers, persistence services, exception handling |
-| `model` | Domain models, enums, DTOs, records |
-| `observability` | Lifecycle-derived observation events, meter publishing, actuator-facing metrics |
+| `api` | REST controllers and request validation boundary |
+| `batch` | Spring Batch builders, listeners, tasklets, writers, metadata mappings |
+| `core.factory` | Runtime job/step assembly |
+| `core.service` | Pipeline control and pipeline run query orchestration |
+| `core.utility` | Shared runtime and SQL helpers |
+| `infrastructure.config` | Bean and mapper configuration |
+| `infrastructure.context` | Runtime database context objects |
+| `infrastructure.entity.*` | JPA entities grouped by domain |
+| `infrastructure.repo.*` | JPA repositories grouped by domain |
+| `infrastructure.service.config` | Config command, import, read-model, and persistence collaborators |
+| `infrastructure.service.folder` | Folder tree command, read-model, and structure collaborators |
+| `infrastructure.service.runtime` | Runtime lifecycle, snapshot, metadata, and watermark collaborators |
+| `infrastructure.service.workspace` | Workspace resolution and provisioning |
+| `model` | Domain records, enums, and mutable runtime summaries |
+| `model.dto` | API DTOs |
+| `observability` | Metric publishing and observation events |
 
-## Current Runtime Notes
+## Runtime Notes
 
-- `PipelineRunDetailInfo` now exposes:
-  - top-level `jobs` as the latest execution projection
-  - top-level `attempts` as the ordered execution timeline for the run
-- `JOB` and `CHUNK` are both supported in resume flow:
-  - `JOB` resumes by replaying the whole failed job.
-  - `CHUNK` resumes by restarting the failed Spring Batch job instance.
-- `stop` is now part of the public pipeline control surface:
-  - stop requests first project `STOPPING`
-  - active Spring Batch work is stopped cooperatively through `JobOperator.stop(...)`
-  - downstream pending nodes in the same attempt become `NOT_RUN`
-  - resume can continue a stopped run from a failed/stopped node or from the first `NOT_RUN` node when stop lands between jobs
-- K6 coverage now protects:
-  - config CRUD/validation
-  - sync pipeline execute
-  - async trigger
-  - `JOB` resume
-  - `CHUNK` resume
-  - mixed resume
-  - sync stop (`JOB`, `CHUNK`, mixed)
-  - async stop (`JOB`, `CHUNK`, mixed)
-  - sync rerun
-  - async rerun
-  - composite async control flow (`execute -> stop -> resume -> rerun -> stop -> resume`)
-  - async delete guard
-  - attempt timeline detail
-  - observability smoke (`health`, `metrics`, `prometheus`)
-- Delete now rejects in-flight runs in `STARTING`, `STARTED`, or `STOPPING`.
-- Observability v1 is now available through actuator and Prometheus scrape endpoints:
-  - lifecycle-driven counters for run triggers and terminal execution/job outcomes
-  - active run and execution gauges
-  - execution and job duration timers
-- Remaining documented gaps:
-  - dashboards and alert routing are not part of the app yet
-  - tracing and custom runtime health indicators are still future work
+- Run detail exposes:
+  - top-level `jobs` for the latest projection
+  - top-level `attempts` for ordered execution history
+- Delete guard rejects in-flight runs in `STARTING`, `STARTED`, or `STOPPING`
+- Folder recursive delete is explicit:
+  - preview first
+  - recursive delete requires explicit request
+  - pipelines with run history block config deletion
+- Observability v1 is available through:
+  - `GET /actuator/health`
+  - `GET /actuator/metrics`
+  - `GET /actuator/prometheus`
+
+## Current Non-Goals
+
+- No realtime runtime log streaming yet
+- No dashboard-specific aggregate API yet
+- No tenant, user, or RBAC model inside this app
+- No tracing or custom health indicators yet
 
 ## Document Map
 
 | Document | Focus |
 | --- | --- |
-| [config-model.md](./config-model.md) | Static config tables and runtime execution tables |
-| [core-flow.md](./core-flow.md) | Execute, resume, rerun, stop, observe, and delete runtime flows |
-| [design-patterns.md](./design-patterns.md) | Snapshot, identity, projection, transaction, and stop-control patterns |
-| [error-handling.md](./error-handling.md) | Current exception mapping, validation, and runtime failure behaviors |
+| [config-model.md](./config-model.md) | Workspace, folder, config, and runtime persistence model |
+| [core-flow.md](./core-flow.md) | Config, execute, resume, rerun, stop, query, and delete flows |
+| [design-patterns.md](./design-patterns.md) | Current architectural patterns and refactor outcomes |
+| [error-handling.md](./error-handling.md) | Validation, exception mapping, and runtime failure semantics |
 | [full-implementation-guide.md](./full-implementation-guide.md) | Code-oriented walkthrough of the current implementation |

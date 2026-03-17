@@ -1,175 +1,198 @@
 # Configuration Model and Runtime Persistence
 
-## 1. External Domain Boundary
+## 1. External Resource Boundaries
 
-IrisPipe exposes two top-level concepts:
+IrisPipe exposes four product-facing resource concepts:
 
+- `Workspace`
+- `Folder`
 - `Pipeline`
-  - Static configuration uploaded and managed through `/api/v1/sync-config`
 - `PipelineRun`
-  - Runtime execution resource managed through `/api/v1/sync-pipeline`
 
-`Job` is still important, but only as an internal execution boundary inside one pipeline.
+`Job`, `ExecutionStep`, `JobExecution`, and `StepExecution` still exist, but they are internal execution boundaries.
 
-## 2. Static Configuration Model
+## 2. Workspace Scope
 
-Configuration is still logically expressed as a `Pipeline` containing multiple `SyncJobDefinition` objects.
+The backend is now workspace-scoped.
 
-```java
-public class SyncJobDefinition {
-    String jobName;
-    List<ExecutionStep> executions;
-    JobSetting setting;
-    DatabaseConfig database;
-}
-```
+- Request scope is resolved from `X-Iris-Workspace-Key`
+- Missing header falls back to `default`
+- Every workspace owns its own hidden root folder row
 
-Each `SyncJobDefinition` becomes one ordered node in the pipeline.
+This allows:
 
-## 3. Static Persistence Tables
+- desktop mode through the default workspace
+- future outer multi-tenant composition without refactoring the engine again
 
-The persisted pipeline definition is now organized around a folder tree plus a named pipeline resource.
-File import is optional and only one way to create or replace the stored definition.
+## 3. Folder and Pipeline Config Model
 
-### `iris_pipeline_folder`
+### Folder Tree
 
-- One row per logical folder node
-- Stores:
-  - `parent_id`
-  - `folder_name`
-- The backend keeps one hidden root row internally
-- Public API still exposes root as a virtual `/`
+Folder organization is persisted explicitly through `iris_pipeline_folder`.
 
-### `iris_pipeline`
+Key semantics:
 
-- One row per persisted pipeline definition
-- Stores:
-  - `folder_id`
-  - `pipeline_name`
-  - latest `content_hash`
-- `pipeline_id` remains the stable technical identifier
-- `pipeline_name` is only unique inside one folder
+- one hidden root row per workspace
+- public root path is `/`
+- pipelines may exist directly under root
+- folder uniqueness is sibling-scoped
 
-### `iris_pipeline_job`
+### Pipeline Definition
 
-- One row per job node
-- Stores `sequence_order`, `job_name`, and flattened job settings
+Pipeline config is persisted through `iris_pipeline` plus normalized child tables.
 
-### `iris_pipeline_job_connection`
+Key semantics:
 
-- Stores `SOURCE` and `DEST` connection info for each job
+- `pipelineId` is the stable technical identifier
+- `pipelineName` is the user-facing identifier
+- uniqueness is `(workspace, folder, pipelineName)`
+- file path and file name are no longer part of pipeline identity
 
-### `iris_pipeline_execution`
+### Normalized Child Tables
 
-- Stores each execution step within a job
+- `iris_pipeline_job`
+- `iris_pipeline_job_connection`
+- `iris_pipeline_execution`
+- `iris_pipeline_execution_parameter`
 
-### `iris_pipeline_execution_parameter`
+These tables are the source of truth for fresh execute.
 
-- Stores execution step parameters
+## 4. Config Input Modes
 
-This schema remains the source of truth for fresh `execute`, whether the config arrived through JSON body CRUD or optional file import.
+The current primary contract is JSON CRUD:
 
-## 4. Runtime Persistence Model
+- `POST /api/v1/sync-config`
+- `PUT /api/v1/sync-config/{pipelineId}`
+- `PATCH /api/v1/sync-config/{pipelineId}`
 
-Runtime behavior is no longer represented only by Spring Batch metadata.
-IrisPipe persists its own pipeline-level runtime lineage:
+Optional file import remains available:
+
+- `POST /api/v1/sync-config/import`
+- `PUT /api/v1/sync-config/{pipelineId}/import`
+
+Import is now only an input mode.
+It is not the identity model for stored pipeline definitions.
+
+## 5. Runtime Persistence Model
+
+IrisPipe persists pipeline runtime lineage independently of Spring Batch metadata.
 
 ### `iris_pipeline_run`
 
-Logical run record.
+Logical run row.
 
-- One row per execute or rerun
-- Stores:
-  - `pipeline_id`
-  - `rerun_from_pipeline_run_id`
-  - `latest_execution_id`
-  - latest projected status/timestamps
+Stores:
+
+- `workspace_id`
+- `pipeline_id`
+- `rerun_from_pipeline_run_id`
+- `latest_execution_id`
+- projected status and timestamps
 
 ### `iris_pipeline_run_snapshot`
 
-Immutable run-bound snapshot.
+Immutable snapshot row for one logical run.
 
-- One row per `PipelineRun`
-- Stores:
-  - `snapshot_schema_version`
-  - `pipeline_content_hash`
-  - `materialized_job_json`
+Stores:
+
+- `snapshot_schema_version`
+- `pipeline_content_hash`
+- `materialized_job_json`
 
 ### `iris_pipeline_run_job`
 
-Logical job nodes for a run.
+Logical job nodes for one run.
 
-- One row per job node inside one run
-- Stores:
-  - `job_sequence_order`
-  - `job_name`
-  - `atomic_level`
-  - latest projected `root_job_instance_id`
-  - latest projected `last_job_execution_id`
+Stores:
+
+- `job_sequence_order`
+- `job_name`
+- `atomic_level`
+- latest projected status
+- latest projected Spring Batch linkage
 
 ### `iris_pipeline_run_execution`
 
-Execution attempt history for one run.
+Execution attempt history for one logical run.
 
-- One row per attempt
-- Stores:
-  - `execution_no`
-  - `execution_kind`
-  - `requested_async`
-  - status/timestamps
+Stores:
+
+- `execution_no`
+- `execution_kind`
+- `requested_async`
+- status and timestamps
 
 ### `iris_pipeline_run_execution_job`
 
-Attempt result for each logical run job.
+Per-attempt job state.
 
-- One row per job node per attempt
-- Stores:
-  - status
-  - `root_job_instance_id`
-  - `last_job_execution_id`
-  - timestamps
+Stores:
 
-## 5. Snapshot Semantics
+- execution-scoped status
+- `root_job_instance_id`
+- `last_job_execution_id`
+- timestamps
 
-Snapshot behavior is now explicit:
+### `iris_watermark_record`
+
+Persistent execution watermark state keyed by:
+
+- `execution_name`
+- `table_name`
+- `watermark_column`
+
+## 6. Snapshot Semantics
+
+Snapshot behavior is explicit and stable:
 
 - `execute`
-  - Reads the latest persisted pipeline config
-  - Materializes stable execution identities
-  - Creates a brand new run snapshot
+  - reads the latest persisted pipeline config
+  - materializes execution names
+  - creates a new snapshot
 - `resume`
-  - Reads the existing snapshot for the failed run
-  - Never re-materializes from the latest pipeline config
+  - uses the existing snapshot of the same logical run
+  - does not read the latest pipeline config
 - `rerun`
-  - Creates a brand new run
-  - Copies the source run snapshot
-  - Never uses the latest pipeline config
+  - creates a new logical run
+  - copies the source run snapshot
+  - does not read the latest pipeline config
 
-This keeps rerun semantically separate from fresh execute.
+This protects resume and rerun from config drift.
 
-## 6. Atomic Boundaries
+## 7. Projection and History
 
-Each run job still respects the configured `atomicLevel`:
+Runtime persistence intentionally mixes projection and history:
 
-- `JOB`
-  - Resume strategy: replay the failed job as a fresh Spring Batch job instance
-- `CHUNK`
-  - Resume strategy: restart the failed Spring Batch job instance with stable identifying parameters
+- `PipelineRun` and `PipelineRunJob`
+  - latest projection for cheap summary and detail reads
+- `PipelineRunExecution` and `PipelineRunExecutionJob`
+  - full ordered attempt history
 
-The pipeline boundary stays at `PipelineRun`, but the recovery strategy is still decided per job node.
+As a result:
 
-## 7. Current Observation Model
+- run summary stays lightweight
+- run detail can expose both latest jobs and ordered `attempts`
 
-`PipelineRun` summary still exposes the latest execution projection.
-`PipelineRun` detail now exposes both:
+## 8. Delete Rules
 
-- latest projected job state in top-level `jobs`
-- ordered execution attempt history in top-level `attempts`
+### Pipeline Config Delete
 
-This is enough for:
+Config delete is blocked when run history exists.
+The backend does not delete runtime lineage through config delete.
 
-- latest run status
-- latest job statuses
-- attempt history across `INITIAL` and `RESUME`
-- root/last Spring Batch linkage
-- delete cleanup
+### Folder Delete
+
+Folder delete supports recursive mode, but only explicitly:
+
+- preview through `/delete-preview`
+- recursive delete through `?recursive=true`
+
+If any pipeline in the subtree already has run history:
+
+- preview marks blockers
+- actual recursive delete is rejected
+
+### Pipeline Run Delete
+
+Run delete is allowed only for terminal runs.
+In-flight runs in `STARTING`, `STARTED`, or `STOPPING` are rejected.

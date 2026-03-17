@@ -2,84 +2,141 @@
 
 ## 1. REST Exception Mapping
 
-`GlobalExceptionHandler` is the current REST boundary mapper.
+`GlobalExceptionHandler` is the controller-facing error boundary.
 
-| Exception | HTTP status | Typical trigger |
+Current mappings:
+
+| Exception type | HTTP status | Typical source |
 | --- | --- | --- |
-| `ResourceNotFoundException` | `400` | Missing pipeline or pipeline run |
-| `ConfigValidationException` | `400` | Invalid pipeline structure or business rule |
-| `IllegalArgumentException` | `400` | Invalid runtime request such as non-resumable run |
-| `ConfigFileException` | `500` | File parsing, hashing, or provider infrastructure failure |
+| `MethodArgumentNotValidException` | `400` | invalid request body |
+| `HandlerMethodValidationException` | `400` | invalid query/path/header parameters |
+| `ConstraintViolationException` | `400` | Jakarta validation failure |
+| `HttpMessageNotReadableException` | `400` | unreadable JSON |
+| `MissingServletRequestParameterException` | `400` | missing query param |
+| `MissingServletRequestPartException` | `400` | missing multipart part |
+| `MethodArgumentTypeMismatchException` | `400` | invalid request parameter type |
+| `ResourceNotFoundException` | `400` | missing pipeline, run, folder, or workspace in current scope |
+| `ConfigValidationException` | `400` | invalid pipeline config semantics |
+| `IllegalArgumentException` | `400` | invalid operation for current state |
+| `ConflictException` | `409` | uniqueness conflict or delete blocker |
+| `ConfigFileException` | `500` | import parsing or conversion failure |
+| `IllegalStateException` | `500` | unexpected server-side state |
+| fallback `Exception` | `500` | unhandled server exception |
 
-`CustomJobExecutionException` exists in the codebase but is not currently mapped in `GlobalExceptionHandler`.
+## 2. Validation Layers
 
-## 2. Runtime Failure Behavior
+Validation is intentionally layered.
+
+### Request Binding Validation
+
+Controller request DTOs and request params use Spring validation for:
+
+- `@NotNull`
+- `@NotBlank`
+- `@Positive`
+- `@Pattern`
+- `@Min`
+- `@Max`
+
+This catches malformed client input before service execution.
+
+### Request-Policy Validation
+
+Shallow domain validation still happens in policy services.
+
+Examples:
+
+- pipeline name normalization
+- import format resolution
+- non-empty job lists
+- folder name normalization
+
+### Deep Config Validation
+
+`SyncJobDefinition.validate()` and nested model validation handle:
+
+- execution-step correctness
+- parameter completeness
+- database config completeness
+- atomic-level requirements
+
+This layer intentionally lives inside the config model, not in the controller DTO boundary.
+
+## 3. Runtime Failure Semantics
 
 Not every runtime failure becomes an HTTP 500.
 
 For pipeline execution:
 
-- request validation failures return `400`
-- actual batch failures are usually persisted into runtime state:
-  - `FAILED`
-  - `STOPPED`
-  - `ABANDONED`
-  - `UNKNOWN`
+- request problems are reported as transport-level errors
+- execution failures are usually persisted into runtime state
 
-The API usually returns a pipeline run summary or detail, and the caller observes failure through runtime status instead of a transport-level exception.
+Typical terminal runtime states:
 
-## 3. Resume, Rerun, and Stop Validation
+- `FAILED`
+- `STOPPED`
+- `COMPLETED`
+- `ABANDONED`
+- `UNKNOWN`
 
-Current validation examples:
+Clients are expected to observe run outcome primarily through run detail and run history, not through transport exceptions.
 
-- resume requires a terminal failed/stopped run
-- resume requires an existing snapshot
-- resume requires either a failed/stopped node or, for a stopped-between-jobs attempt, a first `NOT_RUN` node to continue from
-- rerun requires the source run to exist
-- stop requires the latest execution to be `STARTING`, `STARTED`, or `STOPPING`
+## 4. Control Validation
 
-These failures surface through `IllegalArgumentException` or `ResourceNotFoundException`, both mapped to `400`.
+### Resume
 
-## 4. Transaction Scope and Failure Semantics
+Resume is rejected when:
 
-`atomicLevel` continues to control failure behavior per job node:
+- the run does not exist in the current workspace
+- the run has no snapshot
+- the latest attempt is not resumable
+- no failed, stopped, or resumable `NOT_RUN` node can be found
 
-| Scope | Transaction boundary | Failure behavior |
-| --- | --- | --- |
-| `JOB` | Whole Spring Batch job | Entire job rolls back |
-| `CHUNK` | Spring Batch chunk | Committed chunks remain, failed chunk rolls back |
+### Rerun
 
-Resume semantics are layered on top of this:
+Rerun is rejected when:
 
-- `JOB` failure -> replay the failed job
-- `CHUNK` failure -> restart the failed job instance
+- the source run does not exist in the current workspace
+- the source snapshot does not exist
 
-## 5. Lifecycle Projection on Failure
+### Stop
 
-When a job fails or launch logic throws:
+Stop is rejected when the latest execution is not in:
 
-- `PipelineRunExecutionJob` is updated first
-- `PipelineRunExecution` is updated next
-- `PipelineRun` and `PipelineRunJob` latest projections are synchronized afterward
-- downstream nodes in the same attempt become `NOT_RUN`
+- `STARTING`
+- `STARTED`
+- `STOPPING`
 
-This makes latest summary/detail readable even when the batch execution failed mid-pipeline.
+### Run Delete
 
-## 6. Cooperative Stop Semantics
+Run delete is rejected when the latest execution is still in-flight.
 
-Stop does not try to kill application threads or half-open JDBC work.
-It requests a cooperative stop and callers observe the final state by polling summary/detail:
+### Config Delete
 
-- request accepted -> latest attempt becomes `STOPPING`
-- active batch execution is asked to stop through Spring Batch
-- final runtime state becomes `STOPPED`
-- downstream pending nodes in the stopped attempt become `NOT_RUN`
+Config delete is rejected when run lineage already exists for that pipeline.
 
-This keeps stop behavior consistent with `JOB` rollback semantics and `CHUNK` partial-commit semantics.
+### Folder Recursive Delete
 
-## 7. Current Gaps
+Recursive folder delete is rejected when the subtree contains pipelines with run history.
 
-### In-flight delete guard
+## 5. Runtime Projection on Failure
 
-Delete currently focuses on lineage cleanup.
-A dedicated guard for deleting a `STARTING`, `STARTED`, or `STOPPING` run is still missing.
+When runtime work fails or stops:
+
+1. execution-job rows are updated
+2. execution rows are updated
+3. latest projections on logical run-job rows are synchronized
+4. latest projection on logical run row is synchronized
+5. downstream pending nodes in the attempt become `NOT_RUN` when needed
+
+This keeps summary, recent, history, and detail responses readable even when failure happens mid-pipeline.
+
+## 6. Current Boundaries
+
+The backend still does not expose:
+
+- realtime runtime log streaming
+- dashboard-specific aggregate API
+- tracing-specific failure surfaces
+
+Those are product or observability follow-up concerns, not current controller error-handling responsibilities.

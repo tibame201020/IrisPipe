@@ -1,164 +1,192 @@
 # Core Flow
 
-## 1. Fresh Execute Flow
+## 1. Request Scoping
 
-```mermaid
-graph TD
-    A["POST /api/v1/sync-pipeline"] --> B["PipelineExecutionService.execute(pipelineId)"]
-    B --> C["JobConfigService.getSyncJobs(pipelineId)"]
-    C --> D["SyncJobDefinition.validate()"]
-    D --> E["create PipelineRun"]
-    E --> F["create PipelineRunSnapshot"]
-    F --> G["create PipelineRunJob"]
-    G --> H["create PipelineRunExecution(INITIAL)"]
-    H --> I["create PipelineRunExecutionJob"]
-    I --> J["execute jobs sequence-first"]
-    J --> K["CustomJobListener"]
-    K --> L["PipelineRunLifecycleService"]
-```
+All config, folder, and runtime flows resolve workspace scope first.
 
-Fresh execute is the only path that reads the latest persisted pipeline config.
+- header: `X-Iris-Workspace-Key`
+- fallback: `default`
+- missing or wrong-scope resources are resolved against the current workspace only
 
-## 2. Resume Flow
+## 2. Config Flow
 
-```mermaid
-graph TD
-    A["POST /api/v1/sync-pipeline/{pipelineRunId}/resume"] --> B["load PipelineRun"]
-    B --> C["load existing PipelineRunSnapshot"]
-    C --> D["load latest failed PipelineRunExecution"]
-    D --> E["find failed PipelineRunJob"]
-    E --> F["create PipelineRunExecution(RESUME)"]
-    F --> G["create PipelineRunExecutionJob rows"]
-    G --> H["mark upstream nodes as SKIPPED"]
-    H --> I["replay JOB or restart CHUNK"]
-    I --> J["continue downstream nodes if successful"]
-    J --> K["CustomJobListener + PipelineRunLifecycleService"]
-```
+### JSON Create and Replace
 
-Resume behavior:
+1. Controller binds `SyncConfigDTO.ConfigPipelineUpsertRequest`
+2. `PipelineConfigService` validates `pipelineName` and `jobs`
+3. `PipelineFolderService` resolves `folderId` or root
+4. `PipelineConfigCommandService` enforces unique name inside the target folder
+5. `PipelineDefinitionPersistenceService` persists normalized child rows
+
+Fresh config CRUD is workspace-scoped and folder-aware.
+
+### Import Create and Replace
+
+1. Controller accepts multipart input
+2. `PipelineConfigImportService` resolves format from explicit `format` or file extension
+3. JSON or YAML provider parses the content
+4. `PipelineConfigRequestPolicy` validates the resulting `SyncJobDefinition` list
+5. Parsed config is converted into the same command payload used by JSON CRUD
+
+Import is now only an alternative input mode.
+
+### Config Delete
+
+1. Resolve pipeline in current workspace
+2. `PipelineDefinitionDeleteGuardService` checks whether any run history exists
+3. If lineage exists, delete is rejected
+4. If not, normalized child rows are deleted first
+5. Pipeline definition row is deleted last
+
+## 3. Folder Flow
+
+### Tree Query
+
+1. `PipelineFolderStructureService` loads the current workspace folder state
+2. `PipelineFolderReadModelService` builds the tree from folder rows and pipeline rows
+3. Hidden root is mapped back to public `/`
+
+### Folder Create and Update
+
+1. Resolve current workspace state
+2. Normalize target folder name
+3. Enforce sibling uniqueness
+4. For update, reject self-parent and descendant-parent cycles
+5. Persist the folder row
+
+### Folder Delete
+
+1. Build delete preview
+2. Reject non-recursive delete for non-empty folders
+3. Reject recursive delete when subtree contains pipelines with run history
+4. Delete config rows inside the subtree
+5. Delete folders from deepest node upward
+
+## 4. Execute Flow
+
+1. `PipelineExecutionService.execute(...)` resolves the target pipeline in the current workspace
+2. `PipelineConfigService` reconstructs normalized `SyncJobDefinition` objects
+3. `PipelineRunCommandService` creates:
+   - `PipelineRun`
+   - `PipelineRunJob`
+   - initial `PipelineRunExecution`
+   - initial `PipelineRunExecutionJob`
+4. `PipelineRunSnapshotService` materializes stable execution names and persists snapshot JSON
+5. `PipelineRunLaunchService` bridges into Spring Batch execution
+
+Fresh execute is the only runtime path that reads the latest stored pipeline config.
+
+## 5. Resume Flow
+
+1. Resolve the logical run in the current workspace
+2. Load the persisted snapshot for that run
+3. Load the latest execution attempt
+4. Determine the resume target:
+   - failed or stopped node
+   - or first `NOT_RUN` node when stop landed between jobs
+5. Create a new `PipelineRunExecution(kind = RESUME)`
+6. Create new execution-job rows
+7. Mark upstream nodes as `SKIPPED`
+8. Relaunch from the resolved resume point
+
+Resume semantics per node:
 
 - `JOB`
-  - Replay the failed job as a fresh Spring Batch job instance
+  - replay the failed job as a new Spring Batch job instance
 - `CHUNK`
-  - Restart the failed Spring Batch job instance with stable identifying parameters
+  - restart the failed Spring Batch job instance with stable identifying parameters
 
-## 3. Rerun Flow
+## 6. Rerun Flow
 
-```mermaid
-graph TD
-    A["POST /api/v1/sync-pipeline/{pipelineRunId}/rerun"] --> B["load source PipelineRun"]
-    B --> C["create new PipelineRun"]
-    C --> D["copy source PipelineRunSnapshot"]
-    D --> E["create new PipelineRunJob"]
-    E --> F["create PipelineRunExecution(INITIAL)"]
-    F --> G["create PipelineRunExecutionJob"]
-    G --> H["execute jobs sequence-first"]
-    H --> I["CustomJobListener + PipelineRunLifecycleService"]
-```
+1. Resolve the source run in the current workspace
+2. Create a brand new logical run
+3. Copy the source snapshot
+4. Create new logical run jobs
+5. Create initial execution and execution-job rows
+6. Relaunch sequence-first from the beginning
 
-Rerun is a brand new logical run.
-It replays the source run snapshot and does not use the latest pipeline config.
+Rerun never reads the latest pipeline config.
 
-## 4. Stop Flow
+## 7. Stop Flow
 
-```mermaid
-graph TD
-    A["POST /api/v1/sync-pipeline/{pipelineRunId}/stop"] --> B["load PipelineRun + latest PipelineRunExecution"]
-    B --> C["validate latest execution is STARTING / STARTED / STOPPING"]
-    C --> D["mark PipelineRunExecution as STOPPING"]
-    D --> E{"running JobExecution exists?"}
-    E -->|yes| F["JobOperator.stop(jobExecutionId)"]
-    E -->|no| G["mark pending execution jobs as NOT_RUN"]
-    F --> H["CustomJobListener + PipelineRunLifecycleService"]
-    G --> I["mark PipelineRunExecution as STOPPED"]
-    H --> J["sequence-first guard prevents next job launch"]
-    J --> K["finalize pending downstream nodes as NOT_RUN"]
-    K --> I
-```
+1. Resolve run and latest execution
+2. Validate latest execution is `STARTING`, `STARTED`, or `STOPPING`
+3. Project latest execution to `STOPPING`
+4. If a live Spring Batch job execution exists, request stop through `JobOperator.stop(...)`
+5. Listener-driven lifecycle updates converge to final `STOPPED`
+6. Pending downstream nodes in the stopped attempt become `NOT_RUN`
 
 Stop is cooperative, not force-kill.
-If stop lands between jobs, the execution can move directly from `STOPPING` to `STOPPED` with downstream nodes marked as `NOT_RUN`.
 
-## 5. Summary and Detail Flow
+## 8. Query Flow
 
-### Summary
+### Run Summary by Ids
 
-`GET /api/v1/sync-pipeline?ids=...`
+- `GET /api/v1/sync-pipeline?ids=...`
+- `PipelineRunQueryService` loads run rows by id and renders lightweight summaries
 
-- Loads `PipelineRun`
-- Uses latest projected status and timestamps
-- Returns lightweight run summary objects
+### Pipeline History
 
-### Detail
+- `GET /api/v1/sync-pipeline?pipelineId=...&limit=...&beforeRunId=...`
+- returns ordered history for one pipeline in the current workspace
 
-`GET /api/v1/sync-pipeline/{pipelineRunId}`
+### Recent Runs
 
-- Loads `PipelineRun`
-- Uses `PipelineRunQueryService` to assemble the read model
-- Loads all `PipelineRunExecution` rows ordered by `executionNo`
-- Loads execution-job rows for each attempt in stable `jobSequenceOrder`
-- Uses `JobExplorer` to enrich each attempt job from `last_job_execution_id`
-- Returns:
-  - top-level latest run-job detail in `jobs`
-  - ordered attempt history in `attempts`
+- `GET /api/v1/sync-pipeline/recent?limit=...&beforeRunId=...`
+- returns ordered recent runs for the current workspace
 
-## 6. Delete Flow
+### Run Detail
 
-`DELETE /api/v1/sync-pipeline/{pipelineRunId}`
+1. Resolve run and pipeline rows
+2. Load ordered `PipelineRunExecution` rows
+3. Load execution-job rows by attempt
+4. Load logical run-job rows for latest projection
+5. Enrich job details from `JobExplorer` through `last_job_execution_id`
+6. Render:
+   - top-level latest `jobs`
+   - ordered `attempts`
 
-Current delete behavior:
+## 9. Run Delete Flow
 
-1. Load the latest `PipelineRunExecution`
-2. Reject delete unless the latest execution is terminal
-3. Load all `PipelineRunExecution` rows for the run
-4. Load all `PipelineRunExecutionJob` rows across the run lineage
-5. Delete related Spring Batch metadata for distinct `last_job_execution_id`
-6. Delete execution-job rows
-7. Delete execution rows
-8. Delete run-job rows
-9. Delete run snapshot
-10. Delete run
+1. Resolve the run in the current workspace
+2. Reject delete when latest execution is in-flight
+3. Collect execution rows and execution-job rows
+4. Delete related Spring Batch metadata through `JobMetadataService`
+5. Delete execution-job rows
+6. Delete execution rows
+7. Delete logical run-job rows
+8. Delete snapshot row
+9. Delete logical run row
 
-Delete is lineage-aware for the whole run, not only the latest projection.
-Delete returns `400` for `STARTING`, `STARTED`, or `STOPPING` runs.
+## 10. Lifecycle Ownership
 
-## 7. Lifecycle Ownership
+Runtime lifecycle is listener-driven.
 
-Runtime status writes are listener-driven:
-
-- `CustomJobListener.beforeJob`
-  - marks job started
-  - respects already-requested stop before opening normal in-flight work
-- `CustomJobListener.afterJob`
-  - marks job finished
+- `PipelineExecutionService`
+  - creates runtime rows
+  - launches or stops work
+- `CustomJobListener`
+  - marks started and finished transitions
+  - persists watermark records when needed
 - `PipelineRunLifecycleService`
-  - updates attempt rows first
-  - then syncs the latest projection back to `PipelineRun` and `PipelineRunJob`
+  - updates execution rows
+  - updates job rows
+  - synchronizes latest projection
+  - publishes observation events
 - `PipelineRunQueryService`
-  - assembles summary and detail read models without growing the control service
-- `observability`
-  - listens to lifecycle-derived observation events and publishes meters
+  - assembles read models without owning runtime mutation logic
 
-This keeps sync and async trigger paths on the same lifecycle path.
+## 11. Observability Flow
 
-## 8. Operational Observability
+Observability is lifecycle-derived.
 
-- `GET /actuator/health`
-  - app health and readiness surface
-- `GET /actuator/metrics`
-  - Micrometer metric discovery and point-in-time values
-- `GET /actuator/prometheus`
-  - Prometheus scrape surface
+1. lifecycle services publish observation events
+2. `PipelineMetricsPublisher` listens to those events
+3. Micrometer publishes counters, gauges, and timers
+4. actuator exposes:
+   - `/actuator/health`
+   - `/actuator/metrics`
+   - `/actuator/prometheus`
 
-Current metric families include:
-
-- run trigger counters
-- terminal execution counters
-- terminal job counters
-- active run and execution gauges
-- execution and job duration timers
-
-## 9. Remaining Gaps
-
-- Dashboards and alert routing are still external follow-up work.
-- Tracing and custom runtime health indicators are not implemented yet.
+Current metrics are execution- and job-focused.
+There is no runtime log streaming in this backend yet.
