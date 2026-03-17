@@ -2,14 +2,12 @@ package irispipe.infrastructure.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import irispipe.infrastructure.entity.PipelineDefinition;
-import irispipe.infrastructure.error.exception.ConflictException;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
 import irispipe.infrastructure.repo.PipelineDefinitionRepo;
 import irispipe.model.SyncJobDefinition;
@@ -27,6 +25,7 @@ public class JobConfigService {
     private final PipelineConfigRequestPolicy pipelineConfigRequestPolicy;
     private final PipelineConfigImportService pipelineConfigImportService;
     private final PipelineConfigReadModelService pipelineConfigReadModelService;
+    private final PipelineConfigCommandService pipelineConfigCommandService;
 
     /**
      * Creates the config service with persistence, parsing, and workspace helpers.
@@ -38,6 +37,7 @@ public class JobConfigService {
      * @param pipelineConfigRequestPolicy request normalization and validation policy
      * @param pipelineConfigImportService import parsing and content hashing helper
      * @param pipelineConfigReadModelService config hydration and detail rendering helper
+     * @param pipelineConfigCommandService command-side config mutation helper
      */
     public JobConfigService(PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineFolderService pipelineFolderService,
@@ -45,7 +45,8 @@ public class JobConfigService {
             WorkspaceContextService workspaceContextService,
             PipelineConfigRequestPolicy pipelineConfigRequestPolicy,
             PipelineConfigImportService pipelineConfigImportService,
-            PipelineConfigReadModelService pipelineConfigReadModelService) {
+            PipelineConfigReadModelService pipelineConfigReadModelService,
+            PipelineConfigCommandService pipelineConfigCommandService) {
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineFolderService = pipelineFolderService;
         this.pipelineDefinitionPersistenceService = pipelineDefinitionPersistenceService;
@@ -53,6 +54,7 @@ public class JobConfigService {
         this.pipelineConfigRequestPolicy = pipelineConfigRequestPolicy;
         this.pipelineConfigImportService = pipelineConfigImportService;
         this.pipelineConfigReadModelService = pipelineConfigReadModelService;
+        this.pipelineConfigCommandService = pipelineConfigCommandService;
     }
 
     /**
@@ -112,29 +114,9 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo createSyncConfig(Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
-        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
-        String normalizedPipelineName = pipelineConfigRequestPolicy.normalizePipelineName(pipelineName);
-        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
-        Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
-        if (pipelineDefinitionRepo.existsByWorkspaceIdAndFolderIdAndPipelineName(
-                workspaceId,
-                targetFolderId,
-                normalizedPipelineName)) {
-            throw new ConflictException("Pipeline already exists in target folder");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        PipelineDefinition pipeline = new PipelineDefinition();
-        pipeline.setWorkspaceId(workspaceId);
-        pipeline.setFolderId(targetFolderId);
-        pipeline.setPipelineName(normalizedPipelineName);
-        pipeline.setContentHash(pipelineConfigImportService.renderContentHash(validatedSyncJobs));
-        pipeline.setCreatedAt(now);
-        pipeline.setUpdatedAt(now);
-
-        PipelineDefinition savedPipeline = pipelineDefinitionRepo.save(pipeline);
-        pipelineDefinitionPersistenceService.persistJobs(savedPipeline.getId(), validatedSyncJobs);
-        return getConfigFileInfo(savedPipeline.getId());
+        PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, syncJobs);
+        Long pipelineId = pipelineConfigCommandService.createConfig(command);
+        return getConfigFileInfo(pipelineId);
     }
 
     /**
@@ -149,25 +131,9 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo updateSyncConfig(Long pipelineId, Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
-        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
-        String normalizedPipelineName = pipelineConfigRequestPolicy.normalizePipelineName(pipelineName);
-        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
-        Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
-        pipelineDefinitionRepo.findByWorkspaceIdAndFolderIdAndPipelineName(workspaceId, targetFolderId, normalizedPipelineName)
-                .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
-                .ifPresent(existingPipeline -> {
-                    throw new ConflictException("Pipeline already exists in target folder");
-                });
-
-        pipeline.setWorkspaceId(workspaceId);
-        pipeline.setFolderId(targetFolderId);
-        pipeline.setPipelineName(normalizedPipelineName);
-        pipeline.setContentHash(pipelineConfigImportService.renderContentHash(validatedSyncJobs));
-        pipeline.setUpdatedAt(LocalDateTime.now());
-        pipelineDefinitionRepo.save(pipeline);
-
-        pipelineDefinitionPersistenceService.replacePipelineJobs(pipelineId, validatedSyncJobs);
+        PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, syncJobs);
+        pipelineConfigCommandService.replaceConfig(pipeline, command);
         return getConfigFileInfo(pipelineId);
     }
 
@@ -200,32 +166,14 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long folderId, String pipelineName, String format,
             MultipartFile file) {
-        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineConfigImportService.ParsedConfig persistedConfig = pipelineConfigImportService.parseImportConfig(
                 folderId,
                 pipelineName,
                 format,
                 file);
-
-        if (pipelineDefinitionRepo.existsByWorkspaceIdAndFolderIdAndPipelineName(
-                workspaceId,
-                persistedConfig.folderId(),
-                persistedConfig.pipelineName())) {
-            throw new ConflictException("Pipeline already exists in target folder");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        PipelineDefinition pipeline = new PipelineDefinition();
-        pipeline.setWorkspaceId(workspaceId);
-        pipeline.setFolderId(persistedConfig.folderId());
-        pipeline.setPipelineName(persistedConfig.pipelineName());
-        pipeline.setContentHash(persistedConfig.contentHash());
-        pipeline.setCreatedAt(now);
-        pipeline.setUpdatedAt(now);
-
-        PipelineDefinition savedPipeline = pipelineDefinitionRepo.save(pipeline);
-        pipelineDefinitionPersistenceService.persistJobs(savedPipeline.getId(), persistedConfig.syncJobs());
-        return getConfigFileInfo(savedPipeline.getId());
+        PipelineConfigCommandService.PipelineConfigCommand command = toCommand(persistedConfig);
+        Long pipelineId = pipelineConfigCommandService.createConfig(command);
+        return getConfigFileInfo(pipelineId);
     }
 
     /**
@@ -241,32 +189,50 @@ public class JobConfigService {
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long pipelineId, Long folderId, String pipelineName, String format,
             MultipartFile file) {
-        Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         PipelineConfigImportService.ParsedConfig persistedConfig = pipelineConfigImportService.parseImportConfig(
                 folderId,
                 pipelineName,
                 format,
                 file);
-
-        pipelineDefinitionRepo.findByWorkspaceIdAndFolderIdAndPipelineName(
-                workspaceId,
-                persistedConfig.folderId(),
-                persistedConfig.pipelineName())
-                .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
-                .ifPresent(existingPipeline -> {
-                    throw new ConflictException("Pipeline already exists in target folder");
-                });
-
-        pipeline.setWorkspaceId(workspaceId);
-        pipeline.setFolderId(persistedConfig.folderId());
-        pipeline.setPipelineName(persistedConfig.pipelineName());
-        pipeline.setContentHash(persistedConfig.contentHash());
-        pipeline.setUpdatedAt(LocalDateTime.now());
-        pipelineDefinitionRepo.save(pipeline);
-
-        pipelineDefinitionPersistenceService.replacePipelineJobs(pipelineId, persistedConfig.syncJobs());
+        PipelineConfigCommandService.PipelineConfigCommand command = toCommand(persistedConfig);
+        pipelineConfigCommandService.replaceConfig(pipeline, command);
         return getConfigFileInfo(pipelineId);
+    }
+
+    /**
+     * Builds a normalized command payload from JSON config request fields.
+     *
+     * @param folderId target folder id, or {@code null} for workspace root
+     * @param pipelineName user-facing pipeline name
+     * @param syncJobs full job payload from the request
+     * @return normalized command payload for create or replace flows
+     */
+    private PipelineConfigCommandService.PipelineConfigCommand buildJsonConfigCommand(Long folderId, String pipelineName,
+            List<SyncJobDefinition> syncJobs) {
+        String normalizedPipelineName = pipelineConfigRequestPolicy.normalizePipelineName(pipelineName);
+        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
+        Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
+        String contentHash = pipelineConfigImportService.renderContentHash(validatedSyncJobs);
+        return new PipelineConfigCommandService.PipelineConfigCommand(
+                targetFolderId,
+                normalizedPipelineName,
+                contentHash,
+                validatedSyncJobs);
+    }
+
+    /**
+     * Converts an import payload into the shared command payload used by create and replace flows.
+     *
+     * @param parsedConfig parsed import payload
+     * @return normalized command payload for create or replace flows
+     */
+    private PipelineConfigCommandService.PipelineConfigCommand toCommand(PipelineConfigImportService.ParsedConfig parsedConfig) {
+        return new PipelineConfigCommandService.PipelineConfigCommand(
+                parsedConfig.folderId(),
+                parsedConfig.pipelineName(),
+                parsedConfig.contentHash(),
+                parsedConfig.syncJobs());
     }
 
     /**
