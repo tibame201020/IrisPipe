@@ -15,12 +15,22 @@ import irispipe.infrastructure.repo.workspace.WorkspaceRepo;
 import irispipe.infrastructure.service.folder.PipelineFolderConstants;
 import irispipe.model.dto.WorkspaceDTO;
 
+/**
+ * Provides workspace provisioning and workspace read operations.
+ */
 @Service
 public class WorkspaceService {
     private final WorkspaceRepo workspaceRepo;
     private final PipelineFolderRepo pipelineFolderRepo;
     private final WorkspaceContextService workspaceContextService;
 
+    /**
+     * Creates the workspace service.
+     *
+     * @param workspaceRepo workspace repository
+     * @param pipelineFolderRepo folder repository
+     * @param workspaceContextService current workspace resolver
+     */
     public WorkspaceService(WorkspaceRepo workspaceRepo,
             PipelineFolderRepo pipelineFolderRepo,
             WorkspaceContextService workspaceContextService) {
@@ -29,6 +39,11 @@ public class WorkspaceService {
         this.workspaceContextService = workspaceContextService;
     }
 
+    /**
+     * Lists all workspaces.
+     *
+     * @return ordered workspace summaries
+     */
     @Transactional(readOnly = true)
     public List<WorkspaceDTO.WorkspaceInfo> listWorkspaces() {
         return workspaceRepo.findAllByOrderByIdAsc().stream()
@@ -36,11 +51,23 @@ public class WorkspaceService {
                 .toList();
     }
 
+    /**
+     * Loads the current workspace summary.
+     *
+     * @return current workspace summary
+     */
     @Transactional(readOnly = true)
     public WorkspaceDTO.WorkspaceInfo getCurrentWorkspace() {
         return toWorkspaceInfo(workspaceContextService.getCurrentWorkspace());
     }
 
+    /**
+     * Creates a new workspace and its hidden root folder.
+     *
+     * @param workspaceKey user-provided workspace key
+     * @param workspaceName user-provided workspace name
+     * @return created workspace summary
+     */
     @Transactional
     public WorkspaceDTO.WorkspaceInfo createWorkspace(String workspaceKey, String workspaceName) {
         String normalizedWorkspaceKey = normalizeWorkspaceKey(workspaceKey);
@@ -70,6 +97,12 @@ public class WorkspaceService {
         return toWorkspaceInfo(savedWorkspace);
     }
 
+    /**
+     * Converts a workspace entity to the API summary shape.
+     *
+     * @param workspace workspace entity
+     * @return workspace summary
+     */
     private WorkspaceDTO.WorkspaceInfo toWorkspaceInfo(Workspace workspace) {
         return new WorkspaceDTO.WorkspaceInfo(
                 workspace.getId(),
@@ -78,6 +111,12 @@ public class WorkspaceService {
                 workspace.getSystemDefault());
     }
 
+    /**
+     * Normalizes and validates a workspace key.
+     *
+     * @param workspaceKey user-provided workspace key
+     * @return normalized workspace key
+     */
     private String normalizeWorkspaceKey(String workspaceKey) {
         if (workspaceKey == null || workspaceKey.isBlank()) {
             throw new IllegalArgumentException("workspaceKey is required");
@@ -91,6 +130,12 @@ public class WorkspaceService {
         return normalized;
     }
 
+    /**
+     * Normalizes and validates a workspace name.
+     *
+     * @param workspaceName user-provided workspace name
+     * @return normalized workspace name
+     */
     private String normalizeWorkspaceName(String workspaceName) {
         if (workspaceName == null || workspaceName.isBlank()) {
             throw new IllegalArgumentException("workspaceName is required");

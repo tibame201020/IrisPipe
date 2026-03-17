@@ -11,6 +11,9 @@ import java.nio.file.Path;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 
+/**
+ * Parses YAML config files.
+ */
 @Component
 public class YamlFileProvider implements FileProvider {
     private final ObjectMapper yamlMapper;
@@ -18,10 +21,21 @@ public class YamlFileProvider implements FileProvider {
     private final String yamlExtension = ".yaml";
     private final String ymlExtension = ".yml";
 
+    /**
+     * Creates the YAML file provider.
+     *
+     * @param yamlMapper YAML object mapper
+     */
     public YamlFileProvider(@Qualifier("yamlMapper") ObjectMapper yamlMapper) {
         this.yamlMapper = yamlMapper;
     }
 
+    /**
+     * Reads raw YAML content from a file path.
+     *
+     * @param path source YAML file path
+     * @return raw YAML content
+     */
     @Override
     public String readPathContent(Path path) {
         try {
@@ -32,6 +46,14 @@ public class YamlFileProvider implements FileProvider {
         }
     }
 
+    /**
+     * Reads a YAML file and converts it into the requested target type.
+     *
+     * @param path source YAML file path
+     * @param typeReference target type
+     * @param <T> parsed target type
+     * @return parsed YAML value
+     */
     @Override
     public <T> T readPathToClass(Path path, TypeReference<T> typeReference) {
         try {
@@ -43,6 +65,14 @@ public class YamlFileProvider implements FileProvider {
         }
     }
 
+    /**
+     * Converts raw YAML content into the requested target type.
+     *
+     * @param content raw YAML content
+     * @param typeReference target type
+     * @param <T> parsed target type
+     * @return parsed YAML value
+     */
     @Override
     public <T> T convertContentToClass(String content, TypeReference<T> typeReference) {
         try {
@@ -53,6 +83,12 @@ public class YamlFileProvider implements FileProvider {
         }
     }
 
+    /**
+     * Returns whether the path has a YAML extension.
+     *
+     * @param path source file path
+     * @return true when the file name ends with {@code .yaml} or {@code .yml}
+     */
     @Override
     public boolean supports(Path path) {
         String fileName = path.toFile().getName().toLowerCase();
