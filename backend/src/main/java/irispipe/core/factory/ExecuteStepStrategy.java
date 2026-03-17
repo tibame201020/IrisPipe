@@ -1,24 +1,35 @@
 package irispipe.core.factory;
 
-import irispipe.batch.tasklet.ExecuteTasklet;
-import irispipe.core.utility.BatchIdentityHelper;
-import irispipe.infrastructure.context.SyncJobContext;
-import irispipe.model.ExecutionStep;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import irispipe.batch.tasklet.ExecuteTasklet;
+import irispipe.core.utility.BatchIdentityHelper;
+import irispipe.infrastructure.context.SyncJobContext;
+import irispipe.model.ExecutionStep;
+
+/**
+ * Builds generic execute tasklet steps for execute execution nodes.
+ */
 public class ExecuteStepStrategy implements ExecutionStepStrategy {
     private final JobRepository jobRepository;
 
+    /**
+     * Creates the execute step strategy.
+     *
+     * @param jobRepository Spring Batch job repository
+     */
     public ExecuteStepStrategy(JobRepository jobRepository) {
         this.jobRepository = jobRepository;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Step createStep(SyncJobContext syncJobContext, ExecutionStep execution, PlatformTransactionManager transactionManager) {
-        String jobName = syncJobContext.syncJob().getJobName();
         ExecuteTasklet executeTasklet = new ExecuteTasklet(syncJobContext, execution);
 
         return new StepBuilder(BatchIdentityHelper.renderStepName(execution.name(), "execute_step"), jobRepository)

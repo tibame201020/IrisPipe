@@ -7,6 +7,9 @@ import java.util.List;
 
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
+/**
+ * Reads table metadata and precomputes SQL statements used by the batch writers.
+ */
 public class SqlSyntaxHelper {
     public final List<String> primaryColumns;
     public final List<String> columns;
@@ -20,6 +23,12 @@ public class SqlSyntaxHelper {
     private final String fullyQualifiedTableName;
     private final SqlStatementBuilder statementBuilder;
 
+    /**
+     * Creates the SQL helper for one destination table.
+     *
+     * @param tableNameInput schema-qualified or plain table name
+     * @param namedParameterJdbcTemplate JDBC template used to access metadata
+     */
     public SqlSyntaxHelper(String tableNameInput, NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
         try (Connection connection = namedParameterJdbcTemplate.getJdbcTemplate().getDataSource().getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
@@ -60,6 +69,13 @@ public class SqlSyntaxHelper {
         }
     }
 
+    /**
+     * Builds the quoted schema-qualified table name.
+     *
+     * @param schema normalized schema name, or {@code null}
+     * @param table normalized table name
+     * @return quoted schema-qualified table name
+     */
     private String buildQualifiedTableName(String schema, String table) {
         if (schema != null && !schema.isEmpty()) {
             return dialect.quoteIdentifier(schema) + "." + dialect.quoteIdentifier(table);
@@ -67,6 +83,12 @@ public class SqlSyntaxHelper {
         return dialect.quoteIdentifier(table);
     }
 
+    /**
+     * Builds the existence query used by the upsert flow.
+     *
+     * @param chunkSize number of primary-key tuples in the chunk
+     * @return existence query SQL
+     */
     public String buildExistsQuery(int chunkSize) {
         return statementBuilder.buildExistsQuery(chunkSize);
     }

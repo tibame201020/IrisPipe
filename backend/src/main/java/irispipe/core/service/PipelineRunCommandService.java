@@ -23,6 +23,10 @@ import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
 import irispipe.model.SyncJobDefinition;
 
+/**
+ * Persists pipeline run headers, executions, logical run jobs, and execution-job
+ * rows for command flows.
+ */
 @Service
 public class PipelineRunCommandService {
     private final PipelineRunRepo pipelineRunRepo;
@@ -33,6 +37,17 @@ public class PipelineRunCommandService {
     private final JobExplorer jobExplorer;
     private final JobMetadataService jobMetadataService;
 
+    /**
+     * Creates the command-side persistence helper for pipeline run aggregates.
+     *
+     * @param pipelineRunRepo pipeline run repository
+     * @param pipelineRunExecutionRepo pipeline run execution repository
+     * @param pipelineRunExecutionJobRepo pipeline run execution job repository
+     * @param pipelineRunJobRepo pipeline run job repository
+     * @param pipelineRunSnapshotService snapshot cleanup helper
+     * @param jobExplorer Spring Batch job explorer
+     * @param jobMetadataService Spring Batch metadata cleanup helper
+     */
     public PipelineRunCommandService(PipelineRunRepo pipelineRunRepo,
             PipelineRunExecutionRepo pipelineRunExecutionRepo,
             PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
@@ -49,6 +64,14 @@ public class PipelineRunCommandService {
         this.jobMetadataService = jobMetadataService;
     }
 
+    /**
+     * Creates a new logical pipeline run header.
+     *
+     * @param pipelineDefinition pipeline definition used to seed workspace and pipeline ids
+     * @param requestedAsync whether the run was requested asynchronously
+     * @param rerunFromPipelineRunId source run id for rerun, or {@code null}
+     * @return persisted pipeline run header
+     */
     public PipelineRun createPipelineRun(PipelineDefinition pipelineDefinition, boolean requestedAsync,
             Long rerunFromPipelineRunId) {
         LocalDateTime now = LocalDateTime.now();
@@ -66,6 +89,13 @@ public class PipelineRunCommandService {
         return pipelineRunRepo.save(pipelineRun);
     }
 
+    /**
+     * Creates the logical run jobs for one pipeline run.
+     *
+     * @param pipelineRunId pipeline run id
+     * @param syncJobs snapshot job payload used by the run
+     * @return persisted logical run jobs ordered by job sequence
+     */
     public List<PipelineRunJob> createPipelineRunJobs(Long pipelineRunId, List<SyncJobDefinition> syncJobs) {
         LocalDateTime now = LocalDateTime.now();
         return java.util.stream.IntStream.range(0, syncJobs.size())
@@ -85,6 +115,14 @@ public class PipelineRunCommandService {
                 .toList();
     }
 
+    /**
+     * Creates a new execution row and updates the run header latest projection.
+     *
+     * @param pipelineRun pipeline run header to mutate
+     * @param requestedAsync whether the execution was requested asynchronously
+     * @param executionKind execution kind to persist
+     * @return persisted pipeline run execution
+     */
     public PipelineRunExecution createPipelineRunExecution(PipelineRun pipelineRun, boolean requestedAsync,
             PipelineRunExecutionKind executionKind) {
         LocalDateTime now = LocalDateTime.now();
@@ -114,6 +152,13 @@ public class PipelineRunCommandService {
         return savedPipelineRunExecution;
     }
 
+    /**
+     * Creates pending execution jobs for an initial execution.
+     *
+     * @param pipelineRunExecutionId pipeline run execution id
+     * @param pipelineRunJobs logical run jobs for the pipeline run
+     * @return persisted execution jobs ordered by logical job order
+     */
     public List<PipelineRunExecutionJob> createInitialPipelineRunExecutionJobs(Long pipelineRunExecutionId,
             List<PipelineRunJob> pipelineRunJobs) {
         LocalDateTime now = LocalDateTime.now();
@@ -130,6 +175,16 @@ public class PipelineRunCommandService {
                 .toList();
     }
 
+    /**
+     * Creates execution jobs for a resume execution and marks completed prefix jobs
+     * as skipped.
+     *
+     * @param pipelineRunExecutionId pipeline run execution id
+     * @param pipelineRunJobs logical run jobs for the pipeline run
+     * @param latestExecutionJobsByRunJobId latest execution jobs keyed by run job id
+     * @param resumeJobSequence zero-based resume start sequence
+     * @return persisted execution jobs ordered by logical job order
+     */
     public List<PipelineRunExecutionJob> createResumePipelineRunExecutionJobs(Long pipelineRunExecutionId,
             List<PipelineRunJob> pipelineRunJobs,
             Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId,
@@ -163,6 +218,11 @@ public class PipelineRunCommandService {
                 .toList();
     }
 
+    /**
+     * Deletes one pipeline run aggregate and associated Spring Batch metadata.
+     *
+     * @param pipelineRun persisted pipeline run header to delete
+     */
     public void deletePipelineRun(PipelineRun pipelineRun) {
         Long pipelineRunId = pipelineRun.getId();
         List<PipelineRunExecution> pipelineRunExecutions = pipelineRunExecutionRepo

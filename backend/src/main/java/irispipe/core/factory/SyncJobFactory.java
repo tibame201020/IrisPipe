@@ -1,12 +1,9 @@
 package irispipe.core.factory;
 
-import irispipe.batch.builder.BatchBeanBuilder;
-import irispipe.batch.listener.CustomJobListener;
-import irispipe.infrastructure.context.SyncJobContext;
-import irispipe.infrastructure.service.runtime.ExecutionRecordService;
-import irispipe.infrastructure.service.runtime.PipelineRunLifecycleService;
-import irispipe.model.AtomicLevel;
-import irispipe.model.ExecutionType;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -15,10 +12,17 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import irispipe.batch.builder.BatchBeanBuilder;
+import irispipe.batch.listener.CustomJobListener;
+import irispipe.infrastructure.context.SyncJobContext;
+import irispipe.infrastructure.service.runtime.ExecutionRecordService;
+import irispipe.infrastructure.service.runtime.PipelineRunLifecycleService;
+import irispipe.model.AtomicLevel;
+import irispipe.model.ExecutionType;
 
+/**
+ * Builds Spring Batch jobs from runtime sync job context objects.
+ */
 @Service
 public class SyncJobFactory {
     private final JobRepository jobRepository;
@@ -28,10 +32,19 @@ public class SyncJobFactory {
     private final PlatformTransactionManager platformTransactionManager;
     private final PipelineRunLifecycleService pipelineRunLifecycleService;
 
+    /**
+     * Creates the sync job factory and registers step strategies by execution type.
+     *
+     * @param jobRepository Spring Batch job repository
+     * @param batchBeanBuilder batch component builder
+     * @param platformTransactionManager application transaction manager
+     * @param executionRecordService execution record helper
+     * @param pipelineRunLifecycleService runtime lifecycle helper
+     */
     public SyncJobFactory(JobRepository jobRepository, BatchBeanBuilder batchBeanBuilder,
-                          PlatformTransactionManager platformTransactionManager,
-                          ExecutionRecordService executionRecordService,
-                          PipelineRunLifecycleService pipelineRunLifecycleService) {
+            PlatformTransactionManager platformTransactionManager,
+            ExecutionRecordService executionRecordService,
+            PipelineRunLifecycleService pipelineRunLifecycleService) {
         this.jobRepository = jobRepository;
         this.executionRecordService = executionRecordService;
         this.platformTransactionManager = platformTransactionManager;
@@ -47,11 +60,18 @@ public class SyncJobFactory {
         strategies.put(ExecutionType.EXECUTE, new ExecuteStepStrategy(jobRepository));
     }
 
+    /**
+     * Creates a Spring Batch job for one runtime sync job context.
+     *
+     * @param syncJobContext runtime sync job context
+     * @return Spring Batch job definition ready for launch
+     */
     public Job createBatchJob(SyncJobContext syncJobContext) {
 
         AtomicLevel atomicLevel = syncJobContext.syncJob().getSetting().atomicLevel();
-        PlatformTransactionManager transactionManager = atomicLevel.equals(AtomicLevel.JOB) ?
-                platformTransactionManager : syncJobContext.destContext().getTransactionManager();
+        PlatformTransactionManager transactionManager = atomicLevel.equals(AtomicLevel.JOB)
+                ? platformTransactionManager
+                : syncJobContext.destContext().getTransactionManager();
 
         List<Step> steps = syncJobContext.syncJob().getExecutions()
                 .stream()

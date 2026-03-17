@@ -10,6 +10,7 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import irispipe.core.service.PipelineRunJobParameterKeys;
 import irispipe.infrastructure.entity.runtime.PipelineRun;
 import irispipe.infrastructure.entity.runtime.PipelineRunExecution;
 import irispipe.infrastructure.entity.runtime.PipelineRunExecutionJob;
@@ -18,9 +19,11 @@ import irispipe.infrastructure.repo.runtime.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
-import irispipe.core.service.PipelineRunJobParameterKeys;
 import irispipe.model.PipelineRunStatus;
 
+/**
+ * Synchronizes pipeline run runtime state with Spring Batch job lifecycle events.
+ */
 @Service
 public class PipelineRunLifecycleService {
     private final PipelineRunRepo pipelineRunRepo;
@@ -31,6 +34,18 @@ public class PipelineRunLifecycleService {
     private final PipelineRunProjectionService pipelineRunProjectionService;
     private final PipelineRunObservationService pipelineRunObservationService;
 
+    /**
+     * Creates the lifecycle service with runtime repositories, status policy,
+     * projection sync, and observation publishing helpers.
+     *
+     * @param pipelineRunRepo pipeline run repository
+     * @param pipelineRunExecutionRepo pipeline run execution repository
+     * @param pipelineRunExecutionJobRepo pipeline run execution job repository
+     * @param pipelineRunJobRepo pipeline run job repository
+     * @param pipelineRunStatusPolicy runtime status policy helper
+     * @param pipelineRunProjectionService latest projection sync helper
+     * @param pipelineRunObservationService observation publishing helper
+     */
     public PipelineRunLifecycleService(PipelineRunRepo pipelineRunRepo,
             PipelineRunExecutionRepo pipelineRunExecutionRepo,
             PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo,
@@ -47,6 +62,12 @@ public class PipelineRunLifecycleService {
         this.pipelineRunObservationService = pipelineRunObservationService;
     }
 
+    /**
+     * Marks one execution job and its parent execution as started from Spring Batch
+     * job-start data.
+     *
+     * @param jobExecution Spring Batch job execution that just started
+     */
     @Transactional
     public void markJobStarted(JobExecution jobExecution) {
         Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), PipelineRunJobParameterKeys.PIPELINE_RUN_ID);
@@ -86,6 +107,13 @@ public class PipelineRunLifecycleService {
         pipelineRunJobRepo.save(pipelineRunJob);
     }
 
+    /**
+     * Checks whether a stop request exists for the execution referenced by one
+     * Spring Batch job execution.
+     *
+     * @param jobExecution Spring Batch job execution
+     * @return {@code true} when stop has been requested
+     */
     @Transactional(readOnly = true)
     public boolean isStopRequested(JobExecution jobExecution) {
         return isStopRequested(getRequiredLong(
@@ -93,11 +121,23 @@ public class PipelineRunLifecycleService {
                 PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID));
     }
 
+    /**
+     * Checks whether a stop request exists for one pipeline run execution.
+     *
+     * @param pipelineRunExecutionId pipeline run execution id
+     * @return {@code true} when execution is stopping or stopped
+     */
     @Transactional(readOnly = true)
     public boolean isStopRequested(Long pipelineRunExecutionId) {
         return pipelineRunStatusPolicy.isStopStatus(getPipelineRunExecution(pipelineRunExecutionId).getStatus());
     }
 
+    /**
+     * Marks one execution job and its parent execution as finished using Spring
+     * Batch terminal status.
+     *
+     * @param jobExecution Spring Batch job execution that just finished
+     */
     @Transactional
     public void markJobFinished(JobExecution jobExecution) {
         Long pipelineRunId = getRequiredLong(jobExecution.getJobParameters(), PipelineRunJobParameterKeys.PIPELINE_RUN_ID);
@@ -167,6 +207,15 @@ public class PipelineRunLifecycleService {
         }
     }
 
+    /**
+     * Marks one pipeline run execution as failed before a Spring Batch job could
+     * complete normally.
+     *
+     * @param pipelineRunId pipeline run id
+     * @param pipelineRunExecutionId pipeline run execution id
+     * @param pipelineRunJobId logical run job id
+     * @param pipelineRunExecutionJobId execution job id
+     */
     @Transactional
     public void markLaunchFailed(Long pipelineRunId, Long pipelineRunExecutionId, Long pipelineRunJobId,
             Long pipelineRunExecutionJobId) {
@@ -202,6 +251,12 @@ public class PipelineRunLifecycleService {
         pipelineRunObservationService.publishExecutionObservation(pipelineRunExecution);
     }
 
+    /**
+     * Records a stop request on one pipeline run execution and its run header.
+     *
+     * @param pipelineRunId pipeline run id
+     * @param pipelineRunExecutionId pipeline run execution id
+     */
     @Transactional
     public void markStopRequested(Long pipelineRunId, Long pipelineRunExecutionId) {
         LocalDateTime now = LocalDateTime.now();
@@ -225,6 +280,12 @@ public class PipelineRunLifecycleService {
         pipelineRunRepo.save(pipelineRun);
     }
 
+    /**
+     * Marks one pipeline run execution as stopped and syncs latest projections.
+     *
+     * @param pipelineRunId pipeline run id
+     * @param pipelineRunExecutionId pipeline run execution id
+     */
     @Transactional
     public void markStopped(Long pipelineRunId, Long pipelineRunExecutionId) {
         LocalDateTime now = LocalDateTime.now();
@@ -244,6 +305,11 @@ public class PipelineRunLifecycleService {
         }
     }
 
+    /**
+     * Marks pending execution jobs as not run and updates logical job projections.
+     *
+     * @param pipelineRunExecutionJobIds execution job ids to update
+     */
     @Transactional
     public void markExecutionJobsNotRun(List<Long> pipelineRunExecutionJobIds) {
         if (pipelineRunExecutionJobIds == null || pipelineRunExecutionJobIds.isEmpty()) {
@@ -279,28 +345,59 @@ public class PipelineRunLifecycleService {
                 });
     }
 
+    /**
+     * Loads one pipeline run by id.
+     *
+     * @param pipelineRunId pipeline run id
+     * @return persisted pipeline run
+     */
     private PipelineRun getPipelineRun(Long pipelineRunId) {
         return pipelineRunRepo.findById(pipelineRunId)
                 .orElseThrow(() -> new IllegalArgumentException("Pipeline run not found: " + pipelineRunId));
     }
 
+    /**
+     * Loads one pipeline run execution by id.
+     *
+     * @param pipelineRunExecutionId pipeline run execution id
+     * @return persisted pipeline run execution
+     */
     private PipelineRunExecution getPipelineRunExecution(Long pipelineRunExecutionId) {
         return pipelineRunExecutionRepo.findById(pipelineRunExecutionId)
                 .orElseThrow(
                         () -> new IllegalArgumentException("Pipeline run execution not found: " + pipelineRunExecutionId));
     }
 
+    /**
+     * Loads one pipeline run execution job by id.
+     *
+     * @param pipelineRunExecutionJobId pipeline run execution job id
+     * @return persisted pipeline run execution job
+     */
     private PipelineRunExecutionJob getPipelineRunExecutionJob(Long pipelineRunExecutionJobId) {
         return pipelineRunExecutionJobRepo.findById(pipelineRunExecutionJobId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Pipeline run execution job not found: " + pipelineRunExecutionJobId));
     }
 
+    /**
+     * Loads one logical pipeline run job by id.
+     *
+     * @param pipelineRunJobId pipeline run job id
+     * @return persisted logical run job
+     */
     private PipelineRunJob getPipelineRunJob(Long pipelineRunJobId) {
         return pipelineRunJobRepo.findById(pipelineRunJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Pipeline run job not found: " + pipelineRunJobId));
     }
 
+    /**
+     * Extracts one required long value from Spring Batch job parameters.
+     *
+     * @param jobParameters Spring Batch job parameters
+     * @param key job parameter key
+     * @return required long value
+     */
     private Long getRequiredLong(JobParameters jobParameters, String key) {
         Long value = jobParameters.getLong(key);
         if (value == null) {

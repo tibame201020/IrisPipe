@@ -13,9 +13,19 @@ import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunStatus;
 import irispipe.model.SyncJobDefinition;
 
+/**
+ * Holds command-side validation rules for resume, stop, and delete operations
+ * on pipeline runs.
+ */
 @Service
 public class PipelineRunControlPolicy {
 
+    /**
+     * Validates whether the latest execution of one run can be resumed.
+     *
+     * @param pipelineRunId pipeline run id used in validation errors
+     * @param latestExecution latest execution of the pipeline run
+     */
     public void validateResumablePipelineRun(Long pipelineRunId, PipelineRunExecution latestExecution) {
         if (latestExecution == null) {
             throw new IllegalArgumentException("Pipeline run has no execution to resume: " + pipelineRunId);
@@ -25,6 +35,13 @@ public class PipelineRunControlPolicy {
         }
     }
 
+    /**
+     * Validates that the persisted run topology still matches the snapshot payload.
+     *
+     * @param pipelineRunId pipeline run id used in validation errors
+     * @param snapshotSyncJobs snapshot job payload
+     * @param pipelineRunJobs persisted logical run jobs
+     */
     public void validatePipelineRunTopology(Long pipelineRunId, List<SyncJobDefinition> snapshotSyncJobs,
             List<PipelineRunJob> pipelineRunJobs) {
         if (snapshotSyncJobs.size() != pipelineRunJobs.size()) {
@@ -32,6 +49,15 @@ public class PipelineRunControlPolicy {
         }
     }
 
+    /**
+     * Finds the first job sequence that should be resumed for one execution.
+     *
+     * @param pipelineRunId pipeline run id used in validation errors
+     * @param latestExecution latest execution of the pipeline run
+     * @param pipelineRunJobs persisted logical run jobs
+     * @param latestExecutionJobsByRunJobId latest execution jobs keyed by run job id
+     * @return zero-based job sequence that should be launched on resume
+     */
     public int findResumeJobSequence(Long pipelineRunId, PipelineRunExecution latestExecution,
             List<PipelineRunJob> pipelineRunJobs,
             Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId) {
@@ -55,6 +81,12 @@ public class PipelineRunControlPolicy {
         throw new IllegalArgumentException("Pipeline run has no failed job to resume: " + pipelineRunId);
     }
 
+    /**
+     * Validates whether the target job atomic level supports resume.
+     *
+     * @param pipelineRunId pipeline run id used in validation errors
+     * @param pipelineRunJob target logical run job
+     */
     public void validateResumeStrategy(Long pipelineRunId, PipelineRunJob pipelineRunJob) {
         if (!AtomicLevel.JOB.equals(pipelineRunJob.getAtomicLevel())
                 && !AtomicLevel.CHUNK.equals(pipelineRunJob.getAtomicLevel())) {
@@ -63,6 +95,12 @@ public class PipelineRunControlPolicy {
         }
     }
 
+    /**
+     * Validates whether the latest execution of one run can be stopped.
+     *
+     * @param pipelineRunId pipeline run id used in validation errors
+     * @param latestExecution latest execution of the pipeline run
+     */
     public void validateStoppablePipelineRun(Long pipelineRunId, PipelineRunExecution latestExecution) {
         if (latestExecution == null) {
             throw new IllegalArgumentException("Pipeline run has no execution to stop: " + pipelineRunId);
@@ -72,6 +110,13 @@ public class PipelineRunControlPolicy {
         }
     }
 
+    /**
+     * Validates whether one pipeline run may be deleted.
+     *
+     * @param pipelineRunId pipeline run id used in validation errors
+     * @param pipelineRun persisted pipeline run header
+     * @param latestExecution latest execution of the pipeline run, or {@code null}
+     */
     public void validateDeletablePipelineRun(Long pipelineRunId, PipelineRun pipelineRun,
             PipelineRunExecution latestExecution) {
         PipelineRunStatus pipelineRunStatus = latestExecution == null ? pipelineRun.getStatus() : latestExecution.getStatus();
@@ -80,11 +125,24 @@ public class PipelineRunControlPolicy {
         }
     }
 
+    /**
+     * Returns whether one run status represents a stop request or stopped state.
+     *
+     * @param pipelineRunStatus run status to inspect
+     * @return {@code true} when the status is stopping or stopped
+     */
     public boolean isStopState(PipelineRunStatus pipelineRunStatus) {
         return pipelineRunStatus == PipelineRunStatus.STOPPING
                 || pipelineRunStatus == PipelineRunStatus.STOPPED;
     }
 
+    /**
+     * Returns whether one status should be treated as a terminal failure for
+     * resume decisions.
+     *
+     * @param pipelineRunStatus run status to inspect
+     * @return {@code true} when the status is resumable failure or stop state
+     */
     private boolean isTerminalFailure(PipelineRunStatus pipelineRunStatus) {
         return pipelineRunStatus == PipelineRunStatus.FAILED
                 || pipelineRunStatus == PipelineRunStatus.STOPPED
@@ -92,12 +150,24 @@ public class PipelineRunControlPolicy {
                 || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
     }
 
+    /**
+     * Returns whether one status may still receive a stop request.
+     *
+     * @param pipelineRunStatus run status to inspect
+     * @return {@code true} when the status is in flight
+     */
     private boolean isStoppableStatus(PipelineRunStatus pipelineRunStatus) {
         return pipelineRunStatus == PipelineRunStatus.STARTING
                 || pipelineRunStatus == PipelineRunStatus.STARTED
                 || pipelineRunStatus == PipelineRunStatus.STOPPING;
     }
 
+    /**
+     * Returns whether one status is eligible for delete.
+     *
+     * @param pipelineRunStatus run status to inspect
+     * @return {@code true} when the status is terminal
+     */
     private boolean isDeletableStatus(PipelineRunStatus pipelineRunStatus) {
         return pipelineRunStatus == PipelineRunStatus.COMPLETED
                 || pipelineRunStatus == PipelineRunStatus.FAILED

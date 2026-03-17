@@ -1,5 +1,18 @@
 package irispipe.core.factory;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.sql.DataSource;
+
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.transaction.PlatformTransactionManager;
+
 import io.micrometer.common.util.StringUtils;
 import irispipe.batch.builder.BatchBeanBuilder;
 import irispipe.batch.listener.ExecutionStepListener;
@@ -8,27 +21,28 @@ import irispipe.core.utility.BatchIdentityHelper;
 import irispipe.core.utility.SqlSyntaxHelper;
 import irispipe.infrastructure.context.SyncJobContext;
 import irispipe.model.ExecutionStep;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.transaction.PlatformTransactionManager;
 
-import javax.sql.DataSource;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+/**
+ * Builds chunk-oriented insert steps for insert execution nodes.
+ */
 public class InsertStepStrategy implements ExecutionStepStrategy {
     private final JobRepository jobRepository;
     private final BatchBeanBuilder batchBeanBuilder;
 
+    /**
+     * Creates the insert step strategy.
+     *
+     * @param jobRepository Spring Batch job repository
+     * @param batchBeanBuilder batch component builder
+     */
     public InsertStepStrategy(JobRepository jobRepository, BatchBeanBuilder batchBeanBuilder) {
         this.jobRepository = jobRepository;
         this.batchBeanBuilder = batchBeanBuilder;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Step createStep(SyncJobContext syncJobContext, ExecutionStep execution, PlatformTransactionManager transactionManager) {
         String jobName = syncJobContext.syncJob().getJobName();

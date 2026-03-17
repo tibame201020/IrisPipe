@@ -15,6 +15,9 @@ import irispipe.infrastructure.service.workspace.WorkspaceService;
 import irispipe.model.dto.WorkspaceDTO;
 import jakarta.validation.Valid;
 
+/**
+ * Exposes workspace discovery and provisioning endpoints.
+ */
 @RestController
 @Validated
 @RequestMapping("/api/v1/workspaces")
@@ -22,24 +25,45 @@ import jakarta.validation.Valid;
 public class WorkspaceAPI {
     private final WorkspaceService workspaceService;
 
+    /**
+     * Creates the workspace controller.
+     *
+     * @param workspaceService workspace application service
+     */
     public WorkspaceAPI(WorkspaceService workspaceService) {
         this.workspaceService = workspaceService;
     }
 
     @GetMapping
     @Operation(summary = "List workspaces", description = "Returns all available workspaces.")
+    /**
+     * Lists all available workspaces.
+     *
+     * @return workspace summaries
+     */
     public List<WorkspaceDTO.WorkspaceInfo> listWorkspaces() {
         return workspaceService.listWorkspaces();
     }
 
     @GetMapping("/current")
     @Operation(summary = "Get current workspace", description = "Resolves the current workspace from the optional workspace header or default workspace fallback.")
+    /**
+     * Resolves the current workspace from request context.
+     *
+     * @return current workspace info
+     */
     public WorkspaceDTO.WorkspaceInfo getCurrentWorkspace() {
         return workspaceService.getCurrentWorkspace();
     }
 
     @PostMapping
     @Operation(summary = "Create workspace", description = "Creates a new workspace and its hidden root folder.")
+    /**
+     * Creates a new workspace.
+     *
+     * @param workspaceUpsertRequest validated workspace create payload
+     * @return created workspace info
+     */
     public WorkspaceDTO.WorkspaceInfo createWorkspace(@Valid @RequestBody WorkspaceDTO.WorkspaceUpsertRequest workspaceUpsertRequest) {
         return workspaceService.createWorkspace(
                 workspaceUpsertRequest.workspaceKey(),

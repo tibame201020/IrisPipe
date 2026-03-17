@@ -10,12 +10,26 @@ import io.micrometer.common.util.StringUtils;
 import irispipe.model.ExecutionStep;
 import irispipe.model.ExecutionType;
 
+/**
+ * Renders stable batch job and step identifiers from logical pipeline metadata.
+ */
 public final class BatchIdentityHelper {
     public static final int BATCH_STEP_NAME_MAX_LENGTH = 100;
 
+    /**
+     * Prevents instantiation of the batch identity helper.
+     */
     private BatchIdentityHelper() {
     }
 
+    /**
+     * Materializes execution names for one job, deriving names for unnamed steps
+     * and resolving duplicates.
+     *
+     * @param jobName logical job name
+     * @param executions logical execution steps
+     * @return ordered execution names aligned with the input list
+     */
     public static List<String> materializeExecutionNames(String jobName, List<ExecutionStep> executions) {
         Map<ExecutionType, Integer> unnamedTypeTotals = new HashMap<>();
         executions.stream()
@@ -56,10 +70,26 @@ public final class BatchIdentityHelper {
                 .toList();
     }
 
+    /**
+     * Renders one bounded Spring Batch step name from an execution name and step
+     * suffix.
+     *
+     * @param executionName materialized execution name
+     * @param stepSuffix step type suffix
+     * @return bounded step name
+     */
     public static String renderStepName(String executionName, String stepSuffix) {
         return boundIdentifier(executionName + "_" + stepSuffix, BATCH_STEP_NAME_MAX_LENGTH);
     }
 
+    /**
+     * Bounds one identifier to the requested length and appends a short hash when
+     * truncation is required.
+     *
+     * @param value source identifier
+     * @param maxLength maximum identifier length
+     * @return bounded identifier
+     */
     static String boundIdentifier(String value, int maxLength) {
         if (value.length() <= maxLength) {
             return value;
@@ -70,6 +100,12 @@ public final class BatchIdentityHelper {
         return value.substring(0, prefixLength) + "_" + hash;
     }
 
+    /**
+     * Renders a short deterministic hash for one identifier value.
+     *
+     * @param value source identifier
+     * @return short lowercase hash string
+     */
     private static String renderShortHash(String value) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
