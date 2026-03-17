@@ -16,12 +16,22 @@ import irispipe.infrastructure.repo.config.PipelineDefinitionRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
 import irispipe.model.dto.SyncConfigDTO;
 
+/**
+ * Builds folder tree, preview, and folder-aware pipeline summary read models.
+ */
 @Service
 public class PipelineFolderReadModelService {
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineRunRepo pipelineRunRepo;
     private final PipelineFolderStructureService pipelineFolderStructureService;
 
+    /**
+     * Creates the folder read-model service.
+     *
+     * @param pipelineDefinitionRepo pipeline definition repository
+     * @param pipelineRunRepo pipeline run repository
+     * @param pipelineFolderStructureService workspace folder structure resolver
+     */
     public PipelineFolderReadModelService(PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineRunRepo pipelineRunRepo,
             PipelineFolderStructureService pipelineFolderStructureService) {
@@ -30,6 +40,11 @@ public class PipelineFolderReadModelService {
         this.pipelineFolderStructureService = pipelineFolderStructureService;
     }
 
+    /**
+     * Builds the current workspace tree of folders and pipelines.
+     *
+     * @return folder tree with top-level pipelines
+     */
     @Transactional(readOnly = true)
     public SyncConfigDTO.PipelineTreeInfo getPipelineTree() {
         PipelineFolderWorkspaceState workspaceState = pipelineFolderStructureService.getCurrentWorkspaceState();
@@ -57,6 +72,13 @@ public class PipelineFolderReadModelService {
         return new SyncConfigDTO.PipelineTreeInfo(rootFolders, rootPipelines);
     }
 
+    /**
+     * Builds the recursive delete preview for one folder subtree.
+     *
+     * @param folderId folder id in the current workspace
+     * @param limit optional preview item limit
+     * @return recursive delete preview payload
+     */
     @Transactional(readOnly = true)
     public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(Long folderId, Integer limit) {
         PipelineFolderWorkspaceState workspaceState = pipelineFolderStructureService.getCurrentWorkspaceState();
@@ -120,6 +142,12 @@ public class PipelineFolderReadModelService {
                 truncated);
     }
 
+    /**
+     * Builds a folder-aware pipeline summary using the current workspace state.
+     *
+     * @param pipelineDefinition pipeline definition row
+     * @return pipeline summary DTO
+     */
     @Transactional(readOnly = true)
     public SyncConfigDTO.ConfigPipelineSummary toConfigPipelineSummary(PipelineDefinition pipelineDefinition) {
         return toConfigPipelineSummary(
@@ -127,6 +155,12 @@ public class PipelineFolderReadModelService {
                 pipelineFolderStructureService.getCurrentWorkspaceState());
     }
 
+    /**
+     * Builds folder info using the current workspace state.
+     *
+     * @param folder folder row
+     * @return folder info DTO
+     */
     @Transactional(readOnly = true)
     public SyncConfigDTO.FolderInfo toFolderInfo(PipelineFolder folder) {
         return toFolderInfo(folder, pipelineFolderStructureService.getCurrentWorkspaceState());

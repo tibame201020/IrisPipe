@@ -209,21 +209,21 @@ Review status:
 
 ## infrastructure.service.folder
 
-- [ ] `irispipe/infrastructure/service/folder/PipelineFolderCommandService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/folder/PipelineFolderConstants.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/infrastructure/service/folder/PipelineFolderReadModelService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/folder/PipelineFolderCommandService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/folder/PipelineFolderConstants.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/infrastructure/service/folder/PipelineFolderReadModelService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 - [x] `irispipe/infrastructure/service/folder/PipelineFolderService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/folder/PipelineFolderStructureService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/folder/PipelineFolderWorkspaceState.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
+- [x] `irispipe/infrastructure/service/folder/PipelineFolderStructureService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/folder/PipelineFolderWorkspaceState.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
 
 ## infrastructure.service.runtime
 
-- [ ] `irispipe/infrastructure/service/runtime/ExecutionRecordService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/runtime/JobMetadataService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/runtime/ExecutionRecordService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/runtime/JobMetadataService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 - [x] `irispipe/infrastructure/service/runtime/PipelineRunLifecycleService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/runtime/PipelineRunObservationService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
-- [ ] `irispipe/infrastructure/service/runtime/PipelineRunProjectionService.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
-- [ ] `irispipe/infrastructure/service/runtime/PipelineRunSnapshotService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/runtime/PipelineRunObservationService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/infrastructure/service/runtime/PipelineRunProjectionService.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
+- [x] `irispipe/infrastructure/service/runtime/PipelineRunSnapshotService.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 - [x] `irispipe/infrastructure/service/runtime/PipelineRunStatusPolicy.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
 
 ## infrastructure.service.workspace

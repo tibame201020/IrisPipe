@@ -17,64 +17,87 @@ import irispipe.batch.repo.BatchJobInstanceRepo;
 import irispipe.batch.repo.BatchStepExecutionContextRepo;
 import irispipe.batch.repo.BatchStepExecutionRepo;
 
+/**
+ * Manages Spring Batch metadata rows created for runtime job executions.
+ */
 @Service
 public class JobMetadataService {
-        private final BatchJobExecutionContextRepo batchJobExecutionContextRepo;
-        private final BatchJobExecutionParamsRepo batchJobExecutionParamsRepo;
-        private final BatchJobExecutionRepo batchJobExecutionRepo;
-        private final BatchJobInstanceRepo batchJobInstanceRepo;
-        private final BatchStepExecutionContextRepo batchStepExecutionContextRepo;
-        private final BatchStepExecutionRepo batchStepExecutionRepo;
+    private final BatchJobExecutionContextRepo batchJobExecutionContextRepo;
+    private final BatchJobExecutionParamsRepo batchJobExecutionParamsRepo;
+    private final BatchJobExecutionRepo batchJobExecutionRepo;
+    private final BatchJobInstanceRepo batchJobInstanceRepo;
+    private final BatchStepExecutionContextRepo batchStepExecutionContextRepo;
+    private final BatchStepExecutionRepo batchStepExecutionRepo;
 
-        public JobMetadataService(
-                        BatchJobExecutionContextRepo batchJobExecutionContextRepo,
-                        BatchJobExecutionParamsRepo batchJobExecutionParamsRepo,
-                        BatchJobExecutionRepo batchJobExecutionRepo,
-                        BatchJobInstanceRepo batchJobInstanceRepo,
-                        BatchStepExecutionRepo batchStepExecutionRepo,
-                        BatchStepExecutionContextRepo batchStepExecutionContextRepo) {
-                this.batchJobExecutionContextRepo = batchJobExecutionContextRepo;
-                this.batchJobExecutionParamsRepo = batchJobExecutionParamsRepo;
-                this.batchJobExecutionRepo = batchJobExecutionRepo;
-                this.batchJobInstanceRepo = batchJobInstanceRepo;
-                this.batchStepExecutionRepo = batchStepExecutionRepo;
-                this.batchStepExecutionContextRepo = batchStepExecutionContextRepo;
+    /**
+     * Creates the job metadata service.
+     *
+     * @param batchJobExecutionContextRepo job execution context repository
+     * @param batchJobExecutionParamsRepo job execution parameter repository
+     * @param batchJobExecutionRepo job execution repository
+     * @param batchJobInstanceRepo job instance repository
+     * @param batchStepExecutionRepo step execution repository
+     * @param batchStepExecutionContextRepo step execution context repository
+     */
+    public JobMetadataService(
+            BatchJobExecutionContextRepo batchJobExecutionContextRepo,
+            BatchJobExecutionParamsRepo batchJobExecutionParamsRepo,
+            BatchJobExecutionRepo batchJobExecutionRepo,
+            BatchJobInstanceRepo batchJobInstanceRepo,
+            BatchStepExecutionRepo batchStepExecutionRepo,
+            BatchStepExecutionContextRepo batchStepExecutionContextRepo) {
+        this.batchJobExecutionContextRepo = batchJobExecutionContextRepo;
+        this.batchJobExecutionParamsRepo = batchJobExecutionParamsRepo;
+        this.batchJobExecutionRepo = batchJobExecutionRepo;
+        this.batchJobInstanceRepo = batchJobInstanceRepo;
+        this.batchStepExecutionRepo = batchStepExecutionRepo;
+        this.batchStepExecutionContextRepo = batchStepExecutionContextRepo;
+    }
+
+    /**
+     * Resolves the Spring Batch job key for one job instance id.
+     *
+     * @param jobId Spring Batch job instance id
+     * @return persisted job key
+     */
+    public String getJobKeyByJobId(Long jobId) {
+        return batchJobInstanceRepo.findById(jobId)
+                .map(BatchJobInstance::getJobKey)
+                .orElseThrow(() -> new ResourceNotFoundException("job metadata lookup", "Job not found"));
+    }
+
+    /**
+     * Deletes Spring Batch metadata rows that belong to one job execution.
+     *
+     * @param jobExecution Spring Batch job execution
+     */
+    @Transactional
+    public void deleteByJobExecution(JobExecution jobExecution) {
+        if (jobExecution == null) {
+            throw new ResourceNotFoundException("job metadata deletion", "Job execution not found");
+        }
+        Long jobExecutionId = jobExecution.getId();
+        Long jobInstanceId = jobExecution.getJobInstance().getId();
+        List<Long> stepExecutionIds = jobExecution.getStepExecutions().stream()
+                .map(StepExecution::getId)
+                .toList();
+
+        if (!stepExecutionIds.isEmpty()) {
+            batchStepExecutionContextRepo.deleteAllByIdInBatch(stepExecutionIds);
+            batchStepExecutionRepo.deleteAllByIdInBatch(stepExecutionIds);
         }
 
-        public String getJobKeyByJobId(Long jobId) {
-                return batchJobInstanceRepo.findById(jobId)
-                                .map(BatchJobInstance::getJobKey)
-                                .orElseThrow(() -> new ResourceNotFoundException("job metadata lookup", "Job not found"));
+        List<BatchJobExecutionParams> params = batchJobExecutionParamsRepo.findByJobExecutionId(jobExecutionId);
+        if (!params.isEmpty()) {
+            batchJobExecutionParamsRepo.deleteAllInBatch(params);
         }
 
-        @Transactional
-        public void deleteByJobExecution(JobExecution jobExecution) {
-                if (jobExecution == null) {
-                        throw new ResourceNotFoundException("job metadata deletion", "Job execution not found");
-                }
-                Long jobExecutionId = jobExecution.getId();
-                Long jobInstanceId = jobExecution.getJobInstance().getId();
-                List<Long> stepExecutionIds = jobExecution.getStepExecutions().stream()
-                                .map(StepExecution::getId)
-                                .toList();
+        batchJobExecutionContextRepo.deleteById(jobExecutionId);
+        batchJobExecutionRepo.deleteById(jobExecutionId);
+        batchJobExecutionRepo.flush();
 
-                if (!stepExecutionIds.isEmpty()) {
-                        batchStepExecutionContextRepo.deleteAllByIdInBatch(stepExecutionIds);
-                        batchStepExecutionRepo.deleteAllByIdInBatch(stepExecutionIds);
-                }
-
-                List<BatchJobExecutionParams> params = batchJobExecutionParamsRepo.findByJobExecutionId(jobExecutionId);
-                if (!params.isEmpty()) {
-                        batchJobExecutionParamsRepo.deleteAllInBatch(params);
-                }
-
-                batchJobExecutionContextRepo.deleteById(jobExecutionId);
-                batchJobExecutionRepo.deleteById(jobExecutionId);
-                batchJobExecutionRepo.flush();
-
-                if (batchJobExecutionRepo.countByJobInstanceJobInstanceId(jobInstanceId) == 0) {
-                        batchJobInstanceRepo.deleteById(jobInstanceId);
-                }
+        if (batchJobExecutionRepo.countByJobInstanceJobInstanceId(jobInstanceId) == 0) {
+            batchJobInstanceRepo.deleteById(jobInstanceId);
         }
-
+    }
 }

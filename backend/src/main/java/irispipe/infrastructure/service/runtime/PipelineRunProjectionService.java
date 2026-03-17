@@ -9,8 +9,18 @@ import irispipe.infrastructure.entity.runtime.PipelineRunExecution;
 import irispipe.infrastructure.entity.runtime.PipelineRunExecutionJob;
 import irispipe.infrastructure.entity.runtime.PipelineRunJob;
 
+/**
+ * Synchronizes latest runtime projection fields on pipeline run aggregate rows.
+ */
 @Service
 public class PipelineRunProjectionService {
+    /**
+     * Copies the latest execution state onto the logical run row.
+     *
+     * @param pipelineRun logical run row
+     * @param pipelineRunExecution latest execution row
+     * @param now timestamp applied to the aggregate update
+     */
     public void syncLatestRunProjection(PipelineRun pipelineRun, PipelineRunExecution pipelineRunExecution,
             LocalDateTime now) {
         pipelineRun.setLatestExecutionId(pipelineRunExecution.getId());
@@ -21,6 +31,13 @@ public class PipelineRunProjectionService {
         pipelineRun.setUpdatedAt(now);
     }
 
+    /**
+     * Copies the latest execution-job state onto the logical run job row.
+     *
+     * @param pipelineRunJob logical run job row
+     * @param pipelineRunExecutionJob latest execution job row
+     * @param now timestamp applied to the aggregate update
+     */
     public void syncLatestRunJobProjection(PipelineRunJob pipelineRunJob, PipelineRunExecutionJob pipelineRunExecutionJob,
             LocalDateTime now) {
         pipelineRunJob.setStatus(pipelineRunExecutionJob.getStatus());

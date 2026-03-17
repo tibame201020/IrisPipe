@@ -20,6 +20,9 @@ import irispipe.model.JobParameter;
 import irispipe.model.JobSetting;
 import irispipe.model.SyncJobDefinition;
 
+/**
+ * Materializes, persists, and reloads pipeline run snapshots.
+ */
 @Service
 public class PipelineRunSnapshotService {
     private static final int SNAPSHOT_SCHEMA_VERSION = 1;
@@ -27,23 +30,50 @@ public class PipelineRunSnapshotService {
     private final PipelineRunSnapshotRepo pipelineRunSnapshotRepo;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates the snapshot service.
+     *
+     * @param pipelineRunSnapshotRepo snapshot repository
+     * @param objectMapper JSON object mapper
+     */
     public PipelineRunSnapshotService(PipelineRunSnapshotRepo pipelineRunSnapshotRepo,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
         this.pipelineRunSnapshotRepo = pipelineRunSnapshotRepo;
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Creates and persists a snapshot for one logical run.
+     *
+     * @param pipelineRunId logical run id
+     * @param pipelineContentHash current pipeline content hash
+     * @param syncJobs normalized job payload
+     * @return materialized snapshot payload
+     */
     public List<SyncJobDefinition> createSnapshot(Long pipelineRunId, String pipelineContentHash, List<SyncJobDefinition> syncJobs) {
         List<SyncJobDefinition> materializedSyncJobs = materializeSyncJobs(syncJobs);
         saveSnapshot(pipelineRunId, SNAPSHOT_SCHEMA_VERSION, pipelineContentHash, serialize(materializedSyncJobs));
         return materializedSyncJobs;
     }
 
+    /**
+     * Loads snapshot jobs for one logical run.
+     *
+     * @param pipelineRunId logical run id
+     * @return materialized snapshot payload
+     */
     public List<SyncJobDefinition> getSnapshotSyncJobs(Long pipelineRunId) {
         PipelineRunSnapshot snapshot = getSnapshot(pipelineRunId);
         return deserialize(snapshot.getMaterializedJobJson());
     }
 
+    /**
+     * Copies one persisted snapshot onto another logical run.
+     *
+     * @param sourcePipelineRunId source logical run id
+     * @param targetPipelineRunId target logical run id
+     * @return copied snapshot payload
+     */
     public List<SyncJobDefinition> copySnapshot(Long sourcePipelineRunId, Long targetPipelineRunId) {
         PipelineRunSnapshot sourceSnapshot = getSnapshot(sourcePipelineRunId);
         saveSnapshot(
@@ -54,6 +84,11 @@ public class PipelineRunSnapshotService {
         return deserialize(sourceSnapshot.getMaterializedJobJson());
     }
 
+    /**
+     * Deletes the snapshot row for one logical run when it exists.
+     *
+     * @param pipelineRunId logical run id
+     */
     public void deleteSnapshot(Long pipelineRunId) {
         pipelineRunSnapshotRepo.findByPipelineRunId(pipelineRunId)
                 .ifPresent(pipelineRunSnapshotRepo::delete);

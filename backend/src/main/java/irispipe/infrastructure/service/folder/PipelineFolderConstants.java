@@ -1,5 +1,9 @@
 package irispipe.infrastructure.service.folder;
 
+/**
+ * Shared constants for workspace folder tree behavior and delete preview
+ * validation.
+ */
 public final class PipelineFolderConstants {
     public static final String ROOT_FOLDER_NAME = "__root__";
     public static final int DEFAULT_DELETE_PREVIEW_LIMIT = 100;
