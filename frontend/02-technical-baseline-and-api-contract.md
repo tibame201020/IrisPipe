@@ -4,8 +4,8 @@
 
 This file is not the app shell source of truth.
 
-Use [README.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\README.md) as the entry point.
-Use [01-app-shell-and-screen-map.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\01-app-shell-and-screen-map.md) for:
+Use [README.md](README.md) as the entry point.
+Use [01-app-shell-and-screen-map.md](01-app-shell-and-screen-map.md) for:
 
 - app shell layout
 - screen responsibilities
@@ -51,6 +51,24 @@ Locked interaction decisions:
   - inline conflict messaging for domain errors such as `409`
   - persistent shell warning for backend unavailable
   - explicit empty states instead of blank panels
+- Layout rule:
+  - full-viewport shell
+  - no page-level vertical scrolling in normal app usage
+  - overflowing content scrolls inside its own panel
+- Job card layout:
+  - A1: Section Stack Card
+- Step card layout:
+  - S2: one expanded step, others collapsed
+- Connection editing:
+  - C1: inline fields inside the job card
+- Run inspector layout:
+  - R1: stacked inspector sections
+- Attempts timeline density:
+  - T2: medium detail rows
+- Latest jobs density:
+  - J2: medium detail rows
+- Step summary presentation:
+  - SUI3: selected-job steps only
 
 ## 2. Goal And Scope
 
@@ -797,6 +815,7 @@ Delivery note:
 - Frontend V1 targets web first.
 - Do not introduce Electron-specific shell code into core feature modules.
 - Keep API, polling, state, and UI modules portable so Electron can wrap them later.
+- Treat the shell as a full-height application surface rather than a document page.
 
 ---
 

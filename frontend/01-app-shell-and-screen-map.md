@@ -31,6 +31,12 @@ The shell should optimize for:
 - runtime control
 - run inspection
 
+Layout rule:
+
+- use a full-viewport application shell
+- avoid page-level vertical scrolling during normal usage
+- if content overflows, the owning panel should scroll instead
+
 ## Main Layout
 
 ```text

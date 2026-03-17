@@ -11,10 +11,22 @@ It does not assume runtime log streaming, dashboard summary APIs, or settings ma
 
 Use this file as the entry point.
 
-1. [01-app-shell-and-screen-map.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\01-app-shell-and-screen-map.md)
+1. [01-app-shell-and-screen-map.md](01-app-shell-and-screen-map.md)
    Source of truth for app shell, screen responsibilities, primary routes, and ASCII layouts.
-2. [02-technical-baseline-and-api-contract.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\02-technical-baseline-and-api-contract.md)
+2. [02-technical-baseline-and-api-contract.md](02-technical-baseline-and-api-contract.md)
    Technical baseline, state strategy, polling contract, and backend API contract.
+3. [03-config-editor-wireframe-options.md](03-config-editor-wireframe-options.md)
+   Detailed ASCII options for the form-based config editor layout.
+4. [04-run-detail-and-inspector-wireframe-options.md](04-run-detail-and-inspector-wireframe-options.md)
+   Detailed ASCII options for run detail and the right inspector layout.
+5. [05-folder-recent-history-wireframes.md](05-folder-recent-history-wireframes.md)
+   Selected V1 wireframes for folder view, recent activity, and pipeline history.
+6. [06-component-and-information-architecture.md](06-component-and-information-architecture.md)
+   Frontend component layering, page composition, and information ownership.
+7. [07-visual-style-rules.md](07-visual-style-rules.md)
+   Visual direction, design tokens, and component styling rules for the selected V1 UI.
+8. [08-design-tokens-and-component-style-map.md](08-design-tokens-and-component-style-map.md)
+   Concrete color, type, spacing, and component token baseline for implementation.
 
 ## Primary Shell Sketch
 
@@ -43,10 +55,22 @@ Use this file as the entry point.
 
 ## Documents
 
-- [01-app-shell-and-screen-map.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\01-app-shell-and-screen-map.md)
+- [01-app-shell-and-screen-map.md](01-app-shell-and-screen-map.md)
   Desktop-first shell, screen responsibilities, route model, and backend API alignment.
-- [02-technical-baseline-and-api-contract.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\02-technical-baseline-and-api-contract.md)
+- [02-technical-baseline-and-api-contract.md](02-technical-baseline-and-api-contract.md)
   Frontend stack, state model, polling contract, and backend integration contract.
+- [03-config-editor-wireframe-options.md](03-config-editor-wireframe-options.md)
+  Detailed config editor options with ASCII wireframes and tradeoffs.
+- [04-run-detail-and-inspector-wireframe-options.md](04-run-detail-and-inspector-wireframe-options.md)
+  Detailed run detail and right inspector options with ASCII wireframes and tradeoffs.
+- [05-folder-recent-history-wireframes.md](05-folder-recent-history-wireframes.md)
+  Selected V1 list-style wireframes for folder view, recent activity, and pipeline history.
+- [06-component-and-information-architecture.md](06-component-and-information-architecture.md)
+  Component map, screen composition, and state ownership for the selected V1 design.
+- [07-visual-style-rules.md](07-visual-style-rules.md)
+  Visual style baseline for a clean, crisp, simple, and explicit desktop UI.
+- [08-design-tokens-and-component-style-map.md](08-design-tokens-and-component-style-map.md)
+  Concrete design tokens and component style mappings for Angular + Tailwind implementation.
 
 ## Current Scope
 
@@ -85,6 +109,26 @@ Use this file as the entry point.
   - inline validation and conflict messaging
   - persistent shell warning for backend unavailable
   - explicit empty states
+- Config editor layout:
+  - Option A: Split Master-Detail Editor
+- Job card layout:
+  - A1: Section Stack Card
+- Step card layout:
+  - S2: one expanded step, others collapsed
+- Connection editing:
+  - C1: inline fields inside the job card
+- Run inspector layout:
+  - R1: stacked inspector sections
+- Attempts timeline density:
+  - T2: medium detail rows
+- Latest jobs density:
+  - J2: medium detail rows
+- Step summary presentation:
+  - SUI3: selected-job steps only
+- Layout rule:
+  - full-viewport shell
+  - no page-level vertical scrolling in normal app usage
+  - overflowing content scrolls inside its own panel
 
 ## Deferred
 
