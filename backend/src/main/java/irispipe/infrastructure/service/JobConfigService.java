@@ -1,6 +1,5 @@
 package irispipe.infrastructure.service;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -10,13 +9,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import irispipe.infrastructure.entity.PipelineConnectionRole;
@@ -26,11 +23,7 @@ import irispipe.infrastructure.entity.PipelineExecutionParameter;
 import irispipe.infrastructure.entity.PipelineJobConnection;
 import irispipe.infrastructure.entity.PipelineJobDefinition;
 import irispipe.infrastructure.error.exception.ConflictException;
-import irispipe.infrastructure.error.exception.ConfigFileException;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
-import irispipe.infrastructure.provider.FileProvider;
-import irispipe.infrastructure.provider.JsonFileProvider;
-import irispipe.infrastructure.provider.YamlFileProvider;
 import irispipe.infrastructure.repo.PipelineDefinitionRepo;
 import irispipe.infrastructure.repo.PipelineExecutionDefinitionRepo;
 import irispipe.infrastructure.repo.PipelineExecutionParameterRepo;
@@ -45,10 +38,10 @@ import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncConfigDTO;
 
 @Service
+/**
+ * Provides workspace-scoped pipeline config query, CRUD, and import operations.
+ */
 public class JobConfigService {
-
-    private final JsonFileProvider jsonFileProvider;
-    private final YamlFileProvider yamlFileProvider;
     private final PipelineDefinitionRepo pipelineDefinitionRepo;
     private final PipelineJobDefinitionRepo pipelineJobDefinitionRepo;
     private final PipelineJobConnectionRepo pipelineJobConnectionRepo;
@@ -58,10 +51,25 @@ public class JobConfigService {
     private final PipelineFolderService pipelineFolderService;
     private final PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService;
     private final WorkspaceContextService workspaceContextService;
+    private final PipelineConfigRequestPolicy pipelineConfigRequestPolicy;
+    private final PipelineConfigImportService pipelineConfigImportService;
 
-    public JobConfigService(JsonFileProvider jsonFileProvider,
-            YamlFileProvider yamlFileProvider,
-            PipelineDefinitionRepo pipelineDefinitionRepo,
+    /**
+     * Creates the config service with persistence, parsing, and workspace helpers.
+     *
+     * @param pipelineDefinitionRepo pipeline definition repository
+     * @param pipelineJobDefinitionRepo pipeline job repository
+     * @param pipelineJobConnectionRepo pipeline job connection repository
+     * @param pipelineExecutionDefinitionRepo pipeline execution repository
+     * @param pipelineExecutionParameterRepo pipeline execution parameter repository
+     * @param pipelineFolderService folder and folder-path helper service
+     * @param pipelineDefinitionPersistenceService pipeline persistence helper service
+     * @param workspaceContextService current workspace resolver
+     * @param pipelineConfigRequestPolicy request normalization and validation policy
+     * @param pipelineConfigImportService import parsing and content hashing helper
+     * @param objectMapper JSON serializer for execution parameter values
+     */
+    public JobConfigService(PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineJobDefinitionRepo pipelineJobDefinitionRepo,
             PipelineJobConnectionRepo pipelineJobConnectionRepo,
             PipelineExecutionDefinitionRepo pipelineExecutionDefinitionRepo,
@@ -69,9 +77,9 @@ public class JobConfigService {
             PipelineFolderService pipelineFolderService,
             PipelineDefinitionPersistenceService pipelineDefinitionPersistenceService,
             WorkspaceContextService workspaceContextService,
+            PipelineConfigRequestPolicy pipelineConfigRequestPolicy,
+            PipelineConfigImportService pipelineConfigImportService,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
-        this.jsonFileProvider = jsonFileProvider;
-        this.yamlFileProvider = yamlFileProvider;
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineJobDefinitionRepo = pipelineJobDefinitionRepo;
         this.pipelineJobConnectionRepo = pipelineJobConnectionRepo;
@@ -80,9 +88,16 @@ public class JobConfigService {
         this.pipelineFolderService = pipelineFolderService;
         this.pipelineDefinitionPersistenceService = pipelineDefinitionPersistenceService;
         this.workspaceContextService = workspaceContextService;
+        this.pipelineConfigRequestPolicy = pipelineConfigRequestPolicy;
+        this.pipelineConfigImportService = pipelineConfigImportService;
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Lists pipeline configs visible in the current workspace.
+     *
+     * @return folder-aware pipeline summaries ordered by pipeline id
+     */
     public List<SyncConfigDTO.ConfigPipelineSummary> listSyncConfig() {
         Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         return pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(workspaceId).stream()
@@ -90,29 +105,54 @@ public class JobConfigService {
                 .toList();
     }
 
+    /**
+     * Loads the normalized job definitions for one pipeline.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @return normalized job definitions used by execution and editor flows
+     */
     public List<SyncJobDefinition> getSyncJobs(Long pipelineId) {
         getPipelineDefinition(pipelineId);
         return renderSyncJobs(pipelineId);
     }
 
+    /**
+     * Returns pipeline metadata and its full job payload.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @return folder-aware pipeline detail for editor and inspection screens
+     */
     public SyncConfigDTO.ConfigPipelineInfo getConfigFileInfo(Long pipelineId) {
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
         List<SyncJobDefinition> jobs = renderSyncJobs(pipelineId);
         return renderConfigPipelineInfo(pipeline, jobs);
     }
 
+    /**
+     * Deletes a pipeline config in the current workspace.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     */
     @Transactional
     public void deleteSyncConfig(Long pipelineId) {
         getPipelineDefinition(pipelineId);
         pipelineDefinitionPersistenceService.deletePipelineDefinition(pipelineId);
     }
 
+    /**
+     * Creates a new pipeline config in the target folder.
+     *
+     * @param folderId target folder id, or {@code null} for workspace root
+     * @param pipelineName user-facing pipeline name
+     * @param syncJobs full job payload for the new pipeline
+     * @return persisted folder-aware pipeline detail
+     */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo createSyncConfig(Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
         Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
-        String normalizedPipelineName = normalizePipelineName(pipelineName);
-        List<SyncJobDefinition> validatedSyncJobs = validateAndNormalizeSyncJobs(syncJobs);
+        String normalizedPipelineName = pipelineConfigRequestPolicy.normalizePipelineName(pipelineName);
+        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
         Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
         if (pipelineDefinitionRepo.existsByWorkspaceIdAndFolderIdAndPipelineName(
                 workspaceId,
@@ -126,7 +166,7 @@ public class JobConfigService {
         pipeline.setWorkspaceId(workspaceId);
         pipeline.setFolderId(targetFolderId);
         pipeline.setPipelineName(normalizedPipelineName);
-        pipeline.setContentHash(renderContentHash(validatedSyncJobs));
+        pipeline.setContentHash(pipelineConfigImportService.renderContentHash(validatedSyncJobs));
         pipeline.setCreatedAt(now);
         pipeline.setUpdatedAt(now);
 
@@ -135,13 +175,22 @@ public class JobConfigService {
         return getConfigFileInfo(savedPipeline.getId());
     }
 
+    /**
+     * Fully replaces an existing pipeline config and may rename or move it.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @param folderId target folder id, or {@code null} for workspace root
+     * @param pipelineName user-facing pipeline name after replacement
+     * @param syncJobs full replacement job payload
+     * @return persisted folder-aware pipeline detail after replacement
+     */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo updateSyncConfig(Long pipelineId, Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
         Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
-        String normalizedPipelineName = normalizePipelineName(pipelineName);
-        List<SyncJobDefinition> validatedSyncJobs = validateAndNormalizeSyncJobs(syncJobs);
+        String normalizedPipelineName = pipelineConfigRequestPolicy.normalizePipelineName(pipelineName);
+        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
         Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
         pipelineDefinitionRepo.findByWorkspaceIdAndFolderIdAndPipelineName(workspaceId, targetFolderId, normalizedPipelineName)
                 .filter(existingPipeline -> !Objects.equals(existingPipeline.getId(), pipelineId))
@@ -152,7 +201,7 @@ public class JobConfigService {
         pipeline.setWorkspaceId(workspaceId);
         pipeline.setFolderId(targetFolderId);
         pipeline.setPipelineName(normalizedPipelineName);
-        pipeline.setContentHash(renderContentHash(validatedSyncJobs));
+        pipeline.setContentHash(pipelineConfigImportService.renderContentHash(validatedSyncJobs));
         pipeline.setUpdatedAt(LocalDateTime.now());
         pipelineDefinitionRepo.save(pipeline);
 
@@ -160,17 +209,41 @@ public class JobConfigService {
         return getConfigFileInfo(pipelineId);
     }
 
+    /**
+     * Applies the current PATCH contract for pipeline config updates.
+     *
+     * <p>The current PATCH behavior is intentionally aligned with full-replace update.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @param folderId target folder id, or {@code null} for workspace root
+     * @param pipelineName user-facing pipeline name after patch
+     * @param syncJobs full replacement job payload
+     * @return persisted folder-aware pipeline detail after patch
+     */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo patchSyncConfig(Long pipelineId, Long folderId, String pipelineName,
             List<SyncJobDefinition> syncJobs) {
         return updateSyncConfig(pipelineId, folderId, pipelineName, syncJobs);
     }
 
+    /**
+     * Creates a new pipeline from an imported YAML or JSON file.
+     *
+     * @param folderId target folder id, or {@code null} for workspace root
+     * @param pipelineName user-facing pipeline name
+     * @param format optional explicit import format
+     * @param file uploaded config file
+     * @return persisted folder-aware pipeline detail
+     */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long folderId, String pipelineName, String format,
             MultipartFile file) {
         Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
-        PersistedConfig persistedConfig = parseImportConfig(folderId, pipelineName, format, file);
+        PipelineConfigImportService.ParsedConfig persistedConfig = pipelineConfigImportService.parseImportConfig(
+                folderId,
+                pipelineName,
+                format,
+                file);
 
         if (pipelineDefinitionRepo.existsByWorkspaceIdAndFolderIdAndPipelineName(
                 workspaceId,
@@ -193,12 +266,26 @@ public class JobConfigService {
         return getConfigFileInfo(savedPipeline.getId());
     }
 
+    /**
+     * Replaces an existing pipeline from an imported YAML or JSON file.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @param folderId target folder id, or {@code null} for workspace root
+     * @param pipelineName user-facing pipeline name after replacement
+     * @param format optional explicit import format
+     * @param file uploaded config file
+     * @return persisted folder-aware pipeline detail after import replacement
+     */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo importSyncConfig(Long pipelineId, Long folderId, String pipelineName, String format,
             MultipartFile file) {
         Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
-        PersistedConfig persistedConfig = parseImportConfig(folderId, pipelineName, format, file);
+        PipelineConfigImportService.ParsedConfig persistedConfig = pipelineConfigImportService.parseImportConfig(
+                folderId,
+                pipelineName,
+                format,
+                file);
 
         pipelineDefinitionRepo.findByWorkspaceIdAndFolderIdAndPipelineName(
                 workspaceId,
@@ -220,27 +307,12 @@ public class JobConfigService {
         return getConfigFileInfo(pipelineId);
     }
 
-    private PersistedConfig parseImportConfig(Long folderId, String pipelineName, String format, MultipartFile file) {
-        try {
-            Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
-            String normalizedPipelineName = normalizePipelineName(pipelineName);
-            String resolvedFormat = resolveImportFormat(format, file);
-            String fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
-            List<SyncJobDefinition> syncJobs = readSyncJobs(fileContent, resolvedFormat);
-            syncJobs.forEach(SyncJobDefinition::validate);
-
-            return new PersistedConfig(
-                    targetFolderId,
-                    normalizedPipelineName,
-                    renderContentHash(file.getBytes()),
-                    syncJobs);
-        } catch (irispipe.infrastructure.error.exception.ConfigValidationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new ConfigFileException(pipelineName, e.getMessage());
-        }
-    }
-
+    /**
+     * Persists source and destination connection rows for one job.
+     *
+     * @param jobId persisted pipeline job id
+     * @param databaseConfig source and destination database config
+     */
     private void persistJobConnections(Long jobId, DatabaseConfig databaseConfig) {
         if (databaseConfig == null) {
             return;
@@ -250,6 +322,13 @@ public class JobConfigService {
         saveJobConnection(jobId, PipelineConnectionRole.DEST, databaseConfig.dest());
     }
 
+    /**
+     * Persists one job connection row when the connection exists.
+     *
+     * @param jobId persisted pipeline job id
+     * @param connectionRole source or destination role
+     * @param connectionInfo concrete connection settings
+     */
     private void saveJobConnection(Long jobId, PipelineConnectionRole connectionRole, ConnectionInfo connectionInfo) {
         if (connectionInfo == null) {
             return;
@@ -265,6 +344,12 @@ public class JobConfigService {
         pipelineJobConnectionRepo.save(pipelineJobConnection);
     }
 
+    /**
+     * Persists execution-step rows for one pipeline job.
+     *
+     * @param jobId persisted pipeline job id
+     * @param executions execution-step payloads for the job
+     */
     private void persistExecutions(Long jobId, List<ExecutionStep> executions) {
         for (int executionOrder = 0; executionOrder < executions.size(); executionOrder++) {
             ExecutionStep execution = executions.get(executionOrder);
@@ -282,6 +367,12 @@ public class JobConfigService {
         }
     }
 
+    /**
+     * Persists execution parameter rows for one execution step.
+     *
+     * @param executionId persisted execution-step id
+     * @param parameters execution parameters in order
+     */
     private void persistParameters(Long executionId, List<JobParameter> parameters) {
         for (int parameterOrder = 0; parameterOrder < parameters.size(); parameterOrder++) {
             JobParameter parameter = parameters.get(parameterOrder);
@@ -295,6 +386,12 @@ public class JobConfigService {
         }
     }
 
+    /**
+     * Rebuilds normalized job definitions from persisted pipeline rows.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @return normalized job definitions ordered by job sequence
+     */
     private List<SyncJobDefinition> renderSyncJobs(Long pipelineId) {
         List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo.findByPipelineIdOrderBySequenceOrder(pipelineId);
         if (jobDefinitions.isEmpty()) {
@@ -339,6 +436,13 @@ public class JobConfigService {
                 .toList();
     }
 
+    /**
+     * Rebuilds execution-step payloads for a single job.
+     *
+     * @param executionDefinitions persisted execution rows for the job
+     * @param parametersByExecutionId execution parameters grouped by execution id
+     * @return execution-step payloads in execution order
+     */
     private List<ExecutionStep> renderExecutions(List<PipelineExecutionDefinition> executionDefinitions,
             Map<Long, List<PipelineExecutionParameter>> parametersByExecutionId) {
         return executionDefinitions.stream()
@@ -354,6 +458,12 @@ public class JobConfigService {
                 .toList();
     }
 
+    /**
+     * Rebuilds parameter payloads for one execution step.
+     *
+     * @param executionParameters persisted parameter rows
+     * @return deserialized execution parameters in sequence order
+     */
     private List<JobParameter> renderParameters(List<PipelineExecutionParameter> executionParameters) {
         return executionParameters.stream()
                 .map(executionParameter -> new JobParameter(
@@ -363,6 +473,12 @@ public class JobConfigService {
                 .toList();
     }
 
+    /**
+     * Rebuilds source and destination database config for one job.
+     *
+     * @param pipelineJobConnections persisted connection rows
+     * @return database config with source and destination roles mapped
+     */
     private DatabaseConfig renderDatabaseConfig(List<PipelineJobConnection> pipelineJobConnections) {
         Map<PipelineConnectionRole, ConnectionInfo> connectionsByRole = new EnumMap<>(PipelineConnectionRole.class);
         pipelineJobConnections.forEach(connection -> connectionsByRole.put(
@@ -378,6 +494,12 @@ public class JobConfigService {
                 connectionsByRole.get(PipelineConnectionRole.DEST));
     }
 
+    /**
+     * Serializes a parameter value for persistence.
+     *
+     * @param value raw parameter value
+     * @return serialized JSON string
+     */
     private String renderParameterValue(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
@@ -386,6 +508,12 @@ public class JobConfigService {
         }
     }
 
+    /**
+     * Deserializes a persisted parameter value.
+     *
+     * @param value serialized parameter value
+     * @return deserialized parameter object, or {@code null} when input is null
+     */
     private Object parseParameterValue(String value) {
         try {
             if (value == null) {
@@ -397,12 +525,25 @@ public class JobConfigService {
         }
     }
 
+    /**
+     * Resolves a pipeline in the current workspace.
+     *
+     * @param pipelineId pipeline id in the current workspace
+     * @return persisted pipeline definition
+     */
     private PipelineDefinition getPipelineDefinition(Long pipelineId) {
         Long workspaceId = workspaceContextService.getCurrentWorkspaceId();
         return pipelineDefinitionRepo.findByIdAndWorkspaceId(pipelineId, workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("pipeline", "Pipeline not found"));
     }
 
+    /**
+     * Builds the public config detail payload from persisted pipeline rows.
+     *
+     * @param pipeline persisted pipeline definition
+     * @param jobs normalized job payload
+     * @return folder-aware pipeline detail DTO
+     */
     private SyncConfigDTO.ConfigPipelineInfo renderConfigPipelineInfo(PipelineDefinition pipeline, List<SyncJobDefinition> jobs) {
         return new SyncConfigDTO.ConfigPipelineInfo(
                 pipeline.getId(),
@@ -412,81 +553,4 @@ public class JobConfigService {
                 jobs);
     }
 
-    private List<SyncJobDefinition> readSyncJobs(String content, String format) {
-        FileProvider fileProvider = getFileProvider(format);
-        return fileProvider.convertContentToClass(content, new TypeReference<List<SyncJobDefinition>>() {
-        });
-    }
-
-    private String renderContentHash(byte[] fileBytes) {
-        try {
-            return java.util.HexFormat.of()
-                    .formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(fileBytes));
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to hash config content", e);
-        }
-    }
-
-    private String renderContentHash(List<SyncJobDefinition> syncJobs) {
-        try {
-            return renderContentHash(objectMapper.writeValueAsBytes(syncJobs));
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to hash config content", e);
-        }
-    }
-
-    private FileProvider getFileProvider(String format) {
-        return switch (format.toLowerCase()) {
-            case "json" -> jsonFileProvider;
-            case "yaml", "yml" -> yamlFileProvider;
-            default -> throw new IllegalArgumentException("Unsupported import format: " + format);
-        };
-    }
-
-    private List<SyncJobDefinition> validateAndNormalizeSyncJobs(List<SyncJobDefinition> syncJobs) {
-        if (syncJobs == null || syncJobs.isEmpty()) {
-            throw new IllegalArgumentException("jobs can not be empty");
-        }
-        syncJobs.forEach(SyncJobDefinition::validate);
-        return syncJobs;
-    }
-
-    private String normalizePipelineName(String pipelineName) {
-        if (pipelineName == null || pipelineName.isBlank()) {
-            throw new IllegalArgumentException("pipelineName can not be blank");
-        }
-        if (pipelineName.contains("/") || pipelineName.contains("\\")) {
-            throw new IllegalArgumentException("pipelineName contains unsupported characters");
-        }
-        return pipelineName.trim();
-    }
-
-    private String resolveImportFormat(String format, MultipartFile file) {
-        if (format != null && !format.isBlank()) {
-            return normalizeImportFormat(format);
-        }
-
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename != null && !originalFilename.isBlank()) {
-            return normalizeImportFormat(FilenameUtils.getExtension(originalFilename));
-        }
-
-        throw new IllegalArgumentException("format is required when file name has no extension");
-    }
-
-    private String normalizeImportFormat(String format) {
-        String normalizedFormat = format.trim().toLowerCase();
-        return switch (normalizedFormat) {
-            case "yaml", "yml" -> "yaml";
-            case "json" -> "json";
-            default -> throw new IllegalArgumentException("Unsupported import format: " + format);
-        };
-    }
-
-    private record PersistedConfig(
-            Long folderId,
-            String pipelineName,
-            String contentHash,
-            List<SyncJobDefinition> syncJobs) {
-    }
 }
