@@ -4,6 +4,9 @@ import lombok.Data;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Mutable runtime summary counters for one job or step layer.
+ */
 @Data
 public class SummaryInfo {
     public final String name;

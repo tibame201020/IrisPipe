@@ -4,6 +4,9 @@ import java.sql.Timestamp;
 
 import lombok.Data;
 
+/**
+ * Value object representing the persisted watermark snapshot for one execution.
+ */
 @Data
 public class BatchJobExecutionRecord {
     private String executionName;

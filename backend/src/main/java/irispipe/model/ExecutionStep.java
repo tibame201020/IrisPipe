@@ -10,6 +10,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * One execution step inside a logical sync job.
+ *
+ * @param type execution type
+ * @param name execution name
+ * @param sql SQL statement
+ * @param destTable destination table name
+ * @param parameters execution parameters
+ * @param watermarkColumn watermark column name
+ * @param summaryInfo runtime summary info
+ * @param executionContext runtime execution context
+ */
 public record ExecutionStep(
         ExecutionType type,
         String name,
@@ -19,6 +31,12 @@ public record ExecutionStep(
         String watermarkColumn,
         SummaryInfo summaryInfo,
         Map<String, Object> executionContext) {
+    /**
+     * Returns execution parameters, defaulting to an empty list when the payload
+     * is null.
+     *
+     * @return execution parameters
+     */
     public List<JobParameter> parameters() {
         if (null == parameters) {
             return new ArrayList<>();
@@ -26,6 +44,12 @@ public record ExecutionStep(
         return parameters;
     }
 
+    /**
+     * Validates this execution step against its job setting and database config.
+     *
+     * @param setting job setting
+     * @param database database config
+     */
     public void validate(JobSetting setting, DatabaseConfig database) {
         if (StringUtils.isBlank(sql)) {
             throw new IllegalArgumentException("sql can not be blank");

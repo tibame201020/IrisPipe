@@ -8,6 +8,10 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * User-facing job definition that groups execution steps, settings, and
+ * database config.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,6 +21,10 @@ public class SyncJobDefinition {
     JobSetting setting;
     DatabaseConfig database;
 
+    /**
+     * Validates this job definition and wraps nested execution errors with job and
+     * execution context.
+     */
     public void validate() {
         if (StringUtils.isBlank(jobName)) {
             throw new ConfigValidationException("", "", "jobName can not be blank");

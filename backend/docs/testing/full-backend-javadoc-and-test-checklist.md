@@ -233,39 +233,39 @@ Review status:
 
 ## model
 
-- [ ] `irispipe/model/AtomicLevel.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/model/BatchJobExecutionRecord.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/ConnectionInfo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/DatabaseConfig.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/ExecutionStep.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/ExecutionType.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/model/JobParameter.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/JobSetting.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/PipelineRunExecutionKind.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/model/PipelineRunStatus.java` - Javadoc: `Enum/record summary` - Test spec: `Pure unit`
-- [ ] `irispipe/model/StepExecutionRecord.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/SummaryInfo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/model/SummaryInfoLayer.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/model/SupportType.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/model/SyncJobDefinition.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
-- [ ] `irispipe/model/SystemProvidedVariable.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/model/AtomicLevel.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/model/BatchJobExecutionRecord.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/ConnectionInfo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/DatabaseConfig.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/ExecutionStep.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/ExecutionType.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/model/JobParameter.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/JobSetting.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/PipelineRunExecutionKind.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/model/PipelineRunStatus.java` - Javadoc: `Enum/record summary` - Test spec: `Pure unit`
+- [x] `irispipe/model/StepExecutionRecord.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/SummaryInfo.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/model/SummaryInfoLayer.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/model/SupportType.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/model/SyncJobDefinition.java` - Javadoc: `Class + public methods` - Test spec: `Pure unit`
+- [x] `irispipe/model/SystemProvidedVariable.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
 
 ## model.dto
 
-- [ ] `irispipe/model/dto/SyncConfigDTO.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
-- [ ] `irispipe/model/dto/SyncPipelineDTO.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
-- [ ] `irispipe/model/dto/WorkspaceDTO.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/model/dto/SyncConfigDTO.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/model/dto/SyncPipelineDTO.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
+- [x] `irispipe/model/dto/WorkspaceDTO.java` - Javadoc: `Class + public methods` - Test spec: `Covered indirectly`
 
 ## observability
 
-- [ ] `irispipe/observability/PipelineMetricNames.java` - Javadoc: `Class only` - Test spec: `No direct test target`
-- [ ] `irispipe/observability/PipelineMetricsPublisher.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
+- [x] `irispipe/observability/PipelineMetricNames.java` - Javadoc: `Class only` - Test spec: `No direct test target`
+- [x] `irispipe/observability/PipelineMetricsPublisher.java` - Javadoc: `Class + public methods` - Test spec: `Mockito`
 
 ## observability.event
 
-- [ ] `irispipe/observability/event/PipelineExecutionObservationEvent.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/observability/event/PipelineJobObservationEvent.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
-- [ ] `irispipe/observability/event/PipelineRunTriggeredObservationEvent.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/observability/event/PipelineExecutionObservationEvent.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/observability/event/PipelineJobObservationEvent.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
+- [x] `irispipe/observability/event/PipelineRunTriggeredObservationEvent.java` - Javadoc: `Enum/record summary` - Test spec: `No direct test target`
 
 ## Recommended Rollout Order
 

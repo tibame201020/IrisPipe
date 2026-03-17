@@ -1,5 +1,8 @@
 package irispipe.observability;
 
+/**
+ * Shared metric names emitted by pipeline runtime observation publishing.
+ */
 public final class PipelineMetricNames {
     public static final String PIPELINE_RUN_TRIGGERED = "irispipe.pipeline.run.triggered";
     public static final String PIPELINE_EXECUTION_COMPLETED = "irispipe.pipeline.execution.completed";

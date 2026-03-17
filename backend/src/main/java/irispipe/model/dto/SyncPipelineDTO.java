@@ -19,8 +19,17 @@ import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
 
+/**
+ * Request and response DTOs for pipeline control and runtime observation APIs.
+ */
 public interface SyncPipelineDTO {
 
+    /**
+     * Request body for execute operations.
+     *
+     * @param useAsyncLauncher whether to launch asynchronously
+     * @param pipelineId target pipeline id
+     */
     record PipelineExecuteRequest(
             @JsonProperty("useAsyncLaucher")
             Boolean useAsyncLauncher,
@@ -29,16 +38,39 @@ public interface SyncPipelineDTO {
             Long pipelineId) {
     }
 
+    /**
+     * Request body for resume operations.
+     *
+     * @param useAsyncLauncher whether to launch asynchronously
+     */
     record PipelineResumeRequest(
             @JsonProperty("useAsyncLaucher")
             Boolean useAsyncLauncher) {
     }
 
+    /**
+     * Request body for rerun operations.
+     *
+     * @param useAsyncLauncher whether to launch asynchronously
+     */
     record PipelineRerunRequest(
             @JsonProperty("useAsyncLaucher")
             Boolean useAsyncLauncher) {
     }
 
+    /**
+     * Summary payload for one logical pipeline run.
+     *
+     * @param id logical run id
+     * @param pipelineId pipeline id
+     * @param folderId public folder id, or {@code null} for root
+     * @param folderPath public folder path
+     * @param pipelineName user-facing pipeline name
+     * @param status logical run status
+     * @param createdAt creation time
+     * @param startTime latest start time
+     * @param endTime latest end time
+     */
     record PipelineRunSummaryInfo(
             Long id,
             Long pipelineId,
@@ -50,6 +82,15 @@ public interface SyncPipelineDTO {
             LocalDateTime startTime,
             LocalDateTime endTime) {
 
+        /**
+         * Builds a run summary from persisted pipeline and run rows.
+         *
+         * @param pipelineDefinition pipeline definition row
+         * @param folderId public folder id, or {@code null} for root
+         * @param folderPath public folder path
+         * @param pipelineRun logical run row
+         * @return run summary payload
+         */
         public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
                 PipelineRun pipelineRun) {
             return new PipelineRunSummaryInfo(
@@ -65,6 +106,22 @@ public interface SyncPipelineDTO {
         }
     }
 
+    /**
+     * Detail payload for one logical pipeline run.
+     *
+     * @param id logical run id
+     * @param pipelineId pipeline id
+     * @param folderId public folder id, or {@code null} for root
+     * @param folderPath public folder path
+     * @param pipelineName user-facing pipeline name
+     * @param requestedAsync whether the latest launch was async
+     * @param status latest execution or run status
+     * @param createdAt run creation time
+     * @param startTime latest start time
+     * @param endTime latest end time
+     * @param jobs latest job projection
+     * @param attempts execution attempt timeline
+     */
     record PipelineRunDetailInfo(
             Long id,
             Long pipelineId,
@@ -79,6 +136,18 @@ public interface SyncPipelineDTO {
             List<PipelineRunJobInfo> jobs,
             List<PipelineRunAttemptInfo> attempts) {
 
+        /**
+         * Builds run detail from pipeline, run, and latest execution state.
+         *
+         * @param pipelineDefinition pipeline definition row
+         * @param folderId public folder id, or {@code null} for root
+         * @param folderPath public folder path
+         * @param pipelineRun logical run row
+         * @param pipelineRunExecution latest execution row, or {@code null}
+         * @param jobs latest job projection
+         * @param attempts execution attempt timeline
+         * @return run detail payload
+         */
         public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
                 PipelineRun pipelineRun,
                 PipelineRunExecution pipelineRunExecution,
@@ -100,6 +169,18 @@ public interface SyncPipelineDTO {
         }
     }
 
+    /**
+     * One execution attempt in the run timeline.
+     *
+     * @param executionId execution id
+     * @param executionNo execution sequence number
+     * @param executionKind execution kind
+     * @param status execution status
+     * @param requestedAsync whether execution was requested asynchronously
+     * @param startTime execution start time
+     * @param endTime execution end time
+     * @param jobs job projection for the attempt
+     */
     record PipelineRunAttemptInfo(
             Long executionId,
             Integer executionNo,
@@ -110,6 +191,13 @@ public interface SyncPipelineDTO {
             LocalDateTime endTime,
             List<PipelineRunJobInfo> jobs) {
 
+        /**
+         * Builds an execution attempt payload.
+         *
+         * @param pipelineRunExecution execution row
+         * @param jobs job projection for the attempt
+         * @return execution attempt payload
+         */
         public static PipelineRunAttemptInfo render(PipelineRunExecution pipelineRunExecution,
                 List<PipelineRunJobInfo> jobs) {
             return new PipelineRunAttemptInfo(
@@ -124,6 +212,21 @@ public interface SyncPipelineDTO {
         }
     }
 
+    /**
+     * Job projection payload for logical runs and execution attempts.
+     *
+     * @param id logical run job id
+     * @param sequenceOrder job sequence order
+     * @param jobName job name
+     * @param atomicLevel job atomic level
+     * @param status latest job status
+     * @param rootJobInstanceId root Spring Batch job instance id
+     * @param lastJobExecutionId latest Spring Batch job execution id
+     * @param createdAt creation time
+     * @param startTime start time
+     * @param endTime end time
+     * @param stepExecutionInfos Spring Batch step execution summaries
+     */
     record PipelineRunJobInfo(
             Long id,
             Integer sequenceOrder,
@@ -137,6 +240,14 @@ public interface SyncPipelineDTO {
             LocalDateTime endTime,
             List<StepExecutionInfo> stepExecutionInfos) {
 
+        /**
+         * Builds a job projection from logical and execution-scoped job rows.
+         *
+         * @param pipelineRunJob logical run job row
+         * @param pipelineRunExecutionJob execution-scoped job row, or {@code null}
+         * @param jobExecution Spring Batch job execution, or {@code null}
+         * @return job projection payload
+         */
         public static PipelineRunJobInfo render(PipelineRunJob pipelineRunJob,
                 PipelineRunExecutionJob pipelineRunExecutionJob, JobExecution jobExecution) {
             List<StepExecutionInfo> stepExecutionInfos = jobExecution == null
@@ -162,6 +273,25 @@ public interface SyncPipelineDTO {
         }
     }
 
+    /**
+     * Summary payload for one Spring Batch step execution.
+     *
+     * @param id step execution id
+     * @param stepName step name
+     * @param status step status
+     * @param exitCode exit code
+     * @param startTime start time
+     * @param endTime end time
+     * @param readCount read count
+     * @param writeCount write count
+     * @param commitCount commit count
+     * @param rollbackCount rollback count
+     * @param filterCount filter count
+     * @param readSkipCount read skip count
+     * @param writeSkipCount write skip count
+     * @param processSkipCount process skip count
+     * @param exitDescription exit description
+     */
     record StepExecutionInfo(
             Long id,
             String stepName,
@@ -179,6 +309,12 @@ public interface SyncPipelineDTO {
             Long processSkipCount,
             String exitDescription) {
 
+        /**
+         * Builds a step execution summary from Spring Batch state.
+         *
+         * @param stepExecution Spring Batch step execution
+         * @return step execution summary payload
+         */
         public static StepExecutionInfo render(StepExecution stepExecution) {
             return new StepExecutionInfo(
                     stepExecution.getId(),

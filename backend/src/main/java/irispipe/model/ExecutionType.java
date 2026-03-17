@@ -2,6 +2,9 @@ package irispipe.model;
 
 import io.micrometer.common.util.StringUtils;
 
+/**
+ * Supported execution step types in a sync job definition.
+ */
 public enum ExecutionType {
     INSERT {
         @Override
@@ -103,6 +106,11 @@ public enum ExecutionType {
 
     public abstract void validate(JobSetting setting, DatabaseConfig database, ExecutionStep execution);
 
+    /**
+     * Returns the common validation error prefix for this execution type.
+     *
+     * @return validation error prefix
+     */
     public final String exceptionPrefix() {
         return "with " + this.name() + " execution";
     }
