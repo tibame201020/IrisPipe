@@ -1,6 +1,7 @@
 package irispipe.api;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,11 +12,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import irispipe.infrastructure.service.PipelineFolderService;
 import irispipe.model.dto.SyncConfigDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 
 @RestController
+@Validated
 @RequestMapping("/api/v1")
+@Tag(name = "Pipeline Folder", description = "Workspace-scoped folder tree endpoints for organizing pipelines.")
 public class PipelineFolderAPI {
     private final PipelineFolderService pipelineFolderService;
 
@@ -24,31 +33,36 @@ public class PipelineFolderAPI {
     }
 
     @GetMapping("/pipeline-tree")
+    @Operation(summary = "Get pipeline tree", description = "Returns the current workspace folder tree and root-level pipelines.")
     public SyncConfigDTO.PipelineTreeInfo getPipelineTree() {
         return pipelineFolderService.getPipelineTree();
     }
 
     @PostMapping("/pipeline-folders")
-    public SyncConfigDTO.FolderInfo createFolder(@RequestBody SyncConfigDTO.FolderUpsertRequest folderUpsertRequest) {
+    @Operation(summary = "Create folder", description = "Creates a folder under the requested parent folder in the current workspace.")
+    public SyncConfigDTO.FolderInfo createFolder(@Valid @RequestBody SyncConfigDTO.FolderUpsertRequest folderUpsertRequest) {
         return pipelineFolderService.createFolder(folderUpsertRequest.parentFolderId(), folderUpsertRequest.folderName());
     }
 
     @PutMapping("/pipeline-folders/{folderId}")
-    public SyncConfigDTO.FolderInfo updateFolder(@PathVariable("folderId") Long folderId,
-            @RequestBody SyncConfigDTO.FolderUpsertRequest folderUpsertRequest) {
+    @Operation(summary = "Update folder", description = "Renames or moves a folder within the current workspace.")
+    public SyncConfigDTO.FolderInfo updateFolder(@PathVariable("folderId") @Positive(message = "folderId must be positive") Long folderId,
+            @Valid @RequestBody SyncConfigDTO.FolderUpsertRequest folderUpsertRequest) {
         return pipelineFolderService.updateFolder(folderId, folderUpsertRequest.parentFolderId(),
                 folderUpsertRequest.folderName());
     }
 
     @GetMapping("/pipeline-folders/{folderId}/delete-preview")
+    @Operation(summary = "Preview recursive folder delete", description = "Returns affected folders, pipelines, and blockers before a recursive folder delete.")
     public SyncConfigDTO.FolderDeletePreviewInfo getDeletePreview(
-            @PathVariable("folderId") Long folderId,
-            @RequestParam(name = "limit", required = false) Integer limit) {
+            @PathVariable("folderId") @Positive(message = "folderId must be positive") Long folderId,
+            @RequestParam(name = "limit", required = false) @Min(value = 1, message = "limit must be between 1 and 200") @Max(value = 200, message = "limit must be between 1 and 200") Integer limit) {
         return pipelineFolderService.getDeletePreview(folderId, limit);
     }
 
     @DeleteMapping("/pipeline-folders/{folderId}")
-    public ResponseEntity<Void> deleteFolder(@PathVariable("folderId") Long folderId,
+    @Operation(summary = "Delete folder", description = "Deletes an empty folder or recursively deletes a folder subtree when recursive=true and no run-history blockers exist.")
+    public ResponseEntity<Void> deleteFolder(@PathVariable("folderId") @Positive(message = "folderId must be positive") Long folderId,
             @RequestParam(name = "recursive", defaultValue = "false") boolean recursive) {
         pipelineFolderService.deleteFolder(folderId, recursive);
         return ResponseEntity.noContent().build();

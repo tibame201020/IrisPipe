@@ -13,6 +13,8 @@ import irispipe.infrastructure.entity.PipelineRun;
 import irispipe.infrastructure.entity.PipelineRunExecution;
 import irispipe.infrastructure.entity.PipelineRunExecutionJob;
 import irispipe.infrastructure.entity.PipelineRunJob;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import irispipe.model.AtomicLevel;
 import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.PipelineRunStatus;
@@ -22,6 +24,8 @@ public interface SyncPipelineDTO {
     record PipelineExecuteRequest(
             @JsonProperty("useAsyncLaucher")
             Boolean useAsyncLauncher,
+            @NotNull(message = "pipelineId is required")
+            @Positive(message = "pipelineId must be positive")
             Long pipelineId) {
     }
 
