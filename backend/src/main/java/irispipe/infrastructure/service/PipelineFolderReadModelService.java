@@ -1,6 +1,7 @@
 package irispipe.infrastructure.service;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +38,12 @@ public class PipelineFolderReadModelService {
         PipelineFolderWorkspaceState workspaceState = pipelineFolderStructureService.getCurrentWorkspaceState();
         List<PipelineDefinition> pipelines = pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(
                 workspaceState.workspaceId());
-        Map<Long, List<PipelineDefinition>> pipelinesByFolderId = pipelines.stream()
-                .collect(java.util.stream.Collectors.groupingBy(PipelineDefinition::getFolderId));
+        Map<Long, List<PipelineDefinition>> pipelinesByFolderId = new HashMap<>();
+        for (PipelineDefinition pipelineDefinition : pipelines) {
+            Long resolvedFolderId = workspaceState.resolveFolderOrRoot(pipelineDefinition.getFolderId()).getId();
+            pipelinesByFolderId.computeIfAbsent(resolvedFolderId, key -> new java.util.ArrayList<>())
+                    .add(pipelineDefinition);
+        }
 
         List<SyncConfigDTO.FolderTreeNodeInfo> rootFolders = workspaceState.childFolders(workspaceState.rootFolder().getId()).stream()
                 .filter(folder -> !Boolean.TRUE.equals(folder.getSystemRoot()))
@@ -72,7 +77,8 @@ public class PipelineFolderReadModelService {
                 .toList();
         List<PipelineDefinition> subtreePipelines = pipelineDefinitionRepo.findAllByWorkspaceIdOrderByIdAsc(
                 workspaceState.workspaceId()).stream()
-                .filter(pipelineDefinition -> subtreeFolderIds.contains(pipelineDefinition.getFolderId()))
+                .filter(pipelineDefinition -> subtreeFolderIds.contains(
+                        workspaceState.resolveFolderOrRoot(pipelineDefinition.getFolderId()).getId()))
                 .sorted(Comparator
                         .comparing((PipelineDefinition pipelineDefinition) -> workspaceState.buildFolderPath(
                                 pipelineDefinition.getFolderId()))
@@ -151,10 +157,11 @@ public class PipelineFolderReadModelService {
 
     private SyncConfigDTO.ConfigPipelineSummary toConfigPipelineSummary(PipelineDefinition pipelineDefinition,
             PipelineFolderWorkspaceState workspaceState) {
+        PipelineFolder folder = workspaceState.resolveFolderOrRoot(pipelineDefinition.getFolderId());
         return new SyncConfigDTO.ConfigPipelineSummary(
                 pipelineDefinition.getId(),
-                workspaceState.renderPublicFolderId(pipelineDefinition.getFolderId()),
-                workspaceState.buildFolderPath(pipelineDefinition.getFolderId()),
+                workspaceState.renderPublicFolderId(folder.getId()),
+                workspaceState.buildFolderPath(folder.getId()),
                 pipelineDefinition.getPipelineName());
     }
 
@@ -182,10 +189,11 @@ public class PipelineFolderReadModelService {
     private SyncConfigDTO.FolderDeletePreviewPipelineInfo toDeletePreviewPipelineInfo(PipelineDefinition pipelineDefinition,
             boolean hasRunHistory,
             PipelineFolderWorkspaceState workspaceState) {
+        PipelineFolder folder = workspaceState.resolveFolderOrRoot(pipelineDefinition.getFolderId());
         return new SyncConfigDTO.FolderDeletePreviewPipelineInfo(
                 pipelineDefinition.getId(),
-                workspaceState.renderPublicFolderId(pipelineDefinition.getFolderId()),
-                workspaceState.buildFolderPath(pipelineDefinition.getFolderId()),
+                workspaceState.renderPublicFolderId(folder.getId()),
+                workspaceState.buildFolderPath(folder.getId()),
                 pipelineDefinition.getPipelineName(),
                 hasRunHistory);
     }

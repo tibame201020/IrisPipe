@@ -72,11 +72,11 @@ final class PipelineFolderWorkspaceState {
     }
 
     String buildFolderPath(Long folderId) {
-        return computeFolderPath(getFolder(folderId));
+        return computeFolderPath(resolveFolderOrRoot(folderId));
     }
 
     Long renderPublicFolderId(Long folderId) {
-        PipelineFolder folder = getFolder(folderId);
+        PipelineFolder folder = resolveFolderOrRoot(folderId);
         return Boolean.TRUE.equals(folder.getSystemRoot()) ? null : folder.getId();
     }
 
