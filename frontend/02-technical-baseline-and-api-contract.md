@@ -1,6 +1,58 @@
-# Frontend V1 Design
+# Frontend V1 Technical Baseline And API Contract
 
-## 1. Goal
+## 1. Document Role
+
+This file is not the app shell source of truth.
+
+Use [README.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\README.md) as the entry point.
+Use [01-app-shell-and-screen-map.md](C:\Users\16\Downloads\codes\IrisPipe\frontend\01-app-shell-and-screen-map.md) for:
+
+- app shell layout
+- screen responsibilities
+- primary route model
+- ASCII UI sketches
+
+This file only defines:
+
+- technical stack
+- state strategy
+- polling contract
+- backend integration contract
+- module structure guidance
+
+Locked interaction decisions:
+
+- UI library:
+  - Angular CDK + Tailwind + custom components
+- Config editor:
+  - form-based editor
+- Visual direction:
+  - Clean Productivity
+- Tree interaction:
+  - context menu
+  - inline rename
+  - no drag and drop in V1
+  - no multi-select in V1
+- Run control UX:
+  - control actions stay in the right inspector
+  - execute on pipeline selection
+  - stop, resume, rerun, delete-run on run selection
+  - delete-pipeline stays in editor or context menu
+  - destructive actions use custom confirm dialogs
+  - do not use native browser or OS alert/confirm UI
+- Delivery target:
+  - web-first
+  - keep the structure Electron-compatible later
+- Feedback UX:
+  - skeleton for page loading
+  - spinner for local actions
+  - toast for mutation success
+  - inline validation errors
+  - inline conflict messaging for domain errors such as `409`
+  - persistent shell warning for backend unavailable
+  - explicit empty states instead of blank panels
+
+## 2. Goal And Scope
 
 Build a desktop-oriented frontend V1 for IrisPipe on top of the current backend.
 
@@ -26,9 +78,7 @@ Frontend V1 excludes:
 
 The current backend is already sufficient for this scope.
 
----
-
-## 2. Recommended Frontend Stack
+## 3. Recommended Frontend Stack
 
 Use:
 - Angular 20
@@ -56,9 +106,7 @@ Recommended supporting packages:
 - `tailwindcss`
 - `lucide-angular` or `@ng-icons/*` for icons
 
----
-
-## 3. UI Library Recommendation
+## 4. UI Library Recommendation
 
 ### Recommended Choice
 
@@ -119,89 +167,12 @@ Recommended:
 Fallback if speed matters more than visual identity:
 - Angular Material + Tailwind
 
----
+Selected for Frontend V1:
+- Angular CDK + Tailwind + custom components
 
-## 4. Information Architecture
+## 5. Frontend State Strategy
 
-## 4.1 Main Screens
-
-1. Workspace bootstrap
-2. App shell
-3. Folder tree sidebar
-4. Pipeline list
-5. Pipeline editor page
-6. Create / rename / move / delete dialogs
-7. Import dialog
-8. Recent runs panel
-9. Pipeline history panel
-10. Run detail drawer
-11. Attempt timeline panel
-12. Job and step summary panel
-13. Health badge
-
-## 4.2 Suggested Route Map
-
-- `/`
-  - boot and redirect to default workspace view
-- `/workspaces/:workspaceKey/pipelines`
-  - tree + list + recent panel
-- `/workspaces/:workspaceKey/pipelines/:pipelineId`
-  - editor + history
-- `/workspaces/:workspaceKey/runs/:pipelineRunId`
-  - run detail focus route
-
-Desktop mode can still default to `workspaceKey = "default"` when no explicit workspace switcher is shown.
-
----
-
-## 5. Layout Proposal
-
-## 5.1 App Shell
-
-Three-column layout:
-- left: workspace switcher + folder tree
-- center: pipeline list or pipeline editor
-- right: recent activity or run detail drawer
-
-## 5.2 Pipeline List View
-
-Show:
-- folder breadcrumb
-- pipeline cards or compact table
-- quick actions:
-  - execute
-  - edit
-  - import replace
-  - delete
-
-## 5.3 Pipeline Editor View
-
-Show:
-- pipeline identity:
-  - `pipelineName`
-  - `folderPath`
-- job list
-- job detail editor
-- execution step editor
-- save / import replace / delete actions
-
-## 5.4 Run Detail View
-
-Show:
-- run summary header
-- current status
-- attempts timeline
-- latest jobs panel
-- selected attempt jobs panel
-- step execution summary table
-
-This page is not a live log console. It is a structured runtime inspector.
-
----
-
-## 6. Frontend State Strategy
-
-## 6.1 State Layers
+## 5.1 State Layers
 
 ### App shell state
 
@@ -242,7 +213,7 @@ Use `model()` for:
 - selected job node
 - selected folder node
 
-## 6.2 Store Guidance
+## 5.2 Store Guidance
 
 Do not introduce NgRx at V1.
 
@@ -255,9 +226,9 @@ This backend does not require a heavier store yet.
 
 ---
 
-## 7. Frontend V1 Polling Contract
+## 6. Frontend V1 Polling Contract
 
-## 7.1 Principles
+## 6.1 Principles
 
 - poll only visible data
 - do not poll tree or config list in the background
@@ -266,7 +237,7 @@ This backend does not require a heavier store yet.
 - slow polling when the app is not focused
 - add jitter to avoid synchronized client bursts
 
-## 7.2 Polling Matrix
+## 6.2 Polling Matrix
 
 ### App bootstrap
 
@@ -368,9 +339,9 @@ Policy:
 
 ---
 
-## 8. Backend Contract For Frontend Integration
+## 7. Backend Contract For Frontend Integration
 
-## 8.1 Global Conventions
+## 7.1 Global Conventions
 
 ### Workspace Header
 
@@ -411,7 +382,7 @@ Do not assume `404` for missing resources.
 
 ---
 
-## 8.2 Workspace APIs
+## 7.2 Workspace APIs
 
 ### `GET /api/v1/workspaces`
 
@@ -442,7 +413,7 @@ Request:
 
 ---
 
-## 8.3 Folder APIs
+## 7.3 Folder APIs
 
 ### `GET /api/v1/pipeline-tree`
 
@@ -538,7 +509,7 @@ Rules:
 
 ---
 
-## 8.4 Config APIs
+## 7.4 Config APIs
 
 ### `GET /api/v1/sync-config`
 
@@ -593,7 +564,7 @@ If run history exists:
 
 ---
 
-## 8.5 Import APIs
+## 7.5 Import APIs
 
 ### `POST /api/v1/sync-config/import`
 ### `PUT /api/v1/sync-config/{pipelineId}/import`
@@ -611,7 +582,7 @@ Rules:
 
 ---
 
-## 8.6 Run Control APIs
+## 7.6 Run Control APIs
 
 ### `POST /api/v1/sync-pipeline`
 
@@ -654,7 +625,7 @@ Rules:
 
 ---
 
-## 8.7 Run Browser APIs
+## 7.7 Run Browser APIs
 
 ### `GET /api/v1/sync-pipeline?ids=101&ids=102`
 
@@ -700,7 +671,7 @@ Rules:
 
 ---
 
-## 8.8 Run Detail API
+## 7.8 Run Detail API
 
 ### `GET /api/v1/sync-pipeline/{pipelineRunId}`
 
@@ -776,7 +747,7 @@ This is summary data, not live log data.
 
 ---
 
-## 9. Suggested Frontend Module Structure
+## 8. Suggested Frontend Module Structure
 
 Suggested app structure:
 
@@ -821,9 +792,15 @@ Facade split:
 - `RecentRunsFacade`
 - `RunDetailFacade`
 
+Delivery note:
+
+- Frontend V1 targets web first.
+- Do not introduce Electron-specific shell code into core feature modules.
+- Keep API, polling, state, and UI modules portable so Electron can wrap them later.
+
 ---
 
-## 10. Design Constraints For The UI Phase
+## 9. Design Constraints For The UI Phase
 
 Use the backend as-is for V1.
 
@@ -842,6 +819,36 @@ Frontend design should assume:
 - workspace boundary exists
 
 This is enough to start wireframes and component-level visual design.
+
+---
+
+## 10. Feedback And Interaction Baseline
+
+### Loading
+
+- use skeletons for page-level loading
+- use spinners for local action loading such as button submits or panel refresh
+
+### Success
+
+- use toast notifications for successful mutations
+- do not use blocking success dialogs
+
+### Error
+
+- use inline validation messages for form errors
+- use inline contextual messaging for domain conflicts such as `409`
+- use toast for action failures such as invalid control transitions
+
+### Empty State
+
+- each primary screen should define an explicit empty state
+- do not leave major panels visually blank
+
+### Backend Unavailable
+
+- show a persistent warning in the shell or status bar
+- avoid repeated blocking dialogs while connectivity is degraded
 
 ---
 
