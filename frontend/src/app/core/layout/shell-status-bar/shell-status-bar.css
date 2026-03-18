@@ -1,9 +1,21 @@
 .status-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
   margin: 0 16px 16px;
   padding: 0 12px;
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+.status-pill {
+  border-radius: 999px;
+  color: var(--text-primary);
+  padding: 4px 8px;
+}
+
+.status-pill.is-down {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
 }

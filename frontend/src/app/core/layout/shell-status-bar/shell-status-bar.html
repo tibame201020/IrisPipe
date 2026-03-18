@@ -1,5 +1,9 @@
 <footer class="app-panel status-bar">
   <span>Workspace: {{ workspaceFacade.workspaceKey() }}</span>
-  <span>Backend: {{ healthFacade.backendStatus() }}</span>
+  <span class="status-pill" [class.is-down]="healthFacade.backendStatus() === 'DOWN'">
+    Backend: {{ healthFacade.backendStatus() }}
+  </span>
+  <span>Folders: {{ treeFacade.rootFolders().length }}</span>
+  <span>Root Pipelines: {{ treeFacade.rootPipelines().length }}</span>
   <span>Selected Run: {{ runDetailFacade.selectedRunId() ?? 'none' }}</span>
 </footer>

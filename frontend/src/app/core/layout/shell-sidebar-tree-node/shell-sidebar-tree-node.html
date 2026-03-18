@@ -1,0 +1,22 @@
+<div class="tree-node" [style.--tree-depth]="depth()">
+  <a
+    class="tree-row tree-folder"
+    [routerLink]="['/folders', folder().id]"
+    routerLinkActive="active">
+    <span class="tree-label">{{ folder().folderName }}</span>
+    <span class="tree-meta">{{ folder().pipelines.length }}</span>
+  </a>
+
+  @for (pipeline of folder().pipelines; track trackPipeline($index, pipeline)) {
+    <a
+      class="tree-row tree-pipeline"
+      [routerLink]="['/pipelines', pipeline.id]"
+      routerLinkActive="active">
+      <span class="tree-label">{{ pipeline.pipelineName }}</span>
+    </a>
+  }
+
+  @for (childFolder of folder().folders; track trackFolder($index, childFolder)) {
+    <app-shell-sidebar-tree-node [folder]="childFolder" [depth]="depth() + 1" />
+  }
+</div>

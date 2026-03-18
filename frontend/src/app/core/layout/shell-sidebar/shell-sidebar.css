@@ -27,6 +27,13 @@
   text-decoration: none;
 }
 
+.nav-item-disabled {
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: default;
+  padding: 8px 10px;
+}
+
 .nav-list a:hover {
   background: var(--row-hover);
 }
@@ -38,14 +45,37 @@
 
 .tree-preview {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   font-size: 13px;
 }
 
-.tree-indent {
-  padding-left: 12px;
+.tree-row {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  display: flex;
+  min-height: 34px;
+  padding: 7px 10px;
+  text-decoration: none;
 }
 
-.tree-indent-2 {
-  padding-left: 24px;
+.tree-row:hover {
+  background: var(--row-hover);
+}
+
+.tree-row.active {
+  background: var(--row-selected);
+  color: var(--accent);
+}
+
+.root-pipeline {
+  color: var(--text-secondary);
+}
+
+.tree-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -31,6 +31,8 @@ Use this file as the entry point.
    Angular project scaffold plan, folder structure, and implementation order.
 10. [10-frontend-implement-tasks.md](10-frontend-implement-tasks.md)
    Implementation tracking checklist for frontend V1.
+11. [11-playwright-e2e-plan.md](11-playwright-e2e-plan.md)
+   Playwright baseline, test architecture, and rollout plan for frontend V1.
 
 ## Primary Shell Sketch
 
@@ -79,6 +81,8 @@ Use this file as the entry point.
   Practical scaffold plan for the Angular 20 standalone application.
 - [10-frontend-implement-tasks.md](10-frontend-implement-tasks.md)
   Progress tracker for frontend V1 implementation slices.
+- [11-playwright-e2e-plan.md](11-playwright-e2e-plan.md)
+  Playwright E2E strategy, modular test structure, and rollout plan.
 
 ## Current Scope
 

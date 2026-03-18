@@ -52,9 +52,9 @@ Status markers:
 - [x] Add `app-environment` baseline
 - [x] Add API service skeletons
 - [x] Add facade skeletons
-- [ ] Wire `WorkspaceApiService` into `WorkspaceFacade`
-- [ ] Wire `PipelineTreeApiService` into `TreeFacade`
-- [ ] Wire `HealthApiService` into `HealthFacade`
+- [x] Wire `WorkspaceApiService` into `WorkspaceFacade`
+- [x] Wire `PipelineTreeApiService` into `TreeFacade`
+- [x] Wire `HealthApiService` into `HealthFacade`
 - [ ] Wire `SyncPipelineApiService` into `RunDetailFacade`
 
 ## 5. Shared UI
