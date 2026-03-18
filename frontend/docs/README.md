@@ -7,6 +7,8 @@ This folder holds the frontend design baseline for IrisPipe desktop GUI work.
 The design is based on backend functionality that already exists today.
 It does not assume runtime log streaming, dashboard summary APIs, or settings management.
 
+Implementation progress is tracked separately in [../CHANGELOG.md](../CHANGELOG.md).
+
 ## Reading Order
 
 Use this file as the entry point.

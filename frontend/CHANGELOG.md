@@ -1,0 +1,23 @@
+# Changelog
+
+All notable frontend changes are documented in this file.
+
+Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
+
+## [Frontend V1 Foundation] - 2026-03-18
+
+### Added
+- **Design Baseline and Wireframes**: Added frontend design documents under [docs/](docs/) covering the application shell, screen responsibilities, config editor wireframes, run inspector wireframes, folder/history/recent views, visual style rules, design tokens, Angular scaffold planning, implementation tasks, and Playwright rollout planning.
+- **Angular Application Shell**: Added an Angular 20 standalone frontend scaffold with Tailwind styling, application routing, shell layout, placeholder feature pages, and shared UI token/theme files.
+- **Local Integration Baseline**: Added frontend proxy configuration, a frontend Dockerfile, nginx runtime configuration, and relative API base handling so the frontend can run against the backend in both local dev and Docker Compose modes.
+- **Core Shell Integration**: Added typed models and facade wiring for current workspace, pipeline tree, and backend health so the shell header, sidebar, and status bar render real backend state instead of placeholders.
+- **Playwright Baseline**: Added Playwright configuration, backend test-support helpers, seed fixtures, and initial E2E coverage for shell bootstrap, sidebar tree rendering, and route navigation.
+
+### Changed
+- **Documentation Entry Structure**: Consolidated frontend planning documents under [docs/](docs/) and reduced [README.md](README.md) to a lightweight entry pointer.
+- **Development Server Contract**: Set the frontend default dev port to `4205` and standardized local API access through Angular dev proxy rather than hard-coded cross-origin URLs.
+- **Implementation Tracking**: Added [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) as the frontend V1 progress tracker and aligned it with the committed scaffold and shell integration state.
+
+### Verified
+- **Frontend Build Validation**: Validated the Angular frontend with `npm run build`.
+- **Playwright Validation**: Validated the Playwright baseline with `npm run e2e`, covering shell bootstrap, sidebar tree rendering, and primary route navigation.
