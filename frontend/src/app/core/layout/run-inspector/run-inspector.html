@@ -1,0 +1,55 @@
+<div class="app-panel inspector">
+  @if (runDetailFacade.hasSelectedRun()) {
+    <section class="inspector-section">
+      <div class="inspector-header">
+        <h2 class="app-section-title">Run #{{ runDetailFacade.selectedRunId() }}</h2>
+        <app-status-chip [status]="runDetailFacade.selectedRunStatus()" />
+      </div>
+      <p class="app-meta">Pipeline: sync-order</p>
+      <p class="app-meta">Requested Async: true</p>
+    </section>
+
+    <section class="inspector-section">
+      <h3 class="app-section-title">Control</h3>
+      <div class="button-row">
+        <button class="app-button-secondary" type="button">Stop</button>
+        <button class="app-button-secondary" type="button">Resume</button>
+        <button class="app-button-secondary" type="button">Rerun</button>
+      </div>
+    </section>
+
+    <section class="inspector-section">
+      <h3 class="app-section-title">Attempts</h3>
+      <div class="meta-stack">
+        <div>1. INITIAL</div>
+        <div class="app-meta">FAILED 10:02 -> 10:05</div>
+        <div>2. RESUME</div>
+        <div class="app-meta">STARTED 10:06 -> now</div>
+      </div>
+    </section>
+
+    <section class="inspector-section">
+      <h3 class="app-section-title">Latest Jobs</h3>
+      <div class="meta-stack">
+        <div>extract-order</div>
+        <div class="app-meta">COMPLETED 10:02 -> 10:03</div>
+        <div>upsert-order</div>
+        <div class="app-meta">STARTED 10:03 -> now</div>
+      </div>
+    </section>
+
+    <section class="inspector-section">
+      <h3 class="app-section-title">Step Summary</h3>
+      <div class="meta-stack">
+        <div>Job: upsert-order</div>
+        <div class="app-meta">step_upsert</div>
+        <div class="app-meta">STARTED read:40 write:0</div>
+      </div>
+    </section>
+  } @else {
+    <app-app-empty-state
+      title="No run selected"
+      description="Select a run from history or recent activity to inspect control and runtime state."
+    />
+  }
+</div>

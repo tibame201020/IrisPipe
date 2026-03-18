@@ -1,0 +1,48 @@
+<section class="page app-panel">
+  <header class="page-header">
+    <div>
+      <p class="app-meta">Breadcrumb</p>
+      <h2 class="app-section-title">/orders</h2>
+    </div>
+    <button class="app-button-secondary" type="button">Refresh</button>
+  </header>
+
+  <section class="block">
+    <div class="block-header">
+      <div>
+        <h3 class="app-section-title">Folder: orders</h3>
+        <p class="app-meta">2 folders / 3 pipelines</p>
+      </div>
+      <div class="actions">
+        <button class="app-button-primary" type="button">New Folder</button>
+        <button class="app-button-secondary" type="button">New Pipeline</button>
+        <button class="app-button-secondary" type="button">Import</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="block block-scroll">
+    <h3 class="app-section-title">Subfolders</h3>
+    @for (folder of folders; track folder.name) {
+      <div class="row">
+        <div>{{ folder.name }}</div>
+        <div class="app-meta">{{ folder.items }} items</div>
+        <button class="app-button-secondary" type="button">Open</button>
+      </div>
+    }
+  </section>
+
+  <section class="block block-scroll">
+    <h3 class="app-section-title">Pipelines</h3>
+    @for (pipeline of pipelines; track pipeline.name) {
+      <div class="row">
+        <div>{{ pipeline.name }}</div>
+        <div class="app-meta">updated recently</div>
+        <div class="row-actions">
+          <button class="app-button-secondary" type="button">Execute</button>
+          <button class="app-button-secondary" type="button">Open</button>
+        </div>
+      </div>
+    }
+  </section>
+</section>

@@ -1,0 +1,26 @@
+<section class="page app-panel">
+  <header class="page-header">
+    <div>
+      <p class="app-meta">Pipeline</p>
+      <h2 class="app-section-title">sync-order</h2>
+      <p class="app-meta">Folder: /orders</p>
+    </div>
+    <button class="app-button-primary" type="button">Execute</button>
+  </header>
+
+  <nav class="tabs">
+    <a class="tab tab--active">Overview</a>
+    <a class="tab">Config</a>
+    <a class="tab">Runs</a>
+  </nav>
+
+  <section class="list">
+    <h3 class="app-section-title">Recent Runs</h3>
+    @for (run of recentRuns; track run.id) {
+      <div class="row">
+        <div>#{{ run.id }}</div>
+        <app-status-chip [status]="run.status" />
+      </div>
+    }
+  </section>
+</section>

@@ -1,0 +1,51 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-list a {
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.nav-list a:hover {
+  background: var(--row-hover);
+}
+
+.nav-list a.active {
+  background: var(--row-selected);
+  color: var(--accent);
+}
+
+.tree-preview {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.tree-indent {
+  padding-left: 12px;
+}
+
+.tree-indent-2 {
+  padding-left: 24px;
+}

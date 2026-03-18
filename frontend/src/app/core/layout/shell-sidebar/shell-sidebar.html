@@ -1,0 +1,30 @@
+<div class="app-panel sidebar">
+  <div class="sidebar-section">
+    <p class="app-meta">Workspace</p>
+    <strong>{{ workspaceFacade.workspaceName() }}</strong>
+  </div>
+
+  <div class="sidebar-section">
+    <p class="app-meta">Navigation</p>
+    <nav class="nav-list">
+      <a routerLink="/recent" routerLinkActive="active">Recent Activity</a>
+      <a routerLink="/folders/1" routerLinkActive="active">Folder View</a>
+      <a routerLink="/pipelines/1" routerLinkActive="active">Pipeline Overview</a>
+      <a routerLink="/pipelines/1/config" routerLinkActive="active">Config Editor</a>
+      <a routerLink="/pipelines/1/runs" routerLinkActive="active">Pipeline History</a>
+      <a routerLink="/runs/184" routerLinkActive="active">Run Detail</a>
+    </nav>
+  </div>
+
+  <div class="sidebar-section">
+    <p class="app-meta">Tree Preview</p>
+    <div class="tree-preview">
+      <div>/</div>
+      <div class="tree-indent">orders</div>
+      <div class="tree-indent-2">sync-order</div>
+      <div class="tree-indent-2">sync-refund</div>
+      <div class="tree-indent">inventory</div>
+      <div class="tree-indent-2">sync-stock</div>
+    </div>
+  </div>
+</div>

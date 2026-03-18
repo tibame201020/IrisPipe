@@ -1,0 +1,19 @@
+.empty-state {
+  display: grid;
+  gap: 8px;
+  border: 1px dashed var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--panel-subtle);
+  padding: 16px;
+  text-align: left;
+}
+
+.empty-state h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+}

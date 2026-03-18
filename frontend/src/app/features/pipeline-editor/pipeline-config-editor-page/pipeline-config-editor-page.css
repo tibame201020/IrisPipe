@@ -1,0 +1,84 @@
+.page {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  padding: 16px;
+}
+
+.page-header,
+.actions,
+.outline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 8px;
+}
+
+.tab {
+  color: var(--text-secondary);
+}
+
+.tab--active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.job-outline,
+.job-editor {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.job-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-bg);
+  padding: 10px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.job-card,
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.section {
+  border-top: 1px solid var(--panel-border);
+  padding-top: 12px;
+}
+
+input,
+select {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.step {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-subtle);
+  padding: 10px;
+}

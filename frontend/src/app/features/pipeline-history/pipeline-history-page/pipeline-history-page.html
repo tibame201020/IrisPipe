@@ -1,0 +1,43 @@
+<section class="page app-panel">
+  <header class="page-header">
+    <div>
+      <p class="app-meta">Pipeline</p>
+      <h2 class="app-section-title">sync-order</h2>
+      <p class="app-meta">Folder: /orders</p>
+    </div>
+    <div class="actions">
+      <button class="app-button-primary" type="button">Execute</button>
+      <button class="app-button-secondary" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <a class="tab">Overview</a>
+    <a class="tab">Config</a>
+    <a class="tab tab--active">Runs</a>
+  </nav>
+
+  <section class="table">
+    <div class="table-head">
+      <span>Run</span>
+      <span>Status</span>
+      <span>Attempts</span>
+      <span>Start</span>
+      <span>End</span>
+      <span>Async</span>
+      <span>Action</span>
+    </div>
+
+    @for (run of runs; track run.id) {
+      <div class="table-row">
+        <span>#{{ run.id }}</span>
+        <app-status-chip [status]="run.status" />
+        <span>{{ run.attempts }}</span>
+        <span>{{ run.start }}</span>
+        <span>{{ run.end }}</span>
+        <span>{{ run.async }}</span>
+        <button class="app-button-secondary" type="button">Inspect</button>
+      </div>
+    }
+  </section>
+</section>

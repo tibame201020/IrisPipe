@@ -1,0 +1,19 @@
+<div class="shell">
+  <app-shell-header />
+
+  <div class="shell-body">
+    <aside class="shell-sidebar-region">
+      <app-shell-sidebar />
+    </aside>
+
+    <main class="shell-main-region">
+      <router-outlet />
+    </main>
+
+    <aside class="shell-inspector-region">
+      <app-run-inspector />
+    </aside>
+  </div>
+
+  <app-shell-status-bar />
+</div>

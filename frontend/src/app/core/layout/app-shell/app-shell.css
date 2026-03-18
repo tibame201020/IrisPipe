@@ -1,0 +1,19 @@
+.shell {
+  display: grid;
+  grid-template-rows: var(--shell-header-height) minmax(0, 1fr) var(--shell-statusbar-height);
+  height: 100vh;
+}
+
+.shell-body {
+  display: grid;
+  grid-template-columns: var(--shell-sidebar-width) minmax(0, 1fr) var(--shell-inspector-width);
+  gap: 16px;
+  min-height: 0;
+  padding: 16px;
+}
+
+.shell-sidebar-region,
+.shell-main-region,
+.shell-inspector-region {
+  min-height: 0;
+}

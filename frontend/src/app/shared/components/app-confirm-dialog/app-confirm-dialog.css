@@ -1,0 +1,17 @@
+.dialog-frame {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  padding: 20px;
+}
+
+.dialog-frame h2,
+.dialog-frame p {
+  margin: 0;
+}
+
+.dialog-frame p {
+  color: var(--text-secondary);
+}

@@ -29,6 +29,8 @@ Use this file as the entry point.
    Concrete color, type, spacing, and component token baseline for implementation.
 9. [09-angular-app-scaffold-plan.md](09-angular-app-scaffold-plan.md)
    Angular project scaffold plan, folder structure, and implementation order.
+10. [10-frontend-implement-tasks.md](10-frontend-implement-tasks.md)
+   Implementation tracking checklist for frontend V1.
 
 ## Primary Shell Sketch
 
@@ -75,6 +77,8 @@ Use this file as the entry point.
   Concrete design tokens and component style mappings for Angular + Tailwind implementation.
 - [09-angular-app-scaffold-plan.md](09-angular-app-scaffold-plan.md)
   Practical scaffold plan for the Angular 20 standalone application.
+- [10-frontend-implement-tasks.md](10-frontend-implement-tasks.md)
+  Progress tracker for frontend V1 implementation slices.
 
 ## Current Scope
 

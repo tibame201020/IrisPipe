@@ -145,17 +145,15 @@ Recommended files:
 ```text
 core/layout/
   app-shell/
-    app-shell.component.ts
+    app-shell.ts
   shell-header/
-    shell-header.component.ts
+    shell-header.ts
   shell-sidebar/
-    shell-sidebar.component.ts
-  shell-main/
-    shell-main.component.ts
+    shell-sidebar.ts
   shell-status-bar/
-    shell-status-bar.component.ts
+    shell-status-bar.ts
   run-inspector/
-    run-inspector.component.ts
+    run-inspector.ts
 ```
 
 ### `core/polling`
@@ -274,16 +272,15 @@ Do not move business logic here.
 The first scaffold pass should create these files before any feature polish:
 
 ```text
-src/app/app.component.ts
+src/app/app.ts
 src/app/app.config.ts
 src/app/app.routes.ts
 src/app/core/config/app-environment.ts
-src/app/core/layout/app-shell/app-shell.component.ts
-src/app/core/layout/shell-header/shell-header.component.ts
-src/app/core/layout/shell-sidebar/shell-sidebar.component.ts
-src/app/core/layout/shell-main/shell-main.component.ts
-src/app/core/layout/run-inspector/run-inspector.component.ts
-src/app/core/layout/shell-status-bar/shell-status-bar.component.ts
+src/app/core/layout/app-shell/app-shell.ts
+src/app/core/layout/shell-header/shell-header.ts
+src/app/core/layout/shell-sidebar/shell-sidebar.ts
+src/app/core/layout/run-inspector/run-inspector.ts
+src/app/core/layout/shell-status-bar/shell-status-bar.ts
 src/app/core/api/workspace-api.service.ts
 src/app/core/api/pipeline-tree-api.service.ts
 src/app/core/api/sync-config-api.service.ts
@@ -293,16 +290,16 @@ src/app/core/state/workspace.facade.ts
 src/app/core/state/tree.facade.ts
 src/app/core/state/run-detail.facade.ts
 src/app/core/state/health.facade.ts
-src/app/features/folder-view/folder-view-page.component.ts
-src/app/features/pipeline-overview/pipeline-overview-page.component.ts
-src/app/features/pipeline-editor/pipeline-config-editor-page.component.ts
-src/app/features/pipeline-history/pipeline-history-page.component.ts
-src/app/features/recent-runs/recent-activity-page.component.ts
-src/app/features/run-detail/run-detail-focus-page.component.ts
-src/app/shared/components/status-chip/status-chip.component.ts
-src/app/shared/components/app-confirm-dialog/app-confirm-dialog.component.ts
-src/app/shared/components/app-empty-state/app-empty-state.component.ts
-src/app/shared/components/app-skeleton/app-skeleton.component.ts
+src/app/features/folder-view/folder-view-page/folder-view-page.ts
+src/app/features/pipeline-overview/pipeline-overview-page/pipeline-overview-page.ts
+src/app/features/pipeline-editor/pipeline-config-editor-page/pipeline-config-editor-page.ts
+src/app/features/pipeline-history/pipeline-history-page/pipeline-history-page.ts
+src/app/features/recent-runs/recent-activity-page/recent-activity-page.ts
+src/app/features/run-detail/run-detail-focus-page/run-detail-focus-page.ts
+src/app/shared/components/status-chip/status-chip.ts
+src/app/shared/components/app-confirm-dialog/app-confirm-dialog.ts
+src/app/shared/components/app-empty-state/app-empty-state.ts
+src/app/shared/components/app-skeleton/app-skeleton.ts
 ```
 
 ## 8. Route Scaffold

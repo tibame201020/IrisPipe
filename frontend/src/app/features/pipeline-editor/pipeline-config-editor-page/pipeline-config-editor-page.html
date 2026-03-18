@@ -1,0 +1,73 @@
+<section class="page app-panel">
+  <header class="page-header">
+    <div>
+      <p class="app-meta">Pipeline</p>
+      <h2 class="app-section-title">sync-order</h2>
+      <p class="app-meta">Folder: /orders</p>
+    </div>
+    <div class="actions">
+      <button class="app-button-primary" type="button">Save</button>
+      <button class="app-button-secondary" type="button">Import Replace</button>
+      <button class="app-button-danger" type="button">Delete Pipeline</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <a class="tab">Overview</a>
+    <a class="tab tab--active">Config</a>
+    <a class="tab">Runs</a>
+  </nav>
+
+  <div class="editor-layout">
+    <section class="app-panel job-outline">
+      <div class="outline-header">
+        <h3 class="app-section-title">Jobs</h3>
+        <button class="app-button-secondary" type="button">Add Job</button>
+      </div>
+
+      @for (job of jobs; track job.id) {
+        <button class="job-row" type="button">
+          <div>{{ job.id }}</div>
+          <div class="app-meta">{{ job.atomicLevel }} / {{ job.steps.length }} steps</div>
+        </button>
+      }
+    </section>
+
+    <section class="app-panel job-editor">
+      <div class="job-card">
+        <h3 class="app-section-title">Selected Job: {{ selectedJobId() }}</h3>
+
+        <div class="section">
+          <h4>Basic</h4>
+          <label>Name</label>
+          <input type="text" value="extract-order" />
+          <label>Atomic Level</label>
+          <select>
+            <option>CHUNK</option>
+          </select>
+        </div>
+
+        <div class="section">
+          <h4>Database</h4>
+          <label>Reader Source</label>
+          <input type="text" value="orders_db" />
+          <label>Writer Target</label>
+          <input type="text" value="warehouse_db" />
+        </div>
+
+        <div class="section">
+          <h4>Steps</h4>
+          <div class="step">
+            <strong>extract</strong>
+            <p class="app-meta">READER / SQL</p>
+          </div>
+          <div class="step">
+            <strong>dedupe</strong>
+            <p class="app-meta">PROCESS / transform</p>
+          </div>
+          <button class="app-button-secondary" type="button">Add Step</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>

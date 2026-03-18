@@ -1,0 +1,5 @@
+<footer class="app-panel status-bar">
+  <span>Workspace: {{ workspaceFacade.workspaceKey() }}</span>
+  <span>Backend: {{ healthFacade.backendStatus() }}</span>
+  <span>Selected Run: {{ runDetailFacade.selectedRunId() ?? 'none' }}</span>
+</footer>
