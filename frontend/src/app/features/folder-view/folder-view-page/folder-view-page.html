@@ -1,48 +1,62 @@
 <section class="page app-panel">
-  <header class="page-header">
-    <div>
-      <p class="app-meta">Breadcrumb</p>
-      <h2 class="app-section-title">/orders</h2>
-    </div>
-    <button class="app-button-secondary" type="button">Refresh</button>
-  </header>
-
-  <section class="block">
-    <div class="block-header">
+  @if (treeFacade.isLoading() && !selectedFolder()) {
+    <app-app-empty-state title="Loading folder" description="Resolving selected folder from the workspace tree." />
+  } @else if (selectedFolder(); as folder) {
+    <header class="page-header">
       <div>
-        <h3 class="app-section-title">Folder: orders</h3>
-        <p class="app-meta">2 folders / 3 pipelines</p>
+        <p class="app-meta">Breadcrumb</p>
+        <h2 class="app-section-title">{{ folder.folderPath }}</h2>
       </div>
-      <div class="actions">
-        <button class="app-button-primary" type="button">New Folder</button>
-        <button class="app-button-secondary" type="button">New Pipeline</button>
-        <button class="app-button-secondary" type="button">Import</button>
-      </div>
-    </div>
-  </section>
+      <button class="app-button-secondary" type="button" (click)="refresh()">Refresh</button>
+    </header>
 
-  <section class="block block-scroll">
-    <h3 class="app-section-title">Subfolders</h3>
-    @for (folder of folders; track folder.name) {
-      <div class="row">
-        <div>{{ folder.name }}</div>
-        <div class="app-meta">{{ folder.items }} items</div>
-        <button class="app-button-secondary" type="button">Open</button>
-      </div>
-    }
-  </section>
-
-  <section class="block block-scroll">
-    <h3 class="app-section-title">Pipelines</h3>
-    @for (pipeline of pipelines; track pipeline.name) {
-      <div class="row">
-        <div>{{ pipeline.name }}</div>
-        <div class="app-meta">updated recently</div>
-        <div class="row-actions">
-          <button class="app-button-secondary" type="button">Execute</button>
-          <button class="app-button-secondary" type="button">Open</button>
+    <section class="block">
+      <div class="block-header">
+        <div>
+          <h3 class="app-section-title">Folder: {{ folder.folderName }}</h3>
+          <p class="app-meta">{{ folderStats().folderCount }} folders / {{ folderStats().pipelineCount }} pipelines</p>
         </div>
       </div>
-    }
-  </section>
+    </section>
+
+    <section class="block block-scroll" data-testid="folder-view-subfolders">
+      <h3 class="app-section-title">Subfolders</h3>
+      @if (subfolders().length > 0) {
+        @for (childFolder of subfolders(); track childFolder.id) {
+          <div class="row" [attr.data-testid]="'folder-view-folder-' + childFolder.id">
+            <div>
+              <div>{{ childFolder.folderName }}</div>
+              <div class="app-meta">{{ childFolder.folderPath }}</div>
+            </div>
+            <button class="app-button-secondary" type="button" (click)="openFolder(childFolder.id)">Open</button>
+          </div>
+        }
+      } @else {
+        <p class="app-meta">No subfolders in this folder.</p>
+      }
+    </section>
+
+    <section class="block block-scroll" data-testid="folder-view-pipelines">
+      <h3 class="app-section-title">Pipelines</h3>
+      @if (pipelines().length > 0) {
+        @for (pipeline of pipelines(); track pipeline.id) {
+          <div class="row" [attr.data-testid]="'folder-view-pipeline-' + pipeline.id">
+            <div>
+              <div>{{ pipeline.pipelineName }}</div>
+              <div class="app-meta">{{ pipeline.folderPath }}</div>
+            </div>
+            <div class="row-actions">
+              <button class="app-button-secondary" type="button" (click)="openPipeline(pipeline.id)">Open</button>
+            </div>
+          </div>
+        }
+      } @else {
+        <p class="app-meta">No pipelines in this folder.</p>
+      }
+    </section>
+  } @else {
+    <app-app-empty-state
+      title="Folder unavailable"
+      description="Select a folder from the sidebar tree to inspect its subfolders and pipelines." />
+  }
 </section>

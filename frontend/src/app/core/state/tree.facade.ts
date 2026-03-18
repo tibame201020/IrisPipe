@@ -8,8 +8,8 @@ import { ConfigPipelineSummary, FolderTreeNodeInfo } from '../../shared/models/p
 export class TreeFacade {
   private readonly pipelineTreeApi = inject(PipelineTreeApiService);
 
-  readonly selectedFolderId = signal<string | null>(null);
-  readonly selectedPipelineId = signal<string | null>(null);
+  readonly selectedFolderId = signal<number | null>(null);
+  readonly selectedPipelineId = signal<number | null>(null);
   readonly rootFolders = signal<FolderTreeNodeInfo[]>([]);
   readonly rootPipelines = signal<ConfigPipelineSummary[]>([]);
   readonly isLoading = signal(false);
@@ -23,6 +23,22 @@ export class TreeFacade {
     }
 
     return this.findFirstPipelineId(this.rootFolders()) ?? null;
+  });
+  readonly selectedFolder = computed<FolderTreeNodeInfo | null>(() => {
+    const selectedFolderId = this.selectedFolderId();
+    if (selectedFolderId === null) {
+      return null;
+    }
+
+    return this.findFolderById(this.rootFolders(), selectedFolderId) ?? null;
+  });
+  readonly selectedPipeline = computed<ConfigPipelineSummary | null>(() => {
+    const selectedPipelineId = this.selectedPipelineId();
+    if (selectedPipelineId === null) {
+      return null;
+    }
+
+    return this.findPipelineById(selectedPipelineId) ?? null;
   });
 
   loadTree(workspaceKey: string) {
@@ -46,6 +62,28 @@ export class TreeFacade {
     });
   }
 
+  selectFolder(folderId: number | null) {
+    this.selectedFolderId.set(folderId);
+    if (folderId !== null) {
+      this.selectedPipelineId.set(null);
+    }
+  }
+
+  selectPipeline(pipelineId: number | null) {
+    this.selectedPipelineId.set(pipelineId);
+    if (pipelineId === null) {
+      return;
+    }
+
+    const pipelineLocation = this.findPipelineLocation(this.rootFolders(), pipelineId);
+    this.selectedFolderId.set(pipelineLocation?.folderId ?? null);
+  }
+
+  clearSelection() {
+    this.selectedFolderId.set(null);
+    this.selectedPipelineId.set(null);
+  }
+
   private findFirstPipelineId(folders: FolderTreeNodeInfo[]): number | undefined {
     for (const folder of folders) {
       const firstLocalPipeline = folder.pipelines[0]?.id;
@@ -60,5 +98,69 @@ export class TreeFacade {
     }
 
     return undefined;
+  }
+
+  private findFolderById(folders: FolderTreeNodeInfo[], folderId: number): FolderTreeNodeInfo | null {
+    for (const folder of folders) {
+      if (folder.id === folderId) {
+        return folder;
+      }
+
+      const nested = this.findFolderById(folder.folders, folderId);
+      if (nested !== null) {
+        return nested;
+      }
+    }
+
+    return null;
+  }
+
+  private findPipelineById(pipelineId: number): ConfigPipelineSummary | undefined {
+    const rootPipeline = this.rootPipelines().find((pipeline) => pipeline.id === pipelineId);
+    if (rootPipeline) {
+      return rootPipeline;
+    }
+
+    return this.findPipelineInFolders(this.rootFolders(), pipelineId);
+  }
+
+  private findPipelineInFolders(folders: FolderTreeNodeInfo[], pipelineId: number): ConfigPipelineSummary | undefined {
+    for (const folder of folders) {
+      const localPipeline = folder.pipelines.find((pipeline) => pipeline.id === pipelineId);
+      if (localPipeline) {
+        return localPipeline;
+      }
+
+      const nested = this.findPipelineInFolders(folder.folders, pipelineId);
+      if (nested) {
+        return nested;
+      }
+    }
+
+    return undefined;
+  }
+
+  private findPipelineLocation(
+    folders: FolderTreeNodeInfo[],
+    pipelineId: number,
+    parentFolderId: number | null = null
+  ): { folderId: number | null; pipeline: ConfigPipelineSummary } | null {
+    for (const folder of folders) {
+      const localPipeline = folder.pipelines.find((pipeline) => pipeline.id === pipelineId);
+      if (localPipeline) {
+        return { folderId: folder.id, pipeline: localPipeline };
+      }
+
+      const nested = this.findPipelineLocation(folder.folders, pipelineId, folder.id);
+      if (nested !== null) {
+        return nested;
+      }
+    }
+
+    const rootPipeline = parentFolderId === null
+      ? this.rootPipelines().find((pipeline) => pipeline.id === pipelineId)
+      : undefined;
+
+    return rootPipeline ? { folderId: null, pipeline: rootPipeline } : null;
   }
 }

@@ -5,5 +5,7 @@
   </span>
   <span data-testid="status-folder-count">Folders: {{ treeFacade.rootFolders().length }}</span>
   <span data-testid="status-root-pipeline-count">Root Pipelines: {{ treeFacade.rootPipelines().length }}</span>
+  <span data-testid="status-selected-folder">Selected Folder: {{ treeFacade.selectedFolderId() ?? 'none' }}</span>
+  <span data-testid="status-selected-pipeline">Selected Pipeline: {{ treeFacade.selectedPipelineId() ?? 'none' }}</span>
   <span data-testid="status-selected-run">Selected Run: {{ runDetailFacade.selectedRunId() ?? 'none' }}</span>
 </footer>

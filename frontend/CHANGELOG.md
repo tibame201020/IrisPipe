@@ -4,6 +4,21 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Folder View And Tree Selection Slice] - 2026-03-18
+
+### Added
+- **Folder View E2E Coverage**: Added Playwright coverage for selected folder rendering, child folder rendering, pipeline row rendering, and route-driven tree selection sync through the shell status bar.
+
+### Changed
+- **Folder View Page**: Replaced the folder-view placeholder with a real workspace-tree-backed folder content view that renders the selected folder path, child folders, and contained pipelines.
+- **Route-Driven Tree Selection**: Added route-to-selection synchronization in the shell so folder and pipeline routes now project into shared tree selection state instead of relying only on link highlighting.
+- **Shell Status Context**: Expanded the status bar with selected folder and selected pipeline state so current route context is visible and testable across page transitions.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark the folder view and tree-selection slice as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `9/9`, including the new folder view and selection sync scenario.
+
 ## [Pipeline Overview Slice] - 2026-03-18
 
 ### Added

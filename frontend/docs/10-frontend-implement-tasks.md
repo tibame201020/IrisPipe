@@ -57,7 +57,7 @@ Status markers:
   - `/pipelines/:pipelineId/runs`
   - `/runs/:pipelineRunId`
 - [x] Ensure all routes render inside the stable app shell
-- [ ] Add route-driven selection sync for folder and pipeline context
+- [x] Add route-driven selection sync for folder and pipeline context
 
 ## 4. Data Contracts
 
@@ -103,8 +103,8 @@ Status markers:
 ## 7. Folder View
 
 - [x] Add folder view placeholder page
-- [ ] Load real folder tree / selected folder data
-- [ ] Render real subfolders and pipelines
+- [x] Load real folder tree / selected folder data
+- [x] Render real subfolders and pipelines
 - [ ] Add create folder flow
 - [ ] Add create pipeline flow
 - [ ] Add import pipeline flow
@@ -164,9 +164,9 @@ Status markers:
 
 ## 13. Tree And Selection Sync
 
-- [ ] Sync sidebar tree with current route
-- [ ] Sync selecting a pipeline row to route navigation
-- [ ] Sync selecting a recent/history row to run route
+- [x] Sync sidebar tree with current route
+- [x] Sync selecting a pipeline row to route navigation
+- [x] Sync selecting a recent/history row to run route
 - [ ] Keep inspector stable across page transitions
 
 ## 14. Feedback And State UX
@@ -208,6 +208,7 @@ Status markers:
 - [x] Add shell bootstrap smoke test
 - [x] Add tree rendering smoke test
 - [x] Add route navigation smoke test
+- [x] Add folder view and tree selection sync test
 - [x] Add recent activity data render test
 - [x] Add pipeline history data render test
 - [x] Add pipeline overview data and execute test
