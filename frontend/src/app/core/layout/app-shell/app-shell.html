@@ -1,6 +1,12 @@
 <div class="shell" data-testid="app-shell">
   <app-shell-header />
 
+  @if (backendStatus() === 'DOWN') {
+    <div class="shell-warning" data-testid="shell-backend-warning">
+      Backend unavailable. UI state may be stale until health recovers.
+    </div>
+  }
+
   <div class="shell-body">
     <aside class="shell-sidebar-region" data-testid="shell-sidebar-region">
       <app-shell-sidebar />
@@ -16,4 +22,5 @@
   </div>
 
   <app-shell-status-bar />
+  <app-app-toast-container />
 </div>

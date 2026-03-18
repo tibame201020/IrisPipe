@@ -172,9 +172,9 @@ Status markers:
 ## 14. Feedback And State UX
 
 - [ ] Add skeleton loading states for pages
-- [ ] Add local action spinners
-- [ ] Add toast service and container
-- [ ] Add shell-level backend unavailable warning
+- [x] Add local action spinners
+- [x] Add toast service and container
+- [x] Add shell-level backend unavailable warning
 - [ ] Add explicit empty states for all pages
 - [ ] Add inline conflict handling for `400` / `409`
 

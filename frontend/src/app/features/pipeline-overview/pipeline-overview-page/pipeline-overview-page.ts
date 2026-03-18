@@ -5,6 +5,7 @@ import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
 import { SyncPipelineApiService } from '../../../core/api/sync-pipeline-api.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
+import { ToastService } from '../../../core/state/toast.service';
 import { ConfigPipelineInfo } from '../../../shared/models/sync-config.model';
 import { PipelineRunSummaryInfo } from '../../../shared/models/sync-pipeline.model';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
@@ -24,6 +25,7 @@ export class PipelineOverviewPage implements OnDestroy {
   private readonly syncConfigApi = inject(SyncConfigApiService);
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
   private readonly workspaceFacade = inject(WorkspaceFacade);
+  private readonly toastService = inject(ToastService);
 
   protected readonly pipelineId = signal<number | null>(null);
   protected readonly pipeline = signal<ConfigPipelineInfo | null>(null);
@@ -69,10 +71,12 @@ export class PipelineOverviewPage implements OnDestroy {
       this.workspaceFacade.workspaceKey()
     ).subscribe({
       next: (summary) => {
+        this.toastService.success('Pipeline execution started.');
         void this.router.navigate(['/runs', summary.id]);
       },
       error: () => {
         this.executeError.set('Failed to execute pipeline.');
+        this.toastService.error('Failed to execute pipeline.');
         this.isExecuting.set(false);
       },
       complete: () => {

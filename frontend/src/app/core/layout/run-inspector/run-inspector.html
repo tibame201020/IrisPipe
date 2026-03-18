@@ -24,7 +24,7 @@
           data-testid="run-inspector-stop"
           [disabled]="!runDetailFacade.canStop() || runDetailFacade.isActionPending()"
           (click)="stopRun()">
-          Stop
+          {{ runDetailFacade.pendingAction() === 'stop' ? 'Stopping...' : 'Stop' }}
         </button>
         <button
           class="app-button-secondary"
@@ -32,7 +32,7 @@
           data-testid="run-inspector-resume"
           [disabled]="!runDetailFacade.canResume() || runDetailFacade.isActionPending()"
           (click)="resumeRun()">
-          Resume
+          {{ runDetailFacade.pendingAction() === 'resume' ? 'Resuming...' : 'Resume' }}
         </button>
         <button
           class="app-button-secondary"
@@ -40,7 +40,7 @@
           data-testid="run-inspector-rerun"
           [disabled]="!runDetailFacade.canRerun() || runDetailFacade.isActionPending()"
           (click)="rerunRun()">
-          Rerun
+          {{ runDetailFacade.pendingAction() === 'rerun' ? 'Rerunning...' : 'Rerun' }}
         </button>
         <button
           class="app-button-danger"
@@ -48,7 +48,7 @@
           data-testid="run-inspector-delete"
           [disabled]="!runDetailFacade.canDelete() || runDetailFacade.isActionPending()"
           (click)="openDeleteConfirm()">
-          Delete Run
+          {{ runDetailFacade.pendingAction() === 'delete' ? 'Deleting...' : 'Delete Run' }}
         </button>
       </div>
 
@@ -123,7 +123,7 @@
               data-testid="run-inspector-delete-confirm"
               [disabled]="runDetailFacade.isActionPending()"
               (click)="deleteRun()">
-              Delete Run
+              {{ runDetailFacade.pendingAction() === 'delete' ? 'Deleting...' : 'Delete Run' }}
             </button>
           </div>
         </div>

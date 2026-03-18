@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { PipelineFolderApiService } from '../../../core/api/pipeline-folder-api.service';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
 import { TreeFacade } from '../../../core/state/tree.facade';
+import { ToastService } from '../../../core/state/toast.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
 
@@ -21,6 +22,7 @@ export class FolderViewPage {
   private readonly syncConfigApi = inject(SyncConfigApiService);
   protected readonly treeFacade = inject(TreeFacade);
   private readonly workspaceFacade = inject(WorkspaceFacade);
+  private readonly toastService = inject(ToastService);
 
   protected readonly isActionPending = signal(false);
   protected readonly actionError = signal<string | null>(null);
@@ -113,9 +115,11 @@ export class FolderViewPage {
       this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
       this.showCreateFolderDialog.set(false);
       this.actionMessage.set('Folder created.');
+      this.toastService.success('Folder created.');
       await this.router.navigate(['/folders', folder.id]);
     } catch {
       this.actionError.set('Failed to create folder.');
+      this.toastService.error('Failed to create folder.');
     } finally {
       this.isActionPending.set(false);
     }
@@ -145,9 +149,11 @@ export class FolderViewPage {
       this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
       this.showImportPipelineDialog.set(false);
       this.actionMessage.set('Pipeline imported.');
+      this.toastService.success('Pipeline imported.');
       await this.router.navigate(['/pipelines', pipeline.id]);
     } catch {
       this.actionError.set('Failed to import pipeline.');
+      this.toastService.error('Failed to import pipeline.');
     } finally {
       this.isActionPending.set(false);
     }

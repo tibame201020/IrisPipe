@@ -4,6 +4,22 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Feedback Baseline Slice] - 2026-03-18
+
+### Added
+- **Toast Infrastructure**: Added a shared toast service and shell-level toast container so successful and failed frontend actions can surface lightweight global feedback without blocking the workflow.
+- **Backend Warning Coverage**: Added Playwright coverage for the shell-level backend unavailable warning by intercepting the health endpoint and asserting the warning banner plus `DOWN` status state.
+
+### Changed
+- **Shell Feedback Layer**: Added a persistent shell warning banner when backend health polling reports `DOWN`.
+- **Action Feedback**: Wired success and error toasts into core pipeline actions including folder create/import, config save/import/delete, pipeline execute, and run control actions.
+- **Pending Labels**: Added explicit pending labels for run inspector control actions instead of leaving buttons visually static while requests are in flight.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark toast baseline, shell backend warning, and local action spinner work as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `17/17`, including backend warning and toast-backed config save coverage.
+
 ## [Recent And History Pagination Slice] - 2026-03-18
 
 ### Added

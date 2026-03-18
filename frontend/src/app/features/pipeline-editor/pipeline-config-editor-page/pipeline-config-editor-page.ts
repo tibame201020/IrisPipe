@@ -10,6 +10,7 @@ import {
 } from '../../../shared/models/sync-config.model';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { TreeFacade } from '../../../core/state/tree.facade';
+import { ToastService } from '../../../core/state/toast.service';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
 import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
 import { AppConfirmDialog } from '../../../shared/components/app-confirm-dialog/app-confirm-dialog';
@@ -27,6 +28,7 @@ export class PipelineConfigEditorPage {
   private readonly syncConfigApi = inject(SyncConfigApiService);
   private readonly workspaceFacade = inject(WorkspaceFacade);
   private readonly treeFacade = inject(TreeFacade);
+  private readonly toastService = inject(ToastService);
 
   protected readonly pipelineId = signal<number | null>(null);
   protected readonly draft = signal<ConfigPipelineInfo | null>(null);
@@ -238,9 +240,11 @@ export class PipelineConfigEditorPage {
         this.replaceDraft(pipeline);
         this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
         this.actionMessage.set('Pipeline config saved.');
+        this.toastService.success('Pipeline config saved.');
       },
       error: () => {
         this.actionError.set('Failed to save pipeline config.');
+        this.toastService.error('Failed to save pipeline config.');
       },
       complete: () => {
         this.isSaving.set(false);
@@ -279,9 +283,11 @@ export class PipelineConfigEditorPage {
         this.replaceDraft(pipeline);
         this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
         this.actionMessage.set('Pipeline config replaced from import.');
+        this.toastService.success('Pipeline config replaced from import.');
       },
       error: () => {
         this.actionError.set('Failed to import replacement config.');
+        this.toastService.error('Failed to import replacement config.');
       },
       complete: () => {
         this.isSaving.set(false);
@@ -313,10 +319,12 @@ export class PipelineConfigEditorPage {
       next: () => {
         this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
         this.showDeleteConfirm.set(false);
+        this.toastService.success('Pipeline deleted.');
         void this.router.navigate(draft.folderId === null ? ['/recent'] : ['/folders', draft.folderId]);
       },
       error: () => {
         this.actionError.set('Failed to delete pipeline.');
+        this.toastService.error('Failed to delete pipeline.');
         this.showDeleteConfirm.set(false);
       },
       complete: () => {

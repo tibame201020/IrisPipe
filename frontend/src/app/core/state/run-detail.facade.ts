@@ -10,6 +10,7 @@ import {
   StepExecutionInfo,
 } from '../../shared/models/sync-pipeline.model';
 import { WorkspaceFacade } from './workspace.facade';
+import { ToastService } from './toast.service';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +18,7 @@ import { WorkspaceFacade } from './workspace.facade';
 export class RunDetailFacade {
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
   private readonly workspaceFacade = inject(WorkspaceFacade);
+  private readonly toastService = inject(ToastService);
   private pollHandle: ReturnType<typeof setInterval> | null = null;
 
   readonly selectedRunId = signal<number | null>(null);
@@ -24,6 +26,7 @@ export class RunDetailFacade {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly isActionPending = signal(false);
+  readonly pendingAction = signal<'stop' | 'resume' | 'rerun' | 'delete' | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly actionMessage = signal<string | null>(null);
 
@@ -85,6 +88,7 @@ export class RunDetailFacade {
     }
 
     return this.executeAction(
+      'stop',
       () => this.syncPipelineApi.stopPipeline(runId, this.workspaceFacade.workspaceKey()),
       'Stop requested for the selected run.',
       async () => {
@@ -100,6 +104,7 @@ export class RunDetailFacade {
     }
 
     return this.executeAction(
+      'resume',
       () => this.syncPipelineApi.resumePipeline(runId, {}, this.workspaceFacade.workspaceKey()),
       'Resume requested for the selected run.',
       async () => {
@@ -115,6 +120,7 @@ export class RunDetailFacade {
     }
 
     return this.executeAction(
+      'rerun',
       () => this.syncPipelineApi.rerunPipeline(runId, {}, this.workspaceFacade.workspaceKey()),
       'Created a new rerun from the selected run.',
       async (summary) => {
@@ -130,6 +136,7 @@ export class RunDetailFacade {
     }
 
     this.isActionPending.set(true);
+    this.pendingAction.set('delete');
     this.actionError.set(null);
     this.actionMessage.set(null);
 
@@ -139,12 +146,15 @@ export class RunDetailFacade {
       this.selectedRunId.set(null);
       this.detail.set(null);
       this.actionMessage.set('Deleted the selected run.');
+      this.toastService.success('Deleted the selected run.');
       return true;
     } catch {
       this.actionError.set('Failed to delete the selected run.');
+      this.toastService.error('Failed to delete the selected run.');
       return false;
     } finally {
       this.isActionPending.set(false);
+      this.pendingAction.set(null);
     }
   }
 
@@ -223,11 +233,13 @@ export class RunDetailFacade {
   }
 
   private async executeAction(
+    actionType: 'stop' | 'resume' | 'rerun',
     action: () => ReturnType<SyncPipelineApiService['executePipeline']>,
     successMessage: string,
     onSuccess: (summary: PipelineRunSummaryInfo) => Promise<void> | void
   ) {
     this.isActionPending.set(true);
+    this.pendingAction.set(actionType);
     this.actionError.set(null);
     this.actionMessage.set(null);
 
@@ -235,12 +247,15 @@ export class RunDetailFacade {
       const summary = await firstValueFrom(action());
       await onSuccess(summary);
       this.actionMessage.set(successMessage);
+      this.toastService.success(successMessage);
       return summary;
     } catch {
       this.actionError.set('Failed to update the selected run.');
+      this.toastService.error('Failed to update the selected run.');
       return null;
     } finally {
       this.isActionPending.set(false);
+      this.pendingAction.set(null);
     }
   }
 }

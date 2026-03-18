@@ -36,6 +36,7 @@ test.describe('pipeline config editor', () => {
     await page.getByTestId('pipeline-config-editor-save').click();
 
     await expect(page.getByTestId('pipeline-config-editor-success')).toContainText('Pipeline config saved.');
+    await expect(page.getByTestId('app-toast-success')).toContainText('Pipeline config saved.');
     await expect(page.getByRole('heading', { name: renamedPipelineName })).toBeVisible();
     await expect(page.getByTestId('pipeline-config-editor-job-row-0')).toContainText(renamedJobName);
 
@@ -68,6 +69,7 @@ test.describe('pipeline config editor', () => {
     });
 
     await expect(page.getByTestId('pipeline-config-editor-success')).toContainText('Pipeline config replaced from import.');
+    await expect(page.getByTestId('app-toast-success')).toContainText('Pipeline config replaced from import.');
     await expect(page.getByTestId('pipeline-config-editor-job-row-0')).toContainText(expectedReplacementJobName);
 
     await page.getByTestId('pipeline-config-editor-delete').click();

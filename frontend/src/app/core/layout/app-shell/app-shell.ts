@@ -7,11 +7,12 @@ import { ShellStatusBar } from '../shell-status-bar/shell-status-bar';
 import { WorkspaceFacade } from '../../state/workspace.facade';
 import { TreeFacade } from '../../state/tree.facade';
 import { HealthFacade } from '../../state/health.facade';
+import { AppToastContainer } from '../../../shared/components/app-toast-container/app-toast-container';
 import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-app-shell',
-  imports: [RouterOutlet, ShellHeader, ShellSidebar, RunInspector, ShellStatusBar],
+  imports: [RouterOutlet, ShellHeader, ShellSidebar, RunInspector, ShellStatusBar, AppToastContainer],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -21,6 +22,7 @@ export class AppShell implements OnInit, OnDestroy {
   private readonly treeFacade = inject(TreeFacade);
   private readonly healthFacade = inject(HealthFacade);
   private readonly router = inject(Router);
+  protected readonly backendStatus = this.healthFacade.backendStatus;
 
   private readonly workspaceTreeSync = effect(() => {
     this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());

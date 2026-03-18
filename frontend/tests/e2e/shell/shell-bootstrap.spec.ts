@@ -11,4 +11,19 @@ test.describe('shell bootstrap', () => {
     await expect(page.getByTestId('backend-status')).toContainText('UP');
     await expect(page.getByTestId('shell-status-bar')).toBeVisible();
   });
+
+  test('shows a shell warning when backend health is down', async ({ page }) => {
+    await page.route('**/actuator/health', async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'DOWN' }),
+      });
+    });
+
+    await page.goto('/recent');
+
+    await expect(page.getByTestId('shell-backend-warning')).toContainText('Backend unavailable');
+    await expect(page.getByTestId('backend-status')).toContainText('DOWN');
+  });
 });
