@@ -137,8 +137,8 @@ Status markers:
 - [x] Render latest jobs from payload
 - [x] Render selected-job step summary from payload
 - [x] Implement active-run polling start/stop logic
-- [ ] Wire stop / resume / rerun / delete actions
-- [ ] Add confirm dialog flow for destructive run delete
+- [x] Wire stop / resume / rerun / delete actions
+- [x] Add confirm dialog flow for destructive run delete
 
 ## 11. Pipeline Overview
 
@@ -214,6 +214,7 @@ Status markers:
 - [x] Add pipeline history data render test
 - [x] Add pipeline overview data and execute test
 - [x] Add pipeline config editor save/import/delete test
+- [x] Add run control stop/resume/rerun/delete test
 - [x] Add run inspector data render test
 - [x] Add CI-friendly Chromium test run
 

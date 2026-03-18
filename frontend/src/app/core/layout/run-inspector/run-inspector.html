@@ -17,11 +17,52 @@
 
     <section class="inspector-section">
       <h3 class="app-section-title">Control</h3>
-      <div class="button-row">
-        <button class="app-button-secondary" type="button">Stop</button>
-        <button class="app-button-secondary" type="button">Resume</button>
-        <button class="app-button-secondary" type="button">Rerun</button>
+      <div class="button-row" data-testid="run-inspector-control">
+        <button
+          class="app-button-secondary"
+          type="button"
+          data-testid="run-inspector-stop"
+          [disabled]="!runDetailFacade.canStop() || runDetailFacade.isActionPending()"
+          (click)="stopRun()">
+          Stop
+        </button>
+        <button
+          class="app-button-secondary"
+          type="button"
+          data-testid="run-inspector-resume"
+          [disabled]="!runDetailFacade.canResume() || runDetailFacade.isActionPending()"
+          (click)="resumeRun()">
+          Resume
+        </button>
+        <button
+          class="app-button-secondary"
+          type="button"
+          data-testid="run-inspector-rerun"
+          [disabled]="!runDetailFacade.canRerun() || runDetailFacade.isActionPending()"
+          (click)="rerunRun()">
+          Rerun
+        </button>
+        <button
+          class="app-button-danger"
+          type="button"
+          data-testid="run-inspector-delete"
+          [disabled]="!runDetailFacade.canDelete() || runDetailFacade.isActionPending()"
+          (click)="openDeleteConfirm()">
+          Delete Run
+        </button>
       </div>
+
+      @if (runDetailFacade.actionMessage(); as actionMessage) {
+        <p class="feedback-message feedback-message--success" data-testid="run-inspector-action-success">
+          {{ actionMessage }}
+        </p>
+      }
+
+      @if (runDetailFacade.actionError(); as actionError) {
+        <p class="feedback-message feedback-message--error" data-testid="run-inspector-action-error">
+          {{ actionError }}
+        </p>
+      }
     </section>
 
     <section class="inspector-section">
@@ -66,6 +107,28 @@
         <p class="app-meta">No step summary available.</p>
       }
     </section>
+
+    @if (showDeleteConfirm()) {
+      <div class="dialog-backdrop" data-testid="run-inspector-delete-dialog">
+        <div class="dialog-panel">
+          <app-app-confirm-dialog
+            title="Delete run"
+            message="This removes the selected logical run and its runtime rows. Active runs cannot be deleted." />
+
+          <div class="dialog-actions">
+            <button class="app-button-secondary" type="button" [disabled]="runDetailFacade.isActionPending()" (click)="closeDeleteConfirm()">Cancel</button>
+            <button
+              class="app-button-danger"
+              type="button"
+              data-testid="run-inspector-delete-confirm"
+              [disabled]="runDetailFacade.isActionPending()"
+              (click)="deleteRun()">
+              Delete Run
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   } @else {
     <app-app-empty-state
       title="No run selected"

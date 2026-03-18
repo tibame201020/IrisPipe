@@ -4,6 +4,22 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Run Control Slice] - 2026-03-18
+
+### Added
+- **Run Control E2E Coverage**: Added Playwright coverage for real stop/resume control on an active run and for rerun/delete control on terminal runs through the shared inspector.
+- **Playwright Run-Control Helpers**: Added backend test helpers for run-status polling and for deterministic stop/resume fixture preparation based on the existing backend stop-job scenario.
+
+### Changed
+- **Run Inspector Actions**: Replaced placeholder control buttons with real `stop`, `resume`, `rerun`, and `delete run` actions wired to the backend pipeline control API through `RunDetailFacade`.
+- **Delete Run Confirm Flow**: Added a custom confirm dialog for destructive run deletion inside the inspector instead of relying on browser-native confirm behavior.
+- **Control State Rules**: Bound action availability to backend-supported status rules so stop, resume, and delete only enable for statuses the backend actually accepts.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark the run inspector control slice and its Playwright coverage as complete.
+
+### Verified
+- **Frontend Build Validation**: The existing `npm run build` validation remains green for the run-control app changes.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `13/13`, including stop/resume/rerun/delete inspector control flows.
+
 ## [Config Editor Slice] - 2026-03-18
 
 ### Added

@@ -32,8 +32,44 @@
   margin-top: 8px;
 }
 
+.feedback-message {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.feedback-message--success {
+  color: var(--text-secondary);
+}
+
+.feedback-message--error {
+  color: var(--danger);
+}
+
 .meta-stack {
   display: grid;
   gap: 6px;
   margin-top: 8px;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.28);
+  padding: 24px;
+  z-index: 20;
+}
+
+.dialog-panel {
+  display: grid;
+  gap: 16px;
+  width: min(480px, 100%);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }

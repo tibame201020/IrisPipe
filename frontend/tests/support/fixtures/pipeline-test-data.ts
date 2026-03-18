@@ -49,3 +49,49 @@ export async function seedPipelineRuntimeSourceRows(
     `
   );
 }
+
+export async function prepareStopJobRuntimeTables(request: APIRequestContext, totalRows = 500_000) {
+  await executeSql(
+    request,
+    `
+    CREATE TABLE IF NOT EXISTS test_stop_job_source_a (
+      id BIGINT PRIMARY KEY,
+      name VARCHAR(255),
+      update_time TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS test_stop_job_dest_a (
+      id BIGINT PRIMARY KEY,
+      name VARCHAR(255),
+      update_time TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS test_stop_job_source_b (
+      id BIGINT PRIMARY KEY,
+      name VARCHAR(255),
+      update_time TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS test_stop_job_dest_b (
+      id BIGINT PRIMARY KEY,
+      name VARCHAR(255),
+      update_time TIMESTAMP
+    );
+
+    TRUNCATE TABLE test_stop_job_source_a;
+    TRUNCATE TABLE test_stop_job_dest_a;
+    TRUNCATE TABLE test_stop_job_source_b;
+    TRUNCATE TABLE test_stop_job_dest_b;
+
+    INSERT INTO test_stop_job_source_a (id, name, update_time)
+    SELECT X, 'ROW-' || X, DATEADD('SECOND', X, TIMESTAMP '2023-01-01 00:00:00')
+    FROM SYSTEM_RANGE(1, ${totalRows});
+
+    INSERT INTO test_stop_job_source_b (id, name, update_time)
+    VALUES
+      (1, 'B-1', TIMESTAMP '2023-01-01 00:00:01'),
+      (2, 'B-2', TIMESTAMP '2023-01-01 00:00:02'),
+      (3, 'B-3', TIMESTAMP '2023-01-01 00:00:03');
+    `
+  );
+}
