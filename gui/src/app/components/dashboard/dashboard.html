@@ -1,0 +1,36 @@
+<div class="min-h-screen bg-zinc-950 p-4 md:p-8 font-inter relative overflow-hidden text-zinc-300">
+
+  <!-- App Header -->
+  <header class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+        <span class="material-icons text-blue-500">route</span>
+        IrisPipe <span class="font-light text-zinc-500">Monitor</span>
+      </h1>
+      <p class="text-sm font-mono text-zinc-500 mt-1 uppercase tracking-widest">{{ pipeline?.id }}</p>
+    </div>
+
+    <div class="flex gap-4 items-center">
+       <span class="text-xs font-mono border border-zinc-700 rounded px-2 py-1 bg-zinc-900 text-zinc-400">
+          Thread Pool: <span class="text-blue-400 font-bold">128 vT</span>
+       </span>
+       <span class="text-xs font-mono border border-zinc-700 rounded px-2 py-1 bg-zinc-900 text-zinc-400">
+          Memory: <span class="text-emerald-400 font-bold">1.2 GB</span>
+       </span>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto space-y-8 relative z-10 pb-20">
+    <app-live-firepower [pipeline]="pipeline"></app-live-firepower>
+    <app-pipeline-topology [pipeline]="pipeline"></app-pipeline-topology>
+    <app-snapshot-inspector [pipeline]="pipeline"></app-snapshot-inspector>
+  </main>
+
+  <app-breakpoint-hud [pipeline]="pipeline" (resume)="onResumePipeline()"></app-breakpoint-hud>
+
+  <!-- Subtle Background Grid/Texture -->
+  <div class="absolute inset-0 pointer-events-none opacity-[0.03] z-0"
+       style="background-image: radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0); background-size: 40px 40px;">
+  </div>
+</div>

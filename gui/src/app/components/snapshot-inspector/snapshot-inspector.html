@@ -1,0 +1,57 @@
+<mat-card class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl mt-6">
+  <mat-card-header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+    <mat-card-title class="text-sm font-semibold tracking-wider text-zinc-400 uppercase flex items-center gap-2">
+      <span class="material-icons text-blue-500 text-sm">history</span>
+      Time-Travel Snapshot Inspector
+    </mat-card-title>
+    <div class="flex items-center gap-3">
+       <span class="text-xs text-zinc-500 font-mono tracking-widest border border-zinc-800 rounded px-2 py-0.5 bg-zinc-950">Consistency Guarantee: <span class="text-emerald-400 font-bold">100%</span></span>
+    </div>
+  </mat-card-header>
+
+  <mat-card-content class="p-0">
+    <div *ngIf="pipeline" class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-800">
+
+      <!-- Previous Snapshot -->
+      <div class="flex flex-col h-full bg-[#1e1e1e]">
+         <div class="px-4 py-2 border-b border-zinc-800 flex items-center justify-between bg-[#2d2d2d] shadow-inner">
+            <span class="text-xs font-mono text-zinc-400 font-bold tracking-widest uppercase">Execution T-1 (Snapshot)</span>
+            <span class="material-icons text-zinc-500 text-[16px]">lock_clock</span>
+         </div>
+         <div class="p-4 overflow-x-auto h-full text-sm font-mono leading-relaxed bg-[#1e1e1e]">
+            <pre class="text-rose-400">SELECT
+  id,
+  name,
+  email
+FROM
+  customers
+WHERE
+  status = 'ACTIVE'</pre>
+         </div>
+      </div>
+
+      <!-- Current State -->
+      <div class="flex flex-col h-full bg-[#1e1e1e]">
+         <div class="px-4 py-2 border-b border-zinc-800 flex items-center justify-between bg-blue-900/20 border-t-2 lg:border-t-0 border-t-blue-500/50 shadow-inner">
+            <span class="text-xs font-mono text-blue-400 font-bold tracking-widest uppercase flex items-center gap-2">
+               Current Execution (Live)
+               <span class="animate-pulse h-2 w-2 bg-blue-500 rounded-full inline-block shadow-[0_0_10px_rgba(59,130,246,0.8)]"></span>
+            </span>
+            <span class="material-icons text-blue-400/50 text-[16px]">play_circle</span>
+         </div>
+         <div class="p-4 overflow-x-auto h-full text-sm font-mono leading-relaxed bg-[#1e1e1e] relative">
+            <pre class="text-zinc-300">SELECT
+  id,
+  name,
+  email<span class="bg-emerald-500/20 text-emerald-400 px-1 rounded ml-1 border border-emerald-500/30">, phone</span>
+FROM
+  customers
+WHERE
+  status = 'ACTIVE'
+<span class="bg-emerald-500/20 text-emerald-400 px-1 py-0.5 rounded block border border-emerald-500/30 mt-1">  AND created_at > '2023-01-01'</span></pre>
+         </div>
+      </div>
+
+    </div>
+  </mat-card-content>
+</mat-card>

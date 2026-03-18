@@ -1,0 +1,61 @@
+<mat-card class="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
+  <mat-card-header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+    <mat-card-title class="text-sm font-semibold tracking-wider text-zinc-400 uppercase flex items-center gap-2">
+      <span class="material-icons text-blue-500 text-sm">speed</span>
+      Live Firepower Analytics
+    </mat-card-title>
+    <div class="flex items-center gap-2">
+      <span class="flex h-2 w-2 relative">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" *ngIf="pipeline?.status === 'RUNNING'"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="pipeline?.status === 'RUNNING' ? 'bg-emerald-500' : (pipeline?.status === 'FAILED' ? 'bg-rose-500' : 'bg-zinc-500')"></span>
+      </span>
+      <span class="text-xs font-mono text-zinc-500">{{ pipeline?.status }}</span>
+    </div>
+  </mat-card-header>
+
+  <mat-card-content class="p-6">
+    <div class="flex flex-col md:flex-row gap-8 items-center justify-between">
+
+      <!-- Global Throughput -->
+      <div class="flex flex-col items-center md:items-start space-y-2 w-full md:w-1/3">
+        <span class="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Global Throughput</span>
+        <div class="flex items-baseline gap-2">
+          <span class="text-5xl font-mono font-bold text-white tabular-nums tracking-tighter">
+            {{ pipeline?.globalThroughput | number:'1.0-0' }}
+          </span>
+          <span class="text-sm text-blue-400 font-mono">rows/sec</span>
+        </div>
+      </div>
+
+      <!-- Total Processed -->
+      <div class="flex flex-col items-center md:items-start space-y-2 w-full md:w-1/3 border-l border-zinc-800 pl-8">
+        <span class="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Total Processed</span>
+        <div class="flex items-baseline gap-2">
+          <span class="text-4xl font-mono font-bold text-zinc-200 tabular-nums tracking-tighter">
+            {{ pipeline?.totalProcessedRows | number }}
+          </span>
+          <span class="text-sm text-zinc-500 font-mono">rows</span>
+        </div>
+      </div>
+
+      <!-- Visualizer (Mock Threads) -->
+      <div class="w-full md:w-1/3 flex flex-col space-y-2 border-l border-zinc-800 pl-8">
+         <span class="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Virtual Threads</span>
+         <div class="grid grid-cols-8 gap-1 pt-2">
+            <!-- Render some mock thread blocks that light up based on status -->
+            <div *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]"
+                 class="h-4 rounded-sm transition-colors duration-75"
+                 [ngClass]="{
+                   'bg-blue-500/80': pipeline?.status === 'RUNNING' && (i % 3 !== 0),
+                   'bg-blue-400/30': pipeline?.status === 'RUNNING' && (i % 3 === 0),
+                   'bg-rose-500/80': pipeline?.status === 'FAILED',
+                   'bg-zinc-800': pipeline?.status === 'PAUSED' || pipeline?.status === 'COMPLETED'
+                 }">
+            </div>
+         </div>
+         <span class="text-[10px] text-zinc-600 font-mono mt-1 block text-right">Chunk Streaming Active</span>
+      </div>
+
+    </div>
+  </mat-card-content>
+</mat-card>
