@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncPipelineApiService } from '../../../core/api/sync-pipeline-api.service';
+import { PipelineRunEventsService } from '../../../core/state/pipeline-run-events.service';
+import { RunDetailFacade } from '../../../core/state/run-detail.facade';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { ApiDateTimeValue, PipelineRunSummaryInfo } from '../../../shared/models/sync-pipeline.model';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
@@ -17,10 +20,16 @@ import { formatDateTime, formatTimeRange } from '../../../shared/utils/date-time
 })
 export class PipelineHistoryPage implements OnInit, OnDestroy {
   private static readonly PAGE_SIZE = 5;
+  private static readonly MUTATION_REFRESH_WINDOW_MS = 10_000;
+  private static readonly MUTATION_REFRESH_INTERVAL_MS = 2_000;
   private readonly route = inject(ActivatedRoute);
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
+  private readonly pipelineRunEvents = inject(PipelineRunEventsService);
+  private readonly runDetailFacade = inject(RunDetailFacade);
   private readonly workspaceFacade = inject(WorkspaceFacade);
   private readonly router = inject(Router);
+  private mutationRefreshHandle: ReturnType<typeof setInterval> | null = null;
+  private mutationRefreshWindowHandle: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly pipelineId = signal<number | null>(null);
   protected readonly runs = signal<PipelineRunSummaryInfo[]>([]);
@@ -38,6 +47,27 @@ export class PipelineHistoryPage implements OnInit, OnDestroy {
     this.pipelineId.set(Number.isFinite(pipelineId) ? pipelineId : null);
     this.loadHistory();
   });
+  private readonly runEventSub: Subscription = this.pipelineRunEvents.events$.subscribe((event) => {
+    if (event.pipelineId !== this.pipelineId()) {
+      return;
+    }
+
+    this.triggerMutationRefresh();
+  });
+  private readonly inspectorRefreshEffect = effect(() => {
+    const pipelineId = this.pipelineId();
+    const detail = this.runDetailFacade.detail();
+    const pendingAction = this.runDetailFacade.pendingAction();
+    const status = this.runDetailFacade.selectedRunStatus();
+
+    if (pipelineId === null || detail === null || detail.pipelineId !== pipelineId) {
+      return;
+    }
+
+    if (pendingAction !== null || status !== 'IDLE') {
+      this.triggerMutationRefresh();
+    }
+  });
 
   ngOnInit() {
     this.loadHistory();
@@ -45,6 +75,9 @@ export class PipelineHistoryPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.routeSub.unsubscribe();
+    this.runEventSub.unsubscribe();
+    this.inspectorRefreshEffect.destroy();
+    this.clearMutationRefreshWindow();
   }
 
   protected refresh() {
@@ -120,5 +153,29 @@ export class PipelineHistoryPage implements OnInit, OnDestroy {
         this.isLoadingMore.set(false);
       }
     });
+  }
+
+  private triggerMutationRefresh() {
+    this.loadHistory({ reset: true });
+    this.clearMutationRefreshWindow();
+
+    this.mutationRefreshHandle = globalThis.setInterval(() => {
+      this.loadHistory({ reset: true });
+    }, PipelineHistoryPage.MUTATION_REFRESH_INTERVAL_MS);
+
+    this.mutationRefreshWindowHandle = globalThis.setTimeout(() => {
+      this.clearMutationRefreshWindow();
+    }, PipelineHistoryPage.MUTATION_REFRESH_WINDOW_MS);
+  }
+
+  private clearMutationRefreshWindow() {
+    if (this.mutationRefreshHandle !== null) {
+      globalThis.clearInterval(this.mutationRefreshHandle);
+      this.mutationRefreshHandle = null;
+    }
+    if (this.mutationRefreshWindowHandle !== null) {
+      globalThis.clearTimeout(this.mutationRefreshWindowHandle);
+      this.mutationRefreshWindowHandle = null;
+    }
   }
 }

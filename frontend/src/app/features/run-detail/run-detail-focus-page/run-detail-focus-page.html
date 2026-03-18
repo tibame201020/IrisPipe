@@ -6,7 +6,21 @@
         <h2 class="app-section-title">Run #{{ detail.id }}</h2>
         <p class="app-meta">{{ detail.pipelineName }} / {{ detail.folderPath }}</p>
       </div>
-      <app-status-chip [status]="detail.status" />
+      <div class="header-actions">
+        <a
+          class="app-button-secondary"
+          data-testid="run-detail-focus-overview-link"
+          [routerLink]="['/pipelines', detail.pipelineId]">
+          Pipeline Overview
+        </a>
+        <a
+          class="app-button-secondary"
+          data-testid="run-detail-focus-history-link"
+          [routerLink]="['/pipelines', detail.pipelineId, 'runs']">
+          Pipeline History
+        </a>
+        <app-status-chip [status]="detail.status" />
+      </div>
     </header>
 
     <section class="detail-grid">

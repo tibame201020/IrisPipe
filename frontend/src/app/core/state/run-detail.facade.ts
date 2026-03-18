@@ -11,15 +11,19 @@ import {
 } from '../../shared/models/sync-pipeline.model';
 import { WorkspaceFacade } from './workspace.facade';
 import { ToastService } from './toast.service';
+import { PipelineRunEventsService } from './pipeline-run-events.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RunDetailFacade {
+  private static readonly ACTION_FOLLOW_UP_REFRESH_MS = 1_500;
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
   private readonly workspaceFacade = inject(WorkspaceFacade);
   private readonly toastService = inject(ToastService);
+  private readonly pipelineRunEvents = inject(PipelineRunEventsService);
   private pollHandle: ReturnType<typeof setInterval> | null = null;
+  private followUpRefreshHandle: ReturnType<typeof setTimeout> | null = null;
 
   readonly selectedRunId = signal<number | null>(null);
   readonly detail = signal<PipelineRunDetailInfo | null>(null);
@@ -60,6 +64,7 @@ export class RunDetailFacade {
     }
 
     this.stopPolling();
+    this.clearFollowUpRefresh();
     this.selectedRunId.set(runId);
     this.loadError.set(null);
     this.actionError.set(null);
@@ -141,8 +146,13 @@ export class RunDetailFacade {
     this.actionMessage.set(null);
 
     try {
+      const detail = this.detail();
       await firstValueFrom(this.syncPipelineApi.deletePipelineRun(runId, this.workspaceFacade.workspaceKey()));
+      if (detail !== null) {
+        this.pipelineRunEvents.emitDelete(detail);
+      }
       this.stopPolling();
+      this.clearFollowUpRefresh();
       this.selectedRunId.set(null);
       this.detail.set(null);
       this.actionMessage.set('Deleted the selected run.');
@@ -179,6 +189,7 @@ export class RunDetailFacade {
     this.syncPipelineApi.runDetail(runId, this.workspaceFacade.workspaceKey()).subscribe({
       next: (detail) => {
         this.detail.set(detail);
+        this.pipelineRunEvents.emitSync(detail);
         this.syncPollingForStatus(detail.status);
       },
       error: () => {
@@ -246,6 +257,8 @@ export class RunDetailFacade {
     try {
       const summary = await firstValueFrom(action());
       await onSuccess(summary);
+      this.scheduleFollowUpRefresh();
+      this.pipelineRunEvents.emitFromSummary(actionType, summary);
       this.actionMessage.set(successMessage);
       this.toastService.success(successMessage);
       return summary;
@@ -257,5 +270,26 @@ export class RunDetailFacade {
       this.isActionPending.set(false);
       this.pendingAction.set(null);
     }
+  }
+
+  private scheduleFollowUpRefresh() {
+    this.clearFollowUpRefresh();
+    if (this.selectedRunId() === null) {
+      return;
+    }
+
+    this.followUpRefreshHandle = globalThis.setTimeout(() => {
+      this.followUpRefreshHandle = null;
+      this.refresh();
+    }, RunDetailFacade.ACTION_FOLLOW_UP_REFRESH_MS);
+  }
+
+  private clearFollowUpRefresh() {
+    if (this.followUpRefreshHandle === null) {
+      return;
+    }
+
+    globalThis.clearTimeout(this.followUpRefreshHandle);
+    this.followUpRefreshHandle = null;
   }
 }

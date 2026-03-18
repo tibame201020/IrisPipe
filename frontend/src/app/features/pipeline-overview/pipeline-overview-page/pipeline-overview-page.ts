@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Subscription, forkJoin } from 'rxjs';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
 import { SyncPipelineApiService } from '../../../core/api/sync-pipeline-api.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { ToastService } from '../../../core/state/toast.service';
+import { PipelineRunEventsService } from '../../../core/state/pipeline-run-events.service';
 import { ConfigPipelineInfo } from '../../../shared/models/sync-config.model';
 import { PipelineRunSummaryInfo } from '../../../shared/models/sync-pipeline.model';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
@@ -20,12 +21,17 @@ import { formatDateTime, formatTimeRange } from '../../../shared/utils/date-time
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PipelineOverviewPage implements OnDestroy {
+  private static readonly MUTATION_REFRESH_WINDOW_MS = 10_000;
+  private static readonly MUTATION_REFRESH_INTERVAL_MS = 2_000;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly syncConfigApi = inject(SyncConfigApiService);
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
   private readonly workspaceFacade = inject(WorkspaceFacade);
   private readonly toastService = inject(ToastService);
+  private readonly pipelineRunEvents = inject(PipelineRunEventsService);
+  private mutationRefreshHandle: ReturnType<typeof setInterval> | null = null;
+  private mutationRefreshWindowHandle: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly pipelineId = signal<number | null>(null);
   protected readonly pipeline = signal<ConfigPipelineInfo | null>(null);
@@ -41,9 +47,18 @@ export class PipelineOverviewPage implements OnDestroy {
     this.pipelineId.set(Number.isFinite(pipelineId) ? pipelineId : null);
     this.loadOverview();
   });
+  private readonly runEventSub: Subscription = this.pipelineRunEvents.events$.subscribe((event) => {
+    if (event.pipelineId !== this.pipelineId()) {
+      return;
+    }
+
+    this.triggerMutationRefresh();
+  });
 
   ngOnDestroy() {
     this.routeSub.unsubscribe();
+    this.runEventSub.unsubscribe();
+    this.clearMutationRefreshWindow();
   }
 
   protected refresh() {
@@ -71,6 +86,7 @@ export class PipelineOverviewPage implements OnDestroy {
       this.workspaceFacade.workspaceKey()
     ).subscribe({
       next: (summary) => {
+        this.pipelineRunEvents.emitFromSummary('execute', summary);
         this.toastService.success('Pipeline execution started.');
         void this.router.navigate(['/runs', summary.id]);
       },
@@ -122,5 +138,29 @@ export class PipelineOverviewPage implements OnDestroy {
         this.isLoading.set(false);
       }
     });
+  }
+
+  private triggerMutationRefresh() {
+    this.loadOverview();
+    this.clearMutationRefreshWindow();
+
+    this.mutationRefreshHandle = globalThis.setInterval(() => {
+      this.loadOverview();
+    }, PipelineOverviewPage.MUTATION_REFRESH_INTERVAL_MS);
+
+    this.mutationRefreshWindowHandle = globalThis.setTimeout(() => {
+      this.clearMutationRefreshWindow();
+    }, PipelineOverviewPage.MUTATION_REFRESH_WINDOW_MS);
+  }
+
+  private clearMutationRefreshWindow() {
+    if (this.mutationRefreshHandle !== null) {
+      globalThis.clearInterval(this.mutationRefreshHandle);
+      this.mutationRefreshHandle = null;
+    }
+    if (this.mutationRefreshWindowHandle !== null) {
+      globalThis.clearTimeout(this.mutationRefreshWindowHandle);
+      this.mutationRefreshWindowHandle = null;
+    }
   }
 }

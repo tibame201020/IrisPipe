@@ -123,7 +123,7 @@ Status markers:
 
 - [x] Add pipeline history placeholder page
 - [x] Load real history for selected pipeline
-- [ ] Add refresh behavior after control actions
+- [x] Add refresh behavior after control actions
 - [x] Add row-to-inspector selection sync
 - [x] Add load-more pagination
 

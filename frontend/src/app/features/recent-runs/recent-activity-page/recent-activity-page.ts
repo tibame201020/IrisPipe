@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncPipelineApiService } from '../../../core/api/sync-pipeline-api.service';
+import { PipelineRunEventsService } from '../../../core/state/pipeline-run-events.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { ApiDateTimeValue, PipelineRunSummaryInfo } from '../../../shared/models/sync-pipeline.model';
 import { appEnvironment } from '../../../core/config/app-environment';
@@ -18,10 +20,18 @@ import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleto
 })
 export class RecentActivityPage implements OnInit, OnDestroy {
   private static readonly PAGE_SIZE = 5;
+  private static readonly MUTATION_REFRESH_WINDOW_MS = 10_000;
+  private static readonly MUTATION_REFRESH_INTERVAL_MS = 2_000;
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
+  private readonly pipelineRunEvents = inject(PipelineRunEventsService);
   protected readonly workspaceFacade = inject(WorkspaceFacade);
   private readonly router = inject(Router);
   private pollHandle: ReturnType<typeof setInterval> | null = null;
+  private mutationRefreshHandle: ReturnType<typeof setInterval> | null = null;
+  private mutationRefreshWindowHandle: ReturnType<typeof setTimeout> | null = null;
+  private readonly runEventSub: Subscription = this.pipelineRunEvents.events$.subscribe(() => {
+    this.triggerMutationRefresh();
+  });
 
   protected readonly runs = signal<PipelineRunSummaryInfo[]>([]);
   protected readonly isLoading = signal(false);
@@ -39,6 +49,8 @@ export class RecentActivityPage implements OnInit, OnDestroy {
     if (this.pollHandle !== null) {
       globalThis.clearInterval(this.pollHandle);
     }
+    this.clearMutationRefreshWindow();
+    this.runEventSub.unsubscribe();
   }
 
   protected refresh() {
@@ -140,5 +152,29 @@ export class RecentActivityPage implements OnInit, OnDestroy {
     }
 
     return [...uniqueRuns.values()];
+  }
+
+  private triggerMutationRefresh() {
+    this.loadRecentRuns({ reset: true, mergeWithExisting: this.runs().length > RecentActivityPage.PAGE_SIZE });
+    this.clearMutationRefreshWindow();
+
+    this.mutationRefreshHandle = globalThis.setInterval(() => {
+      this.loadRecentRuns({ reset: true, mergeWithExisting: this.runs().length > RecentActivityPage.PAGE_SIZE });
+    }, RecentActivityPage.MUTATION_REFRESH_INTERVAL_MS);
+
+    this.mutationRefreshWindowHandle = globalThis.setTimeout(() => {
+      this.clearMutationRefreshWindow();
+    }, RecentActivityPage.MUTATION_REFRESH_WINDOW_MS);
+  }
+
+  private clearMutationRefreshWindow() {
+    if (this.mutationRefreshHandle !== null) {
+      globalThis.clearInterval(this.mutationRefreshHandle);
+      this.mutationRefreshHandle = null;
+    }
+    if (this.mutationRefreshWindowHandle !== null) {
+      globalThis.clearTimeout(this.mutationRefreshWindowHandle);
+      this.mutationRefreshWindowHandle = null;
+    }
   }
 }

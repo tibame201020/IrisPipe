@@ -4,6 +4,21 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [History Refresh Slice] - 2026-03-18
+
+### Added
+- **History Refresh E2E Coverage**: Added Playwright coverage proving that pipeline history refreshes after a resume action triggered from the shared inspector.
+- **Run Detail Return Link**: Added an in-app route from the run detail focus page back to pipeline history so shared-inspector scenarios can be exercised through SPA navigation instead of browser reload semantics.
+
+### Changed
+- **Shared Run Mutation Refresh**: Added a lightweight run-mutation refresh layer so history, recent activity, and overview can re-query backend summaries after execute/stop/resume/rerun/delete flows.
+- **History Page Behavior**: Pipeline history now reacts to shared inspector state changes for runs that belong to the current pipeline instead of relying only on manual refresh.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark pipeline history refresh after control actions as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `19/19`, including history refresh after inspector resume control.
+
 ## [Folder Interaction Slice] - 2026-03-18
 
 ### Added
