@@ -190,7 +190,7 @@ Status markers:
 ## 16. Validation Pass
 
 - [x] `npm run build`
-- [ ] `npm test`
+- [x] `npm test`
 - [x] connect to live backend and verify:
   - workspace/current
   - pipeline tree
@@ -198,8 +198,8 @@ Status markers:
   - recent runs
   - pipeline history
   - run detail
-- [ ] manual shell scroll verification
-- [ ] manual route transition verification
+- [x] shell scroll ownership verification via Playwright
+- [x] route transition verification via Playwright
 
 ## 17. Playwright E2E
 

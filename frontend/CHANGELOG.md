@@ -4,6 +4,34 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Frontend V1 Release Pass] - 2026-03-18
+
+### Changed
+- **Validation Pass Closed**: Completed the frontend validation pass with build validation, headless Angular unit tests, and isolated Playwright verification against a backend running on `8081` instead of the user-managed `8080`.
+- **Implementation Tracker Closed**: Closed the active frontend V1 checklist in [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md); remaining items are now outside the implementation tracker and belong to later feature work, not the V1 baseline.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Frontend Unit Test Validation**: Re-ran `npm test`; the frontend unit baseline passes `5/5`.
+- **Frontend E2E Validation**: Re-ran `npm run e2e` against isolated backend services; Playwright passes `26/26`.
+
+## [Validation Pass And Frontend Test Baseline] - 2026-03-18
+
+### Added
+- **Headless Unit-Test Runner**: Added a frontend-local `npm test` runner that reuses Playwright Chromium as `CHROME_BIN`, allowing Angular/Karma specs to run headlessly without depending on a separately installed browser.
+- **Frontend Unit Test Baseline**: Added focused specs for API error normalization and sync-pipeline payload mapping so frontend contract helpers now have a minimal automated regression layer beyond Playwright.
+- **Validation E2E Coverage**: Added Playwright coverage for shell scroll ownership and shared inspector continuity across route transitions, so the validation pass now has direct UI evidence for the shell constraints selected during design.
+
+### Changed
+- **Angular Dev Proxy Config**: Aligned Angular's `serve` builder with the env-aware `proxy.conf.js` so local `ng serve` and Playwright orchestration use the same proxy setup.
+- **Isolated Playwright Backend Runtime**: Updated Playwright backend orchestration and runtime fixtures to use a dedicated backend port and unique H2 datasource per run instead of sharing the default `8080` or `./h2data/data`.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to close the validation pass with `npm test`, shell scroll verification, and route transition verification.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Frontend Unit Test Validation**: Ran `npm test` headlessly through Playwright Chromium.
+- **Isolated Playwright Validation**: Re-ran `npm run e2e` against an isolated backend on `8081`; the suite passes `26/26` without touching the user-managed `8080` backend.
+
 ## [Styling Consistency And Isolated E2E Slice] - 2026-03-18
 
 ### Added

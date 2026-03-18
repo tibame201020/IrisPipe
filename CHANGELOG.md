@@ -5,6 +5,14 @@ All notable repository-level changes are documented in this file.
 Detailed backend engine changes continue in [backend/CHANGELOG.md](backend/CHANGELOG.md).
 Detailed frontend application changes continue in [frontend/CHANGELOG.md](frontend/CHANGELOG.md).
 
+## [Frontend V1 Release Baseline] - 2026-03-18
+
+### Changed
+- **Frontend V1 Closed**: The dedicated `frontend/` application now completes its planned V1 implementation tracker, covering shell, folder/config management, run observe/control flows, styling normalization, and validation-pass test coverage.
+
+### Verified
+- **Frontend Release Validation**: The frontend release baseline has been verified with `npm run build`, `npm test`, and isolated Playwright execution at `26/26` while leaving the user-managed backend on `8080` untouched.
+
 ## [Repository Integration Baseline] - 2026-03-18
 
 ### Added
