@@ -1,7 +1,11 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { appEnvironment } from '../config/app-environment';
-import { PipelineRunDetailInfo, PipelineRunSummaryInfo } from '../../shared/models/sync-pipeline.model';
+import {
+  PipelineExecuteRequest,
+  PipelineRunDetailInfo,
+  PipelineRunSummaryInfo,
+} from '../../shared/models/sync-pipeline.model';
 
 @Injectable({
   providedIn: 'root',
@@ -9,6 +13,12 @@ import { PipelineRunDetailInfo, PipelineRunSummaryInfo } from '../../shared/mode
 export class SyncPipelineApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = appEnvironment.apiBaseUrl;
+
+  executePipeline(request: PipelineExecuteRequest, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
+    return this.http.post<PipelineRunSummaryInfo>(`${this.baseUrl}/api/v1/sync-pipeline`, request, {
+      headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
+    });
+  }
 
   recentRuns(workspaceKey: string = appEnvironment.defaultWorkspaceKey, limit: number = 20) {
     return this.http.get<PipelineRunSummaryInfo[]>(`${this.baseUrl}/api/v1/sync-pipeline/recent`, {

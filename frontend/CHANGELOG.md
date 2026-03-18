@@ -4,6 +4,20 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Pipeline Overview Slice] - 2026-03-18
+
+### Added
+- **Pipeline Overview E2E Coverage**: Added Playwright coverage for real pipeline overview rendering, recent run preview rendering, preview-to-inspector navigation, and execute-to-run navigation.
+
+### Changed
+- **Pipeline Overview Page**: Replaced the overview placeholder with real config summary loading, recent run preview loading, route-safe tab links, and a working execute action against the backend pipeline control API.
+- **Sync Pipeline API Client**: Added typed pipeline execute support to the frontend API layer so overview and later control flows can create logical runs through the same shared contract client.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark the pipeline overview slice as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `8/8`, including the new pipeline overview real-data and execute flow scenario.
+
 ## [Run Data Integration Slice] - 2026-03-18
 
 ### Added

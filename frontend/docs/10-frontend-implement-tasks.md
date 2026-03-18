@@ -143,10 +143,10 @@ Status markers:
 ## 11. Pipeline Overview
 
 - [x] Add overview placeholder page
-- [ ] Load selected pipeline summary
-- [ ] Load recent runs preview
-- [ ] Wire execute action
-- [ ] Sync run selection into inspector
+- [x] Load selected pipeline summary
+- [x] Load recent runs preview
+- [x] Wire execute action
+- [x] Sync run selection into inspector
 
 ## 12. Config Editor
 
@@ -210,6 +210,7 @@ Status markers:
 - [x] Add route navigation smoke test
 - [x] Add recent activity data render test
 - [x] Add pipeline history data render test
+- [x] Add pipeline overview data and execute test
 - [x] Add run inspector data render test
 - [x] Add CI-friendly Chromium test run
 
