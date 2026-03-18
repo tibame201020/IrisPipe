@@ -105,7 +105,7 @@ Use:
 - HTML templates
 - CSS
 - Tailwind CSS
-- Angular application builder with Vite-powered dev/build flow
+- Angular application builder with a Vite-backed dev server
 
 State model:
 - `signal()` for local mutable state

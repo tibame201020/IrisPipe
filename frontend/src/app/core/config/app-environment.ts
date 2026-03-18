@@ -1,6 +1,6 @@
 export const appEnvironment = {
   appName: 'IrisPipe',
-  apiBaseUrl: 'http://localhost:8080',
+  apiBaseUrl: '',
   defaultWorkspaceKey: 'default',
   polling: {
     recentMs: 5000,
