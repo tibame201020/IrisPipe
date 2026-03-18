@@ -1,9 +1,30 @@
 <header class="app-panel header" data-testid="shell-header">
-  <div class="brand">
-    <span class="brand-mark">IP</span>
-    <div>
-      <h1>IrisPipe</h1>
-      <p class="app-meta">Desktop-first pipeline manager and execution console</p>
+  <div class="header-main">
+    @if (shellLayout.isCompact()) {
+      <div class="header-toggles">
+        <button
+          class="app-button-secondary header-toggle"
+          type="button"
+          data-testid="shell-header-toggle-sidebar"
+          (click)="shellLayout.toggleSidebar()">
+          Navigation
+        </button>
+        <button
+          class="app-button-secondary header-toggle"
+          type="button"
+          data-testid="shell-header-toggle-inspector"
+          (click)="shellLayout.toggleInspector()">
+          Inspector
+        </button>
+      </div>
+    }
+
+    <div class="brand">
+      <span class="brand-mark">IP</span>
+      <div>
+        <h1>IrisPipe</h1>
+        <p class="app-meta">Desktop-first pipeline manager and execution console</p>
+      </div>
     </div>
   </div>
 

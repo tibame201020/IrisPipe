@@ -4,13 +4,8 @@
   } @else if (loadError(); as loadError) {
     <app-app-empty-state title="Pipeline overview unavailable" [description]="loadError" />
   } @else if (pipeline(); as pipeline) {
-    <header class="page-header">
-      <div>
-        <p class="app-meta">Pipeline</p>
-        <h2 class="app-section-title">{{ pipeline.pipelineName }}</h2>
-        <p class="app-meta">Folder: {{ pipeline.folderPath }}</p>
-      </div>
-      <div class="actions">
+    <app-page-toolbar [eyebrow]="'Pipeline'" [title]="pipeline.pipelineName" [subtitle]="'Folder: ' + pipeline.folderPath">
+      <div pageToolbarActions class="actions">
         <button
           class="app-button-primary"
           type="button"
@@ -21,13 +16,9 @@
         </button>
         <button class="app-button-secondary" type="button" (click)="refresh()">Refresh</button>
       </div>
-    </header>
+    </app-page-toolbar>
 
-    <nav class="tabs">
-      <a class="tab" [routerLink]="['/pipelines', pipeline.id]" routerLinkActive="tab--active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
-      <a class="tab" [routerLink]="['/pipelines', pipeline.id, 'config']" routerLinkActive="tab--active">Config</a>
-      <a class="tab" [routerLink]="['/pipelines', pipeline.id, 'runs']" routerLinkActive="tab--active">Runs</a>
-    </nav>
+    <app-page-tabs [tabs]="tabs()" />
 
     <section class="summary-grid">
       <div class="summary-card">

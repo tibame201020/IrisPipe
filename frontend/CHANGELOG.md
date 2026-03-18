@@ -4,6 +4,23 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Shell Continuity And Shared UI Slice] - 2026-03-18
+
+### Added
+- **Shared Page Components**: Added reusable page toolbar, page tabs, and row action menu components so overview/history/config/folder pages no longer each own their own header or tab markup.
+- **Compact Shell Coverage**: Added Playwright coverage for compact-width shell behavior, including sidebar and inspector toggle controls.
+- **Inspector Continuity Coverage**: Added Playwright coverage proving that the shared inspector keeps the selected run loaded across in-app page transitions.
+
+### Changed
+- **Responsive Shell Layout**: Added a shell layout state facade and a compact collapse strategy that turns the sidebar and inspector into toggled overlays at narrower widths instead of forcing a broken three-column layout.
+- **Run Route Bridge**: Moved run-route selection responsibility into the shell layer so `/runs/:pipelineRunId` updates the shared inspector directly and the selected run remains stable when navigating back to pipeline pages.
+- **Folder View Actions**: Replaced per-page ad hoc row menu markup with the shared row action menu component.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark responsive collapse, shared toolbar/tabs/row action components, and inspector continuity as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `22/22`, including compact shell and inspector continuity scenarios.
+
 ## [Starter Pipeline Create Slice] - 2026-03-18
 
 ### Added

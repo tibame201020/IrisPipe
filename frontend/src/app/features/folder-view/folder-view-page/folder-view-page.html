@@ -2,18 +2,14 @@
   @if (treeFacade.isLoading() && !selectedFolder()) {
     <app-app-empty-state title="Loading folder" description="Resolving selected folder from the workspace tree." />
   } @else if (selectedFolder(); as folder) {
-    <header class="page-header">
-      <div>
-        <p class="app-meta">Breadcrumb</p>
-        <h2 class="app-section-title">{{ folder.folderPath }}</h2>
-      </div>
-      <div class="actions">
+    <app-page-toolbar [eyebrow]="'Breadcrumb'" [title]="folder.folderPath">
+      <div pageToolbarActions class="actions">
         <button class="app-button-primary" type="button" data-testid="folder-view-create-folder" [disabled]="isActionPending()" (click)="openCreateFolderDialog()">New Folder</button>
         <button class="app-button-secondary" type="button" data-testid="folder-view-create-pipeline" [disabled]="isActionPending()" (click)="openCreatePipelineDialog()">New Pipeline</button>
         <button class="app-button-secondary" type="button" data-testid="folder-view-import-pipeline" [disabled]="isActionPending()" (click)="openImportPipelineDialog()">Import Pipeline</button>
         <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="refresh()">Refresh</button>
       </div>
-    </header>
+    </app-page-toolbar>
 
     @if (actionMessage(); as actionMessage) {
       <div class="feedback-banner feedback-banner--success" data-testid="folder-view-success">
@@ -68,20 +64,10 @@
             </div>
             <div class="row-actions row-actions--menu">
               <button class="app-button-secondary" type="button" (click)="openFolder(childFolder.id)">Open</button>
-              <button
-                class="app-button-secondary"
-                type="button"
-                [attr.data-testid]="'folder-view-folder-menu-button-' + childFolder.id"
-                (click)="toggleFolderMenu(childFolder.id)">
-                More
-              </button>
-
-              @if (isFolderMenuOpen(childFolder.id)) {
-                <div class="context-menu" [attr.data-testid]="'folder-view-folder-menu-' + childFolder.id">
-                  <button class="context-menu__item" type="button" (click)="openFolder(childFolder.id)">Open Folder</button>
-                  <button class="context-menu__item" type="button" (click)="startRenameFolder(childFolder.id, childFolder.folderName)">Rename</button>
-                </div>
-              }
+              <app-row-action-menu
+                [items]="folderMenuItems(childFolder.id, childFolder.folderName)"
+                [triggerTestId]="'folder-view-folder-menu-button-' + childFolder.id"
+                [menuTestId]="'folder-view-folder-menu-' + childFolder.id" />
             </div>
           </div>
         }
@@ -101,21 +87,10 @@
             </div>
             <div class="row-actions row-actions--menu">
               <button class="app-button-secondary" type="button" (click)="openPipeline(pipeline.id)">Open</button>
-              <button
-                class="app-button-secondary"
-                type="button"
-                [attr.data-testid]="'folder-view-pipeline-menu-button-' + pipeline.id"
-                (click)="togglePipelineMenu(pipeline.id)">
-                More
-              </button>
-
-              @if (isPipelineMenuOpen(pipeline.id)) {
-                <div class="context-menu" [attr.data-testid]="'folder-view-pipeline-menu-' + pipeline.id">
-                  <button class="context-menu__item" type="button" (click)="openPipelineOverview(pipeline.id)">Open Overview</button>
-                  <button class="context-menu__item" type="button" (click)="openPipelineConfig(pipeline.id)">Open Config</button>
-                  <button class="context-menu__item" type="button" (click)="openPipelineHistory(pipeline.id)">Open Runs</button>
-                </div>
-              }
+              <app-row-action-menu
+                [items]="pipelineMenuItems(pipeline.id)"
+                [triggerTestId]="'folder-view-pipeline-menu-button-' + pipeline.id"
+                [menuTestId]="'folder-view-pipeline-menu-' + pipeline.id" />
             </div>
           </div>
         }

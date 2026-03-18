@@ -45,7 +45,7 @@ Status markers:
 - [x] Create right inspector placeholder
 - [x] Create shell status bar placeholder
 - [x] Keep shell regions independently scrollable
-- [ ] Add responsive collapse strategy for narrower widths
+- [x] Add responsive collapse strategy for narrower widths
 
 ## 3. Routing
 
@@ -96,9 +96,9 @@ Status markers:
 - [x] Add `AppEmptyState`
 - [x] Add `AppConfirmDialog`
 - [x] Add `AppSkeleton`
-- [ ] Add reusable page toolbar component
-- [ ] Add reusable page tabs component
-- [ ] Add reusable list row action component
+- [x] Add reusable page toolbar component
+- [x] Add reusable page tabs component
+- [x] Add reusable list row action component
 
 ## 7. Folder View
 
@@ -167,7 +167,7 @@ Status markers:
 - [x] Sync sidebar tree with current route
 - [x] Sync selecting a pipeline row to route navigation
 - [x] Sync selecting a recent/history row to run route
-- [ ] Keep inspector stable across page transitions
+- [x] Keep inspector stable across page transitions
 
 ## 14. Feedback And State UX
 

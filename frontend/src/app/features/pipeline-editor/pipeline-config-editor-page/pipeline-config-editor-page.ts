@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
 import {
   ConfigPipelineInfo,
@@ -14,10 +14,12 @@ import { ToastService } from '../../../core/state/toast.service';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
 import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
 import { AppConfirmDialog } from '../../../shared/components/app-confirm-dialog/app-confirm-dialog';
+import { AppPageTabs, AppPageTab } from '../../../shared/components/app-page-tabs/app-page-tabs';
+import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
 
 @Component({
   selector: 'app-pipeline-config-editor-page',
-  imports: [FormsModule, RouterLink, RouterLinkActive, AppEmptyState, AppSkeleton, AppConfirmDialog],
+  imports: [FormsModule, AppEmptyState, AppSkeleton, AppConfirmDialog, AppPageTabs, AppPageToolbar],
   templateUrl: './pipeline-config-editor-page.html',
   styleUrl: './pipeline-config-editor-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -57,6 +59,18 @@ export class PipelineConfigEditorPage {
     return job.executions[this.selectedStepIndex()] ?? null;
   });
   protected readonly validationMessages = computed(() => this.collectValidationMessages(this.draft()));
+  protected readonly tabs = computed<AppPageTab[]>(() => {
+    const pipelineId = this.pipelineId();
+    if (pipelineId === null) {
+      return [];
+    }
+
+    return [
+      { label: 'Overview', commands: ['/pipelines', pipelineId], exact: true },
+      { label: 'Config', commands: ['/pipelines', pipelineId, 'config'] },
+      { label: 'Runs', commands: ['/pipelines', pipelineId, 'runs'] },
+    ];
+  });
 
   private readonly routeSub = this.route.paramMap.subscribe((params) => {
     const rawPipelineId = params.get('pipelineId');

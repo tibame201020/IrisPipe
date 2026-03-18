@@ -1,0 +1,15 @@
+<header class="app-page-toolbar">
+  <div class="app-page-toolbar__main">
+    @if (eyebrow) {
+      <p class="app-meta">{{ eyebrow }}</p>
+    }
+    <h2 class="app-section-title">{{ title }}</h2>
+    @if (subtitle) {
+      <p class="app-meta">{{ subtitle }}</p>
+    }
+  </div>
+
+  <div class="app-page-toolbar__actions">
+    <ng-content select="[pageToolbarActions]" />
+  </div>
+</header>

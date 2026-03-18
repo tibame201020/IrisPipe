@@ -6,10 +6,21 @@
   margin: 16px 16px 0;
 }
 
+.header-main,
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-main {
+  min-width: 0;
+}
+
+.header-toggles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .brand h1 {
@@ -39,4 +50,18 @@
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
+}
+
+@media (max-width: 1240px) {
+  .header {
+    gap: 12px;
+  }
+
+  .header-main {
+    flex: 1;
+  }
+
+  .brand p {
+    display: none;
+  }
 }

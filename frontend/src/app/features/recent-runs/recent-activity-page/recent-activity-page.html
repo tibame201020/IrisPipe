@@ -1,11 +1,9 @@
 <section class="page app-panel">
-  <header class="page-header">
-    <div>
-      <h2 class="app-section-title">Recent Activity</h2>
-      <p class="app-meta">Workspace: {{ workspaceFacade.workspaceKey() }} / polling every 5 seconds</p>
-    </div>
-    <button class="app-button-secondary" type="button" (click)="refresh()">Refresh</button>
-  </header>
+  <app-page-toolbar
+    [title]="'Recent Activity'"
+    [subtitle]="'Workspace: ' + workspaceFacade.workspaceKey() + ' / polling every 5 seconds'">
+    <button pageToolbarActions class="app-button-secondary" type="button" (click)="refresh()">Refresh</button>
+  </app-page-toolbar>
 
   @if (isLoading() && !hasRuns()) {
     <app-app-skeleton />

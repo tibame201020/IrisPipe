@@ -1,0 +1,23 @@
+<div class="app-row-action-menu-anchor">
+  <button
+    class="app-button-secondary"
+    type="button"
+    [attr.data-testid]="triggerTestId"
+    (click)="toggle()">
+    {{ triggerLabel }}
+  </button>
+
+  @if (isOpen()) {
+    <div class="app-row-action-menu" [attr.data-testid]="menuTestId">
+      @for (item of items; track item.label) {
+        <button
+          class="app-row-action-menu__item"
+          type="button"
+          [attr.data-testid]="item.testId ?? null"
+          (click)="select(item)">
+          {{ item.label }}
+        </button>
+      }
+    </div>
+  }
+</div>

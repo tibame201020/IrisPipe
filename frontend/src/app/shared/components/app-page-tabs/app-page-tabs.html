@@ -1,0 +1,12 @@
+<nav class="app-page-tabs">
+  @for (tab of tabs; track tab.label) {
+    <a
+      class="app-page-tab"
+      [routerLink]="tab.commands"
+      routerLinkActive="app-page-tab--active"
+      [routerLinkActiveOptions]="{ exact: tab.exact ?? false }"
+      [attr.data-testid]="tab.testId ?? null">
+      {{ tab.label }}
+    </a>
+  }
+</nav>

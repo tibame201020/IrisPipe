@@ -10,10 +10,11 @@ import { appEnvironment } from '../../../core/config/app-environment';
 import { formatDateTime, formatTimeRange } from '../../../shared/utils/date-time';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
 import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
+import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
 
 @Component({
   selector: 'app-recent-activity-page',
-  imports: [StatusChip, AppEmptyState, AppSkeleton],
+  imports: [StatusChip, AppEmptyState, AppSkeleton, AppPageToolbar],
   templateUrl: './recent-activity-page.html',
   styleUrl: './recent-activity-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush

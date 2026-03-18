@@ -8,11 +8,13 @@ import { TreeFacade } from '../../../core/state/tree.facade';
 import { ToastService } from '../../../core/state/toast.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
+import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
+import { AppRowActionMenu, AppRowActionMenuItem } from '../../../shared/components/app-row-action-menu/app-row-action-menu';
 import { buildStarterPipelineRequest } from '../../../shared/utils/pipeline-starter';
 
 @Component({
   selector: 'app-folder-view-page',
-  imports: [FormsModule, AppEmptyState],
+  imports: [FormsModule, AppEmptyState, AppPageToolbar, AppRowActionMenu],
   templateUrl: './folder-view-page.html',
   styleUrl: './folder-view-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -31,7 +33,6 @@ export class FolderViewPage {
   protected readonly showCreateFolderDialog = signal(false);
   protected readonly showCreatePipelineDialog = signal(false);
   protected readonly showImportPipelineDialog = signal(false);
-  protected readonly activeMenu = signal<{ type: 'folder' | 'pipeline'; id: number } | null>(null);
   protected readonly renamingFolderId = signal<number | null>(null);
   protected readonly renameFolderName = signal('');
   protected readonly createFolderName = signal('');
@@ -64,47 +65,14 @@ export class FolderViewPage {
   }
 
   protected openFolder(folderId: number) {
-    this.activeMenu.set(null);
     void this.router.navigate(['/folders', folderId]);
   }
 
   protected openPipeline(pipelineId: number) {
-    this.activeMenu.set(null);
     void this.router.navigate(['/pipelines', pipelineId]);
   }
 
-  protected toggleFolderMenu(folderId: number) {
-    const activeMenu = this.activeMenu();
-    if (activeMenu?.type === 'folder' && activeMenu.id === folderId) {
-      this.activeMenu.set(null);
-      return;
-    }
-
-    this.activeMenu.set({ type: 'folder', id: folderId });
-  }
-
-  protected togglePipelineMenu(pipelineId: number) {
-    const activeMenu = this.activeMenu();
-    if (activeMenu?.type === 'pipeline' && activeMenu.id === pipelineId) {
-      this.activeMenu.set(null);
-      return;
-    }
-
-    this.activeMenu.set({ type: 'pipeline', id: pipelineId });
-  }
-
-  protected isFolderMenuOpen(folderId: number) {
-    const activeMenu = this.activeMenu();
-    return activeMenu?.type === 'folder' && activeMenu.id === folderId;
-  }
-
-  protected isPipelineMenuOpen(pipelineId: number) {
-    const activeMenu = this.activeMenu();
-    return activeMenu?.type === 'pipeline' && activeMenu.id === pipelineId;
-  }
-
   protected startRenameFolder(folderId: number, folderName: string) {
-    this.activeMenu.set(null);
     this.renamingFolderId.set(folderId);
     this.renameFolderName.set(folderName);
     this.actionError.set(null);
@@ -146,17 +114,14 @@ export class FolderViewPage {
   }
 
   protected openPipelineOverview(pipelineId: number) {
-    this.activeMenu.set(null);
     void this.router.navigate(['/pipelines', pipelineId]);
   }
 
   protected openPipelineConfig(pipelineId: number) {
-    this.activeMenu.set(null);
     void this.router.navigate(['/pipelines', pipelineId, 'config']);
   }
 
   protected openPipelineHistory(pipelineId: number) {
-    this.activeMenu.set(null);
     void this.router.navigate(['/pipelines', pipelineId, 'runs']);
   }
 
@@ -295,5 +260,20 @@ export class FolderViewPage {
     } finally {
       this.isActionPending.set(false);
     }
+  }
+
+  protected folderMenuItems(folderId: number, folderName: string): AppRowActionMenuItem[] {
+    return [
+      { label: 'Open Folder', onSelect: () => this.openFolder(folderId) },
+      { label: 'Rename', onSelect: () => this.startRenameFolder(folderId, folderName) },
+    ];
+  }
+
+  protected pipelineMenuItems(pipelineId: number): AppRowActionMenuItem[] {
+    return [
+      { label: 'Open Overview', onSelect: () => this.openPipelineOverview(pipelineId) },
+      { label: 'Open Config', onSelect: () => this.openPipelineConfig(pipelineId) },
+      { label: 'Open Runs', onSelect: () => this.openPipelineHistory(pipelineId) },
+    ];
   }
 }

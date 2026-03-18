@@ -26,4 +26,24 @@ test.describe('shell bootstrap', () => {
     await expect(page.getByTestId('shell-backend-warning')).toContainText('Backend unavailable');
     await expect(page.getByTestId('backend-status')).toContainText('DOWN');
   });
+
+  test('supports compact shell toggles on narrower widths', async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.goto('/recent');
+
+    await expect(page.getByTestId('shell-header-toggle-sidebar')).toBeVisible();
+    await expect(page.getByTestId('shell-header-toggle-inspector')).toBeVisible();
+    await expect(page.getByTestId('shell-overlay')).toHaveCount(0);
+
+    await page.getByTestId('shell-header-toggle-sidebar').click();
+    await expect(page.getByTestId('shell-sidebar-region')).toHaveClass(/shell-panel-region--open/);
+    await expect(page.getByTestId('shell-overlay')).toBeVisible();
+
+    await page.getByTestId('shell-overlay').click();
+    await expect(page.getByTestId('shell-sidebar-region')).not.toHaveClass(/shell-panel-region--open/);
+
+    await page.getByTestId('shell-header-toggle-inspector').click();
+    await expect(page.getByTestId('shell-inspector-region')).toHaveClass(/shell-panel-region--open/);
+    await expect(page.getByTestId('run-inspector')).toBeVisible();
+  });
 });

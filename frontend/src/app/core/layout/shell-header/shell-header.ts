@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { WorkspaceFacade } from '../../state/workspace.facade';
+import { ShellLayoutFacade } from '../../state/shell-layout.facade';
 
 @Component({
   selector: 'app-shell-header',
@@ -10,4 +11,5 @@ import { WorkspaceFacade } from '../../state/workspace.facade';
 })
 export class ShellHeader {
   protected readonly workspaceFacade = inject(WorkspaceFacade);
+  protected readonly shellLayout = inject(ShellLayoutFacade);
 }

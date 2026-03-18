@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, forkJoin } from 'rxjs';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
@@ -11,11 +11,13 @@ import { ConfigPipelineInfo } from '../../../shared/models/sync-config.model';
 import { PipelineRunSummaryInfo } from '../../../shared/models/sync-pipeline.model';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
 import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
+import { AppPageTabs, AppPageTab } from '../../../shared/components/app-page-tabs/app-page-tabs';
+import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
 import { formatDateTime, formatTimeRange } from '../../../shared/utils/date-time';
 
 @Component({
   selector: 'app-pipeline-overview-page',
-  imports: [StatusChip, RouterLink, RouterLinkActive, AppEmptyState, AppSkeleton],
+  imports: [StatusChip, RouterLink, AppEmptyState, AppSkeleton, AppPageTabs, AppPageToolbar],
   templateUrl: './pipeline-overview-page.html',
   styleUrl: './pipeline-overview-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -40,6 +42,18 @@ export class PipelineOverviewPage implements OnDestroy {
   protected readonly loadError = signal<string | null>(null);
   protected readonly isExecuting = signal(false);
   protected readonly executeError = signal<string | null>(null);
+  protected readonly tabs = computed<AppPageTab[]>(() => {
+    const pipelineId = this.pipelineId();
+    if (pipelineId === null) {
+      return [];
+    }
+
+    return [
+      { label: 'Overview', commands: ['/pipelines', pipelineId], exact: true },
+      { label: 'Config', commands: ['/pipelines', pipelineId, 'config'] },
+      { label: 'Runs', commands: ['/pipelines', pipelineId, 'runs'] },
+    ];
+  });
 
   private readonly routeSub = this.route.paramMap.subscribe((params) => {
     const rawPipelineId = params.get('pipelineId');

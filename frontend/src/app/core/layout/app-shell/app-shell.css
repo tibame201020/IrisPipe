@@ -21,10 +21,62 @@
   gap: 16px;
   min-height: 0;
   padding: 16px;
+  position: relative;
 }
 
 .shell-sidebar-region,
 .shell-main-region,
 .shell-inspector-region {
   min-height: 0;
+}
+
+.shell-main-region {
+  min-width: 0;
+}
+
+.shell-overlay {
+  display: none;
+}
+
+@media (max-width: 1240px) {
+  .shell-body.shell-body--compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    display: block;
+    border: 0;
+    background: var(--backdrop);
+  }
+
+  .shell-panel-region--compact {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(340px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+  }
+
+  .shell-sidebar-region.shell-panel-region--compact {
+    left: 0;
+    transform: translateX(-16px);
+  }
+
+  .shell-inspector-region.shell-panel-region--compact {
+    right: 0;
+    transform: translateX(16px);
+  }
+
+  .shell-panel-region--compact.shell-panel-region--open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
 }

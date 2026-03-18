@@ -1,12 +1,10 @@
 <section class="page app-panel">
   @if (runDetailFacade.detail(); as detail) {
-    <header class="page-header">
-      <div>
-        <p class="app-meta">Run Focus</p>
-        <h2 class="app-section-title">Run #{{ detail.id }}</h2>
-        <p class="app-meta">{{ detail.pipelineName }} / {{ detail.folderPath }}</p>
-      </div>
-      <div class="header-actions">
+    <app-page-toolbar
+      [eyebrow]="'Run Focus'"
+      [title]="'Run #' + detail.id"
+      [subtitle]="detail.pipelineName + ' / ' + detail.folderPath">
+      <div pageToolbarActions class="header-actions">
         <a
           class="app-button-secondary"
           data-testid="run-detail-focus-overview-link"
@@ -21,7 +19,7 @@
         </a>
         <app-status-chip [status]="detail.status" />
       </div>
-    </header>
+    </app-page-toolbar>
 
     <section class="detail-grid">
       <div class="detail-card">

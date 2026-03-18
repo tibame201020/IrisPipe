@@ -1,0 +1,18 @@
+.app-page-toolbar,
+.app-page-toolbar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-page-toolbar__main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.app-page-toolbar__actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
