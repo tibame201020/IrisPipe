@@ -9,6 +9,7 @@
       </div>
       <div class="actions">
         <button class="app-button-primary" type="button" data-testid="folder-view-create-folder" [disabled]="isActionPending()" (click)="openCreateFolderDialog()">New Folder</button>
+        <button class="app-button-secondary" type="button" data-testid="folder-view-create-pipeline" [disabled]="isActionPending()" (click)="openCreatePipelineDialog()">New Pipeline</button>
         <button class="app-button-secondary" type="button" data-testid="folder-view-import-pipeline" [disabled]="isActionPending()" (click)="openImportPipelineDialog()">Import Pipeline</button>
         <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="refresh()">Refresh</button>
       </div>
@@ -201,6 +202,38 @@
             [disabled]="!canImportPipeline()"
             (click)="importPipeline()">
             {{ isActionPending() ? 'Importing...' : 'Import Pipeline' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showCreatePipelineDialog()) {
+    <div class="dialog-backdrop" data-testid="folder-view-create-pipeline-dialog">
+      <div class="dialog-panel app-panel">
+        <div class="dialog-header">
+          <h3 class="app-section-title">Create Pipeline</h3>
+          <p class="app-meta">Creates a starter pipeline with one EXECUTE step and placeholder database settings.</p>
+        </div>
+
+        <label class="field">
+          <span>Pipeline Name</span>
+          <input
+            type="text"
+            data-testid="folder-view-create-pipeline-name"
+            [ngModel]="createPipelineName()"
+            (ngModelChange)="createPipelineName.set($event)" />
+        </label>
+
+        <div class="dialog-actions">
+          <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="closeCreatePipelineDialog()">Cancel</button>
+          <button
+            class="app-button-primary"
+            type="button"
+            data-testid="folder-view-create-pipeline-confirm"
+            [disabled]="!canCreatePipeline()"
+            (click)="createPipeline()">
+            {{ isActionPending() ? 'Creating...' : 'Create Pipeline' }}
           </button>
         </div>
       </div>

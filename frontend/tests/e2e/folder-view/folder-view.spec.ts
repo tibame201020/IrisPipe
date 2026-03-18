@@ -60,6 +60,25 @@ test.describe('folder view', () => {
     await expect(page.getByTestId('sidebar-tree')).toContainText(pipelineName);
   });
 
+  test('creates a starter pipeline from the folder view and opens config editor', async ({ page, request }) => {
+    const parentFolder = await createFolder(request, uniqueName('pw-create-pipeline-parent'));
+    const pipelineName = uniqueName('pw-create-pipeline');
+
+    await page.goto(`/folders/${parentFolder.id}`);
+
+    await page.getByTestId('folder-view-create-pipeline').click();
+    await expect(page.getByTestId('folder-view-create-pipeline-dialog')).toBeVisible();
+    await page.getByTestId('folder-view-create-pipeline-name').fill(pipelineName);
+    await page.getByTestId('folder-view-create-pipeline-confirm').click();
+
+    await expect(page).toHaveURL(/\/pipelines\/\d+\/config$/);
+    await expect(page.getByRole('heading', { name: pipelineName })).toBeVisible();
+    await expect(page.getByTestId('pipeline-config-editor-name-input')).toHaveValue(pipelineName);
+    await expect(page.getByTestId('pipeline-config-editor-job-outline')).toContainText('_job');
+    await expect(page.getByTestId('pipeline-config-editor-step-type-input')).toHaveValue('EXECUTE');
+    await expect(page.getByTestId('sidebar-tree')).toContainText(pipelineName);
+  });
+
   test('renames a folder inline and opens pipeline routes from the row menu', async ({ page, request }) => {
     const parentFolder = await createFolder(request, uniqueName('pw-folder-menu-parent'));
     const childFolder = await createFolder(request, uniqueName('pw-folder-menu-child'), parentFolder.id);

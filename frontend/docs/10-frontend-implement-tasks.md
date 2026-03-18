@@ -106,7 +106,7 @@ Status markers:
 - [x] Load real folder tree / selected folder data
 - [x] Render real subfolders and pipelines
 - [x] Add create folder flow
-- [ ] Add create pipeline flow
+- [x] Add create pipeline flow
 - [x] Add import pipeline flow
 - [x] Add row context menu
 - [x] Add inline rename behavior
@@ -211,6 +211,7 @@ Status markers:
 - [x] Add route navigation smoke test
 - [x] Add folder view and tree selection sync test
 - [x] Add folder create and pipeline import test
+- [x] Add starter pipeline create test
 - [x] Add recent activity data render test
 - [x] Add pipeline history data render test
 - [x] Add pipeline overview data and execute test

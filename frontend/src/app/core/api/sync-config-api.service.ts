@@ -14,6 +14,15 @@ export class SyncConfigApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = appEnvironment.apiBaseUrl;
 
+  createPipeline(
+    request: ConfigPipelineUpsertRequest,
+    workspaceKey: string = appEnvironment.defaultWorkspaceKey
+  ) {
+    return this.http.post<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config`, request, {
+      headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
+    });
+  }
+
   listPipelines(workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
     return this.http.get<ConfigPipelineSummary[]>(`${this.baseUrl}/api/v1/sync-config`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })

@@ -4,6 +4,21 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Starter Pipeline Create Slice] - 2026-03-18
+
+### Added
+- **Starter Pipeline E2E Coverage**: Added Playwright coverage for creating a pipeline from the folder view, navigating into the config editor, and verifying the seeded starter structure.
+- **Starter Pipeline Template**: Added a frontend-side starter pipeline request builder that emits a backend-compatible non-empty payload instead of pretending the backend accepts a blank pipeline config.
+
+### Changed
+- **Folder View Actions**: Added a `New Pipeline` dialog to the folder view so the frontend can create a starter pipeline directly inside the selected folder.
+- **Sync Config API Client**: Added typed JSON create support for pipeline config creation through `POST /api/v1/sync-config`.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark the create-pipeline flow and its Playwright coverage as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `20/20`, including starter pipeline creation through the real backend contract.
+
 ## [History Refresh Slice] - 2026-03-18
 
 ### Added

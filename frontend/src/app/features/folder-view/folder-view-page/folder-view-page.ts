@@ -8,6 +8,7 @@ import { TreeFacade } from '../../../core/state/tree.facade';
 import { ToastService } from '../../../core/state/toast.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
+import { buildStarterPipelineRequest } from '../../../shared/utils/pipeline-starter';
 
 @Component({
   selector: 'app-folder-view-page',
@@ -28,11 +29,13 @@ export class FolderViewPage {
   protected readonly actionError = signal<string | null>(null);
   protected readonly actionMessage = signal<string | null>(null);
   protected readonly showCreateFolderDialog = signal(false);
+  protected readonly showCreatePipelineDialog = signal(false);
   protected readonly showImportPipelineDialog = signal(false);
   protected readonly activeMenu = signal<{ type: 'folder' | 'pipeline'; id: number } | null>(null);
   protected readonly renamingFolderId = signal<number | null>(null);
   protected readonly renameFolderName = signal('');
   protected readonly createFolderName = signal('');
+  protected readonly createPipelineName = signal('');
   protected readonly importPipelineName = signal('');
   protected readonly importFile = signal<File | null>(null);
   protected readonly importFileName = signal('');
@@ -51,6 +54,9 @@ export class FolderViewPage {
     return !this.isActionPending()
       && this.importPipelineName().trim().length > 0
       && this.importFile() !== null;
+  });
+  protected readonly canCreatePipeline = computed(() => {
+    return !this.isActionPending() && this.createPipelineName().trim().length > 0;
   });
 
   protected refresh() {
@@ -174,6 +180,17 @@ export class FolderViewPage {
     this.showImportPipelineDialog.set(true);
   }
 
+  protected openCreatePipelineDialog() {
+    this.createPipelineName.set('');
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+    this.showCreatePipelineDialog.set(true);
+  }
+
+  protected closeCreatePipelineDialog() {
+    this.showCreatePipelineDialog.set(false);
+  }
+
   protected closeImportPipelineDialog() {
     this.showImportPipelineDialog.set(false);
   }
@@ -212,6 +229,35 @@ export class FolderViewPage {
     } catch {
       this.actionError.set('Failed to create folder.');
       this.toastService.error('Failed to create folder.');
+    } finally {
+      this.isActionPending.set(false);
+    }
+  }
+
+  protected async createPipeline() {
+    const selectedFolder = this.selectedFolder();
+    const pipelineName = this.createPipelineName().trim();
+    if (!selectedFolder || !this.canCreatePipeline()) {
+      return;
+    }
+
+    this.isActionPending.set(true);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+
+    try {
+      const pipeline = await firstValueFrom(this.syncConfigApi.createPipeline(
+        buildStarterPipelineRequest(selectedFolder.id, pipelineName),
+        this.workspaceFacade.workspaceKey()
+      ));
+      this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
+      this.showCreatePipelineDialog.set(false);
+      this.actionMessage.set('Starter pipeline created.');
+      this.toastService.success('Starter pipeline created.');
+      await this.router.navigate(['/pipelines', pipeline.id, 'config']);
+    } catch {
+      this.actionError.set('Failed to create pipeline.');
+      this.toastService.error('Failed to create pipeline.');
     } finally {
       this.isActionPending.set(false);
     }
