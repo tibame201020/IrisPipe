@@ -9,6 +9,7 @@ import {
   prepareStopJobRuntimeTables,
   seedPipelineRuntimeSourceRows,
 } from '../../support/fixtures/pipeline-test-data';
+import { playwrightRuntimeJdbcUrl } from '../../support/fixtures/runtime-jdbc';
 import { stopPipelineRun, waitForPipelineRunStatus } from '../../support/api/backend-api';
 
 function stopJobPipelineYamlForPlaywright() {
@@ -17,7 +18,7 @@ function stopJobPipelineYamlForPlaywright() {
     'utf8',
   );
 
-  return source.replaceAll('jdbc:h2:./h2data/data', 'jdbc:h2:./h2data/playwright');
+  return source.replaceAll('jdbc:h2:./h2data/data', playwrightRuntimeJdbcUrl);
 }
 
 test.describe('pipeline history', () => {
@@ -126,7 +127,8 @@ test.describe('pipeline history', () => {
       intervalMs: 500,
     });
 
-    const historyResponse = await request.get(`http://127.0.0.1:8080/api/v1/sync-pipeline?pipelineId=${pipeline.id}&limit=5`, {
+    const backendBaseUrl = process.env.PLAYWRIGHT_BACKEND_BASE_URL ?? 'http://127.0.0.1:8080';
+    const historyResponse = await request.get(`${backendBaseUrl}/api/v1/sync-pipeline?pipelineId=${pipeline.id}&limit=5`, {
       headers: {
         'X-Iris-Workspace-Key': 'default',
       },

@@ -12,17 +12,17 @@
     </app-page-toolbar>
 
     @if (actionMessage(); as actionMessage) {
-      <div class="feedback-banner feedback-banner--success" data-testid="folder-view-success">
+      <div class="app-feedback-banner app-feedback-banner--success" data-testid="folder-view-success">
         {{ actionMessage }}
       </div>
     }
 
     @if (actionError(); as actionError) {
-      <div class="feedback-banner feedback-banner--error" data-testid="folder-view-error">
+      <div class="app-feedback-banner app-feedback-banner--error" data-testid="folder-view-error">
         {{ actionError }}
       </div>
       @if (actionErrorDetails().length > 0) {
-        <ul class="feedback-details" data-testid="folder-view-error-details">
+        <ul class="app-feedback-details" data-testid="folder-view-error-details">
           @for (detail of actionErrorDetails(); track detail) {
             <li>{{ detail }}</li>
           }

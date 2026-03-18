@@ -45,17 +45,17 @@
     <app-page-tabs [tabs]="tabs()" />
 
     @if (actionMessage(); as actionMessage) {
-      <div class="feedback-banner feedback-banner--success" data-testid="pipeline-config-editor-success">
+      <div class="app-feedback-banner app-feedback-banner--success" data-testid="pipeline-config-editor-success">
         {{ actionMessage }}
       </div>
     }
 
     @if (actionError(); as actionError) {
-      <div class="feedback-banner feedback-banner--error" data-testid="pipeline-config-editor-error">
+      <div class="app-feedback-banner app-feedback-banner--error" data-testid="pipeline-config-editor-error">
         {{ actionError }}
       </div>
       @if (actionErrorDetails().length > 0) {
-        <ul class="feedback-details" data-testid="pipeline-config-editor-error-details">
+        <ul class="app-feedback-details" data-testid="pipeline-config-editor-error-details">
           @for (detail of actionErrorDetails(); track detail) {
             <li>{{ detail }}</li>
           }

@@ -7,20 +7,21 @@
 .shell-warning {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid rgba(220, 38, 38, 0.16);
   background: rgba(254, 242, 242, 0.9);
   color: #991b1b;
-  font-size: 13px;
+  font-size: var(--font-body-sm);
   font-weight: 600;
+  line-height: var(--line-body-sm);
 }
 
 .shell-body {
   display: grid;
   grid-template-columns: var(--shell-sidebar-width) minmax(0, 1fr) var(--shell-inspector-width);
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 0;
-  padding: 16px;
+  padding: var(--space-4);
   position: relative;
 }
 
@@ -66,12 +67,12 @@
 
   .shell-sidebar-region.shell-panel-region--compact {
     left: 0;
-    transform: translateX(-16px);
+    transform: translateX(calc(-1 * var(--space-4)));
   }
 
   .shell-inspector-region.shell-panel-region--compact {
     right: 0;
-    transform: translateX(16px);
+    transform: translateX(var(--space-4));
   }
 
   .shell-panel-region--compact.shell-panel-region--open {

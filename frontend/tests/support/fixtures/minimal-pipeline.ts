@@ -1,3 +1,5 @@
+import { playwrightRuntimeJdbcUrl } from './runtime-jdbc';
+
 function normalizeToken(value: string) {
   return value.replace(/[^a-zA-Z0-9_]/g, '_');
 }
@@ -25,12 +27,12 @@ export function minimalPipelineYaml(seed = 'playwright') {
   database:
     source:
       driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
+      url: ${playwrightRuntimeJdbcUrl}
       username: sa
       password: "sa"
     dest:
       driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
+      url: ${playwrightRuntimeJdbcUrl}
       username: sa
       password: "sa"
 `;

@@ -36,38 +36,45 @@ button {
 
 .app-section-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--font-title-md);
   font-weight: 600;
-  line-height: 24px;
+  line-height: var(--line-title-md);
+}
+
+.app-page-title {
+  margin: 0;
+  font-size: var(--font-title-lg);
+  font-weight: 600;
+  line-height: var(--line-title-lg);
 }
 
 .app-meta {
   color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: var(--font-body-sm);
+  line-height: var(--line-body-sm);
 }
 
 .app-chip {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 12px;
+  padding: 2px var(--space-2);
+  font-size: var(--font-meta-sm);
   font-weight: 600;
-  line-height: 16px;
+  line-height: var(--line-meta-sm);
 }
 
 .app-button-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 36px;
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--accent);
   color: #fff;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   text-decoration: none;
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
 }
@@ -76,13 +83,13 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 36px;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-sm);
   background: var(--panel-bg);
   color: var(--text-primary);
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   text-decoration: none;
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
 }
@@ -91,13 +98,13 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 36px;
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--danger-soft);
   color: var(--danger);
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   text-decoration: none;
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
 }
@@ -119,6 +126,35 @@ button {
 .app-button-danger:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.app-feedback-banner {
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) 14px;
+  font-size: var(--font-body-md);
+  line-height: var(--line-body-md);
+}
+
+.app-feedback-banner--success {
+  border: 1px solid color-mix(in srgb, var(--success) 20%, #fff);
+  background: color-mix(in srgb, var(--success) 10%, #fff);
+  color: var(--text-primary);
+}
+
+.app-feedback-banner--error {
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, #fff);
+  background: color-mix(in srgb, var(--danger-soft) 40%, #fff);
+  color: var(--danger);
+}
+
+.app-feedback-details {
+  display: grid;
+  gap: 4px;
+  margin: -6px 0 0;
+  padding-left: 20px;
+  color: var(--danger);
+  font-size: var(--font-body-sm);
+  line-height: var(--line-body-sm);
 }
 
 button:focus-visible,

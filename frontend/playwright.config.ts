@@ -3,7 +3,10 @@ import { defineConfig, devices } from '@playwright/test';
 const frontendPort = process.env.PLAYWRIGHT_FRONTEND_PORT ?? '4205';
 const backendPort = process.env.PLAYWRIGHT_BACKEND_PORT ?? '8080';
 const backendDatasourceUrl =
-  process.env.PLAYWRIGHT_BACKEND_DATASOURCE_URL ?? 'jdbc:h2:./h2data/playwright;AUTO_SERVER=true;DB_CLOSE_DELAY=-1';
+  process.env.PLAYWRIGHT_BACKEND_DATASOURCE_URL
+  ?? `jdbc:h2:./h2data/playwright-${backendPort}-${Date.now()};AUTO_SERVER=true;DB_CLOSE_DELAY=-1`;
+
+process.env.PLAYWRIGHT_RUNTIME_JDBC_URL ??= backendDatasourceUrl;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -31,6 +34,7 @@ export default defineConfig({
       env: {
         ...process.env,
         SPRING_DATASOURCE_URL: backendDatasourceUrl,
+        SERVER_PORT: backendPort,
       },
     },
     {
@@ -39,7 +43,10 @@ export default defineConfig({
       url: `http://localhost:${frontendPort}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,
-      env: process.env,
+      env: {
+        ...process.env,
+        IRISPIPE_PROXY_TARGET: `http://127.0.0.1:${backendPort}`,
+      },
     },
   ],
   projects: [

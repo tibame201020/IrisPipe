@@ -4,6 +4,23 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Styling Consistency And Isolated E2E Slice] - 2026-03-18
+
+### Added
+- **Proxy Target Override**: Replaced the static frontend proxy JSON with an env-aware proxy config so frontend dev and Playwright can target an isolated backend port without touching the user-managed `8080` backend instance.
+- **Runtime JDBC Fixture Helper**: Added a shared Playwright runtime JDBC helper so generated pipeline YAML and stop-job fixtures follow the active isolated backend datasource instead of hard-coding `./h2data/data`.
+
+### Changed
+- **Shared Design Tokens**: Expanded spacing and typography tokens and pushed them into the shared theme so button padding, metadata text, page titles, and surface spacing now come from one token layer.
+- **Shared Component Styling**: Refined page toolbar, page tabs, empty state, toast, and status chip styling to match the selected `Clean Productivity` design rules more closely.
+- **Page-Level Layout Consistency**: Normalized page gaps, panel padding, row density, inspector spacing, and summary card radius across folder view, config editor, overview, history, recent activity, and run detail.
+- **Test Fixture Alignment**: Updated Playwright runtime fixtures and history assertions to use the isolated backend base URL and datasource, removing implicit coupling to `8080` and `./h2data/data`.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark spacing/typography consistency and fixture alignment as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Isolated Playwright Validation**: Re-ran `npm run e2e` with `PLAYWRIGHT_BACKEND_PORT=8081` and `PLAYWRIGHT_BACKEND_BASE_URL=http://127.0.0.1:8081`; the suite passes `24/24` while leaving the user-managed `8080` backend untouched.
+
 ## [Phase 2 Contract Normalization And Error UX Slice] - 2026-03-18
 
 ### Added

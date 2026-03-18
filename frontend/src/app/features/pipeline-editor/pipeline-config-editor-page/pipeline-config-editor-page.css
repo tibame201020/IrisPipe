@@ -1,13 +1,12 @@
 .page {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--space-4);
   height: 100%;
   min-height: 0;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
-.page-header,
 .actions,
 .outline-header,
 .steps-header,
@@ -15,10 +14,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
-.page-header,
 .outline-header,
 .steps-header,
 .section-heading {
@@ -30,55 +28,10 @@
   justify-content: flex-end;
 }
 
-.tabs {
-  display: flex;
-  gap: 20px;
-  border-bottom: 1px solid var(--panel-border);
-  padding-bottom: 8px;
-}
-
-.tab {
-  color: var(--text-secondary);
-  text-decoration: none;
-}
-
-.tab--active {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.feedback-banner {
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.feedback-banner--success {
-  border: 1px solid color-mix(in srgb, var(--success, #2f855a) 20%, #fff);
-  background: color-mix(in srgb, var(--success, #2f855a) 10%, #fff);
-  color: var(--text-primary);
-}
-
-.feedback-banner--error {
-  border: 1px solid color-mix(in srgb, var(--danger) 22%, #fff);
-  background: color-mix(in srgb, var(--danger-soft) 40%, #fff);
-  color: var(--danger);
-}
-
-.feedback-details {
-  display: grid;
-  gap: 4px;
-  margin: -6px 0 0;
-  padding-left: 20px;
-  color: var(--danger);
-  font-size: 13px;
-}
-
 .editor-layout {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 0;
 }
 
@@ -86,7 +39,7 @@
 .job-editor {
   min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .job-outline,
@@ -94,7 +47,7 @@
 .outline-list,
 .steps-list {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .outline-list,
@@ -131,32 +84,32 @@
 .section,
 .section-block {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .section-block {
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
   background: var(--panel-subtle, #f8fafc);
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .section {
   border-top: 1px solid var(--panel-border);
-  padding-top: 16px;
+  padding-top: var(--space-4);
 }
 
 .section h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-body-md);
   font-weight: 600;
-  line-height: 20px;
+  line-height: var(--line-body-md);
 }
 
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .field-grid--pipeline {
@@ -182,9 +135,9 @@
 }
 
 .field span {
-  font-size: 13px;
+  font-size: var(--font-body-sm);
   font-weight: 600;
-  line-height: 18px;
+  line-height: var(--line-body-sm);
 }
 
 input,
@@ -195,7 +148,7 @@ textarea {
   border-radius: var(--radius-sm);
   background: var(--panel-bg);
   color: var(--text-primary);
-  padding: 10px 12px;
+  padding: 10px var(--space-3);
 }
 
 textarea {
@@ -205,11 +158,11 @@ textarea {
 
 .validation-panel {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   border: 1px solid color-mix(in srgb, var(--danger) 22%, #fff);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--danger-soft) 40%, #fff);
-  padding: 14px 16px;
+  padding: 14px var(--space-4);
 }
 
 .validation-panel ul {
@@ -230,14 +183,14 @@ textarea {
 
 .step-body {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   border-top: 1px solid var(--panel-border);
-  padding: 12px;
+  padding: var(--space-3);
 }
 
 .step-footer {
   border-top: 1px solid var(--panel-border);
-  padding-top: 12px;
+  padding-top: var(--space-3);
 }
 
 .dialog-backdrop {
@@ -246,20 +199,20 @@ textarea {
   display: grid;
   place-items: center;
   background: rgba(15, 23, 42, 0.28);
-  padding: 24px;
+  padding: var(--space-6);
   z-index: 20;
 }
 
 .dialog-panel {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   width: min(480px, 100%);
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 @media (max-width: 1200px) {

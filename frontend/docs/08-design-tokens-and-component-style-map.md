@@ -249,7 +249,7 @@ Shared row rules:
 ```text
 min-height: 40px
 padding-x: 12px
-padding-y: 10px
+padding-y: 12px
 border-bottom: panel-border
 hover-bg: row-hover
 selected-bg: row-selected
@@ -335,7 +335,7 @@ Recommended toast behavior:
 
 ```text
 position: top-right
-stack gap: 8px
+stack gap: 12px
 surface: panel-bg
 border: panel-border
 radius: radius-md

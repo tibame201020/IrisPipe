@@ -76,7 +76,7 @@ Status markers:
   - step summaries
   - run request payloads
 - [x] Add mapping helpers where raw backend payload should be normalized
-- [ ] Keep mock fixtures aligned with typed frontend contracts
+- [x] Keep mock fixtures aligned with typed frontend contracts
 
 ## 5. Core Integration
 
@@ -181,7 +181,7 @@ Status markers:
 ## 15. Styling Pass
 
 - [x] Add global token baseline
-- [ ] Apply selected spacing and typography rules consistently
+- [x] Apply selected spacing and typography rules consistently
 - [x] Apply status color mapping consistently
 - [x] Normalize button hierarchy across pages
 - [x] Normalize row density across folder/recent/history pages

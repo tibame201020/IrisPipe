@@ -1,16 +1,16 @@
 .inspector {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   height: 100%;
   min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .inspector-section {
   border-bottom: 1px solid var(--panel-border);
-  padding-bottom: 16px;
+  padding-bottom: var(--space-4);
 }
 
 .inspector-section:last-child {
@@ -22,20 +22,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .button-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .feedback-message {
-  margin: 8px 0 0;
-  font-size: 13px;
-  line-height: 18px;
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-body-sm);
+  line-height: var(--line-body-sm);
 }
 
 .feedback-message--success {
@@ -49,7 +49,7 @@
 .meta-stack {
   display: grid;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .dialog-backdrop {
@@ -64,12 +64,12 @@
 
 .dialog-panel {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   width: min(480px, 100%);
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--space-3);
 }

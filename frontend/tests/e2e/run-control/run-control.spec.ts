@@ -8,6 +8,7 @@ import {
 } from '../../support/api/backend-api';
 import { minimalPipelineYaml } from '../../support/fixtures/minimal-pipeline';
 import { prepareStopJobRuntimeTables } from '../../support/fixtures/pipeline-test-data';
+import { playwrightRuntimeJdbcUrl } from '../../support/fixtures/runtime-jdbc';
 import { uniqueName } from '../../support/fixtures/unique-name';
 
 function stopJobPipelineYamlForPlaywright() {
@@ -16,7 +17,7 @@ function stopJobPipelineYamlForPlaywright() {
     'utf8',
   );
 
-  return source.replaceAll('jdbc:h2:./h2data/data', 'jdbc:h2:./h2data/playwright');
+  return source.replaceAll('jdbc:h2:./h2data/data', playwrightRuntimeJdbcUrl);
 }
 
 test.describe('run control', () => {
