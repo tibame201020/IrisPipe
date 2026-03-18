@@ -40,11 +40,48 @@
       @if (subfolders().length > 0) {
         @for (childFolder of subfolders(); track childFolder.id) {
           <div class="row" [attr.data-testid]="'folder-view-folder-' + childFolder.id">
-            <div>
-              <div>{{ childFolder.folderName }}</div>
-              <div class="app-meta">{{ childFolder.folderPath }}</div>
+            <div class="row-main">
+              @if (renamingFolderId() === childFolder.id) {
+                <div class="inline-rename" data-testid="folder-view-rename-inline">
+                  <input
+                    type="text"
+                    [attr.data-testid]="'folder-view-rename-input-' + childFolder.id"
+                    [ngModel]="renameFolderName()"
+                    (ngModelChange)="renameFolderName.set($event)" />
+                  <div class="row-actions">
+                    <button
+                      class="app-button-primary"
+                      type="button"
+                      [attr.data-testid]="'folder-view-rename-save-' + childFolder.id"
+                      [disabled]="isActionPending() || !renameFolderName().trim()"
+                      (click)="submitRenameFolder(selectedFolder()?.id ?? null)">
+                      {{ isActionPending() ? 'Saving...' : 'Save' }}
+                    </button>
+                    <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="cancelRenameFolder()">Cancel</button>
+                  </div>
+                </div>
+              } @else {
+                <div>{{ childFolder.folderName }}</div>
+                <div class="app-meta">{{ childFolder.folderPath }}</div>
+              }
             </div>
-            <button class="app-button-secondary" type="button" (click)="openFolder(childFolder.id)">Open</button>
+            <div class="row-actions row-actions--menu">
+              <button class="app-button-secondary" type="button" (click)="openFolder(childFolder.id)">Open</button>
+              <button
+                class="app-button-secondary"
+                type="button"
+                [attr.data-testid]="'folder-view-folder-menu-button-' + childFolder.id"
+                (click)="toggleFolderMenu(childFolder.id)">
+                More
+              </button>
+
+              @if (isFolderMenuOpen(childFolder.id)) {
+                <div class="context-menu" [attr.data-testid]="'folder-view-folder-menu-' + childFolder.id">
+                  <button class="context-menu__item" type="button" (click)="openFolder(childFolder.id)">Open Folder</button>
+                  <button class="context-menu__item" type="button" (click)="startRenameFolder(childFolder.id, childFolder.folderName)">Rename</button>
+                </div>
+              }
+            </div>
           </div>
         }
       } @else {
@@ -57,12 +94,27 @@
       @if (pipelines().length > 0) {
         @for (pipeline of pipelines(); track pipeline.id) {
           <div class="row" [attr.data-testid]="'folder-view-pipeline-' + pipeline.id">
-            <div>
+            <div class="row-main">
               <div>{{ pipeline.pipelineName }}</div>
               <div class="app-meta">{{ pipeline.folderPath }}</div>
             </div>
-            <div class="row-actions">
+            <div class="row-actions row-actions--menu">
               <button class="app-button-secondary" type="button" (click)="openPipeline(pipeline.id)">Open</button>
+              <button
+                class="app-button-secondary"
+                type="button"
+                [attr.data-testid]="'folder-view-pipeline-menu-button-' + pipeline.id"
+                (click)="togglePipelineMenu(pipeline.id)">
+                More
+              </button>
+
+              @if (isPipelineMenuOpen(pipeline.id)) {
+                <div class="context-menu" [attr.data-testid]="'folder-view-pipeline-menu-' + pipeline.id">
+                  <button class="context-menu__item" type="button" (click)="openPipelineOverview(pipeline.id)">Open Overview</button>
+                  <button class="context-menu__item" type="button" (click)="openPipelineConfig(pipeline.id)">Open Config</button>
+                  <button class="context-menu__item" type="button" (click)="openPipelineHistory(pipeline.id)">Open Runs</button>
+                </div>
+              }
             </div>
           </div>
         }

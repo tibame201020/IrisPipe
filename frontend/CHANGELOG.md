@@ -4,6 +4,22 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Folder Interaction Slice] - 2026-03-18
+
+### Added
+- **Folder Context Menu Coverage**: Added Playwright coverage for folder-row context menu interactions, inline folder rename, and pipeline-row menu navigation into the config page.
+
+### Changed
+- **Folder API Client**: Added typed folder update support so the frontend can rename folders through the dedicated backend folder mutation contract.
+- **Folder View Menus**: Added row-level context menus for subfolders and pipelines in the folder view.
+- **Inline Folder Rename**: Added inline rename UI for child folders, wired to the backend folder update endpoint and the shared tree refresh path.
+- **Pipeline Row Actions**: Added pipeline row menu actions for overview, config, and run history routes instead of pretending there is a lightweight pipeline rename endpoint.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark folder row context menu and inline rename work as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `18/18`, including folder rename and pipeline row menu coverage.
+
 ## [Feedback Baseline Slice] - 2026-03-18
 
 ### Added

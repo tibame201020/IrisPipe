@@ -108,8 +108,8 @@ Status markers:
 - [x] Add create folder flow
 - [ ] Add create pipeline flow
 - [x] Add import pipeline flow
-- [ ] Add row context menu
-- [ ] Add inline rename behavior
+- [x] Add row context menu
+- [x] Add inline rename behavior
 
 ## 8. Recent Activity
 

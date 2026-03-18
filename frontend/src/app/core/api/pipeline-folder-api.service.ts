@@ -18,4 +18,14 @@ export class PipelineFolderApiService {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
     });
   }
+
+  updateFolder(
+    folderId: number | string,
+    request: FolderUpsertRequest,
+    workspaceKey: string = appEnvironment.defaultWorkspaceKey
+  ) {
+    return this.http.put<FolderInfo>(`${this.baseUrl}/api/v1/pipeline-folders/${folderId}`, request, {
+      headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
+    });
+  }
 }

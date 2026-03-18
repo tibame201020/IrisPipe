@@ -59,4 +59,37 @@ test.describe('folder view', () => {
     await expect(page.getByRole('heading', { name: pipelineName })).toBeVisible();
     await expect(page.getByTestId('sidebar-tree')).toContainText(pipelineName);
   });
+
+  test('renames a folder inline and opens pipeline routes from the row menu', async ({ page, request }) => {
+    const parentFolder = await createFolder(request, uniqueName('pw-folder-menu-parent'));
+    const childFolder = await createFolder(request, uniqueName('pw-folder-menu-child'), parentFolder.id);
+    const renamedFolderName = uniqueName('pw-folder-menu-renamed');
+    const pipelineName = uniqueName('pw-folder-menu-pipeline');
+    const pipeline = await importPipelineConfig(request, {
+      folderId: parentFolder.id,
+      pipelineName,
+      fileName: `${pipelineName}.yml`,
+      fileContent: minimalPipelineYaml(pipelineName),
+    });
+
+    await page.goto(`/folders/${parentFolder.id}`);
+
+    await page.getByTestId(`folder-view-folder-menu-button-${childFolder.id}`).click();
+    await expect(page.getByTestId(`folder-view-folder-menu-${childFolder.id}`)).toBeVisible();
+    await page.getByTestId(`folder-view-folder-menu-${childFolder.id}`).getByRole('button', { name: 'Rename' }).click();
+
+    await page.getByTestId(`folder-view-rename-input-${childFolder.id}`).fill(renamedFolderName);
+    await page.getByTestId(`folder-view-rename-save-${childFolder.id}`).click();
+
+    await expect(page.getByTestId('folder-view-success')).toContainText('Folder renamed');
+    await expect(page.getByTestId(`folder-view-folder-${childFolder.id}`)).toContainText(renamedFolderName);
+    await expect(page.getByTestId('sidebar-tree')).toContainText(renamedFolderName);
+
+    await page.getByTestId(`folder-view-pipeline-menu-button-${pipeline.id}`).click();
+    await expect(page.getByTestId(`folder-view-pipeline-menu-${pipeline.id}`)).toBeVisible();
+    await page.getByTestId(`folder-view-pipeline-menu-${pipeline.id}`).getByRole('button', { name: 'Open Config' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/pipelines/${pipeline.id}/config$`));
+    await expect(page.getByRole('heading', { name: pipelineName })).toBeVisible();
+  });
 });

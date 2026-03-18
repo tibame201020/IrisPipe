@@ -29,6 +29,9 @@ export class FolderViewPage {
   protected readonly actionMessage = signal<string | null>(null);
   protected readonly showCreateFolderDialog = signal(false);
   protected readonly showImportPipelineDialog = signal(false);
+  protected readonly activeMenu = signal<{ type: 'folder' | 'pipeline'; id: number } | null>(null);
+  protected readonly renamingFolderId = signal<number | null>(null);
+  protected readonly renameFolderName = signal('');
   protected readonly createFolderName = signal('');
   protected readonly importPipelineName = signal('');
   protected readonly importFile = signal<File | null>(null);
@@ -55,11 +58,100 @@ export class FolderViewPage {
   }
 
   protected openFolder(folderId: number) {
+    this.activeMenu.set(null);
     void this.router.navigate(['/folders', folderId]);
   }
 
   protected openPipeline(pipelineId: number) {
+    this.activeMenu.set(null);
     void this.router.navigate(['/pipelines', pipelineId]);
+  }
+
+  protected toggleFolderMenu(folderId: number) {
+    const activeMenu = this.activeMenu();
+    if (activeMenu?.type === 'folder' && activeMenu.id === folderId) {
+      this.activeMenu.set(null);
+      return;
+    }
+
+    this.activeMenu.set({ type: 'folder', id: folderId });
+  }
+
+  protected togglePipelineMenu(pipelineId: number) {
+    const activeMenu = this.activeMenu();
+    if (activeMenu?.type === 'pipeline' && activeMenu.id === pipelineId) {
+      this.activeMenu.set(null);
+      return;
+    }
+
+    this.activeMenu.set({ type: 'pipeline', id: pipelineId });
+  }
+
+  protected isFolderMenuOpen(folderId: number) {
+    const activeMenu = this.activeMenu();
+    return activeMenu?.type === 'folder' && activeMenu.id === folderId;
+  }
+
+  protected isPipelineMenuOpen(pipelineId: number) {
+    const activeMenu = this.activeMenu();
+    return activeMenu?.type === 'pipeline' && activeMenu.id === pipelineId;
+  }
+
+  protected startRenameFolder(folderId: number, folderName: string) {
+    this.activeMenu.set(null);
+    this.renamingFolderId.set(folderId);
+    this.renameFolderName.set(folderName);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+  }
+
+  protected cancelRenameFolder() {
+    this.renamingFolderId.set(null);
+    this.renameFolderName.set('');
+  }
+
+  protected async submitRenameFolder(parentFolderId: number | null) {
+    const folderId = this.renamingFolderId();
+    const folderName = this.renameFolderName().trim();
+    if (folderId === null || folderName.length === 0) {
+      return;
+    }
+
+    this.isActionPending.set(true);
+    this.actionError.set(null);
+    this.actionMessage.set(null);
+
+    try {
+      await firstValueFrom(this.pipelineFolderApi.updateFolder(folderId, {
+        parentFolderId,
+        folderName,
+      }, this.workspaceFacade.workspaceKey()));
+      this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
+      this.renamingFolderId.set(null);
+      this.renameFolderName.set('');
+      this.actionMessage.set('Folder renamed.');
+      this.toastService.success('Folder renamed.');
+    } catch {
+      this.actionError.set('Failed to rename folder.');
+      this.toastService.error('Failed to rename folder.');
+    } finally {
+      this.isActionPending.set(false);
+    }
+  }
+
+  protected openPipelineOverview(pipelineId: number) {
+    this.activeMenu.set(null);
+    void this.router.navigate(['/pipelines', pipelineId]);
+  }
+
+  protected openPipelineConfig(pipelineId: number) {
+    this.activeMenu.set(null);
+    void this.router.navigate(['/pipelines', pipelineId, 'config']);
+  }
+
+  protected openPipelineHistory(pipelineId: number) {
+    this.activeMenu.set(null);
+    void this.router.navigate(['/pipelines', pipelineId, 'runs']);
   }
 
   protected openCreateFolderDialog() {
