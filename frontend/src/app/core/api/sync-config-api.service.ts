@@ -1,11 +1,13 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { map } from 'rxjs';
 import { appEnvironment } from '../config/app-environment';
 import {
   ConfigPipelineInfo,
   ConfigPipelineSummary,
   ConfigPipelineUpsertRequest,
 } from '../../shared/models/sync-config.model';
+import { mapConfigPipelineInfo, mapConfigPipelineSummary } from '../../shared/mappers/sync-config.mapper';
 
 @Injectable({
   providedIn: 'root',
@@ -18,21 +20,21 @@ export class SyncConfigApiService {
     request: ConfigPipelineUpsertRequest,
     workspaceKey: string = appEnvironment.defaultWorkspaceKey
   ) {
-    return this.http.post<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config`, request, {
+    return this.http.post<unknown>(`${this.baseUrl}/api/v1/sync-config`, request, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
-    });
+    }).pipe(map(mapConfigPipelineInfo));
   }
 
   listPipelines(workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
-    return this.http.get<ConfigPipelineSummary[]>(`${this.baseUrl}/api/v1/sync-config`, {
+    return this.http.get<unknown[]>(`${this.baseUrl}/api/v1/sync-config`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
-    });
+    }).pipe(map((pipelines) => pipelines.map(mapConfigPipelineSummary)));
   }
 
   getPipeline(pipelineId: number | string, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
-    return this.http.get<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config/${pipelineId}`, {
+    return this.http.get<unknown>(`${this.baseUrl}/api/v1/sync-config/${pipelineId}`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
-    });
+    }).pipe(map(mapConfigPipelineInfo));
   }
 
   updatePipeline(
@@ -40,9 +42,9 @@ export class SyncConfigApiService {
     request: ConfigPipelineUpsertRequest,
     workspaceKey: string = appEnvironment.defaultWorkspaceKey
   ) {
-    return this.http.put<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config/${pipelineId}`, request, {
+    return this.http.put<unknown>(`${this.baseUrl}/api/v1/sync-config/${pipelineId}`, request, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
-    });
+    }).pipe(map(mapConfigPipelineInfo));
   }
 
   importPipeline(
@@ -64,9 +66,9 @@ export class SyncConfigApiService {
     }
     formData.set('file', options.file);
 
-    return this.http.post<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config/import`, formData, {
+    return this.http.post<unknown>(`${this.baseUrl}/api/v1/sync-config/import`, formData, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
-    });
+    }).pipe(map(mapConfigPipelineInfo));
   }
 
   importReplacePipeline(
@@ -89,9 +91,9 @@ export class SyncConfigApiService {
     }
     formData.set('file', options.file);
 
-    return this.http.put<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config/${pipelineId}/import`, formData, {
+    return this.http.put<unknown>(`${this.baseUrl}/api/v1/sync-config/${pipelineId}/import`, formData, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
-    });
+    }).pipe(map(mapConfigPipelineInfo));
   }
 
   deletePipeline(pipelineId: number | string, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {

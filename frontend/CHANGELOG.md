@@ -4,6 +4,26 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Phase 2 Contract Normalization And Error UX Slice] - 2026-03-18
+
+### Added
+- **Frontend Payload Mappers**: Added shared normalization mappers for workspace, health, sync-config, and sync-pipeline payloads so the HTTP layer no longer leaks raw backend DTO shapes straight into page state.
+- **API Error Helper**: Added a shared API error extraction utility that promotes backend validation details into actionable inline frontend messages instead of leaving pages stuck with generic `Request validation failed` text.
+- **Inline Error E2E Coverage**: Added Playwright coverage for inline `400` and `409` rendering in both folder mutations and config-save flows.
+
+### Changed
+- **Typed API Normalization**: Rewired workspace, health, tree, folder, config, and pipeline API services to map backend responses through shared frontend normalizers before facades consume them.
+- **Folder And Config Feedback**: Folder view and config editor now render backend validation/conflict feedback inline, promoting single validation details into the primary message and preserving detail lists when multiple backend validation details are present.
+- **Run And Overview Errors**: Run detail actions and pipeline overview execute/load flows now surface normalized backend messages instead of generic failure strings.
+- **Async Action Finalization**: Fixed frontend loading and saving state cleanup so error paths release disabled buttons and loading indicators instead of relying on RxJS `complete` callbacks that never fire on failed requests.
+- **Loading And Empty States**: Replaced remaining page-level plain loading placeholders with skeletons and completed explicit empty-state handling across folder, overview, history, recent activity, config editor, and run detail pages.
+- **Styling Normalization**: Normalized list row density, inspector spacing, button interaction styling, and status-chip warning mapping to make Phase 2 feedback and state presentation visually consistent.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark mapping helpers, page skeletons, explicit empty states, inline `400/409` handling, status color mapping, row density, and inspector spacing as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `24/24`, including inline validation/conflict rendering coverage.
+
 ## [Shell Continuity And Shared UI Slice] - 2026-03-18
 
 ### Added

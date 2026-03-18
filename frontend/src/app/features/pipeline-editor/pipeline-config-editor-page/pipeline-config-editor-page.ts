@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
 import {
   ConfigPipelineInfo,
@@ -16,6 +17,7 @@ import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleto
 import { AppConfirmDialog } from '../../../shared/components/app-confirm-dialog/app-confirm-dialog';
 import { AppPageTabs, AppPageTab } from '../../../shared/components/app-page-tabs/app-page-tabs';
 import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
+import { extractApiErrorInfo } from '../../../shared/utils/api-error';
 
 @Component({
   selector: 'app-pipeline-config-editor-page',
@@ -38,6 +40,7 @@ export class PipelineConfigEditorPage {
   protected readonly loadError = signal<string | null>(null);
   protected readonly isSaving = signal(false);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly actionErrorDetails = signal<string[]>([]);
   protected readonly actionMessage = signal<string | null>(null);
   protected readonly selectedJobIndex = signal(0);
   protected readonly selectedStepIndex = signal(0);
@@ -241,6 +244,7 @@ export class PipelineConfigEditorPage {
 
     this.isSaving.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
     const request: ConfigPipelineUpsertRequest = {
@@ -249,19 +253,22 @@ export class PipelineConfigEditorPage {
       jobs: draft.jobs,
     };
 
-    this.syncConfigApi.updatePipeline(pipelineId, request, this.workspaceFacade.workspaceKey()).subscribe({
+    this.syncConfigApi.updatePipeline(pipelineId, request, this.workspaceFacade.workspaceKey())
+      .pipe(finalize(() => {
+        this.isSaving.set(false);
+      }))
+      .subscribe({
       next: (pipeline) => {
         this.replaceDraft(pipeline);
         this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
         this.actionMessage.set('Pipeline config saved.');
         this.toastService.success('Pipeline config saved.');
       },
-      error: () => {
-        this.actionError.set('Failed to save pipeline config.');
-        this.toastService.error('Failed to save pipeline config.');
-      },
-      complete: () => {
-        this.isSaving.set(false);
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to save pipeline config.');
+        this.actionError.set(apiError.message);
+        this.actionErrorDetails.set(apiError.details);
+        this.toastService.error(apiError.message);
       }
     });
   }
@@ -281,6 +288,7 @@ export class PipelineConfigEditorPage {
 
     this.isSaving.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
     this.syncConfigApi.importReplacePipeline(
@@ -292,20 +300,23 @@ export class PipelineConfigEditorPage {
         file,
       },
       this.workspaceFacade.workspaceKey()
-    ).subscribe({
+    )
+      .pipe(finalize(() => {
+        this.isSaving.set(false);
+        input.value = '';
+      }))
+      .subscribe({
       next: (pipeline) => {
         this.replaceDraft(pipeline);
         this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
         this.actionMessage.set('Pipeline config replaced from import.');
         this.toastService.success('Pipeline config replaced from import.');
       },
-      error: () => {
-        this.actionError.set('Failed to import replacement config.');
-        this.toastService.error('Failed to import replacement config.');
-      },
-      complete: () => {
-        this.isSaving.set(false);
-        input.value = '';
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to import replacement config.');
+        this.actionError.set(apiError.message);
+        this.actionErrorDetails.set(apiError.details);
+        this.toastService.error(apiError.message);
       }
     });
   }
@@ -327,22 +338,26 @@ export class PipelineConfigEditorPage {
 
     this.isSaving.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
-    this.syncConfigApi.deletePipeline(pipelineId, this.workspaceFacade.workspaceKey()).subscribe({
+    this.syncConfigApi.deletePipeline(pipelineId, this.workspaceFacade.workspaceKey())
+      .pipe(finalize(() => {
+        this.isSaving.set(false);
+      }))
+      .subscribe({
       next: () => {
         this.treeFacade.loadTree(this.workspaceFacade.workspaceKey());
         this.showDeleteConfirm.set(false);
         this.toastService.success('Pipeline deleted.');
         void this.router.navigate(draft.folderId === null ? ['/recent'] : ['/folders', draft.folderId]);
       },
-      error: () => {
-        this.actionError.set('Failed to delete pipeline.');
-        this.toastService.error('Failed to delete pipeline.');
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to delete pipeline.');
+        this.actionError.set(apiError.message);
+        this.actionErrorDetails.set(apiError.details);
+        this.toastService.error(apiError.message);
         this.showDeleteConfirm.set(false);
-      },
-      complete: () => {
-        this.isSaving.set(false);
       }
     });
   }
@@ -358,18 +373,21 @@ export class PipelineConfigEditorPage {
     this.isLoading.set(true);
     this.loadError.set(null);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
-    this.syncConfigApi.getPipeline(pipelineId, this.workspaceFacade.workspaceKey()).subscribe({
+    this.syncConfigApi.getPipeline(pipelineId, this.workspaceFacade.workspaceKey())
+      .pipe(finalize(() => {
+        this.isLoading.set(false);
+      }))
+      .subscribe({
       next: (pipeline) => {
         this.replaceDraft(pipeline);
       },
-      error: () => {
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to load pipeline config.');
         this.draft.set(null);
-        this.loadError.set('Failed to load pipeline config.');
-      },
-      complete: () => {
-        this.isLoading.set(false);
+        this.loadError.set(apiError.message);
       }
     });
   }

@@ -58,25 +58,74 @@ button {
 }
 
 .app-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--accent);
   color: #fff;
   padding: 8px 12px;
+  text-decoration: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
 }
 
 .app-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-sm);
   background: var(--panel-bg);
   color: var(--text-primary);
   padding: 8px 12px;
+  text-decoration: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
 }
 
 .app-button-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--danger-soft);
   color: var(--danger);
   padding: 8px 12px;
+  text-decoration: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+}
+
+.app-button-primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #0f172a);
+}
+
+.app-button-secondary:hover {
+  background: var(--panel-subtle);
+}
+
+.app-button-danger:hover {
+  background: color-mix(in srgb, var(--danger-soft) 70%, #fff);
+}
+
+.app-button-primary:disabled,
+.app-button-secondary:disabled,
+.app-button-danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }

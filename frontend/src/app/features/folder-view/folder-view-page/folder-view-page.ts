@@ -8,13 +8,15 @@ import { TreeFacade } from '../../../core/state/tree.facade';
 import { ToastService } from '../../../core/state/toast.service';
 import { WorkspaceFacade } from '../../../core/state/workspace.facade';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
+import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
 import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
 import { AppRowActionMenu, AppRowActionMenuItem } from '../../../shared/components/app-row-action-menu/app-row-action-menu';
+import { extractApiErrorInfo } from '../../../shared/utils/api-error';
 import { buildStarterPipelineRequest } from '../../../shared/utils/pipeline-starter';
 
 @Component({
   selector: 'app-folder-view-page',
-  imports: [FormsModule, AppEmptyState, AppPageToolbar, AppRowActionMenu],
+  imports: [FormsModule, AppEmptyState, AppSkeleton, AppPageToolbar, AppRowActionMenu],
   templateUrl: './folder-view-page.html',
   styleUrl: './folder-view-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,6 +31,7 @@ export class FolderViewPage {
 
   protected readonly isActionPending = signal(false);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly actionErrorDetails = signal<string[]>([]);
   protected readonly actionMessage = signal<string | null>(null);
   protected readonly showCreateFolderDialog = signal(false);
   protected readonly showCreatePipelineDialog = signal(false);
@@ -76,6 +79,7 @@ export class FolderViewPage {
     this.renamingFolderId.set(folderId);
     this.renameFolderName.set(folderName);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
   }
 
@@ -93,6 +97,7 @@ export class FolderViewPage {
 
     this.isActionPending.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
     try {
@@ -105,9 +110,11 @@ export class FolderViewPage {
       this.renameFolderName.set('');
       this.actionMessage.set('Folder renamed.');
       this.toastService.success('Folder renamed.');
-    } catch {
-      this.actionError.set('Failed to rename folder.');
-      this.toastService.error('Failed to rename folder.');
+    } catch (error) {
+      const apiError = extractApiErrorInfo(error, 'Failed to rename folder.');
+      this.actionError.set(apiError.message);
+      this.actionErrorDetails.set(apiError.details);
+      this.toastService.error(apiError.message);
     } finally {
       this.isActionPending.set(false);
     }
@@ -128,6 +135,7 @@ export class FolderViewPage {
   protected openCreateFolderDialog() {
     this.createFolderName.set('');
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
     this.showCreateFolderDialog.set(true);
   }
@@ -141,6 +149,7 @@ export class FolderViewPage {
     this.importFile.set(null);
     this.importFileName.set('');
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
     this.showImportPipelineDialog.set(true);
   }
@@ -148,6 +157,7 @@ export class FolderViewPage {
   protected openCreatePipelineDialog() {
     this.createPipelineName.set('');
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
     this.showCreatePipelineDialog.set(true);
   }
@@ -179,6 +189,7 @@ export class FolderViewPage {
 
     this.isActionPending.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
     try {
@@ -191,9 +202,11 @@ export class FolderViewPage {
       this.actionMessage.set('Folder created.');
       this.toastService.success('Folder created.');
       await this.router.navigate(['/folders', folder.id]);
-    } catch {
-      this.actionError.set('Failed to create folder.');
-      this.toastService.error('Failed to create folder.');
+    } catch (error) {
+      const apiError = extractApiErrorInfo(error, 'Failed to create folder.');
+      this.actionError.set(apiError.message);
+      this.actionErrorDetails.set(apiError.details);
+      this.toastService.error(apiError.message);
     } finally {
       this.isActionPending.set(false);
     }
@@ -208,6 +221,7 @@ export class FolderViewPage {
 
     this.isActionPending.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
     try {
@@ -220,9 +234,11 @@ export class FolderViewPage {
       this.actionMessage.set('Starter pipeline created.');
       this.toastService.success('Starter pipeline created.');
       await this.router.navigate(['/pipelines', pipeline.id, 'config']);
-    } catch {
-      this.actionError.set('Failed to create pipeline.');
-      this.toastService.error('Failed to create pipeline.');
+    } catch (error) {
+      const apiError = extractApiErrorInfo(error, 'Failed to create pipeline.');
+      this.actionError.set(apiError.message);
+      this.actionErrorDetails.set(apiError.details);
+      this.toastService.error(apiError.message);
     } finally {
       this.isActionPending.set(false);
     }
@@ -240,6 +256,7 @@ export class FolderViewPage {
 
     this.isActionPending.set(true);
     this.actionError.set(null);
+    this.actionErrorDetails.set([]);
     this.actionMessage.set(null);
 
     try {
@@ -254,9 +271,11 @@ export class FolderViewPage {
       this.actionMessage.set('Pipeline imported.');
       this.toastService.success('Pipeline imported.');
       await this.router.navigate(['/pipelines', pipeline.id]);
-    } catch {
-      this.actionError.set('Failed to import pipeline.');
-      this.toastService.error('Failed to import pipeline.');
+    } catch (error) {
+      const apiError = extractApiErrorInfo(error, 'Failed to import pipeline.');
+      this.actionError.set(apiError.message);
+      this.actionErrorDetails.set(apiError.details);
+      this.toastService.error(apiError.message);
     } finally {
       this.isActionPending.set(false);
     }

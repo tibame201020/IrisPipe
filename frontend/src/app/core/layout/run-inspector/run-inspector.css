@@ -1,7 +1,7 @@
 .inspector {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   height: 100%;
   min-height: 0;
   overflow: auto;
@@ -10,7 +10,7 @@
 
 .inspector-section {
   border-bottom: 1px solid var(--panel-border);
-  padding-bottom: 12px;
+  padding-bottom: 16px;
 }
 
 .inspector-section:last-child {

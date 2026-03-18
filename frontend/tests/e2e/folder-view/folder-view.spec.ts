@@ -60,6 +60,24 @@ test.describe('folder view', () => {
     await expect(page.getByTestId('sidebar-tree')).toContainText(pipelineName);
   });
 
+  test('renders backend bad-request and conflict messages inline for folder mutations', async ({ page, request }) => {
+    const parentFolder = await createFolder(request, uniqueName('pw-folder-error-parent'));
+    const existingFolder = await createFolder(request, uniqueName('pw-folder-error-existing'), parentFolder.id);
+
+    await page.goto(`/folders/${parentFolder.id}`);
+
+    await page.getByTestId('folder-view-create-folder').click();
+    await page.getByTestId('folder-view-create-folder-name').fill('bad/name');
+    await page.getByTestId('folder-view-create-folder-confirm').click();
+
+    await expect(page.getByTestId('folder-view-error')).toContainText('folderName contains unsupported characters');
+
+    await page.getByTestId('folder-view-create-folder-name').fill(existingFolder.folderName);
+    await page.getByTestId('folder-view-create-folder-confirm').click();
+
+    await expect(page.getByTestId('folder-view-error')).toContainText('Folder already exists in target parent');
+  });
+
   test('creates a starter pipeline from the folder view and opens config editor', async ({ page, request }) => {
     const parentFolder = await createFolder(request, uniqueName('pw-create-pipeline-parent'));
     const pipelineName = uniqueName('pw-create-pipeline');

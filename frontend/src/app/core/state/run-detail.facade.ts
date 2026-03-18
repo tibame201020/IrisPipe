@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { finalize, firstValueFrom } from 'rxjs';
 import { appEnvironment } from '../config/app-environment';
 import { SyncPipelineApiService } from '../api/sync-pipeline-api.service';
 import {
@@ -12,6 +12,7 @@ import {
 import { WorkspaceFacade } from './workspace.facade';
 import { ToastService } from './toast.service';
 import { PipelineRunEventsService } from './pipeline-run-events.service';
+import { extractApiErrorInfo } from '../../shared/utils/api-error';
 
 @Injectable({
   providedIn: 'root',
@@ -158,9 +159,10 @@ export class RunDetailFacade {
       this.actionMessage.set('Deleted the selected run.');
       this.toastService.success('Deleted the selected run.');
       return true;
-    } catch {
-      this.actionError.set('Failed to delete the selected run.');
-      this.toastService.error('Failed to delete the selected run.');
+    } catch (error) {
+      const apiError = extractApiErrorInfo(error, 'Failed to delete the selected run.');
+      this.actionError.set(apiError.message);
+      this.toastService.error(apiError.message);
       return false;
     } finally {
       this.isActionPending.set(false);
@@ -186,20 +188,22 @@ export class RunDetailFacade {
     this.isLoading.set(true);
     this.loadError.set(null);
 
-    this.syncPipelineApi.runDetail(runId, this.workspaceFacade.workspaceKey()).subscribe({
+    this.syncPipelineApi.runDetail(runId, this.workspaceFacade.workspaceKey())
+      .pipe(finalize(() => {
+        this.isLoading.set(false);
+      }))
+      .subscribe({
       next: (detail) => {
         this.detail.set(detail);
         this.pipelineRunEvents.emitSync(detail);
         this.syncPollingForStatus(detail.status);
       },
-      error: () => {
-        this.loadError.set('Failed to load pipeline run detail.');
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to load pipeline run detail.');
+        this.loadError.set(apiError.message);
         if (this.detail() === null) {
           this.stopPolling();
         }
-      },
-      complete: () => {
-        this.isLoading.set(false);
       },
     });
   }
@@ -262,9 +266,10 @@ export class RunDetailFacade {
       this.actionMessage.set(successMessage);
       this.toastService.success(successMessage);
       return summary;
-    } catch {
-      this.actionError.set('Failed to update the selected run.');
-      this.toastService.error('Failed to update the selected run.');
+    } catch (error) {
+      const apiError = extractApiErrorInfo(error, 'Failed to update the selected run.');
+      this.actionError.set(apiError.message);
+      this.toastService.error(apiError.message);
       return null;
     } finally {
       this.isActionPending.set(false);

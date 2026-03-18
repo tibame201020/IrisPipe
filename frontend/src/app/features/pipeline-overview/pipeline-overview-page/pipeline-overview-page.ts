@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription, forkJoin } from 'rxjs';
+import { Subscription, finalize, forkJoin } from 'rxjs';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncConfigApiService } from '../../../core/api/sync-config-api.service';
 import { SyncPipelineApiService } from '../../../core/api/sync-pipeline-api.service';
@@ -13,6 +13,7 @@ import { AppEmptyState } from '../../../shared/components/app-empty-state/app-em
 import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
 import { AppPageTabs, AppPageTab } from '../../../shared/components/app-page-tabs/app-page-tabs';
 import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
+import { extractApiErrorInfo } from '../../../shared/utils/api-error';
 import { formatDateTime, formatTimeRange } from '../../../shared/utils/date-time';
 
 @Component({
@@ -98,19 +99,20 @@ export class PipelineOverviewPage implements OnDestroy {
         useAsyncLaucher: false,
       },
       this.workspaceFacade.workspaceKey()
-    ).subscribe({
+    )
+      .pipe(finalize(() => {
+        this.isExecuting.set(false);
+      }))
+      .subscribe({
       next: (summary) => {
         this.pipelineRunEvents.emitFromSummary('execute', summary);
         this.toastService.success('Pipeline execution started.');
         void this.router.navigate(['/runs', summary.id]);
       },
-      error: () => {
-        this.executeError.set('Failed to execute pipeline.');
-        this.toastService.error('Failed to execute pipeline.');
-        this.isExecuting.set(false);
-      },
-      complete: () => {
-        this.isExecuting.set(false);
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to execute pipeline.');
+        this.executeError.set(apiError.message);
+        this.toastService.error(apiError.message);
       }
     });
   }
@@ -138,18 +140,20 @@ export class PipelineOverviewPage implements OnDestroy {
     forkJoin({
       pipeline: this.syncConfigApi.getPipeline(pipelineId, this.workspaceFacade.workspaceKey()),
       recentRuns: this.syncPipelineApi.pipelineHistory(pipelineId, this.workspaceFacade.workspaceKey(), 5),
-    }).subscribe({
+    })
+      .pipe(finalize(() => {
+        this.isLoading.set(false);
+      }))
+      .subscribe({
       next: ({ pipeline, recentRuns }) => {
         this.pipeline.set(pipeline);
         this.recentRuns.set(recentRuns);
       },
-      error: () => {
+      error: (error) => {
+        const apiError = extractApiErrorInfo(error, 'Failed to load pipeline overview.');
         this.pipeline.set(null);
         this.recentRuns.set([]);
-        this.loadError.set('Failed to load pipeline overview.');
-      },
-      complete: () => {
-        this.isLoading.set(false);
+        this.loadError.set(apiError.message);
       }
     });
   }

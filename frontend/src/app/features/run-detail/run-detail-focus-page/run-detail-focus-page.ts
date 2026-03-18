@@ -5,12 +5,13 @@ import { RunDetailFacade } from '../../../core/state/run-detail.facade';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { AppEmptyState } from '../../../shared/components/app-empty-state/app-empty-state';
 import { AppPageToolbar } from '../../../shared/components/app-page-toolbar/app-page-toolbar';
+import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleton';
 import { formatDateTime } from '../../../shared/utils/date-time';
 import { ApiDateTimeValue } from '../../../shared/models/sync-pipeline.model';
 
 @Component({
   selector: 'app-run-detail-focus-page',
-  imports: [StatusChip, AppEmptyState, RouterLink, AppPageToolbar],
+  imports: [StatusChip, AppEmptyState, RouterLink, AppPageToolbar, AppSkeleton],
   templateUrl: './run-detail-focus-page.html',
   styleUrl: './run-detail-focus-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush

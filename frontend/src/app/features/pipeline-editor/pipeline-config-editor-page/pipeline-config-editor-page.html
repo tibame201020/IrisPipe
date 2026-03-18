@@ -54,6 +54,13 @@
       <div class="feedback-banner feedback-banner--error" data-testid="pipeline-config-editor-error">
         {{ actionError }}
       </div>
+      @if (actionErrorDetails().length > 0) {
+        <ul class="feedback-details" data-testid="pipeline-config-editor-error-details">
+          @for (detail of actionErrorDetails(); track detail) {
+            <li>{{ detail }}</li>
+          }
+        </ul>
+      }
     }
 
     <div class="editor-layout">

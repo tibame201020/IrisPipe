@@ -1,6 +1,6 @@
 <section class="page app-panel">
   @if (treeFacade.isLoading() && !selectedFolder()) {
-    <app-app-empty-state title="Loading folder" description="Resolving selected folder from the workspace tree." />
+    <app-app-skeleton />
   } @else if (selectedFolder(); as folder) {
     <app-page-toolbar [eyebrow]="'Breadcrumb'" [title]="folder.folderPath">
       <div pageToolbarActions class="actions">
@@ -21,6 +21,13 @@
       <div class="feedback-banner feedback-banner--error" data-testid="folder-view-error">
         {{ actionError }}
       </div>
+      @if (actionErrorDetails().length > 0) {
+        <ul class="feedback-details" data-testid="folder-view-error-details">
+          @for (detail of actionErrorDetails(); track detail) {
+            <li>{{ detail }}</li>
+          }
+        </ul>
+      }
     }
 
     <section class="block">
@@ -72,7 +79,9 @@
           </div>
         }
       } @else {
-        <p class="app-meta">No subfolders in this folder.</p>
+        <app-app-empty-state
+          title="No subfolders"
+          description="Create a child folder to group pipelines under the current folder." />
       }
     </section>
 
@@ -95,7 +104,9 @@
           </div>
         }
       } @else {
-        <p class="app-meta">No pipelines in this folder.</p>
+        <app-app-empty-state
+          title="No pipelines"
+          description="Create a starter pipeline or import an existing config into this folder." />
       }
     </section>
   } @else {

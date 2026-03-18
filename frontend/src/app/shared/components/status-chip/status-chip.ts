@@ -14,14 +14,14 @@ export class StatusChip {
     if (value === 'STARTED' || value === 'STARTING') {
       return 'chip chip--accent';
     }
+    if (value === 'STOPPED' || value === 'STOPPING' || value === 'ABANDONED') {
+      return 'chip chip--warning';
+    }
     if (value === 'COMPLETED') {
       return 'chip chip--success';
     }
     if (value === 'FAILED') {
       return 'chip chip--danger';
-    }
-    if (value === 'STOPPED') {
-      return 'chip chip--warning';
     }
     return 'chip chip--neutral';
   });

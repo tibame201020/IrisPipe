@@ -1,5 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { map } from 'rxjs';
 import { appEnvironment } from '../config/app-environment';
 import {
   PipelineExecuteRequest,
@@ -8,6 +9,7 @@ import {
   PipelineRunDetailInfo,
   PipelineRunSummaryInfo,
 } from '../../shared/models/sync-pipeline.model';
+import { mapPipelineRunDetailInfo, mapPipelineRunSummaryInfo } from '../../shared/mappers/sync-pipeline.mapper';
 
 @Injectable({
   providedIn: 'root',
@@ -17,9 +19,9 @@ export class SyncPipelineApiService {
   private readonly baseUrl = appEnvironment.apiBaseUrl;
 
   executePipeline(request: PipelineExecuteRequest, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
-    return this.http.post<PipelineRunSummaryInfo>(`${this.baseUrl}/api/v1/sync-pipeline`, request, {
+    return this.http.post<unknown>(`${this.baseUrl}/api/v1/sync-pipeline`, request, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
-    });
+    }).pipe(map(mapPipelineRunSummaryInfo));
   }
 
   resumePipeline(
@@ -27,9 +29,9 @@ export class SyncPipelineApiService {
     request: PipelineResumeRequest = {},
     workspaceKey: string = appEnvironment.defaultWorkspaceKey
   ) {
-    return this.http.post<PipelineRunSummaryInfo>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}/resume`, request, {
+    return this.http.post<unknown>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}/resume`, request, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
-    });
+    }).pipe(map(mapPipelineRunSummaryInfo));
   }
 
   rerunPipeline(
@@ -37,15 +39,15 @@ export class SyncPipelineApiService {
     request: PipelineRerunRequest = {},
     workspaceKey: string = appEnvironment.defaultWorkspaceKey
   ) {
-    return this.http.post<PipelineRunSummaryInfo>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}/rerun`, request, {
+    return this.http.post<unknown>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}/rerun`, request, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey, 'Content-Type': 'application/json' })
-    });
+    }).pipe(map(mapPipelineRunSummaryInfo));
   }
 
   stopPipeline(pipelineRunId: number | string, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
-    return this.http.post<PipelineRunSummaryInfo>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}/stop`, null, {
+    return this.http.post<unknown>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}/stop`, null, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
-    });
+    }).pipe(map(mapPipelineRunSummaryInfo));
   }
 
   recentRuns(
@@ -58,10 +60,10 @@ export class SyncPipelineApiService {
       params = params.set('beforeRunId', beforeRunId);
     }
 
-    return this.http.get<PipelineRunSummaryInfo[]>(`${this.baseUrl}/api/v1/sync-pipeline/recent`, {
+    return this.http.get<unknown[]>(`${this.baseUrl}/api/v1/sync-pipeline/recent`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey }),
       params
-    });
+    }).pipe(map((runs) => runs.map(mapPipelineRunSummaryInfo)));
   }
 
   pipelineHistory(
@@ -75,16 +77,16 @@ export class SyncPipelineApiService {
       params = params.set('beforeRunId', beforeRunId);
     }
 
-    return this.http.get<PipelineRunSummaryInfo[]>(`${this.baseUrl}/api/v1/sync-pipeline`, {
+    return this.http.get<unknown[]>(`${this.baseUrl}/api/v1/sync-pipeline`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey }),
       params
-    });
+    }).pipe(map((runs) => runs.map(mapPipelineRunSummaryInfo)));
   }
 
   runDetail(pipelineRunId: number | string, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {
-    return this.http.get<PipelineRunDetailInfo>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}`, {
+    return this.http.get<unknown>(`${this.baseUrl}/api/v1/sync-pipeline/${pipelineRunId}`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
-    });
+    }).pipe(map(mapPipelineRunDetailInfo));
   }
 
   deletePipelineRun(pipelineRunId: number | string, workspaceKey: string = appEnvironment.defaultWorkspaceKey) {

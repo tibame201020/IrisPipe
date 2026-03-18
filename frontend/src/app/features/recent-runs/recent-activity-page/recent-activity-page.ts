@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, finalize } from 'rxjs';
 import { StatusChip } from '../../../shared/components/status-chip/status-chip';
 import { SyncPipelineApiService } from '../../../core/api/sync-pipeline-api.service';
 import { PipelineRunEventsService } from '../../../core/state/pipeline-run-events.service';
@@ -103,7 +103,12 @@ export class RecentActivityPage implements OnInit, OnDestroy {
       this.workspaceFacade.workspaceKey(),
       RecentActivityPage.PAGE_SIZE,
       options.beforeRunId
-    ).subscribe({
+    )
+      .pipe(finalize(() => {
+        this.isLoading.set(false);
+        this.isLoadingMore.set(false);
+      }))
+      .subscribe({
       next: (runs) => {
         this.hasMore.set(runs.length === RecentActivityPage.PAGE_SIZE);
         if (options.mergeWithExisting) {
@@ -118,10 +123,6 @@ export class RecentActivityPage implements OnInit, OnDestroy {
         if (options.reset) {
           this.runs.set([]);
         }
-      },
-      complete: () => {
-        this.isLoading.set(false);
-        this.isLoadingMore.set(false);
       }
     });
   }

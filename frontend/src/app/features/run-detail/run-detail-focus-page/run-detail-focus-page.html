@@ -37,7 +37,7 @@
       </div>
     </section>
   } @else if (runDetailFacade.isLoading()) {
-    <p class="app-meta">Loading run detail...</p>
+    <app-app-skeleton />
   } @else if (runDetailFacade.loadError(); as loadError) {
     <app-app-empty-state title="Run detail unavailable" [description]="loadError" />
   } @else {

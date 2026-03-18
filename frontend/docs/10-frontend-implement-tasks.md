@@ -75,7 +75,7 @@ Status markers:
   - jobs
   - step summaries
   - run request payloads
-- [ ] Add mapping helpers where raw backend payload should be normalized
+- [x] Add mapping helpers where raw backend payload should be normalized
 - [ ] Keep mock fixtures aligned with typed frontend contracts
 
 ## 5. Core Integration
@@ -171,21 +171,21 @@ Status markers:
 
 ## 14. Feedback And State UX
 
-- [ ] Add skeleton loading states for pages
+- [x] Add skeleton loading states for pages
 - [x] Add local action spinners
 - [x] Add toast service and container
 - [x] Add shell-level backend unavailable warning
-- [ ] Add explicit empty states for all pages
-- [ ] Add inline conflict handling for `400` / `409`
+- [x] Add explicit empty states for all pages
+- [x] Add inline conflict handling for `400` / `409`
 
 ## 15. Styling Pass
 
 - [x] Add global token baseline
 - [ ] Apply selected spacing and typography rules consistently
-- [ ] Apply status color mapping consistently
-- [ ] Normalize button hierarchy across pages
-- [ ] Normalize row density across folder/recent/history pages
-- [ ] Refine inspector section spacing
+- [x] Apply status color mapping consistently
+- [x] Normalize button hierarchy across pages
+- [x] Normalize row density across folder/recent/history pages
+- [x] Refine inspector section spacing
 
 ## 16. Validation Pass
 
@@ -216,6 +216,7 @@ Status markers:
 - [x] Add pipeline history data render test
 - [x] Add pipeline overview data and execute test
 - [x] Add pipeline config editor save/import/delete test
+- [x] Add inline validation and conflict rendering tests for folder and config mutations
 - [x] Add run control stop/resume/rerun/delete test
 - [x] Add run inspector data render test
 - [x] Add CI-friendly Chromium test run

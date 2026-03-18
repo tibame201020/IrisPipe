@@ -79,4 +79,36 @@ test.describe('pipeline config editor', () => {
     await expect(page).toHaveURL(/\/recent$/);
     await expect(page.getByTestId('sidebar-tree')).not.toContainText(pipelineName);
   });
+
+  test('renders backend validation and conflict messages inline during save', async ({ page, request }) => {
+    const originalPipelineName = uniqueName('pw-config-editor-error');
+    const conflictingPipelineName = uniqueName('pw-config-editor-conflict');
+
+    const originalPipeline = await importPipelineConfig(request, {
+      folderId: null,
+      pipelineName: originalPipelineName,
+      fileName: `${originalPipelineName}.yml`,
+      fileContent: minimalPipelineYaml(originalPipelineName),
+    });
+
+    await importPipelineConfig(request, {
+      folderId: null,
+      pipelineName: conflictingPipelineName,
+      fileName: `${conflictingPipelineName}.yml`,
+      fileContent: minimalPipelineYaml(conflictingPipelineName),
+    });
+
+    await page.goto(`/pipelines/${originalPipeline.id}/config`);
+
+    await page.getByTestId('pipeline-config-editor-name-input').fill('bad/name');
+    await page.getByTestId('pipeline-config-editor-save').click();
+
+    await expect(page.getByTestId('pipeline-config-editor-error')).toContainText('unsupported characters');
+    await expect(page.getByTestId('pipeline-config-editor-error-details')).toHaveCount(0);
+
+    await page.getByTestId('pipeline-config-editor-name-input').fill(conflictingPipelineName);
+    await page.getByTestId('pipeline-config-editor-save').click();
+
+    await expect(page.getByTestId('pipeline-config-editor-error')).toContainText('already exists');
+  });
 });
