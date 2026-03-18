@@ -17,6 +17,7 @@ import { AppSkeleton } from '../../../shared/components/app-skeleton/app-skeleto
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RecentActivityPage implements OnInit, OnDestroy {
+  private static readonly PAGE_SIZE = 5;
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
   protected readonly workspaceFacade = inject(WorkspaceFacade);
   private readonly router = inject(Router);
@@ -24,7 +25,9 @@ export class RecentActivityPage implements OnInit, OnDestroy {
 
   protected readonly runs = signal<PipelineRunSummaryInfo[]>([]);
   protected readonly isLoading = signal(false);
+  protected readonly isLoadingMore = signal(false);
   protected readonly loadError = signal<string | null>(null);
+  protected readonly hasMore = signal(false);
   protected readonly hasRuns = computed(() => this.runs().length > 0);
 
   ngOnInit() {
@@ -39,11 +42,25 @@ export class RecentActivityPage implements OnInit, OnDestroy {
   }
 
   protected refresh() {
-    this.loadRecentRuns();
+    this.loadRecentRuns({ reset: true, mergeWithExisting: this.runs().length > RecentActivityPage.PAGE_SIZE });
   }
 
   protected inspectRun(runId: number) {
     void this.router.navigate(['/runs', runId]);
+  }
+
+  protected loadMore() {
+    const beforeRunId = this.runs().at(-1)?.id ?? null;
+    if (beforeRunId === null || this.isLoadingMore() || !this.hasMore()) {
+      return;
+    }
+
+    this.loadRecentRuns({
+      reset: false,
+      beforeRunId,
+      loadingMore: true,
+      mergeWithExisting: true,
+    });
   }
 
   protected formatDateTime(value: ApiDateTimeValue | null) {
@@ -54,20 +71,44 @@ export class RecentActivityPage implements OnInit, OnDestroy {
     return formatTimeRange(startTime, endTime, status === 'STARTED' || status === 'STARTING' || status === 'STOPPING');
   }
 
-  private loadRecentRuns() {
-    this.isLoading.set(true);
+  private loadRecentRuns(options: {
+    reset: boolean;
+    beforeRunId?: number | null;
+    loadingMore?: boolean;
+    mergeWithExisting?: boolean;
+  } = {
+    reset: true,
+  }) {
+    if (options.loadingMore) {
+      this.isLoadingMore.set(true);
+    } else {
+      this.isLoading.set(true);
+    }
     this.loadError.set(null);
 
-    this.syncPipelineApi.recentRuns(this.workspaceFacade.workspaceKey()).subscribe({
+    this.syncPipelineApi.recentRuns(
+      this.workspaceFacade.workspaceKey(),
+      RecentActivityPage.PAGE_SIZE,
+      options.beforeRunId
+    ).subscribe({
       next: (runs) => {
+        this.hasMore.set(runs.length === RecentActivityPage.PAGE_SIZE);
+        if (options.mergeWithExisting) {
+          this.runs.set(this.mergeRuns(this.runs(), runs, options.reset));
+          return;
+        }
+
         this.runs.set(runs);
       },
       error: () => {
         this.loadError.set('Failed to load recent pipeline runs.');
-        this.runs.set([]);
+        if (options.reset) {
+          this.runs.set([]);
+        }
       },
       complete: () => {
         this.isLoading.set(false);
+        this.isLoadingMore.set(false);
       }
     });
   }
@@ -78,7 +119,26 @@ export class RecentActivityPage implements OnInit, OnDestroy {
     }
 
     this.pollHandle = globalThis.setInterval(() => {
-      this.loadRecentRuns();
+      this.loadRecentRuns({ reset: true, mergeWithExisting: this.runs().length > RecentActivityPage.PAGE_SIZE });
     }, appEnvironment.polling.recentMs);
+  }
+
+  private mergeRuns(
+    existingRuns: PipelineRunSummaryInfo[],
+    incomingRuns: PipelineRunSummaryInfo[],
+    reset: boolean
+  ) {
+    const combined = reset
+      ? [...incomingRuns, ...existingRuns]
+      : [...existingRuns, ...incomingRuns];
+    const uniqueRuns = new Map<number, PipelineRunSummaryInfo>();
+
+    for (const run of combined) {
+      if (!uniqueRuns.has(run.id)) {
+        uniqueRuns.set(run.id, run);
+      }
+    }
+
+    return [...uniqueRuns.values()];
   }
 }

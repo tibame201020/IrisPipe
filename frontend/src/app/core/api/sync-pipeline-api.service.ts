@@ -48,17 +48,36 @@ export class SyncPipelineApiService {
     });
   }
 
-  recentRuns(workspaceKey: string = appEnvironment.defaultWorkspaceKey, limit: number = 20) {
+  recentRuns(
+    workspaceKey: string = appEnvironment.defaultWorkspaceKey,
+    limit: number = 20,
+    beforeRunId?: number | null
+  ) {
+    let params = new HttpParams().set('limit', limit);
+    if (beforeRunId !== undefined && beforeRunId !== null) {
+      params = params.set('beforeRunId', beforeRunId);
+    }
+
     return this.http.get<PipelineRunSummaryInfo[]>(`${this.baseUrl}/api/v1/sync-pipeline/recent`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey }),
-      params: new HttpParams().set('limit', limit)
+      params
     });
   }
 
-  pipelineHistory(pipelineId: number | string, workspaceKey: string = appEnvironment.defaultWorkspaceKey, limit: number = 20) {
+  pipelineHistory(
+    pipelineId: number | string,
+    workspaceKey: string = appEnvironment.defaultWorkspaceKey,
+    limit: number = 20,
+    beforeRunId?: number | null
+  ) {
+    let params = new HttpParams().set('pipelineId', pipelineId).set('limit', limit);
+    if (beforeRunId !== undefined && beforeRunId !== null) {
+      params = params.set('beforeRunId', beforeRunId);
+    }
+
     return this.http.get<PipelineRunSummaryInfo[]>(`${this.baseUrl}/api/v1/sync-pipeline`, {
       headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey }),
-      params: new HttpParams().set('pipelineId', pipelineId).set('limit', limit)
+      params
     });
   }
 

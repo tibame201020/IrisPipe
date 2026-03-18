@@ -4,6 +4,22 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Recent And History Pagination Slice] - 2026-03-18
+
+### Added
+- **Recent Activity Pagination Coverage**: Added Playwright coverage for paging older recent runs through the real backend contract.
+- **Pipeline History Pagination Coverage**: Added Playwright coverage for paging older per-pipeline history rows through the real backend contract.
+
+### Changed
+- **Sync Pipeline API Client**: Added typed `beforeRunId` support for `recent` and `pipeline history` queries so the frontend can use backend cursor-style pagination instead of one-shot lists.
+- **Recent Activity Page**: Added `Load Older Runs` pagination UI, incremental merge behavior for older pages, and polling-safe refresh logic that preserves already loaded rows.
+- **Pipeline History Page**: Added `Load Older Runs` pagination UI and incremental history loading for per-pipeline run history.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark recent/history pagination as complete.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `16/16`, including recent/history pagination flows.
+
 ## [Folder Actions Slice] - 2026-03-18
 
 ### Added

@@ -117,7 +117,7 @@ Status markers:
 - [x] Load real recent runs from backend
 - [x] Add polling contract implementation
 - [x] Add row-to-inspector selection sync
-- [ ] Add load-more pagination
+- [x] Add load-more pagination
 
 ## 9. Pipeline History
 
@@ -125,7 +125,7 @@ Status markers:
 - [x] Load real history for selected pipeline
 - [ ] Add refresh behavior after control actions
 - [x] Add row-to-inspector selection sync
-- [ ] Add load-more pagination
+- [x] Add load-more pagination
 
 ## 10. Run Inspector
 

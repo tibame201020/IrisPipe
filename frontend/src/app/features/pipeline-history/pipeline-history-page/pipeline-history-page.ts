@@ -16,6 +16,7 @@ import { formatDateTime, formatTimeRange } from '../../../shared/utils/date-time
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PipelineHistoryPage implements OnInit, OnDestroy {
+  private static readonly PAGE_SIZE = 5;
   private readonly route = inject(ActivatedRoute);
   private readonly syncPipelineApi = inject(SyncPipelineApiService);
   private readonly workspaceFacade = inject(WorkspaceFacade);
@@ -24,7 +25,9 @@ export class PipelineHistoryPage implements OnInit, OnDestroy {
   protected readonly pipelineId = signal<number | null>(null);
   protected readonly runs = signal<PipelineRunSummaryInfo[]>([]);
   protected readonly isLoading = signal(false);
+  protected readonly isLoadingMore = signal(false);
   protected readonly loadError = signal<string | null>(null);
+  protected readonly hasMore = signal(false);
   protected readonly hasRuns = computed(() => this.runs().length > 0);
   protected readonly pipelineName = computed(() => this.runs()[0]?.pipelineName ?? (this.pipelineId() ? `Pipeline #${this.pipelineId()}` : 'Pipeline History'));
   protected readonly folderPath = computed(() => this.runs()[0]?.folderPath ?? '/');
@@ -45,7 +48,21 @@ export class PipelineHistoryPage implements OnInit, OnDestroy {
   }
 
   protected refresh() {
-    this.loadHistory();
+    this.loadHistory({ reset: true });
+  }
+
+  protected loadMore() {
+    const pipelineId = this.pipelineId();
+    const beforeRunId = this.runs().at(-1)?.id ?? null;
+    if (pipelineId === null || beforeRunId === null || this.isLoadingMore() || !this.hasMore()) {
+      return;
+    }
+
+    this.loadHistory({
+      reset: false,
+      beforeRunId,
+      loadingMore: true,
+    });
   }
 
   protected inspectRun(runId: number) {
@@ -60,27 +77,47 @@ export class PipelineHistoryPage implements OnInit, OnDestroy {
     return formatTimeRange(startTime, endTime, status === 'STARTED' || status === 'STARTING' || status === 'STOPPING');
   }
 
-  private loadHistory() {
+  private loadHistory(options: {
+    reset: boolean;
+    beforeRunId?: number | null;
+    loadingMore?: boolean;
+  } = {
+    reset: true,
+  }) {
     const pipelineId = this.pipelineId();
     if (pipelineId === null) {
       this.runs.set([]);
       this.loadError.set('Missing pipeline id.');
+      this.hasMore.set(false);
       return;
     }
 
-    this.isLoading.set(true);
+    if (options.loadingMore) {
+      this.isLoadingMore.set(true);
+    } else {
+      this.isLoading.set(true);
+    }
     this.loadError.set(null);
 
-    this.syncPipelineApi.pipelineHistory(pipelineId, this.workspaceFacade.workspaceKey()).subscribe({
+    this.syncPipelineApi.pipelineHistory(
+      pipelineId,
+      this.workspaceFacade.workspaceKey(),
+      PipelineHistoryPage.PAGE_SIZE,
+      options.beforeRunId
+    ).subscribe({
       next: (runs) => {
-        this.runs.set(runs);
+        this.hasMore.set(runs.length === PipelineHistoryPage.PAGE_SIZE);
+        this.runs.set(options.reset ? runs : [...this.runs(), ...runs]);
       },
       error: () => {
         this.loadError.set('Failed to load pipeline history.');
-        this.runs.set([]);
+        if (options.reset) {
+          this.runs.set([]);
+        }
       },
       complete: () => {
         this.isLoading.set(false);
+        this.isLoadingMore.set(false);
       }
     });
   }

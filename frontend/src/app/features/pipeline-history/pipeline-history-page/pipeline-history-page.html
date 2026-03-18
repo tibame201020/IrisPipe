@@ -54,5 +54,18 @@
         </div>
       }
     </section>
+
+    @if (hasMore()) {
+      <footer class="table-footer">
+        <button
+          class="app-button-secondary"
+          data-testid="pipeline-history-load-more"
+          type="button"
+          [disabled]="isLoadingMore()"
+          (click)="loadMore()">
+          {{ isLoadingMore() ? 'Loading...' : 'Load Older Runs' }}
+        </button>
+      </footer>
+    }
   }
 </section>

@@ -52,3 +52,9 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+.table-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
