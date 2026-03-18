@@ -1,9 +1,9 @@
-<footer class="app-panel status-bar">
-  <span>Workspace: {{ workspaceFacade.workspaceKey() }}</span>
-  <span class="status-pill" [class.is-down]="healthFacade.backendStatus() === 'DOWN'">
+<footer class="app-panel status-bar" data-testid="shell-status-bar">
+  <span data-testid="status-workspace">Workspace: {{ workspaceFacade.workspaceKey() }}</span>
+  <span class="status-pill" data-testid="backend-status" [class.is-down]="healthFacade.backendStatus() === 'DOWN'">
     Backend: {{ healthFacade.backendStatus() }}
   </span>
-  <span>Folders: {{ treeFacade.rootFolders().length }}</span>
-  <span>Root Pipelines: {{ treeFacade.rootPipelines().length }}</span>
-  <span>Selected Run: {{ runDetailFacade.selectedRunId() ?? 'none' }}</span>
+  <span data-testid="status-folder-count">Folders: {{ treeFacade.rootFolders().length }}</span>
+  <span data-testid="status-root-pipeline-count">Root Pipelines: {{ treeFacade.rootPipelines().length }}</span>
+  <span data-testid="status-selected-run">Selected Run: {{ runDetailFacade.selectedRunId() ?? 'none' }}</span>
 </footer>

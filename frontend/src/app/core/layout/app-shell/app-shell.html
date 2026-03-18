@@ -1,16 +1,16 @@
-<div class="shell">
+<div class="shell" data-testid="app-shell">
   <app-shell-header />
 
   <div class="shell-body">
-    <aside class="shell-sidebar-region">
+    <aside class="shell-sidebar-region" data-testid="shell-sidebar-region">
       <app-shell-sidebar />
     </aside>
 
-    <main class="shell-main-region">
+    <main class="shell-main-region" data-testid="shell-main-region">
       <router-outlet />
     </main>
 
-    <aside class="shell-inspector-region">
+    <aside class="shell-inspector-region" data-testid="shell-inspector-region">
       <app-run-inspector />
     </aside>
   </div>

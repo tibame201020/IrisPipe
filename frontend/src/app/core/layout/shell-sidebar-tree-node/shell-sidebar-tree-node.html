@@ -2,7 +2,8 @@
   <a
     class="tree-row tree-folder"
     [routerLink]="['/folders', folder().id]"
-    routerLinkActive="active">
+    routerLinkActive="active"
+    [attr.data-testid]="'tree-folder-' + folder().id">
     <span class="tree-label">{{ folder().folderName }}</span>
     <span class="tree-meta">{{ folder().pipelines.length }}</span>
   </a>
@@ -11,7 +12,8 @@
     <a
       class="tree-row tree-pipeline"
       [routerLink]="['/pipelines', pipeline.id]"
-      routerLinkActive="active">
+      routerLinkActive="active"
+      [attr.data-testid]="'tree-pipeline-' + pipeline.id">
       <span class="tree-label">{{ pipeline.pipelineName }}</span>
     </a>
   }

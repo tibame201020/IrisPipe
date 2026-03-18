@@ -1,4 +1,4 @@
-<div class="app-panel sidebar">
+<div class="app-panel sidebar" data-testid="shell-sidebar">
   <div class="sidebar-section">
     <p class="app-meta">Workspace</p>
     <strong>{{ workspaceFacade.workspaceName() }}</strong>
@@ -6,8 +6,8 @@
 
   <div class="sidebar-section">
     <p class="app-meta">Navigation</p>
-    <nav class="nav-list">
-      <a routerLink="/recent" routerLinkActive="active">Recent Activity</a>
+    <nav class="nav-list" data-testid="sidebar-navigation">
+      <a routerLink="/recent" routerLinkActive="active" data-testid="nav-recent">Recent Activity</a>
       @if (treeFacade.firstFolderId(); as firstFolderId) {
         <a [routerLink]="['/folders', firstFolderId]" routerLinkActive="active">Folder View</a>
       } @else {
@@ -40,12 +40,13 @@
         title="No pipelines yet"
         description="Create or import a pipeline to populate the workspace tree." />
     } @else {
-      <div class="tree-preview">
+      <div class="tree-preview" data-testid="sidebar-tree">
         @for (pipeline of treeFacade.rootPipelines(); track pipeline.id) {
           <a
             class="tree-row root-pipeline"
             [routerLink]="['/pipelines', pipeline.id]"
-            routerLinkActive="active">
+            routerLinkActive="active"
+            [attr.data-testid]="'tree-pipeline-' + pipeline.id">
             <span class="tree-label">{{ pipeline.pipelineName }}</span>
           </a>
         }

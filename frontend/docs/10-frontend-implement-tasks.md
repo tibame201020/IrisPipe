@@ -180,7 +180,17 @@ Status markers:
 - [ ] manual shell scroll verification
 - [ ] manual route transition verification
 
-## 17. Deferred
+## 17. Playwright E2E
+
+- [x] Add Playwright dependencies and config
+- [x] Add backend/frontend web server orchestration for E2E
+- [x] Add backend seed/reset helpers for tests
+- [x] Add shell bootstrap smoke test
+- [x] Add tree rendering smoke test
+- [x] Add route navigation smoke test
+- [x] Add CI-friendly Chromium test run
+
+## 18. Deferred
 
 These are intentionally out of scope for the current V1 tracking pass:
 
