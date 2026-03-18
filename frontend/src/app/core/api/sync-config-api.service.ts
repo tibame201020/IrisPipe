@@ -36,6 +36,30 @@ export class SyncConfigApiService {
     });
   }
 
+  importPipeline(
+    options: {
+      folderId: number | null;
+      pipelineName: string;
+      format?: 'json' | 'yaml' | 'yml' | null;
+      file: File;
+    },
+    workspaceKey: string = appEnvironment.defaultWorkspaceKey
+  ) {
+    const formData = new FormData();
+    if (options.folderId !== null) {
+      formData.set('folderId', String(options.folderId));
+    }
+    formData.set('pipelineName', options.pipelineName);
+    if (options.format) {
+      formData.set('format', options.format);
+    }
+    formData.set('file', options.file);
+
+    return this.http.post<ConfigPipelineInfo>(`${this.baseUrl}/api/v1/sync-config/import`, formData, {
+      headers: new HttpHeaders({ 'X-Iris-Workspace-Key': workspaceKey })
+    });
+  }
+
   importReplacePipeline(
     pipelineId: number | string,
     options: {

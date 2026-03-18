@@ -7,8 +7,24 @@
         <p class="app-meta">Breadcrumb</p>
         <h2 class="app-section-title">{{ folder.folderPath }}</h2>
       </div>
-      <button class="app-button-secondary" type="button" (click)="refresh()">Refresh</button>
+      <div class="actions">
+        <button class="app-button-primary" type="button" data-testid="folder-view-create-folder" [disabled]="isActionPending()" (click)="openCreateFolderDialog()">New Folder</button>
+        <button class="app-button-secondary" type="button" data-testid="folder-view-import-pipeline" [disabled]="isActionPending()" (click)="openImportPipelineDialog()">Import Pipeline</button>
+        <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="refresh()">Refresh</button>
+      </div>
     </header>
+
+    @if (actionMessage(); as actionMessage) {
+      <div class="feedback-banner feedback-banner--success" data-testid="folder-view-success">
+        {{ actionMessage }}
+      </div>
+    }
+
+    @if (actionError(); as actionError) {
+      <div class="feedback-banner feedback-banner--error" data-testid="folder-view-error">
+        {{ actionError }}
+      </div>
+    }
 
     <section class="block">
       <div class="block-header">
@@ -58,5 +74,84 @@
     <app-app-empty-state
       title="Folder unavailable"
       description="Select a folder from the sidebar tree to inspect its subfolders and pipelines." />
+  }
+
+  @if (showCreateFolderDialog()) {
+    <div class="dialog-backdrop" data-testid="folder-view-create-folder-dialog">
+      <div class="dialog-panel app-panel">
+        <div class="dialog-header">
+          <h3 class="app-section-title">Create Folder</h3>
+          <p class="app-meta">The new folder will be created under the current folder.</p>
+        </div>
+
+        <label class="field">
+          <span>Folder Name</span>
+          <input
+            type="text"
+            data-testid="folder-view-create-folder-name"
+            [ngModel]="createFolderName()"
+            (ngModelChange)="createFolderName.set($event)" />
+        </label>
+
+        <div class="dialog-actions">
+          <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="closeCreateFolderDialog()">Cancel</button>
+          <button
+            class="app-button-primary"
+            type="button"
+            data-testid="folder-view-create-folder-confirm"
+            [disabled]="!canCreateFolder()"
+            (click)="createFolder()">
+            {{ isActionPending() ? 'Creating...' : 'Create Folder' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showImportPipelineDialog()) {
+    <div class="dialog-backdrop" data-testid="folder-view-import-pipeline-dialog">
+      <div class="dialog-panel app-panel">
+        <div class="dialog-header">
+          <h3 class="app-section-title">Import Pipeline</h3>
+          <p class="app-meta">Upload a YAML or JSON pipeline config into the current folder.</p>
+        </div>
+
+        <label class="field">
+          <span>Pipeline Name</span>
+          <input
+            type="text"
+            data-testid="folder-view-import-pipeline-name"
+            [ngModel]="importPipelineName()"
+            (ngModelChange)="importPipelineName.set($event)" />
+        </label>
+
+        <div class="field">
+          <span>Config File</span>
+          <div class="file-picker">
+            <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="openImportPicker(importInput)">Choose File</button>
+            <span class="app-meta" data-testid="folder-view-import-file-name">{{ importFileName() || 'No file selected' }}</span>
+          </div>
+          <input
+            #importInput
+            hidden
+            type="file"
+            accept=".json,.yaml,.yml"
+            data-testid="folder-view-import-file-input"
+            (change)="handleImportFile($event)" />
+        </div>
+
+        <div class="dialog-actions">
+          <button class="app-button-secondary" type="button" [disabled]="isActionPending()" (click)="closeImportPipelineDialog()">Cancel</button>
+          <button
+            class="app-button-primary"
+            type="button"
+            data-testid="folder-view-import-pipeline-confirm"
+            [disabled]="!canImportPipeline()"
+            (click)="importPipeline()">
+            {{ isActionPending() ? 'Importing...' : 'Import Pipeline' }}
+          </button>
+        </div>
+      </div>
+    </div>
   }
 </section>

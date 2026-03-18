@@ -26,4 +26,37 @@ test.describe('folder view', () => {
     await expect(page).toHaveURL(new RegExp(`/pipelines/${pipeline.id}$`));
     await expect(page.getByTestId('status-selected-pipeline')).toContainText(String(pipeline.id));
   });
+
+  test('creates a child folder and imports a pipeline from the folder view', async ({ page, request }) => {
+    const parentFolder = await createFolder(request, uniqueName('pw-folder-actions-parent'));
+    const childFolderName = uniqueName('pw-folder-actions-child');
+    const pipelineName = uniqueName('pw-folder-actions-pipeline');
+
+    await page.goto(`/folders/${parentFolder.id}`);
+
+    await page.getByTestId('folder-view-create-folder').click();
+    await expect(page.getByTestId('folder-view-create-folder-dialog')).toBeVisible();
+    await page.getByTestId('folder-view-create-folder-name').fill(childFolderName);
+    await page.getByTestId('folder-view-create-folder-confirm').click();
+
+    await expect(page).toHaveURL(/\/folders\/\d+$/);
+    await expect(page.getByRole('heading', { name: `Folder: ${childFolderName}` })).toBeVisible();
+    await expect(page.getByTestId('folder-view-success')).toContainText('Folder created');
+
+    await page.goto(`/folders/${parentFolder.id}`);
+
+    await page.getByTestId('folder-view-import-pipeline').click();
+    await expect(page.getByTestId('folder-view-import-pipeline-dialog')).toBeVisible();
+    await page.getByTestId('folder-view-import-pipeline-name').fill(pipelineName);
+    await page.getByTestId('folder-view-import-file-input').setInputFiles({
+      name: `${pipelineName}.yml`,
+      mimeType: 'application/x-yaml',
+      buffer: Buffer.from(minimalPipelineYaml(pipelineName)),
+    });
+    await page.getByTestId('folder-view-import-pipeline-confirm').click();
+
+    await expect(page).toHaveURL(/\/pipelines\/\d+$/);
+    await expect(page.getByRole('heading', { name: pipelineName })).toBeVisible();
+    await expect(page.getByTestId('sidebar-tree')).toContainText(pipelineName);
+  });
 });

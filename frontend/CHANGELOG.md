@@ -4,6 +4,21 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Folder Actions Slice] - 2026-03-18
+
+### Added
+- **Folder Action E2E Coverage**: Added Playwright coverage for creating a child folder from the folder view and importing a pipeline config into the selected folder through the UI.
+- **Folder API Client**: Added a dedicated frontend folder API client for folder create operations instead of overloading the tree read service.
+
+### Changed
+- **Folder View Actions**: Added `New Folder` and `Import Pipeline` flows to the folder view, including custom in-app dialogs, live tree refresh, and route transitions into the created folder or imported pipeline.
+- **Sync Config API Client**: Added typed pipeline import-create support so the frontend can create pipeline configs through the existing backend import contract.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark folder create and import flows as complete while leaving `create pipeline` open because the current backend contract still requires a non-empty job payload.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `14/14`, including the new folder create and pipeline import scenarios.
+
 ## [Run Control Slice] - 2026-03-18
 
 ### Added
