@@ -16,6 +16,11 @@ interface ImportPipelineOptions {
   format?: 'yaml' | 'json';
 }
 
+interface ExecutePipelineOptions {
+  pipelineId: number;
+  useAsyncLaucher?: boolean;
+}
+
 const backendBaseUrl = process.env.PLAYWRIGHT_BACKEND_BASE_URL ?? 'http://127.0.0.1:8080';
 
 function workspaceHeaders(workspaceKey = 'default') {
@@ -58,6 +63,26 @@ export async function importPipelineConfig(
         mimeType: options.format === 'json' ? 'application/json' : 'application/x-yaml',
         buffer: Buffer.from(options.fileContent),
       },
+    },
+  });
+
+  expect(response.ok()).toBeTruthy();
+  return response.json();
+}
+
+export async function executePipeline(
+  request: APIRequestContext,
+  options: ExecutePipelineOptions,
+  workspaceKey = 'default',
+) {
+  const response = await request.post(`${backendBaseUrl}/api/v1/sync-pipeline`, {
+    headers: {
+      ...workspaceHeaders(workspaceKey),
+      'Content-Type': 'application/json',
+    },
+    data: {
+      pipelineId: options.pipelineId,
+      useAsyncLaucher: options.useAsyncLaucher ?? false,
     },
   });
 

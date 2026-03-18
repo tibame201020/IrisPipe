@@ -4,3 +4,8 @@ export interface WorkspaceInfo {
   workspaceName: string;
   systemDefault: boolean;
 }
+
+export interface WorkspaceUpsertRequest {
+  workspaceKey: string;
+  workspaceName: string;
+}

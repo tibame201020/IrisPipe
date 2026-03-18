@@ -1,10 +1,16 @@
-export function minimalPipelineYaml() {
-  return `- jobName: playwright_job
+function normalizeToken(value: string) {
+  return value.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+export function minimalPipelineYaml(seed = 'playwright') {
+  const token = normalizeToken(seed);
+
+  return `- jobName: ${token}_job
   executions:
     - type: EXECUTE
       sql: truncate table test_dest
     - type: INSERT
-      name: playwright_insert
+      name: ${token}_insert
       sql: select * from test_source where update_time > :_LAST_UPDATE order by update_time asc
       destTable: test_dest
       watermarkColumn: UPDATE_TIME

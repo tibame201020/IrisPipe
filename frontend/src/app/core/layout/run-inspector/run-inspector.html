@@ -1,12 +1,18 @@
-<div class="app-panel inspector">
+<div class="app-panel inspector" data-testid="run-inspector">
   @if (runDetailFacade.hasSelectedRun()) {
     <section class="inspector-section">
       <div class="inspector-header">
         <h2 class="app-section-title">Run #{{ runDetailFacade.selectedRunId() }}</h2>
         <app-status-chip [status]="runDetailFacade.selectedRunStatus()" />
       </div>
-      <p class="app-meta">Pipeline: sync-order</p>
-      <p class="app-meta">Requested Async: true</p>
+      @if (runDetailFacade.detail(); as detail) {
+        <p class="app-meta">Pipeline: {{ detail.pipelineName }}</p>
+        <p class="app-meta">Requested Async: {{ detail.requestedAsync ?? false }}</p>
+      } @else if (runDetailFacade.isLoading()) {
+        <p class="app-meta">Loading run detail...</p>
+      } @else if (runDetailFacade.loadError(); as loadError) {
+        <p class="app-meta">{{ loadError }}</p>
+      }
     </section>
 
     <section class="inspector-section">
@@ -20,31 +26,45 @@
 
     <section class="inspector-section">
       <h3 class="app-section-title">Attempts</h3>
-      <div class="meta-stack">
-        <div>1. INITIAL</div>
-        <div class="app-meta">FAILED 10:02 -> 10:05</div>
-        <div>2. RESUME</div>
-        <div class="app-meta">STARTED 10:06 -> now</div>
-      </div>
+      @if (runDetailFacade.attempts().length > 0) {
+        <div class="meta-stack" data-testid="run-inspector-attempts">
+          @for (attempt of runDetailFacade.attempts(); track attempt.executionId) {
+            <div>{{ attempt.executionNo }}. {{ attempt.executionKind }}</div>
+            <div class="app-meta">{{ attempt.status }} {{ formatTimeRange(attempt.startTime, attempt.endTime, attempt.status) }}</div>
+          }
+        </div>
+      } @else {
+        <p class="app-meta">No attempts available.</p>
+      }
     </section>
 
     <section class="inspector-section">
       <h3 class="app-section-title">Latest Jobs</h3>
-      <div class="meta-stack">
-        <div>extract-order</div>
-        <div class="app-meta">COMPLETED 10:02 -> 10:03</div>
-        <div>upsert-order</div>
-        <div class="app-meta">STARTED 10:03 -> now</div>
-      </div>
+      @if (runDetailFacade.latestJobs().length > 0) {
+        <div class="meta-stack" data-testid="run-inspector-jobs">
+          @for (job of runDetailFacade.latestJobs(); track job.id) {
+            <div>{{ job.jobName }}</div>
+            <div class="app-meta">{{ job.status }} {{ formatTimeRange(job.startTime, job.endTime, job.status) }}</div>
+          }
+        </div>
+      } @else {
+        <p class="app-meta">No jobs available.</p>
+      }
     </section>
 
     <section class="inspector-section">
       <h3 class="app-section-title">Step Summary</h3>
-      <div class="meta-stack">
-        <div>Job: upsert-order</div>
-        <div class="app-meta">step_upsert</div>
-        <div class="app-meta">STARTED read:40 write:0</div>
-      </div>
+      @if (runDetailFacade.focusedJob(); as focusedJob) {
+        <div class="meta-stack" data-testid="run-inspector-steps">
+          <div>Job: {{ focusedJob.jobName }}</div>
+          @for (step of runDetailFacade.focusedJobSteps(); track step.id) {
+            <div class="app-meta">{{ step.stepName }}</div>
+            <div class="app-meta">{{ step.status }} read:{{ step.readCount }} write:{{ step.writeCount }}</div>
+          }
+        </div>
+      } @else {
+        <p class="app-meta">No step summary available.</p>
+      }
     </section>
   } @else {
     <app-app-empty-state

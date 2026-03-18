@@ -4,6 +4,24 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Run Data Integration Slice] - 2026-03-18
+
+### Added
+- **Typed Runtime Contracts**: Added comprehensive frontend contract models for sync config and sync pipeline payloads, including pipeline config detail, folder delete preview, run summary/detail, attempts, jobs, and step summaries.
+- **Runtime Date Formatting Support**: Added shared date/time formatting utilities that handle the backend's actual `LocalDateTime` JSON shape, including numeric-array payloads surfaced by Spring/Jackson.
+- **Run Data Playwright Coverage**: Added Playwright E2E scenarios for recent activity, pipeline history, and run inspector, together with runtime table seed helpers and pipeline execution helpers.
+
+### Changed
+- **Recent Activity**: Replaced placeholder recent-run rows with real backend data, refresh behavior, polling, and route navigation into `/runs/:pipelineRunId`.
+- **Pipeline History**: Replaced placeholder history rows with real per-pipeline run history, tab-safe route links, refresh behavior, and route navigation into `/runs/:pipelineRunId`.
+- **Run Inspector and Focus Route**: Replaced placeholder runtime sections with real run detail payload rendering for attempts, latest jobs, focused job step summaries, and active-run polling.
+- **API Typing Baseline**: Typed `SyncConfigApiService` and `SyncPipelineApiService` against shared frontend models instead of using untyped object payloads.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to reflect the completed contract and run-data slice.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `7/7`, including shell bootstrap, tree rendering, route navigation, recent activity, pipeline history, and run inspector flows.
+
 ## [Frontend V1 Foundation] - 2026-03-18
 
 ### Added

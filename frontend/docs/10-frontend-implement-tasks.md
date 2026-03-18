@@ -9,6 +9,18 @@ It follows the decisions already locked in:
 - [README.md](README.md)
 - [09-angular-app-scaffold-plan.md](09-angular-app-scaffold-plan.md)
 
+Implementation order for the current phase is:
+
+- `contract-first`
+- `mock-assisted`
+- `integration-early`
+
+This means:
+
+- shared models and typed API contracts should be completed before feature pages depend on them
+- mock data can speed up page implementation, but it should live at facade or page level
+- `core/api` remains the real HTTP contract layer and should not be replaced by mock-first runtime wiring
+
 Status markers:
 
 - `[x]` done
@@ -47,7 +59,26 @@ Status markers:
 - [x] Ensure all routes render inside the stable app shell
 - [ ] Add route-driven selection sync for folder and pipeline context
 
-## 4. Core Integration
+## 4. Data Contracts
+
+- [x] Add frontend models for:
+  - workspace
+  - tree
+  - health
+- [x] Add frontend models for:
+  - config summary/detail
+  - config request payloads
+  - folder CRUD / delete preview
+  - run summary
+  - run detail
+  - attempts
+  - jobs
+  - step summaries
+  - run request payloads
+- [ ] Add mapping helpers where raw backend payload should be normalized
+- [ ] Keep mock fixtures aligned with typed frontend contracts
+
+## 5. Core Integration
 
 - [x] Add `app-environment` baseline
 - [x] Add API service skeletons
@@ -55,9 +86,11 @@ Status markers:
 - [x] Wire `WorkspaceApiService` into `WorkspaceFacade`
 - [x] Wire `PipelineTreeApiService` into `TreeFacade`
 - [x] Wire `HealthApiService` into `HealthFacade`
-- [ ] Wire `SyncPipelineApiService` into `RunDetailFacade`
+- [x] Type `SyncConfigApiService` against shared models
+- [x] Type `SyncPipelineApiService` against shared models
+- [x] Wire `SyncPipelineApiService` into `RunDetailFacade`
 
-## 5. Shared UI
+## 6. Shared UI
 
 - [x] Add `StatusChip`
 - [x] Add `AppEmptyState`
@@ -67,7 +100,7 @@ Status markers:
 - [ ] Add reusable page tabs component
 - [ ] Add reusable list row action component
 
-## 6. Folder View
+## 7. Folder View
 
 - [x] Add folder view placeholder page
 - [ ] Load real folder tree / selected folder data
@@ -78,36 +111,36 @@ Status markers:
 - [ ] Add row context menu
 - [ ] Add inline rename behavior
 
-## 7. Recent Activity
+## 8. Recent Activity
 
 - [x] Add recent activity placeholder page
-- [ ] Load real recent runs from backend
-- [ ] Add polling contract implementation
-- [ ] Add row-to-inspector selection sync
+- [x] Load real recent runs from backend
+- [x] Add polling contract implementation
+- [x] Add row-to-inspector selection sync
 - [ ] Add load-more pagination
 
-## 8. Pipeline History
+## 9. Pipeline History
 
 - [x] Add pipeline history placeholder page
-- [ ] Load real history for selected pipeline
+- [x] Load real history for selected pipeline
 - [ ] Add refresh behavior after control actions
-- [ ] Add row-to-inspector selection sync
+- [x] Add row-to-inspector selection sync
 - [ ] Add load-more pagination
 
-## 9. Run Inspector
+## 10. Run Inspector
 
 - [x] Add inspector placeholder sections
 - [x] Add status chip integration
 - [x] Add route-driven run focus bridge
-- [ ] Load real run detail payload
-- [ ] Render attempts timeline from payload
-- [ ] Render latest jobs from payload
-- [ ] Render selected-job step summary from payload
-- [ ] Implement active-run polling start/stop logic
+- [x] Load real run detail payload
+- [x] Render attempts timeline from payload
+- [x] Render latest jobs from payload
+- [x] Render selected-job step summary from payload
+- [x] Implement active-run polling start/stop logic
 - [ ] Wire stop / resume / rerun / delete actions
 - [ ] Add confirm dialog flow for destructive run delete
 
-## 10. Pipeline Overview
+## 11. Pipeline Overview
 
 - [x] Add overview placeholder page
 - [ ] Load selected pipeline summary
@@ -115,7 +148,7 @@ Status markers:
 - [ ] Wire execute action
 - [ ] Sync run selection into inspector
 
-## 11. Config Editor
+## 12. Config Editor
 
 - [x] Add Option A skeleton
 - [x] Add job outline placeholder
@@ -129,14 +162,14 @@ Status markers:
 - [ ] Implement delete pipeline flow with custom confirm dialog
 - [ ] Add inline validation rendering
 
-## 12. Tree And Selection Sync
+## 13. Tree And Selection Sync
 
 - [ ] Sync sidebar tree with current route
 - [ ] Sync selecting a pipeline row to route navigation
 - [ ] Sync selecting a recent/history row to run route
 - [ ] Keep inspector stable across page transitions
 
-## 13. Feedback And State UX
+## 14. Feedback And State UX
 
 - [ ] Add skeleton loading states for pages
 - [ ] Add local action spinners
@@ -145,7 +178,7 @@ Status markers:
 - [ ] Add explicit empty states for all pages
 - [ ] Add inline conflict handling for `400` / `409`
 
-## 14. Styling Pass
+## 15. Styling Pass
 
 - [x] Add global token baseline
 - [ ] Apply selected spacing and typography rules consistently
@@ -154,24 +187,11 @@ Status markers:
 - [ ] Normalize row density across folder/recent/history pages
 - [ ] Refine inspector section spacing
 
-## 15. Data Contracts
-
-- [ ] Add frontend models for:
-  - workspace
-  - tree
-  - config summary/detail
-  - run summary
-  - run detail
-  - attempts
-  - jobs
-  - step summaries
-- [ ] Add mapping helpers where raw backend payload should be normalized
-
 ## 16. Validation Pass
 
 - [x] `npm run build`
 - [ ] `npm test`
-- [ ] connect to live backend and verify:
+- [x] connect to live backend and verify:
   - workspace/current
   - pipeline tree
   - recent runs
@@ -188,6 +208,9 @@ Status markers:
 - [x] Add shell bootstrap smoke test
 - [x] Add tree rendering smoke test
 - [x] Add route navigation smoke test
+- [x] Add recent activity data render test
+- [x] Add pipeline history data render test
+- [x] Add run inspector data render test
 - [x] Add CI-friendly Chromium test run
 
 ## 18. Deferred

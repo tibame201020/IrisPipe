@@ -1,6 +1,36 @@
 <section class="page app-panel">
-  <h2 class="app-section-title">Run Detail Focus</h2>
-  <p class="app-meta">
-    This route keeps the main workarea stable while the selected run is rendered in the right inspector.
-  </p>
+  @if (runDetailFacade.detail(); as detail) {
+    <header class="page-header">
+      <div>
+        <p class="app-meta">Run Focus</p>
+        <h2 class="app-section-title">Run #{{ detail.id }}</h2>
+        <p class="app-meta">{{ detail.pipelineName }} / {{ detail.folderPath }}</p>
+      </div>
+      <app-status-chip [status]="detail.status" />
+    </header>
+
+    <section class="detail-grid">
+      <div class="detail-card">
+        <h3 class="app-section-title">Summary</h3>
+        <p class="app-meta">Created: {{ formatDateTime(detail.createdAt) }}</p>
+        <p class="app-meta">Started: {{ formatDateTime(detail.startTime) }}</p>
+        <p class="app-meta">Ended: {{ formatDateTime(detail.endTime) }}</p>
+        <p class="app-meta">Requested Async: {{ detail.requestedAsync ?? false }}</p>
+      </div>
+
+      <div class="detail-card">
+        <h3 class="app-section-title">Attempts</h3>
+        <p class="app-meta">{{ detail.attempts.length }} execution attempt(s)</p>
+        <p class="app-meta">{{ detail.jobs.length }} latest job projection(s)</p>
+      </div>
+    </section>
+  } @else if (runDetailFacade.isLoading()) {
+    <p class="app-meta">Loading run detail...</p>
+  } @else if (runDetailFacade.loadError(); as loadError) {
+    <app-app-empty-state title="Run detail unavailable" [description]="loadError" />
+  } @else {
+    <app-app-empty-state
+      title="No run selected"
+      description="Select a run from recent activity or pipeline history." />
+  }
 </section>
