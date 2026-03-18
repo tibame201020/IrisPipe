@@ -4,6 +4,20 @@ All notable frontend changes are documented in this file.
 
 Use [docs/README.md](docs/README.md) as the frontend design and implementation entry point.
 
+## [Config Editor Slice] - 2026-03-18
+
+### Added
+- **Config Editor E2E Coverage**: Added Playwright coverage for real config loading, job and step selection binding, save persistence, import-replace flow, and custom-confirm delete flow.
+
+### Changed
+- **Config Editor Page**: Replaced the config-editor placeholder with a real form-based editor that loads backend config detail, binds selected job and selected step state, renders inline validation, and supports save, import-replace, and delete actions.
+- **Sync Config API Client**: Added typed update, import-replace, and delete operations so the frontend config editor can mutate pipeline definitions through the same shared HTTP contract layer as the rest of the app.
+- **Implementation Tracker**: Updated [docs/10-frontend-implement-tasks.md](docs/10-frontend-implement-tasks.md) to mark the config editor slice as complete and to record live-backend verification for pipeline config detail.
+
+### Verified
+- **Frontend Build Validation**: Re-ran `npm run build`.
+- **Playwright Validation**: Re-ran `npm run e2e`; the frontend suite now passes `11/11`, including the new config editor save/import/delete scenarios.
+
 ## [Folder View And Tree Selection Slice] - 2026-03-18
 
 ### Added

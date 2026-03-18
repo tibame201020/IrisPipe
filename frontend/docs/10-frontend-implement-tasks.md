@@ -154,13 +154,13 @@ Status markers:
 - [x] Add job outline placeholder
 - [x] Add section-stack job card placeholder
 - [x] Add selected-step area placeholder
-- [ ] Load real config payload
-- [ ] Bind selected job state
-- [ ] Bind selected step accordion state
-- [ ] Implement save flow
-- [ ] Implement import-replace flow
-- [ ] Implement delete pipeline flow with custom confirm dialog
-- [ ] Add inline validation rendering
+- [x] Load real config payload
+- [x] Bind selected job state
+- [x] Bind selected step accordion state
+- [x] Implement save flow
+- [x] Implement import-replace flow
+- [x] Implement delete pipeline flow with custom confirm dialog
+- [x] Add inline validation rendering
 
 ## 13. Tree And Selection Sync
 
@@ -194,6 +194,7 @@ Status markers:
 - [x] connect to live backend and verify:
   - workspace/current
   - pipeline tree
+  - pipeline config detail
   - recent runs
   - pipeline history
   - run detail
@@ -212,6 +213,7 @@ Status markers:
 - [x] Add recent activity data render test
 - [x] Add pipeline history data render test
 - [x] Add pipeline overview data and execute test
+- [x] Add pipeline config editor save/import/delete test
 - [x] Add run inspector data render test
 - [x] Add CI-friendly Chromium test run
 
