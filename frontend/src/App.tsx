@@ -4,6 +4,7 @@ import { ThemeProvider } from './state/theme'
 import { LayoutProvider } from './state/layout'
 import { ConsoleLayout } from './layout/ConsoleLayout'
 import { PipelineWorkspaceLayout } from './layout/PipelineWorkspaceLayout'
+import { PipelineRunsLayout } from './layout/PipelineRunsLayout'
 import { PipelineConfigPage } from './pages/PipelineConfigPage'
 import { PipelineRunsPage } from './pages/PipelineRunsPage'
 import { RunDetailPage } from './pages/RunDetailPage'
@@ -34,8 +35,10 @@ export default function App() {
               <Route path="/pipeline/new/config" element={<PipelineConfigPage />} />
               <Route path="/pipeline/items/:pipelineId" element={<PipelineWorkspaceLayout />}>
                 <Route path="config" element={<PipelineConfigPage />} />
-                <Route path="runs" element={<PipelineRunsPage />} />
-                <Route path="runs/:runId" element={<RunDetailPage />} />
+                <Route path="runs" element={<PipelineRunsLayout />}>
+                  <Route index element={<PipelineRunsPage />} />
+                  <Route path=":runId" element={<RunDetailPage />} />
+                </Route>
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

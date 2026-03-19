@@ -97,15 +97,7 @@ export function PipelineRunsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
-        <div>
-          <div className="iris-header">Run History</div>
-          <h1 className="text-xl font-bold tracking-tight">{pipeline.pipelineName}</h1>
-          <div className="mt-2 text-sm text-base-content/55">
-            Runtime history for this pipeline definition.
-          </div>
-        </div>
-
+      <div className="flex shrink-0 items-center justify-end border-b border-base-300 bg-base-100 px-8 py-4">
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-sm btn-square">
             <RefreshCw size={18} className={loading && !runs.length ? 'animate-spin' : ''} />

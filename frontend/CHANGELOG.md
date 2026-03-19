@@ -2,6 +2,13 @@
 
 ## 2026-03-19
 
+### Runs section continuity
+- Split the pipeline workspace into a real nested `runs` section so `config -> runs -> run detail` stays inside one pipeline workspace instead of three pages imitating the same chrome.
+- Added a dedicated `PipelineRunsLayout` that keeps `Run History` and `Run #id` in the same narrative family while leaving `Config | Runs` ownership at the workspace level.
+- Tightened `RunDetailPage` so it only owns run-specific state, actions, attempts, graph, and selected-job details.
+- Reordered attempt cards and runtime graph nodes to emphasize backend facts first: execution kind, attempt number, status, duration, jobs, and step counts.
+- Reworked graph node hierarchy to make status readable without overpowering the job name or runtime counters.
+
 ### Pipeline workspace runtime polish
 - Moved the pipeline workspace family (`config`, `runs`, `run detail`) off route-level lazy loading so tab switches stay in the same shell without fallback delay.
 - Re-centered `Run Detail` around run-specific state only, leaving breadcrumb and `Config | Runs` tabs to the shared pipeline workspace layout.

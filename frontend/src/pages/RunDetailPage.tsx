@@ -191,18 +191,20 @@ export function RunDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
-      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
+      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4">
         <div>
           <div className="iris-header">Run Detail</div>
-          <h1 className="text-xl font-bold tracking-tight">Run #{detail.id}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+          <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+            <span className="font-mono">Run #{detail.id}</span>
+            <span>&bull;</span>
             <span className="font-semibold">{workspace.pipeline.pipelineName}</span>
             <span>&bull;</span>
+            <StatusBadge status={detail.status} mode="text" />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
             <span>{currentAttempt?.executionKind ?? 'Attempt'}</span>
             <span>&bull;</span>
             <span>Attempt #{currentAttempt?.executionNo ?? '-'}</span>
-            <span>&bull;</span>
-            <StatusBadge status={detail.status} mode="text" />
           </div>
         </div>
 
@@ -270,6 +272,7 @@ export function RunDetailPage() {
             {detail.attempts.slice().reverse().map((attempt) => {
               const isLatest = attempt.executionId === latestAttempt?.executionId
               const isSelected = attempt.executionId === currentAttempt?.executionId
+              const stepCount = attempt.jobs.reduce((count, job) => count + job.stepExecutionInfos.length, 0)
 
               return (
                 <button
@@ -284,7 +287,10 @@ export function RunDetailPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-base font-bold">{attempt.executionKind}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-base font-bold">{attempt.executionKind}</div>
+                        <StatusBadge status={attempt.status} subtle />
+                      </div>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">
                           Attempt #{attempt.executionNo}
@@ -292,7 +298,9 @@ export function RunDetailPage() {
                         {isLatest ? <span className="badge badge-ghost badge-sm">Latest</span> : null}
                       </div>
                     </div>
-                    <StatusBadge status={attempt.status} subtle />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
+                      {attempt.jobs.length} jobs / {stepCount} steps
+                    </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-base-content/45">
                     <div className="flex items-center gap-2">
