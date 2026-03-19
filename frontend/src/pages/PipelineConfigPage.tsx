@@ -1,5 +1,6 @@
 import {
   Database,
+  FileJson2,
   Layers3,
   PlayCircle,
   RefreshCw,
@@ -18,6 +19,7 @@ export function PipelineConfigPage() {
   const { pipelineId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const isDraft = !pipelineId
   const [config, setConfig] = useState<ConfigPipelineInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +27,7 @@ export function PipelineConfigPage() {
 
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
+  const explorerLink = folderId ? `/pipeline/folders/${folderId}` : '/pipeline'
 
   async function loadConfig() {
     setLoading(true)
@@ -41,6 +44,13 @@ export function PipelineConfigPage() {
   }
 
   useEffect(() => {
+    if (isDraft) {
+      setLoading(false)
+      setError(null)
+      setConfig(null)
+      return
+    }
+
     if (!Number.isFinite(numericPipelineId)) {
       setError('Invalid pipeline id')
       setLoading(false)
@@ -48,7 +58,7 @@ export function PipelineConfigPage() {
     }
 
     void loadConfig()
-  }, [numericPipelineId])
+  }, [isDraft, numericPipelineId])
 
   async function handleExecute() {
     if (!config) {
@@ -78,6 +88,49 @@ export function PipelineConfigPage() {
     )
   }
 
+  if (isDraft) {
+    return (
+      <div className="space-y-6">
+        <div className="breadcrumbs border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
+          <ul>
+            <li>
+              <Link to={explorerLink}>Explorer</Link>
+            </li>
+            <li>New pipeline</li>
+          </ul>
+        </div>
+
+        <PageToolbar
+          eyebrow="Pipeline config"
+          title="New pipeline"
+          description="Draft editor surface only. Create and save flow will be defined in the next pipeline editor phase."
+          actions={
+            <Link to={explorerLink} className="btn border-base-300 bg-base-100">
+              Back to explorer
+            </Link>
+          }
+        />
+
+        <div className="hero min-h-[22rem] rounded-box border border-base-300 bg-base-100 shadow-sm">
+          <div className="hero-content text-center">
+            <div className="max-w-2xl space-y-5">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-box bg-primary/10 text-primary">
+                <FileJson2 size={24} />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold tracking-tight">Pipeline editor draft</h2>
+                <p className="text-sm leading-7 text-base-content/65">
+                  Explorer can now hand off into editor creation mode without forcing a backend write first.
+                  The actual pipeline name, jobs, steps, connections, and save contract belong to the next stage.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (error || !config) {
     return (
       <EmptyState
@@ -85,7 +138,7 @@ export function PipelineConfigPage() {
         title="Pipeline surface is unavailable"
         description={error ?? 'The backend did not return a pipeline config payload.'}
         action={
-          <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary px-5">
+          <Link to={explorerLink} className="btn btn-primary px-5">
             Back to explorer
           </Link>
         }
@@ -98,7 +151,7 @@ export function PipelineConfigPage() {
       <div className="breadcrumbs border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
         <ul>
           <li>
-            <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'}>Explorer</Link>
+            <Link to={explorerLink}>Explorer</Link>
           </li>
           <li>{config.pipelineName}</li>
         </ul>

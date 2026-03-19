@@ -72,12 +72,59 @@ export interface ConfigPipelineInfo extends ConfigPipelineSummary {
   jobs: SyncJobDefinition[]
 }
 
+export interface ConfigPipelineUpsertRequest {
+  folderId: number | null
+  pipelineName: string
+  jobs: SyncJobDefinition[]
+}
+
 export interface FolderTreeNodeInfo {
   id: number
   folderName: string
   folderPath: string
   folders: FolderTreeNodeInfo[]
   pipelines: ConfigPipelineSummary[]
+}
+
+export interface FolderInfo {
+  id: number
+  parentFolderId: number | null
+  folderName: string
+  folderPath: string
+  systemRoot: boolean
+}
+
+export interface FolderUpsertRequest {
+  parentFolderId: number | null
+  folderName: string
+}
+
+export interface FolderDeletePreviewFolderInfo {
+  id: number
+  folderName: string
+  folderPath: string
+}
+
+export interface FolderDeletePreviewPipelineInfo {
+  id: number
+  folderId: number | null
+  folderPath: string
+  pipelineName: string
+  hasRunHistory: boolean
+}
+
+export interface FolderDeletePreviewInfo {
+  folderId: number
+  folderName: string
+  folderPath: string
+  folderCount: number
+  pipelineCount: number
+  pipelinesWithRunHistory: number
+  hasBlockers: boolean
+  folders: FolderDeletePreviewFolderInfo[]
+  pipelines: FolderDeletePreviewPipelineInfo[]
+  blockingPipelines: FolderDeletePreviewPipelineInfo[]
+  truncated: boolean
 }
 
 export interface PipelineTreeInfo {

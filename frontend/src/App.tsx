@@ -19,6 +19,7 @@ export default function App() {
             <Route path="/overview" element={<OverviewPage />} />
             <Route path="/pipeline" element={<PipelineExplorerPage />} />
             <Route path="/pipeline/folders/:folderId" element={<PipelineExplorerPage />} />
+            <Route path="/pipeline/new/config" element={<PipelineConfigPage />} />
             <Route path="/pipeline/items/:pipelineId/config" element={<PipelineConfigPage />} />
             <Route path="/pipeline/items/:pipelineId/runs" element={<PipelineRunsPage />} />
             <Route path="/pipeline/items/:pipelineId/runs/:runId" element={<RunDetailPage />} />

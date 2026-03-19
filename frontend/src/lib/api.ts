@@ -1,6 +1,10 @@
 import axios from 'axios'
 import type {
   ConfigPipelineInfo,
+  ConfigPipelineUpsertRequest,
+  FolderDeletePreviewInfo,
+  FolderInfo,
+  FolderUpsertRequest,
   HealthResponse,
   PipelineExecuteRequest,
   PipelineResumeRequest,
@@ -29,6 +33,42 @@ export async function getPipelineTree() {
 export async function getPipelineConfig(pipelineId: number) {
   const response = await http.get<ConfigPipelineInfo>(`/api/v1/sync-config/${pipelineId}`)
   return response.data
+}
+
+export async function createPipelineConfig(payload: ConfigPipelineUpsertRequest) {
+  const response = await http.post<ConfigPipelineInfo>('/api/v1/sync-config', payload)
+  return response.data
+}
+
+export async function deletePipelineConfig(pipelineId: number) {
+  await http.delete(`/api/v1/sync-config/${pipelineId}`)
+}
+
+export async function createFolder(payload: FolderUpsertRequest) {
+  const response = await http.post<FolderInfo>('/api/v1/pipeline-folders', payload)
+  return response.data
+}
+
+export async function updateFolder(folderId: number, payload: FolderUpsertRequest) {
+  const response = await http.put<FolderInfo>(`/api/v1/pipeline-folders/${folderId}`, payload)
+  return response.data
+}
+
+export async function getFolderDeletePreview(folderId: number, limit = 10) {
+  const response = await http.get<FolderDeletePreviewInfo>(`/api/v1/pipeline-folders/${folderId}/delete-preview`, {
+    params: {
+      limit,
+    },
+  })
+  return response.data
+}
+
+export async function deleteFolder(folderId: number, recursive = false) {
+  await http.delete(`/api/v1/pipeline-folders/${folderId}`, {
+    params: {
+      recursive,
+    },
+  })
 }
 
 export async function getRecentRuns(limit = 6, beforeRunId?: number) {

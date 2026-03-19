@@ -15,6 +15,9 @@ function resolveTitle(pathname: string) {
   if (pathname.startsWith('/pipeline/items/') && pathname.endsWith('/config')) {
     return 'Pipeline config'
   }
+  if (pathname.startsWith('/pipeline/new/config')) {
+    return 'Pipeline config'
+  }
   if (pathname.startsWith('/pipeline')) {
     return 'Pipeline'
   }
