@@ -32,8 +32,8 @@ type PipelineJobNode = Node<PipelineJobNodeData, 'pipelineJob'>
 
 const INITIAL_NODE_X = 180
 const INITIAL_NODE_Y = 220
-const NODE_WIDTH = 180
-const NODE_SPACING = 270
+const NODE_WIDTH = 270
+const NODE_SPACING = 360
 const EDGE_COLOR = '#94a3b8'
 
 const flowStyles: CSSProperties = {
@@ -297,16 +297,17 @@ export function PipelineConfigPage() {
                 }}
                 proOptions={{ hideAttribution: true }}
                 defaultEdgeOptions={{
-                  type: 'straight',
+                  type: 'default',
                   animated: false,
                   style: {
                     strokeWidth: 1.5,
                     stroke: EDGE_COLOR,
+                    strokeLinecap: 'round',
                   },
                   markerEnd: {
                     type: MarkerType.ArrowClosed,
-                    width: 14,
-                    height: 14,
+                    width: 12,
+                    height: 12,
                     color: EDGE_COLOR,
                   },
                 }}
@@ -433,7 +434,7 @@ function buildLinearEdges(jobs: SyncJobDefinition[]): Edge[] {
     id: `edge-${index}-${index + 1}`,
     source: `job-${index}`,
     target: `job-${index + 1}`,
-    type: 'straight',
+    type: 'default',
   }))
 }
 
