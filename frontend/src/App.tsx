@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from './state/theme'
 import { LayoutProvider } from './state/layout'
 import { ConsoleLayout } from './layout/ConsoleLayout'
+import { PipelineWorkspaceLayout } from './layout/PipelineWorkspaceLayout'
 
 const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })))
 const PipelineExplorerPage = lazy(() => import('./pages/PipelineExplorerPage').then((module) => ({ default: module.PipelineExplorerPage })))
@@ -31,9 +32,11 @@ export default function App() {
               <Route path="/pipeline" element={<PipelineExplorerPage />} />
               <Route path="/pipeline/folders/:folderId" element={<PipelineExplorerPage />} />
               <Route path="/pipeline/new/config" element={<PipelineConfigPage />} />
-              <Route path="/pipeline/items/:pipelineId/config" element={<PipelineConfigPage />} />
-              <Route path="/pipeline/items/:pipelineId/runs" element={<PipelineRunsPage />} />
-              <Route path="/pipeline/items/:pipelineId/runs/:runId" element={<RunDetailPage />} />
+              <Route path="/pipeline/items/:pipelineId" element={<PipelineWorkspaceLayout />}>
+                <Route path="config" element={<PipelineConfigPage />} />
+                <Route path="runs" element={<PipelineRunsPage />} />
+                <Route path="runs/:runId" element={<RunDetailPage />} />
+              </Route>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Routes>

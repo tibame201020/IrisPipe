@@ -2,6 +2,12 @@
 
 ## 2026-03-19
 
+### Pipeline workspace continuity
+- Replaced duplicated `breadcrumb + tabs` markup in `config`, `runs`, and `run detail` with a shared pipeline workspace layout.
+- Kept `Config` and `Runs` as real route-level tabs inside the same workspace shell instead of three separate pages imitating the same chrome.
+- Aligned run-detail navigation so `Config -> Runs -> Run Detail` now reads as one continuous pipeline workspace.
+- Tightened runtime job nodes and attempt cards so run-detail emphasizes backend facts: execution kind, attempt number, duration, and per-job step counts.
+
 ### Canvas edge and layout fixes
 - Restored explicit graph edges for both pipeline config and run detail by binding both pages to the same smooth edge renderer.
 - Fixed clipped node handles by allowing graph nodes to overflow so React Flow connection handles are fully visible.

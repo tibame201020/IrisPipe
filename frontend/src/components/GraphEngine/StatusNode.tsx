@@ -44,7 +44,7 @@ export function StatusNode({ data, selected }: NodeProps<Node<StatusNodeData, 's
           <div className={`flex h-6 w-6 items-center justify-center rounded-md border border-current/20 bg-current/5`}>
             <Icon size={14} />
           </div>
-          <div className="iris-header">Job {index + 1}</div>
+          <div className="iris-header">Job {index}</div>
         </div>
         <div className="text-[10px] font-bold opacity-60">{status}</div>
       </div>
@@ -53,9 +53,10 @@ export function StatusNode({ data, selected }: NodeProps<Node<StatusNodeData, 's
         <div className="truncate text-base font-bold tracking-tight text-base-content">{label}</div>
         
         {stats && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className={`mt-4 grid gap-2 ${stats.stepCount != null ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <StatItem label="Read" value={stats.read} />
             <StatItem label="Write" value={stats.write} />
+            {stats.stepCount != null ? <StatItem label="Steps" value={stats.stepCount} /> : null}
           </div>
         )}
       </div>

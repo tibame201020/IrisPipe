@@ -1,27 +1,27 @@
-import { 
-  Activity, 
-  ArrowLeft, 
-  ArrowRight, 
-  History, 
-  PlayCircle, 
-  RefreshCw, 
-  TimerReset, 
-  Zap 
+import {
+  Activity,
+  ArrowRight,
+  History,
+  PlayCircle,
+  RefreshCw,
+  TimerReset,
+  Zap,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
-import { executePipeline, getApiErrorMessage, getPipelineConfig, getPipelineRuns } from '../lib/api'
+import { executePipeline, getApiErrorMessage, getPipelineRuns } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
-import type { ConfigPipelineInfo, PipelineRunSummaryInfo } from '../types/irispipe'
+import type { PipelineRunSummaryInfo } from '../types/irispipe'
+import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
 
 export function PipelineRunsPage() {
   const { pipelineId } = useParams()
   const [searchParams] = useSearchParams()
+  const workspace = useOutletContext<PipelineWorkspaceContext>()
   const navigate = useNavigate()
-  const [pipeline, setPipeline] = useState<ConfigPipelineInfo | null>(null)
   const [runs, setRuns] = useState<PipelineRunSummaryInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +31,7 @@ export function PipelineRunsPage() {
 
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
+  const pipeline = workspace.pipeline
 
   async function loadRuns(reset = false) {
     if (reset) {
@@ -41,12 +42,7 @@ export function PipelineRunsPage() {
     }
 
     try {
-      const [pipelineResponse, runsResponse] = await Promise.all([
-        getPipelineConfig(numericPipelineId),
-        getPipelineRuns(numericPipelineId, 12, reset ? undefined : beforeRunId),
-      ])
-
-      setPipeline(pipelineResponse)
+      const runsResponse = await getPipelineRuns(numericPipelineId, 12, reset ? undefined : beforeRunId)
       setRuns((current) => (reset ? runsResponse : [...current, ...runsResponse]))
       const lastRun = runsResponse[runsResponse.length - 1]
       setBeforeRunId(lastRun?.id)
@@ -100,19 +96,13 @@ export function PipelineRunsPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-base-200/50 overflow-hidden">
-      {/* Page Header */}
-      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5 z-20 shadow-sm">
-        <div className="flex items-center gap-6">
-          <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-ghost btn-sm btn-square">
-             <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <div className="iris-header flex items-center gap-2">
-              <History size={12} className="text-secondary" />
-              Run History
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">{pipeline.pipelineName}</h1>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
+        <div>
+          <div className="iris-header">Run History</div>
+          <h1 className="text-xl font-bold tracking-tight">{pipeline.pipelineName}</h1>
+          <div className="mt-2 text-sm text-base-content/55">
+            Runtime history for this pipeline definition.
           </div>
         </div>
 
@@ -120,28 +110,20 @@ export function PipelineRunsPage() {
           <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-sm btn-square">
             <RefreshCw size={18} className={loading && !runs.length ? 'animate-spin' : ''} />
           </button>
-          <div className="h-6 w-[1px] bg-base-300 mx-1" />
-          <Link
-            to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-            className="btn btn-ghost btn-sm px-4"
-          >
-            Open Config
-          </Link>
-          <button 
-            type="button" 
-            onClick={() => void handleExecute()} 
-            className="btn btn-primary btn-sm px-6 gap-2" 
+          <button
+            type="button"
+            onClick={() => void handleExecute()}
+            className="btn btn-primary btn-sm gap-2 px-5"
             disabled={executing}
           >
             <Zap size={14} className={executing ? 'animate-pulse' : ''} />
-            {executing ? 'Launching...' : 'Execute Now'}
+            {executing ? 'Launching...' : 'Execute'}
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-6xl mx-auto">
+      <div className="flex-1 overflow-y-auto bg-base-200/50 p-8">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-6 mb-8">
              <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300">
@@ -170,7 +152,7 @@ export function PipelineRunsPage() {
           </div>
 
           {/* Runs Table/List */}
-          <div className="iris-card p-0 bg-base-100 border-base-300 overflow-hidden shadow-2xl">
+          <div className="iris-card p-0 bg-base-100 border-base-300 overflow-hidden shadow-xl">
             <div className="px-8 py-4 border-b border-base-300 bg-base-200/30 flex items-center gap-2">
               <History size={16} className="text-primary" />
               <h2 className="text-xs font-black uppercase tracking-widest opacity-50">Run History</h2>

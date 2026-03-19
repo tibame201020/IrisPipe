@@ -11,6 +11,7 @@ export type StatusNodeData = {
     write?: number
     commit?: number
     rollback?: number
+    stepCount?: number
   }
 }
 

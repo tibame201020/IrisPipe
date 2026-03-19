@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   Clock,
   History,
   Info,
@@ -17,10 +16,24 @@ import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
 import { PipelineCanvas } from '../components/GraphEngine/PipelineCanvas'
-import { deleteRun, getApiErrorMessage, getRunDetail, rerunRun, resumeRun, stopRun } from '../lib/api'
+import {
+  deleteRun,
+  getApiErrorMessage,
+  getPipelineTree,
+  getRunDetail,
+  rerunRun,
+  resumeRun,
+  stopRun,
+} from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
+import { findFolderPath } from '../lib/tree'
 import type { StatusNodeData } from '../types/graph'
-import type { PipelineRunDetailInfo, PipelineRunJobInfo, PipelineRunStatus } from '../types/irispipe'
+import type {
+  PipelineRunDetailInfo,
+  PipelineRunJobInfo,
+  PipelineRunStatus,
+  PipelineTreeInfo,
+} from '../types/irispipe'
 
 export function RunDetailPage() {
   const { pipelineId, runId } = useParams()
@@ -28,6 +41,7 @@ export function RunDetailPage() {
   const navigate = useNavigate()
 
   const [detail, setDetail] = useState<PipelineRunDetailInfo | null>(null)
+  const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
@@ -42,8 +56,12 @@ export function RunDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const response = await getRunDetail(numericRunId)
+      const [response, treeResponse] = await Promise.all([
+        getRunDetail(numericRunId),
+        getPipelineTree(),
+      ])
       setDetail(response)
+      setTree(treeResponse)
       if (response.attempts.length > 0 && selectedAttemptId === null) {
         setSelectedAttemptId(response.attempts[response.attempts.length - 1].executionId)
       }
@@ -85,6 +103,11 @@ export function RunDetailPage() {
     return detail.attempts.find((attempt) => attempt.executionId === selectedAttemptId) ?? latestAttempt
   }, [detail, latestAttempt, selectedAttemptId])
 
+  const folderPathNodes = useMemo(() => {
+    if (!tree || !detail?.folderId) return []
+    return findFolderPath(tree, detail.folderId)
+  }, [tree, detail?.folderId])
+
   useEffect(() => {
     setSelectedJobId(null)
   }, [selectedAttemptId])
@@ -110,14 +133,15 @@ export function RunDetailPage() {
       position: { x: index * 350, y: 120 },
       data: {
         label: job.jobName,
-        index: job.sequenceOrder - 1,
+        index: job.sequenceOrder + 1,
         status: job.status,
         stats: job.stepExecutionInfos.reduce(
           (acc, step) => ({
             read: (acc.read || 0) + step.readCount,
             write: (acc.write || 0) + step.writeCount,
+            stepCount: (acc.stepCount || 0) + 1,
           }),
-          { read: 0, write: 0 },
+          { read: 0, write: 0, stepCount: 0 },
         ),
       },
     }))
@@ -172,28 +196,49 @@ export function RunDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
-      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4">
-        <div className="flex items-center gap-6">
-          <Link
-            to={`/pipeline/items/${detail.pipelineId}/runs${detail.folderId ? `?folderId=${detail.folderId}` : ''}`}
-            className="btn btn-ghost btn-sm btn-square"
-          >
-            <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <div className="iris-header">Run Detail</div>
-            <h1 className="text-xl font-bold tracking-tight">{detail.pipelineName}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
-              <span className="font-mono">Run #{detail.id}</span>
-              <span>•</span>
-              <StatusBadge status={detail.status} mode="text" />
-              {detail.folderPath ? (
-                <>
-                  <span>•</span>
-                  <span>{detail.folderPath}</span>
-                </>
-              ) : null}
-            </div>
+      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
+        <div className="breadcrumbs text-sm opacity-50">
+          <ul>
+            <li><Link to="/pipeline">Root</Link></li>
+            {folderPathNodes.map((folder) => (
+              <li key={folder.id}>
+                <Link to={`/pipeline/folders/${folder.id}`}>{folder.folderName}</Link>
+              </li>
+            ))}
+            <li className="font-bold opacity-100">{detail.pipelineName}</li>
+          </ul>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1">
+            <Link
+              to={`/pipeline/items/${detail.pipelineId}/config${detail.folderId ? `?folderId=${detail.folderId}` : ''}`}
+              className="tab btn-sm h-8 px-4 opacity-60"
+            >
+              Config
+            </Link>
+            <Link
+              to={`/pipeline/items/${detail.pipelineId}/runs${detail.folderId ? `?folderId=${detail.folderId}` : ''}`}
+              className="tab tab-active btn-sm h-8 px-4 font-bold"
+            >
+              Runs
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
+        <div>
+          <div className="iris-header">Run Detail</div>
+          <h1 className="text-xl font-bold tracking-tight">{detail.pipelineName}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+            <span className="font-mono">Run #{detail.id}</span>
+            <span>&bull;</span>
+            <span className="font-semibold">{currentAttempt?.executionKind ?? 'Attempt'}</span>
+            <span>&bull;</span>
+            <span>Attempt #{currentAttempt?.executionNo ?? '-'}</span>
+            <span>&bull;</span>
+            <StatusBadge status={detail.status} mode="text" />
           </div>
         </div>
 
@@ -231,7 +276,7 @@ export function RunDetailPage() {
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
-      </header>
+      </div>
 
       <div className="flex min-h-0 flex-1">
         <aside className="w-80 border-r border-base-300 bg-base-100 flex flex-col">
@@ -276,16 +321,21 @@ export function RunDetailPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm font-bold">#{attempt.executionNo}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">
+                          Attempt #{attempt.executionNo}
+                        </span>
                         {isLatest ? <span className="badge badge-ghost badge-sm">Latest</span> : null}
                       </div>
-                      <div className="mt-1 text-sm font-semibold">{attempt.executionKind}</div>
+                      <div className="mt-2 text-base font-bold">{attempt.executionKind}</div>
                     </div>
                     <StatusBadge status={attempt.status} subtle />
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-[11px] text-base-content/45">
-                    <Clock size={11} />
-                    {formatDateTimeLong(attempt.startTime)}
+                  <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-base-content/45">
+                    <div className="flex items-center gap-2">
+                      <Clock size={11} />
+                      {formatDateTimeLong(attempt.startTime)}
+                    </div>
+                    <span className="font-mono">{formatDuration(attempt.startTime, attempt.endTime)}</span>
                   </div>
                 </button>
               )
@@ -338,6 +388,13 @@ export function RunDetailPage() {
                 {currentAttempt?.requestedAsync == null ? '-' : currentAttempt.requestedAsync ? 'Async' : 'Sync'}
               </div>
             </div>
+            <div className="h-8 w-px bg-base-300" />
+            <div className="text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Duration</div>
+              <div className="mt-1 text-xs font-semibold">
+                {formatDuration(currentAttempt?.startTime, currentAttempt?.endTime)}
+              </div>
+            </div>
           </div>
 
           <div className="absolute inset-0">
@@ -347,7 +404,7 @@ export function RunDetailPage() {
               onNodeClick={(_, node) => setSelectedJobId(Number(node.id.split('-')[1]))}
             />
           </div>
-          
+
           {selectedJob ? (
             <aside className="absolute right-0 top-0 z-20 h-full w-[360px] border-l border-base-300 bg-base-100 shadow-2xl">
               <div className="border-b border-base-300 px-6 py-6">
@@ -407,7 +464,7 @@ function JobDetailsPanel({
     <div className="space-y-6">
       <div>
         <div className="grid grid-cols-2 gap-3">
-          <SummaryTile label="Sequence" value={job.sequenceOrder} />
+          <SummaryTile label="Sequence" value={job.sequenceOrder + 1} />
           <SummaryTile label="Status" value={job.status} />
           <SummaryTile label="Steps" value={job.stepExecutionInfos.length} />
           <SummaryTile label="Atomic" value={job.atomicLevel} />

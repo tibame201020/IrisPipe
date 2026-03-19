@@ -17,22 +17,23 @@ import {
   X
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
-import { getApiErrorMessage, getPipelineConfig, getPipelineTree } from '../lib/api'
+import { getApiErrorMessage, getPipelineTree } from '../lib/api'
 import { findFolderPath } from '../lib/tree'
 import type { ConfigPipelineInfo, PipelineTreeInfo, SyncJobDefinition } from '../types/irispipe'
 import type { PipelineJobNode } from '../types/graph'
+import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
 
 
 export function PipelineConfigPage() {
   const { pipelineId } = useParams()
   const [searchParams] = useSearchParams()
+  const workspace = useOutletContext<PipelineWorkspaceContext | undefined>()
   const isDraft = !pipelineId
 
-  const [config, setConfig] = useState<ConfigPipelineInfo | null>(null)
-  const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
+  const [draftTree, setDraftTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null)
@@ -44,6 +45,8 @@ export function PipelineConfigPage() {
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
   const numericFolderId = folderId ? Number(folderId) : null
+  const config: ConfigPipelineInfo | null = isDraft ? null : workspace?.pipeline ?? null
+  const tree: PipelineTreeInfo | null = isDraft ? draftTree : workspace?.tree ?? null
 
   const folderPathNodes = useMemo(() => {
     if (!tree || !numericFolderId) return []
@@ -57,12 +60,10 @@ export function PipelineConfigPage() {
     setLoading(true)
     setError(null)
     try {
-      if (!isDraft) {
-        const response = await getPipelineConfig(numericPipelineId)
-        setConfig(response)
+      if (isDraft) {
+        const treeResponse = await getPipelineTree()
+        setDraftTree(treeResponse)
       }
-      const treeResponse = await getPipelineTree()
-      setTree(treeResponse)
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, 'Failed to load pipeline config'))
     } finally {
@@ -71,8 +72,16 @@ export function PipelineConfigPage() {
   }
 
   useEffect(() => {
-    void loadConfig()
-  }, [isDraft, numericPipelineId])
+    if (isDraft) {
+      void loadConfig()
+      return
+    }
+
+    if (workspace?.pipeline) {
+      setLoading(false)
+      setError(null)
+    }
+  }, [isDraft, numericPipelineId, workspace?.pipeline])
 
   useEffect(() => {
     if (jobs.length === 0) {
@@ -113,28 +122,19 @@ export function PipelineConfigPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
-        <div className="flex items-center gap-6">
+      {isDraft ? (
+        <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
           <div className="breadcrumbs text-sm opacity-50">
             <ul>
               <li><Link to="/pipeline">Root</Link></li>
               {folderPathNodes.map((f) => (
                 <li key={f.id}><Link to={`/pipeline/folders/${f.id}`}>{f.folderName}</Link></li>
               ))}
-              <li className="font-bold opacity-100">{isDraft ? 'New Pipeline' : config?.pipelineName}</li>
+              <li className="font-bold opacity-100">New Pipeline</li>
             </ul>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1 mr-4">
-            <button className="tab tab-active btn-sm h-8 px-4 font-bold">Config</button>
-            {!isDraft && (
-              <Link to={`/pipeline/items/${config?.id}/runs`} className="tab btn-sm h-8 px-4 opacity-50">Runs</Link>
-            )}
-          </div>
-        </div>
-      </header>
+        </header>
+      ) : null}
 
       <div className="flex flex-1 min-h-0 relative">
         <main className="flex-1 relative bg-base-200/50">
