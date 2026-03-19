@@ -36,7 +36,7 @@ export function StatusNode({ data, selected }: NodeProps<Node<StatusNodeData, 's
       <Handle
         type="target"
         position={Position.Left}
-        className="!z-20 !h-3 !w-3 !border-2 !border-current !bg-base-100"
+        className="!left-0 !z-20 !h-3 !w-3 !-translate-x-1/2 !border-2 !border-current !bg-base-100"
       />
       
       <div className="flex items-center justify-between border-b border-current/10 px-4 py-3">
@@ -70,7 +70,7 @@ export function StatusNode({ data, selected }: NodeProps<Node<StatusNodeData, 's
       <Handle
         type="source"
         position={Position.Right}
-        className="!z-20 !h-3 !w-3 !border-2 !border-current !bg-base-100"
+        className="!right-0 !z-20 !h-3 !w-3 !translate-x-1/2 !border-2 !border-current !bg-base-100"
       />
       
       <style dangerouslySetInnerHTML={{ __html: `

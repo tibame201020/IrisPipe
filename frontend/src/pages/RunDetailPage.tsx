@@ -10,7 +10,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import type { Edge, Node } from '@xyflow/react'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
@@ -19,29 +19,26 @@ import { PipelineCanvas } from '../components/GraphEngine/PipelineCanvas'
 import {
   deleteRun,
   getApiErrorMessage,
-  getPipelineTree,
   getRunDetail,
   rerunRun,
   resumeRun,
   stopRun,
 } from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
-import { findFolderPath } from '../lib/tree'
 import type { StatusNodeData } from '../types/graph'
 import type {
   PipelineRunDetailInfo,
   PipelineRunJobInfo,
   PipelineRunStatus,
-  PipelineTreeInfo,
 } from '../types/irispipe'
+import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
 
 export function RunDetailPage() {
   const { pipelineId, runId } = useParams()
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const workspace = useOutletContext<PipelineWorkspaceContext>()
 
   const [detail, setDetail] = useState<PipelineRunDetailInfo | null>(null)
-  const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
@@ -50,18 +47,14 @@ export function RunDetailPage() {
 
   const numericPipelineId = Number(pipelineId)
   const numericRunId = Number(runId)
-  const folderId = searchParams.get('folderId')
+  const folderId = workspace.pipeline.folderId
 
   async function loadDetail() {
     setLoading(true)
     setError(null)
     try {
-      const [response, treeResponse] = await Promise.all([
-        getRunDetail(numericRunId),
-        getPipelineTree(),
-      ])
+      const response = await getRunDetail(numericRunId)
       setDetail(response)
-      setTree(treeResponse)
       if (response.attempts.length > 0 && selectedAttemptId === null) {
         setSelectedAttemptId(response.attempts[response.attempts.length - 1].executionId)
       }
@@ -103,11 +96,6 @@ export function RunDetailPage() {
     return detail.attempts.find((attempt) => attempt.executionId === selectedAttemptId) ?? latestAttempt
   }, [detail, latestAttempt, selectedAttemptId])
 
-  const folderPathNodes = useMemo(() => {
-    if (!tree || !detail?.folderId) return []
-    return findFolderPath(tree, detail.folderId)
-  }, [tree, detail?.folderId])
-
   useEffect(() => {
     setSelectedJobId(null)
   }, [selectedAttemptId])
@@ -130,7 +118,7 @@ export function RunDetailPage() {
     const nodes: Node<StatusNodeData>[] = currentAttempt.jobs.map((job, index) => ({
       id: `job-${job.id}`,
       type: 'statusNode',
-      position: { x: index * 350, y: 120 },
+      position: { x: index * 350, y: 140 },
       data: {
         label: job.jobName,
         index: job.sequenceOrder + 1,
@@ -184,7 +172,14 @@ export function RunDetailPage() {
         icon={PlayCircle}
         title="Run detail unavailable"
         description={error ?? 'The run could not be found.'}
-        action={<Link to={`/pipeline/items/${numericPipelineId}/runs`} className="btn btn-primary">Back to runs</Link>}
+        action={
+          <Link
+            to={`/pipeline/items/${numericPipelineId}/runs${folderId ? `?folderId=${folderId}` : ''}`}
+            className="btn btn-primary"
+          >
+            Back to runs
+          </Link>
+        }
       />
     )
   }
@@ -196,45 +191,14 @@ export function RunDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
-      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
-        <div className="breadcrumbs text-sm opacity-50">
-          <ul>
-            <li><Link to="/pipeline">Root</Link></li>
-            {folderPathNodes.map((folder) => (
-              <li key={folder.id}>
-                <Link to={`/pipeline/folders/${folder.id}`}>{folder.folderName}</Link>
-              </li>
-            ))}
-            <li className="font-bold opacity-100">{detail.pipelineName}</li>
-          </ul>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1">
-            <Link
-              to={`/pipeline/items/${detail.pipelineId}/config${detail.folderId ? `?folderId=${detail.folderId}` : ''}`}
-              className="tab btn-sm h-8 px-4 opacity-60"
-            >
-              Config
-            </Link>
-            <Link
-              to={`/pipeline/items/${detail.pipelineId}/runs${detail.folderId ? `?folderId=${detail.folderId}` : ''}`}
-              className="tab tab-active btn-sm h-8 px-4 font-bold"
-            >
-              Runs
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
         <div>
           <div className="iris-header">Run Detail</div>
-          <h1 className="text-xl font-bold tracking-tight">{detail.pipelineName}</h1>
+          <h1 className="text-xl font-bold tracking-tight">Run #{detail.id}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
-            <span className="font-mono">Run #{detail.id}</span>
+            <span className="font-semibold">{workspace.pipeline.pipelineName}</span>
             <span>&bull;</span>
-            <span className="font-semibold">{currentAttempt?.executionKind ?? 'Attempt'}</span>
+            <span>{currentAttempt?.executionKind ?? 'Attempt'}</span>
             <span>&bull;</span>
             <span>Attempt #{currentAttempt?.executionNo ?? '-'}</span>
             <span>&bull;</span>
@@ -279,7 +243,7 @@ export function RunDetailPage() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-80 border-r border-base-300 bg-base-100 flex flex-col">
+        <aside className="flex w-80 flex-col border-r border-base-300 bg-base-100">
           <div className="border-b border-base-300 px-6 py-6">
             <div className="iris-header">Run Summary</div>
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -320,13 +284,13 @@ export function RunDetailPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="text-base font-bold">{attempt.executionKind}</div>
+                      <div className="mt-1 flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">
                           Attempt #{attempt.executionNo}
                         </span>
                         {isLatest ? <span className="badge badge-ghost badge-sm">Latest</span> : null}
                       </div>
-                      <div className="mt-2 text-base font-bold">{attempt.executionKind}</div>
                     </div>
                     <StatusBadge status={attempt.status} subtle />
                   </div>
@@ -354,7 +318,7 @@ export function RunDetailPage() {
           </div>
         </aside>
 
-        <main className="relative flex-1 bg-base-200/50">
+        <main className="relative min-w-0 flex-1 bg-base-200/50">
           <div className="absolute left-6 right-6 top-6 z-10 flex items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <div className="badge badge-lg gap-2 border border-base-300 bg-base-100 px-4">
@@ -364,40 +328,33 @@ export function RunDetailPage() {
               {currentAttempt ? <StatusBadge status={currentAttempt.status} subtle /> : null}
               {!viewingLatestAttempt ? <span className="badge badge-warning gap-2"><Info size={12} />Earlier attempt</span> : null}
             </div>
-          </div>
 
-          <div className="absolute right-6 top-20 z-10 flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-4 py-3 shadow-sm backdrop-blur">
-            <div className="text-center">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Kind</div>
-              <div className="mt-1 text-xs font-semibold">{currentAttempt?.executionKind ?? '-'}</div>
-            </div>
-            <div className="h-8 w-px bg-base-300" />
-            <div className="text-center">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Jobs</div>
-              <div className="mt-1 text-xs font-semibold">{currentAttempt?.jobs.length ?? 0}</div>
-            </div>
-            <div className="h-8 w-px bg-base-300" />
-            <div className="text-center">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Steps</div>
-              <div className="mt-1 text-xs font-semibold">{currentAttemptStepCount}</div>
-            </div>
-            <div className="h-8 w-px bg-base-300" />
-            <div className="text-center">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Mode</div>
-              <div className="mt-1 text-xs font-semibold">
-                {currentAttempt?.requestedAsync == null ? '-' : currentAttempt.requestedAsync ? 'Async' : 'Sync'}
-              </div>
-            </div>
-            <div className="h-8 w-px bg-base-300" />
-            <div className="text-center">
-              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Duration</div>
-              <div className="mt-1 text-xs font-semibold">
-                {formatDuration(currentAttempt?.startTime, currentAttempt?.endTime)}
-              </div>
+            <div className="flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-4 py-3 shadow-sm backdrop-blur">
+              <ContextMetric label="Kind" value={currentAttempt?.executionKind ?? '-'} />
+              <ContextDivider />
+              <ContextMetric label="Jobs" value={currentAttempt?.jobs.length ?? 0} />
+              <ContextDivider />
+              <ContextMetric label="Steps" value={currentAttemptStepCount} />
+              <ContextDivider />
+              <ContextMetric
+                label="Mode"
+                value={
+                  currentAttempt?.requestedAsync == null
+                    ? '-'
+                    : currentAttempt.requestedAsync
+                      ? 'Async'
+                      : 'Sync'
+                }
+              />
+              <ContextDivider />
+              <ContextMetric
+                label="Duration"
+                value={formatDuration(currentAttempt?.startTime, currentAttempt?.endTime)}
+              />
             </div>
           </div>
 
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 min-h-0">
             <PipelineCanvas
               nodes={graphNodes}
               edges={graphEdges}
@@ -422,6 +379,25 @@ export function RunDetailPage() {
           ) : null}
         </main>
       </div>
+    </div>
+  )
+}
+
+function ContextDivider() {
+  return <div className="h-8 w-px bg-base-300" />
+}
+
+function ContextMetric({
+  label,
+  value,
+}: {
+  label: string
+  value: string | number
+}) {
+  return (
+    <div className="text-center">
+      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+      <div className="mt-1 text-xs font-semibold">{value}</div>
     </div>
   )
 }
@@ -462,13 +438,11 @@ function JobDetailsPanel({
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="grid grid-cols-2 gap-3">
-          <SummaryTile label="Sequence" value={job.sequenceOrder + 1} />
-          <SummaryTile label="Status" value={job.status} />
-          <SummaryTile label="Steps" value={job.stepExecutionInfos.length} />
-          <SummaryTile label="Atomic" value={job.atomicLevel} />
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryTile label="Sequence" value={job.sequenceOrder + 1} />
+        <SummaryTile label="Status" value={job.status} />
+        <SummaryTile label="Steps" value={job.stepExecutionInfos.length} />
+        <SummaryTile label="Atomic" value={job.atomicLevel} />
       </div>
 
       <div>

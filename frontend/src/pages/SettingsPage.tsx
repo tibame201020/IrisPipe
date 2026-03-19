@@ -6,7 +6,7 @@ export function SettingsPage() {
   const { themeName, setThemeName } = useTheme()
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto">
       <div className="card rounded-none border-x-0 border-y border-base-300 bg-base-100 shadow-none">
         <div className="card-body gap-6 p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

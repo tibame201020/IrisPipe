@@ -2,6 +2,12 @@
 
 ## 2026-03-19
 
+### Pipeline workspace runtime polish
+- Moved the pipeline workspace family (`config`, `runs`, `run detail`) off route-level lazy loading so tab switches stay in the same shell without fallback delay.
+- Re-centered `Run Detail` around run-specific state only, leaving breadcrumb and `Config | Runs` tabs to the shared pipeline workspace layout.
+- Fixed React Flow handle positioning so pipeline-config and run-detail connection points are fully visible instead of being clipped by node borders.
+- Removed the extra page-level scrollbar on graph-heavy screens by keeping `main` overflow hidden and letting each page own its internal scroll regions.
+
 ### Pipeline workspace continuity
 - Replaced duplicated `breadcrumb + tabs` markup in `config`, `runs`, and `run detail` with a shared pipeline workspace layout.
 - Kept `Config` and `Runs` as real route-level tabs inside the same workspace shell instead of three separate pages imitating the same chrome.

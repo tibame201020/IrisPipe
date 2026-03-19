@@ -43,7 +43,7 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!z-20 !h-3 !w-3 !border-2 !border-primary !bg-base-100"
+        className="!left-0 !z-20 !h-3 !w-3 !-translate-x-1/2 !border-2 !border-primary !bg-base-100"
       />
 
       <div className="flex items-center justify-between mb-4">
@@ -83,7 +83,7 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!z-20 !h-3 !w-3 !border-2 !border-primary !bg-base-100"
+        className="!right-0 !z-20 !h-3 !w-3 !translate-x-1/2 !border-2 !border-primary !bg-base-100"
       />
     </div>
   )
