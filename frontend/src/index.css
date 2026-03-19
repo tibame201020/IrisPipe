@@ -109,19 +109,10 @@
 
   /* Audit Edge Premium Styling */
   .react-flow__edge-path.audit-edge-path {
-    stroke: hsl(var(--p) / 0.6) !important;
-    stroke-width: 3px !important;
-    filter: drop-shadow(0 0 4px hsl(var(--p) / 0.4));
-  }
-
-  .audit-flow-circle {
-    fill: #60a5fa !important;
-    filter: drop-shadow(0 0 8px #3b82f6);
-    animation: audit-flow 3s linear infinite;
-  }
-
-  @keyframes audit-flow {
-    from { offset-distance: 0%; }
-    to { offset-distance: 100%; }
+    stroke: #6f7cff !important;
+    stroke-width: 1.5px !important;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.88;
   }
 }

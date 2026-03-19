@@ -2,6 +2,12 @@
 
 ## 2026-03-19
 
+### Canvas edge and layout fixes
+- Restored explicit graph edges for both pipeline config and run detail by binding both pages to the same smooth edge renderer.
+- Fixed clipped node handles by allowing graph nodes to overflow so React Flow connection handles are fully visible.
+- Removed nested `h-screen` usage from graph-heavy pages so the canvas no longer introduces an unnecessary page-level vertical scrollbar.
+- Kept the canvas as the primary surface in run detail by moving job details into an on-demand drawer instead of a permanent right rail.
+
 ### Backend-aligned frontend semantics
 - Pulled frontend wording and unsupported UI actions back to the current backend contract.
 - Replaced overstated dashboard language in `overview` with actuator-backed health and factual run summaries.

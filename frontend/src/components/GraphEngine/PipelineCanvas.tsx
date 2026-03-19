@@ -5,6 +5,7 @@ import {
   type ReactFlowInstance,
   MarkerType,
   type NodeTypes,
+  type EdgeTypes,
   Handle,
   Position,
   type NodeProps,
@@ -25,7 +26,7 @@ const defaultNodeTypes: NodeTypes = {
   pipelineJob: PipelineJobNodeCard,
 }
 
-const defaultEdgeTypes = {
+const defaultEdgeTypes: EdgeTypes = {
   audit: AuditEdge,
 }
 
@@ -34,12 +35,16 @@ const NODE_WIDTH = 280
 function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
   return (
     <div
-      className={`rounded-2xl border-2 bg-base-100 p-6 transition-all duration-300 group overflow-hidden ${
+      className={`rounded-2xl border-2 bg-base-100 p-6 transition-all duration-300 group overflow-visible ${
         selected ? 'border-primary shadow-2xl scale-[1.05] z-50' : 'border-base-300 shadow-sm opacity-90'
       }`}
       style={{ width: `${NODE_WIDTH}px` }}
     >
-      <Handle type="target" position={Position.Left} className="!h-3 !w-3 !border-2 !border-primary !bg-base-100" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!z-20 !h-3 !w-3 !border-2 !border-primary !bg-base-100"
+      />
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -75,7 +80,11 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
          <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">Pipeline Job</span>
        </div>
 
-      <Handle type="source" position={Position.Right} className="!h-3 !w-3 !border-2 !border-primary !bg-base-100" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!z-20 !h-3 !w-3 !border-2 !border-primary !bg-base-100"
+      />
     </div>
   )
 }
@@ -128,11 +137,16 @@ export function PipelineCanvas({
         defaultEdgeOptions={{
           type: 'audit',
           animated: false,
+          style: {
+            stroke: '#6f7cff',
+            strokeWidth: 1.5,
+            opacity: 0.9,
+          },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            width: 15,
-            height: 15,
-            color: 'currentColor',
+            width: 14,
+            height: 14,
+            color: '#6f7cff',
           },
         }}
       >

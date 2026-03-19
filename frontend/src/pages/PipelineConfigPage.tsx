@@ -112,7 +112,7 @@ export function PipelineConfigPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-base-100">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
       <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
         <div className="flex items-center gap-6">
           <div className="breadcrumbs text-sm opacity-50">

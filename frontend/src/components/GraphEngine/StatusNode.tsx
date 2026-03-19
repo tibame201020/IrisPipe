@@ -29,11 +29,15 @@ export function StatusNode({ data, selected }: NodeProps<Node<StatusNodeData, 's
 
   return (
     <div
-      className={`group relative flex w-[280px] flex-col overflow-hidden rounded-xl border-2 transition-all duration-300 ${statusColorClass} ${
+      className={`group relative flex w-[280px] flex-col overflow-visible rounded-xl border-2 transition-all duration-300 ${statusColorClass} ${
         selected ? 'ring-4 ring-primary/20 scale-[1.02] shadow-2xl' : 'shadow-lg'
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!h-3 !w-3 !border-2 !border-current !bg-base-100" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!z-20 !h-3 !w-3 !border-2 !border-current !bg-base-100"
+      />
       
       <div className="flex items-center justify-between border-b border-current/10 px-4 py-3">
         <div className="flex items-center gap-2">
@@ -62,7 +66,11 @@ export function StatusNode({ data, selected }: NodeProps<Node<StatusNodeData, 's
         </div>
       )}
 
-      <Handle type="source" position={Position.Right} className="!h-3 !w-3 !border-2 !border-current !bg-base-100" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!z-20 !h-3 !w-3 !border-2 !border-current !bg-base-100"
+      />
       
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes iris-progress {

@@ -23,7 +23,14 @@ export function AuditEdge({
     <BaseEdge
       path={edgePath}
       markerEnd={markerEnd}
-      style={{ ...style, stroke: '#3b82f6', strokeWidth: 3, opacity: 0.6 }}
+      style={{
+        ...style,
+        stroke: '#6f7cff',
+        strokeWidth: 1.5,
+        opacity: 0.88,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+      }}
       className="audit-edge-path"
     />
   )

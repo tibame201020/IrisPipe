@@ -4,15 +4,15 @@ import {
   History,
   Info,
   Layers,
-  LayoutDashboard,
   PlayCircle,
   RefreshCw,
   RotateCcw,
   Square,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import type { Edge, Node } from '@xyflow/react'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
@@ -20,13 +20,13 @@ import { PipelineCanvas } from '../components/GraphEngine/PipelineCanvas'
 import { deleteRun, getApiErrorMessage, getRunDetail, rerunRun, resumeRun, stopRun } from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
 import type { StatusNodeData } from '../types/graph'
-import type { PipelineRunDetailInfo } from '../types/irispipe'
-import type { Node, Edge } from '@xyflow/react'
+import type { PipelineRunDetailInfo, PipelineRunJobInfo, PipelineRunStatus } from '../types/irispipe'
 
 export function RunDetailPage() {
   const { pipelineId, runId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+
   const [detail, setDetail] = useState<PipelineRunDetailInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +44,6 @@ export function RunDetailPage() {
     try {
       const response = await getRunDetail(numericRunId)
       setDetail(response)
-      // Default to latest attempt if not set
       if (response.attempts.length > 0 && selectedAttemptId === null) {
         setSelectedAttemptId(response.attempts[response.attempts.length - 1].executionId)
       }
@@ -64,58 +63,77 @@ export function RunDetailPage() {
     void loadDetail()
   }, [numericPipelineId, numericRunId])
 
-  // Poll for status if running
   useEffect(() => {
     if (!detail) return
     const isRunning = ['STARTING', 'STARTED'].includes(detail.status)
-    if (isRunning) {
-      const timer = setInterval(() => {
-        void loadDetail()
-      }, 3000)
-      return () => clearInterval(timer)
-    }
+    if (!isRunning) return
+
+    const timer = setInterval(() => {
+      void loadDetail()
+    }, 3000)
+
+    return () => clearInterval(timer)
   }, [detail?.status])
 
+  const latestAttempt = useMemo(() => {
+    if (!detail || detail.attempts.length === 0) return null
+    return detail.attempts[detail.attempts.length - 1]
+  }, [detail])
+
   const currentAttempt = useMemo(() => {
-    if (!detail) return null
-    return detail.attempts.find(a => a.executionId === selectedAttemptId) || detail.attempts[detail.attempts.length - 1]
-  }, [detail, selectedAttemptId])
+    if (!detail || detail.attempts.length === 0) return null
+    return detail.attempts.find((attempt) => attempt.executionId === selectedAttemptId) ?? latestAttempt
+  }, [detail, latestAttempt, selectedAttemptId])
+
+  useEffect(() => {
+    setSelectedJobId(null)
+  }, [selectedAttemptId])
+
+  const selectedJob = useMemo(() => {
+    if (!currentAttempt || !selectedJobId) return null
+    return currentAttempt.jobs.find((job) => job.id === selectedJobId) ?? null
+  }, [currentAttempt, selectedJobId])
+
+  const currentAttemptStepCount = useMemo(() => {
+    if (!currentAttempt) return 0
+    return currentAttempt.jobs.reduce((total, job) => total + job.stepExecutionInfos.length, 0)
+  }, [currentAttempt])
 
   const { graphNodes, graphEdges } = useMemo(() => {
-    if (!detail || !currentAttempt) return { graphNodes: [], graphEdges: [] }
+    if (!currentAttempt) {
+      return { graphNodes: [], graphEdges: [] }
+    }
 
-    const nodes: Node<StatusNodeData>[] = currentAttempt.jobs.map((job, idx) => ({
+    const nodes: Node<StatusNodeData>[] = currentAttempt.jobs.map((job, index) => ({
       id: `job-${job.id}`,
       type: 'statusNode',
-      position: { x: idx * 350, y: 100 },
+      position: { x: index * 350, y: 120 },
       data: {
         label: job.jobName,
         index: job.sequenceOrder - 1,
         status: job.status,
-        stats: job.stepExecutionInfos.reduce((acc, step) => ({
-          read: (acc.read || 0) + step.readCount,
-          write: (acc.write || 0) + step.writeCount,
-        }), { read: 0, write: 0 })
-      }
+        stats: job.stepExecutionInfos.reduce(
+          (acc, step) => ({
+            read: (acc.read || 0) + step.readCount,
+            write: (acc.write || 0) + step.writeCount,
+          }),
+          { read: 0, write: 0 },
+        ),
+      },
     }))
 
     const edges: Edge[] = []
-    for (let i = 0; i < nodes.length - 1; i++) {
-        edges.push({
-          id: `edge-${i}`,
-          source: nodes[i].id,
-          target: nodes[i+1].id,
-          type: 'audit',
-        })
+    for (let index = 0; index < nodes.length - 1; index += 1) {
+      edges.push({
+        id: `edge-${index}`,
+        source: nodes[index].id,
+        target: nodes[index + 1].id,
+        type: 'audit',
+      })
     }
 
     return { graphNodes: nodes, graphEdges: edges }
-  }, [detail, currentAttempt])
-
-  const selectedJob = useMemo(() => {
-    if (!currentAttempt || !selectedJobId) return null
-    return currentAttempt.jobs.find(j => j.id === selectedJobId)
-  }, [currentAttempt, selectedJobId])
+  }, [currentAttempt])
 
   async function runAction(actionName: string, action: () => Promise<unknown>) {
     setPendingAction(actionName)
@@ -150,48 +168,59 @@ export function RunDetailPage() {
   const canStop = ['STARTING', 'STARTED'].includes(detail.status)
   const canResume = ['FAILED', 'STOPPED'].includes(detail.status)
   const canRerun = ['FAILED', 'STOPPED', 'COMPLETED', 'ABANDONED'].includes(detail.status)
+  const viewingLatestAttempt = currentAttempt?.executionId === latestAttempt?.executionId
 
   return (
-    <div className="flex h-screen flex-col bg-base-200/30 overflow-hidden">
-      {/* Header Bar */}
-      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-20">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
+      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4">
         <div className="flex items-center gap-6">
-          <Link to={`/pipeline/items/${detail.pipelineId}/runs${detail.folderId ? `?folderId=${detail.folderId}` : ''}`} className="btn btn-ghost btn-sm btn-square">
+          <Link
+            to={`/pipeline/items/${detail.pipelineId}/runs${detail.folderId ? `?folderId=${detail.folderId}` : ''}`}
+            className="btn btn-ghost btn-sm btn-square"
+          >
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="iris-header">Execution # {detail.id}</span>
-              <StatusBadge status={detail.status} />
-            </div>
+            <div className="iris-header">Run Detail</div>
             <h1 className="text-xl font-bold tracking-tight">{detail.pipelineName}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+              <span className="font-mono">Run #{detail.id}</span>
+              <span>•</span>
+              <StatusBadge status={detail.status} mode="text" />
+              {detail.folderPath ? (
+                <>
+                  <span>•</span>
+                  <span>{detail.folderPath}</span>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-base-200/50 rounded-lg p-1 mr-4">
-            <button 
-              type="button" 
-              disabled={!canStop || !!pendingAction} 
-              className="btn btn-ghost btn-sm text-error h-9" 
+          <div className="flex items-center gap-1 rounded-lg bg-base-200/50 p-1">
+            <button
+              type="button"
+              disabled={!canStop || !!pendingAction}
+              className="btn btn-ghost btn-sm h-9 text-error"
               onClick={() => void runAction('stop', () => stopRun(detail.id))}
             >
               <Square size={14} />
               Stop
             </button>
-            <button 
-              type="button" 
-              disabled={!canResume || !!pendingAction} 
-              className="btn btn-ghost btn-sm h-9" 
+            <button
+              type="button"
+              disabled={!canResume || !!pendingAction}
+              className="btn btn-ghost btn-sm h-9"
               onClick={() => void runAction('resume', () => resumeRun(detail.id))}
             >
               <PlayCircle size={14} />
               Resume
             </button>
-            <button 
-              type="button" 
-              disabled={!canRerun || !!pendingAction} 
-              className="btn btn-ghost btn-sm h-9" 
+            <button
+              type="button"
+              disabled={!canRerun || !!pendingAction}
+              className="btn btn-ghost btn-sm h-9"
               onClick={() => void runAction('rerun', () => rerunRun(detail.id))}
             >
               <RotateCcw size={14} />
@@ -204,56 +233,69 @@ export function RunDetailPage() {
         </div>
       </header>
 
-      {/* Main Surface */}
-      <div className="flex flex-1 min-h-0 relative">
-        {/* Left Sidebar: Attempts / Audit Timeline */}
-        <aside className="w-80 border-r border-base-300 bg-base-100 flex flex-col z-10 overflow-hidden">
-          <div className="p-6 border-b border-base-300">
-            <div className="flex items-center gap-2 mb-4">
-              <History size={16} className="text-primary" />
-              <span className="iris-header">Attempts</span>
+      <div className="flex min-h-0 flex-1">
+        <aside className="w-80 border-r border-base-300 bg-base-100 flex flex-col">
+          <div className="border-b border-base-300 px-6 py-6">
+            <div className="iris-header">Run Summary</div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <SummaryTile label="Status" value={detail.status} />
+              <SummaryTile label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
+              <SummaryTile label="Attempts" value={detail.attempts.length} />
+              <SummaryTile label="Created" value={formatDateTimeLong(detail.createdAt)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="iris-card p-3">
-                <div className="text-[10px] font-bold opacity-40 mb-1">Duration</div>
-                <div className="font-mono text-sm">{formatDuration(detail.startTime || detail.createdAt, detail.endTime)}</div>
+          </div>
+
+          <div className="border-b border-base-300 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History size={16} className="text-primary" />
+                <span className="iris-header">Attempts</span>
               </div>
-              <div className="iris-card p-3">
-                <div className="text-[10px] font-bold opacity-40 mb-1">Attempts</div>
-                <div className="font-mono text-sm">{detail.attempts.length}</div>
-              </div>
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/40">
+                {detail.attempts.length} total
+              </span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {detail.attempts.slice().reverse().map((attempt) => (
-              <button
-                key={attempt.executionId}
-                type="button"
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 group ${
-                  selectedAttemptId === attempt.executionId 
-                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10' 
-                    : 'border-transparent bg-base-200/50 hover:bg-base-200'
-                }`}
-                onClick={() => setSelectedAttemptId(attempt.executionId)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-black tracking-widest opacity-50"># {attempt.executionNo}</span>
-                  <StatusBadge status={attempt.status} subtle />
-                </div>
-                <div className="font-bold text-sm mb-1">{attempt.executionKind}</div>
-                <div className="flex items-center gap-2 text-[10px] text-base-content/40">
-                  <Clock size={10} />
-                  {formatDateTimeLong(attempt.startTime)}
-                </div>
-              </button>
-            ))}
+            {detail.attempts.slice().reverse().map((attempt) => {
+              const isLatest = attempt.executionId === latestAttempt?.executionId
+              const isSelected = attempt.executionId === currentAttempt?.executionId
+
+              return (
+                <button
+                  key={attempt.executionId}
+                  type="button"
+                  className={`w-full rounded-xl border p-4 text-left transition-all ${
+                    isSelected
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/30'
+                  }`}
+                  onClick={() => setSelectedAttemptId(attempt.executionId)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-bold">#{attempt.executionNo}</span>
+                        {isLatest ? <span className="badge badge-ghost badge-sm">Latest</span> : null}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold">{attempt.executionKind}</div>
+                    </div>
+                    <StatusBadge status={attempt.status} subtle />
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-[11px] text-base-content/45">
+                    <Clock size={11} />
+                    {formatDateTimeLong(attempt.startTime)}
+                  </div>
+                </button>
+              )
+            })}
           </div>
 
-          <div className="p-4 bg-base-200/30 border-t border-base-300">
-             <button 
-              type="button" 
-              className="btn btn-ghost btn-sm w-full text-error gap-2"
+          <div className="border-t border-base-300 bg-base-200/30 p-4">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm w-full gap-2 text-error"
               onClick={() => void runAction('delete', () => deleteRun(detail.id))}
             >
               <Trash2 size={14} />
@@ -262,88 +304,152 @@ export function RunDetailPage() {
           </div>
         </aside>
 
-        {/* Center Canvas */}
-        <main className="flex-1 relative bg-base-200/50">
-          <div className="absolute top-6 left-6 z-10 flex items-center gap-2">
-             <div className="badge badge-lg iris-glass border-primary/20 gap-2 h-10 px-4">
-               <Layers size={14} />
-               <span className="font-bold text-sm">Attempt #{currentAttempt?.executionNo}</span>
-             </div>
-             {selectedAttemptId !== detail.attempts[detail.attempts.length - 1].executionId && (
-                <div className="badge badge-warning h-10 px-4 gap-2 font-bold animate-pulse">
-                  <Info size={14} /> Earlier Attempt
-                </div>
-             )}
+        <main className="relative flex-1 bg-base-200/50">
+          <div className="absolute left-6 right-6 top-6 z-10 flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="badge badge-lg gap-2 border border-base-300 bg-base-100 px-4">
+                <Layers size={14} />
+                <span className="font-semibold">Attempt #{currentAttempt?.executionNo}</span>
+              </div>
+              {currentAttempt ? <StatusBadge status={currentAttempt.status} subtle /> : null}
+              {!viewingLatestAttempt ? <span className="badge badge-warning gap-2"><Info size={12} />Earlier attempt</span> : null}
+            </div>
+          </div>
+
+          <div className="absolute right-6 top-20 z-10 flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-4 py-3 shadow-sm backdrop-blur">
+            <div className="text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Kind</div>
+              <div className="mt-1 text-xs font-semibold">{currentAttempt?.executionKind ?? '-'}</div>
+            </div>
+            <div className="h-8 w-px bg-base-300" />
+            <div className="text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Jobs</div>
+              <div className="mt-1 text-xs font-semibold">{currentAttempt?.jobs.length ?? 0}</div>
+            </div>
+            <div className="h-8 w-px bg-base-300" />
+            <div className="text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Steps</div>
+              <div className="mt-1 text-xs font-semibold">{currentAttemptStepCount}</div>
+            </div>
+            <div className="h-8 w-px bg-base-300" />
+            <div className="text-center">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">Mode</div>
+              <div className="mt-1 text-xs font-semibold">
+                {currentAttempt?.requestedAsync == null ? '-' : currentAttempt.requestedAsync ? 'Async' : 'Sync'}
+              </div>
+            </div>
           </div>
 
           <div className="absolute inset-0">
-            <PipelineCanvas 
-              nodes={graphNodes} 
-              edges={graphEdges} 
+            <PipelineCanvas
+              nodes={graphNodes}
+              edges={graphEdges}
               onNodeClick={(_, node) => setSelectedJobId(Number(node.id.split('-')[1]))}
             />
           </div>
-
-          {/* Bottom Info Bar */}
-          <div className="absolute bottom-6 left-6 right-6 z-10 pointer-events-none">
-            <div className="flex justify-between items-end">
-              <div className="iris-glass border-primary/10 p-4 rounded-2xl pointer-events-auto max-w-md w-full shadow-2xl">
-                 <div className="flex items-center gap-3 mb-3">
-                   <div className="p-2 bg-primary/10 text-primary rounded-lg">
-                     <LayoutDashboard size={18} />
-                   </div>
-                   <div>
-                      <div className="text-[10px] font-black tracking-[0.2em] opacity-40">SUMMARY</div>
-                      <div className="text-sm font-bold">Run Graph</div>
-                   </div>
-                 </div>
-                 <p className="text-xs text-base-content/60 leading-relaxed">
-                    Nodes represent jobs in the selected attempt. Step counters come from the backend step execution summaries.
-                 </p>
+          
+          {selectedJob ? (
+            <aside className="absolute right-0 top-0 z-20 h-full w-[360px] border-l border-base-300 bg-base-100 shadow-2xl">
+              <div className="border-b border-base-300 px-6 py-6">
+                <div className="iris-header">Job Details</div>
+                <div className="mt-2 text-lg font-bold">{selectedJob.jobName}</div>
+                <div className="mt-2 text-sm text-base-content/55">
+                  Details for the selected job in the current attempt.
+                </div>
               </div>
 
-              {selectedJob && (
-                <div className="iris-glass border-primary border-2 p-6 rounded-2xl pointer-events-auto w-96 shadow-2xl animate-in slide-in-from-right-10">
-                   <div className="flex items-center justify-between mb-4">
-                     <div className="badge h-7 bg-base-content text-base-100 font-black tracking-tighter">JOB {selectedJob.sequenceOrder}</div>
-                     <StatusBadge status={selectedJob.status} />
-                   </div>
-                   <h3 className="text-xl font-bold mb-4">{selectedJob.jobName}</h3>
-                   
-                   <div className="space-y-3">
-                     {selectedJob.stepExecutionInfos.map((step) => (
-                       <div key={step.id} className="bg-base-200/50 rounded-xl p-3 border border-base-300">
-                         <div className="flex items-center justify-between mb-2">
-                           <span className="text-xs font-bold">{step.stepName}</span>
-                           <StatusBadge status={step.status} subtle />
-                         </div>
-                         <div className="grid grid-cols-2 gap-2 mt-2">
-                           <div className="flex flex-col">
-                             <span className="text-[9px] font-bold opacity-30">READ</span>
-                             <span className="font-mono text-sm font-bold">{step.readCount}</span>
-                           </div>
-                           <div className="flex flex-col">
-                            <span className="text-[9px] font-bold opacity-30">WRITE</span>
-                             <span className="font-mono text-sm font-bold">{step.writeCount}</span>
-                           </div>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-
-                   <button 
-                    type="button" 
-                    className="btn btn-ghost btn-sm w-full mt-4"
-                    onClick={() => setSelectedJobId(null)}
-                   >
-                     Close Details
-                    </button>
-                </div>
-              )}
-            </div>
-          </div>
+              <div className="h-[calc(100%-109px)] overflow-y-auto p-6">
+                <JobDetailsPanel job={selectedJob} onClose={() => setSelectedJobId(null)} />
+              </div>
+            </aside>
+          ) : null}
         </main>
       </div>
+    </div>
+  )
+}
+
+function SummaryTile({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string | number
+  mono?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+      <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''}`}>{value}</div>
+    </div>
+  )
+}
+
+function JobDetailsPanel({
+  job,
+  onClose,
+}: {
+  job: PipelineRunJobInfo
+  onClose: () => void
+}) {
+  const totals = job.stepExecutionInfos.reduce(
+    (acc, step) => ({
+      read: acc.read + step.readCount,
+      write: acc.write + step.writeCount,
+      commit: acc.commit + step.commitCount,
+      rollback: acc.rollback + step.rollbackCount,
+    }),
+    { read: 0, write: 0, commit: 0, rollback: 0 },
+  )
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryTile label="Sequence" value={job.sequenceOrder} />
+          <SummaryTile label="Status" value={job.status} />
+          <SummaryTile label="Steps" value={job.stepExecutionInfos.length} />
+          <SummaryTile label="Atomic" value={job.atomicLevel} />
+        </div>
+      </div>
+
+      <div>
+        <div className="iris-header mb-3">Step Totals</div>
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryTile label="Read" value={totals.read} mono />
+          <SummaryTile label="Write" value={totals.write} mono />
+          <SummaryTile label="Commit" value={totals.commit} mono />
+          <SummaryTile label="Rollback" value={totals.rollback} mono />
+        </div>
+      </div>
+
+      <div>
+        <div className="iris-header mb-3">Step Details</div>
+        <div className="space-y-3">
+          {job.stepExecutionInfos.map((step) => (
+            <div key={step.id} className="rounded-xl border border-base-300 bg-base-100 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold">{step.stepName}</div>
+                  <div className="mt-1 text-xs text-base-content/45">{step.exitCode}</div>
+                </div>
+                <StatusBadge status={step.status as PipelineRunStatus} subtle />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <SummaryTile label="Read" value={step.readCount} mono />
+                <SummaryTile label="Write" value={step.writeCount} mono />
+                <SummaryTile label="Commit" value={step.commitCount} mono />
+                <SummaryTile label="Rollback" value={step.rollbackCount} mono />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button type="button" className="btn btn-ghost btn-sm w-full" onClick={onClose}>
+        Close Details
+      </button>
     </div>
   )
 }
