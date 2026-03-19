@@ -255,11 +255,11 @@ export function RunDetailPage() {
         <aside className="flex w-72 flex-col border-r border-base-300 bg-base-100">
           <div className="border-b border-base-300 px-5 py-5">
             <div className="iris-header">Run Summary</div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <SummaryTile label="Status" value={detail.status} />
-              <SummaryTile label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
-              <SummaryTile label="Attempts" value={detail.attempts.length} />
-              <SummaryTile label="Created" value={formatDateTimeLong(detail.createdAt)} />
+            <div className="mt-3 space-y-2">
+              <SummaryRow label="Status" value={detail.status} />
+              <SummaryRow label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
+              <SummaryRow label="Attempts" value={detail.attempts.length} />
+              <SummaryRow label="Created" value={formatDateTimeLong(detail.createdAt)} />
             </div>
           </div>
 
@@ -379,13 +379,10 @@ export function RunDetailPage() {
           </div>
 
           {selectedJob ? (
-            <aside className="absolute right-0 top-0 z-20 h-full w-[340px] border-l border-base-300 bg-base-100 shadow-2xl">
+            <aside className="absolute right-0 top-0 z-20 h-full w-[320px] border-l border-base-300 bg-base-100 shadow-2xl">
               <div className="border-b border-base-300 px-5 py-5">
                 <div className="iris-header">Job Details</div>
                 <div className="mt-2 text-lg font-bold">{selectedJob.jobName}</div>
-                <div className="mt-2 text-sm text-base-content/55">
-                  Details for the selected job in the current attempt.
-                </div>
               </div>
 
               <div className="h-[calc(100%-101px)] overflow-y-auto p-5">
@@ -464,6 +461,23 @@ function SummaryTile({
     <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
       <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
       <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''}`}>{value}</div>
+    </div>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string | number
+  mono?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+      <div className={`text-sm font-semibold text-right ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
   )
 }

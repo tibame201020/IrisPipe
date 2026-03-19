@@ -2,6 +2,19 @@
 
 ## 2026-03-19
 
+### Pipeline family completion
+- Turned `PipelineConfigPage` into a real definition editor instead of a read-only inspect surface.
+- Added local draft state for pipeline definitions, including editable jobs, connections, execution steps, and named SQL parameters.
+- Connected config save flows to the existing backend `create` and `update` contracts instead of leaving the canvas as a visual-only surface.
+- Kept the config canvas linear and sequence-based so the editor still matches the current backend model rather than implying DAG support.
+- Tightened run-detail summary chrome again so repeated metadata no longer pushes the runtime graph downward.
+- Reduced run-summary height in the left rail and kept the graph as the main reading surface in run detail.
+- Removed another layer of runs-page chrome so the history list remains the primary surface.
+
+### Backend extension wishlist
+- Added `frontend/docs/BACKEND_EXTENSION_WISHLIST.md` as a frontend-driven guide for non-breaking backend extensions.
+- Marked the wishlist explicitly as non-truth so it does not compete with the current backend implementation as the source of fact.
+
 ### Pipeline workspace compaction
 - Stopped reloading the full pipeline tree on every folder navigation inside the explorer and kept folder switching inside the already loaded tree state.
 - Compressed explorer chrome into a single header so folder and pipeline content stays primary instead of being pushed below stat cards.

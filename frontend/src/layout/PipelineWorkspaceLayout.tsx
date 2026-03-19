@@ -1,5 +1,5 @@
 import { Outlet, Link, useParams, useSearchParams, Navigate, useLocation } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { getApiErrorMessage, getPipelineConfig, getPipelineTree } from '../lib/api'
@@ -11,6 +11,8 @@ export type PipelineWorkspaceContext = {
   pipeline: ConfigPipelineInfo
   tree: PipelineTreeInfo | null
   folderPathNodes: FolderTreeNodeInfo[]
+  refreshWorkspace: () => Promise<void>
+  applyPipeline: (nextPipeline: ConfigPipelineInfo) => void
 }
 
 export function PipelineWorkspaceLayout() {
@@ -25,6 +27,30 @@ export function PipelineWorkspaceLayout() {
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
 
+  const loadWorkspace = useCallback(async () => {
+    if (!Number.isFinite(numericPipelineId)) {
+      setError('Invalid pipeline id')
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      const [pipelineResponse, treeResponse] = await Promise.all([
+        getPipelineConfig(numericPipelineId),
+        getPipelineTree(),
+      ])
+
+      setPipeline(pipelineResponse)
+      setTree(treeResponse)
+    } catch (loadError) {
+      setError(getApiErrorMessage(loadError, 'Failed to load pipeline workspace'))
+    } finally {
+      setLoading(false)
+    }
+  }, [numericPipelineId])
+
   useEffect(() => {
     if (!Number.isFinite(numericPipelineId)) {
       setError('Invalid pipeline id')
@@ -34,7 +60,7 @@ export function PipelineWorkspaceLayout() {
 
     let active = true
 
-    const load = async () => {
+    void (async () => {
       setLoading(true)
       setError(null)
       try {
@@ -52,9 +78,7 @@ export function PipelineWorkspaceLayout() {
       } finally {
         if (active) setLoading(false)
       }
-    }
-
-    void load()
+    })()
 
     return () => {
       active = false
@@ -116,7 +140,17 @@ export function PipelineWorkspaceLayout() {
         </div>
       </header>
 
-      <Outlet context={{ pipeline, tree, folderPathNodes } satisfies PipelineWorkspaceContext} />
+      <Outlet
+        context={{
+          pipeline,
+          tree,
+          folderPathNodes,
+          refreshWorkspace: loadWorkspace,
+          applyPipeline: (nextPipeline: ConfigPipelineInfo) => {
+            setPipeline(nextPipeline)
+          },
+        } satisfies PipelineWorkspaceContext}
+      />
     </div>
   )
 }

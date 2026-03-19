@@ -124,12 +124,7 @@ export function PipelineRunsPage() {
 
       <div className="flex-1 overflow-y-auto bg-base-200/40 p-6">
         <div className="mx-auto w-full max-w-6xl">
-          <div className="iris-card p-0 bg-base-100 border-base-300 overflow-hidden shadow-xl">
-            <div className="px-6 py-3 border-b border-base-300 bg-base-200/30 flex items-center gap-2">
-              <History size={16} className="text-primary" />
-              <h2 className="text-xs font-black uppercase tracking-widest opacity-50">Run History</h2>
-            </div>
-
+          <div className="iris-card overflow-hidden border-base-300 bg-base-100 p-0 shadow-xl">
             {runs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 bg-base-200/20 text-center">
                  <div className="p-6 bg-base-100 rounded-full mb-6 shadow-sm border border-base-300">

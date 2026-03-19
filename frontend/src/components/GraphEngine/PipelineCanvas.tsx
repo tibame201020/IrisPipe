@@ -97,7 +97,7 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
       <div className="mt-4 flex items-center justify-between border-t border-base-300/60 pt-3">
         <div className="flex items-center gap-2 text-[11px] text-base-content/45">
           <PlayCircle size={12} />
-          <span>Double-click to inspect</span>
+          <span>Click to edit</span>
         </div>
         <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">Definition</span>
       </div>
@@ -154,7 +154,7 @@ export function PipelineCanvas({
         minZoom={0.2}
         maxZoom={1.5}
         nodesDraggable={!readonly}
-        nodesConnectable={!readonly}
+        nodesConnectable={false}
         elementsSelectable={true}
         className="iris-canvas"
         proOptions={{ hideAttribution: true }}

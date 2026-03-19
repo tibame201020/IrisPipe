@@ -40,6 +40,11 @@ export async function createPipelineConfig(payload: ConfigPipelineUpsertRequest)
   return response.data
 }
 
+export async function updatePipelineConfig(pipelineId: number, payload: ConfigPipelineUpsertRequest) {
+  const response = await http.put<ConfigPipelineInfo>(`/api/v1/sync-config/${pipelineId}`, payload)
+  return response.data
+}
+
 export async function deletePipelineConfig(pipelineId: number) {
   await http.delete(`/api/v1/sync-config/${pipelineId}`)
 }
