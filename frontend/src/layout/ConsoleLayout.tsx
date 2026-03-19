@@ -8,7 +8,7 @@ export function ConsoleLayout() {
       <ConsoleSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <ConsoleHeader />
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-base-100">
           <Outlet />
         </main>
       </div>

@@ -107,7 +107,7 @@ export function PipelineRunsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="breadcrumbs rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
+      <div className="breadcrumbs border-b border-base-300 bg-base-100 px-6 py-4 text-sm">
         <ul>
           <li>
             <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'}>Explorer</Link>
@@ -145,7 +145,7 @@ export function PipelineRunsPage() {
 
       {error ? <div className="alert alert-error">{error}</div> : null}
 
-      <div className="card min-h-[32rem] rounded-box border border-base-300 bg-base-100 shadow-sm">
+      <div className="card min-h-[32rem] rounded-none border-x-0 border-b-0 border-t border-base-300 bg-base-100 shadow-none">
         <div className="card-body p-6">
         {runs.length === 0 ? (
             <div className="flex min-h-72 items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200/40">

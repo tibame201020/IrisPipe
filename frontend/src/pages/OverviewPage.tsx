@@ -119,7 +119,7 @@ export function OverviewPage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <section className="card rounded-box border border-base-300 bg-base-100 shadow-sm xl:col-span-4">
+        <section className="card rounded-none border border-base-300 bg-base-100 shadow-none xl:col-span-4">
           <div className="card-body space-y-4 p-6">
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center rounded-box bg-primary/10 text-primary">
@@ -136,7 +136,7 @@ export function OverviewPage() {
           </div>
         </section>
 
-        <section className="card rounded-box border border-base-300 bg-base-100 shadow-sm xl:col-span-4">
+        <section className="card rounded-none border border-base-300 bg-base-100 shadow-none xl:col-span-4">
           <div className="card-body space-y-4 p-6">
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center rounded-box bg-success/10 text-success">
@@ -155,7 +155,7 @@ export function OverviewPage() {
           </div>
         </section>
 
-        <section className="card rounded-box border border-base-300 bg-base-100 shadow-sm xl:col-span-4">
+        <section className="card rounded-none border border-base-300 bg-base-100 shadow-none xl:col-span-4">
           <div className="card-body space-y-4 p-6">
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center rounded-box bg-secondary/10 text-secondary">
@@ -184,7 +184,7 @@ export function OverviewPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(320px,1fr)]">
-        <section className="card min-h-[28rem] rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <section className="card min-h-[28rem] rounded-none border border-base-300 bg-base-100 shadow-none">
           <div className="card-body p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
@@ -230,7 +230,7 @@ export function OverviewPage() {
           </div>
         </section>
 
-        <section className="card rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <section className="card rounded-none border border-base-300 bg-base-100 shadow-none">
           <div className="card-body p-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Engine strengths</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">What this console is surfacing</h2>
@@ -266,7 +266,7 @@ function SummaryTile({
   description: string
 }) {
   return (
-    <div className="stats rounded-box border border-base-300 bg-base-100 shadow-sm">
+    <div className="stats rounded-none border border-base-300 bg-base-100 shadow-none">
       <div className="stat">
         <div className="mb-3 flex size-11 items-center justify-center rounded-box bg-base-200 text-primary">
           <Icon size={18} />

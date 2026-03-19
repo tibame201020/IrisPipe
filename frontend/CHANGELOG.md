@@ -18,3 +18,9 @@
 - Changed folder secondary text to child counts (`folders / pipelines`).
 - Added folder create, folder rename, folder delete, and pipeline delete actions.
 - Added `New pipeline` handoff from explorer into draft editor mode without creating a backend record first.
+
+### Pipeline editor direction reset
+- Rebuilt the config page around a workflow canvas instead of the previous form-heavy surface.
+- Switched the canvas implementation to `@xyflow/react` so the page behaves more like an editor surface.
+- Kept the backend truth model intact by rendering jobs as a linear chain, not as a DAG.
+- Flattened page-level layout surfaces so `main` now visually connects directly to the shell instead of looking inset.

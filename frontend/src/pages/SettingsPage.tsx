@@ -6,7 +6,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="card rounded-box border border-base-300 bg-base-100 shadow-sm">
+      <div className="card rounded-none border-x-0 border-y border-base-300 bg-base-100 shadow-none">
         <div className="card-body gap-6 p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1">

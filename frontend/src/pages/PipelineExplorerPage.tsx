@@ -205,7 +205,7 @@ export function PipelineExplorerPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="card flex min-h-0 flex-1 rounded-box border border-base-300 bg-base-100 shadow-sm">
+      <div className="card flex min-h-0 flex-1 rounded-none border-x-0 border-y-0 bg-base-100 shadow-none">
         <div className="card-body flex min-h-0 flex-1 flex-col p-6">
           <div className="mb-5 flex shrink-0 items-center justify-between gap-4">
             <div>

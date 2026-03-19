@@ -9,8 +9,8 @@ interface PageToolbarProps {
 
 export function PageToolbar({ eyebrow, title, description, actions }: PageToolbarProps) {
   return (
-    <div className="card rounded-box border border-base-300 bg-base-100 shadow-sm">
-      <div className="card-body gap-4 px-6 py-5 lg:flex-row lg:items-start lg:justify-between">
+    <div className="border-b border-base-300 bg-base-100 px-6 py-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           {eyebrow ? <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">{eyebrow}</div> : null}
           <div className="space-y-1">

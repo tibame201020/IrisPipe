@@ -103,7 +103,7 @@ export function RunDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="breadcrumbs rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
+      <div className="breadcrumbs border-b border-base-300 bg-base-100 px-6 py-4 text-sm">
         <ul>
           <li>
             <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'}>Explorer</Link>
@@ -139,7 +139,7 @@ export function RunDetailPage() {
         }
       />
 
-      {error ? <div className="alert alert-error rounded-box">{error}</div> : null}
+      {error ? <div className="alert alert-error">{error}</div> : null}
 
       <div className="grid gap-4 lg:grid-cols-4">
         <RunMetric label="Status" value={<StatusBadge status={detail.status} />} />
@@ -148,7 +148,7 @@ export function RunDetailPage() {
         <RunMetric label="Duration" value={formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)} />
       </div>
 
-      <div className="card rounded-box border border-base-300 bg-base-100 shadow-sm">
+      <div className="card rounded-none border-x-0 border-y border-base-300 bg-base-100 shadow-none">
         <div className="card-body p-6">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
@@ -179,7 +179,7 @@ export function RunDetailPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)]">
-        <section className="card rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <section className="card rounded-none border-x-0 border-y border-base-300 bg-base-100 shadow-none">
           <div className="card-body p-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Attempts</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">Execution timeline</h2>
@@ -201,7 +201,7 @@ export function RunDetailPage() {
           </div>
         </section>
 
-        <section className="card rounded-box border border-base-300 bg-base-100 shadow-sm">
+        <section className="card rounded-none border-x-0 border-y border-base-300 bg-base-100 shadow-none">
           <div className="card-body p-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Latest jobs</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">Runtime projection</h2>

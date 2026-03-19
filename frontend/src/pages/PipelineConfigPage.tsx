@@ -1,33 +1,89 @@
+import '@xyflow/react/dist/style.css'
+
 import {
-  Database,
-  FileJson2,
-  Layers3,
-  PlayCircle,
-  RefreshCw,
-  Settings2,
-  Waypoints,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+  Background,
+  BackgroundVariant,
+  Handle,
+  MarkerType,
+  Position,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+  type Edge,
+  type Node,
+  type NodeProps,
+  type ReactFlowInstance,
+} from '@xyflow/react'
+import { Grip, RefreshCw, Waypoints, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
-import { PageToolbar } from '../components/PageToolbar'
-import { executePipeline, getApiErrorMessage, getPipelineConfig } from '../lib/api'
-import type { ConfigPipelineInfo, ConnectionInfo, ExecutionStep, SyncJobDefinition } from '../types/irispipe'
+import { getApiErrorMessage, getPipelineConfig, getPipelineTree } from '../lib/api'
+import { findFolderPath } from '../lib/tree'
+import type { ConfigPipelineInfo, PipelineTreeInfo, SyncJobDefinition } from '../types/irispipe'
+
+type PipelineJobNodeData = {
+  index: number
+  job: SyncJobDefinition
+}
+
+type PipelineJobNode = Node<PipelineJobNodeData, 'pipelineJob'>
+
+const INITIAL_NODE_X = 180
+const INITIAL_NODE_Y = 220
+const NODE_WIDTH = 180
+const NODE_SPACING = 270
+const EDGE_COLOR = '#94a3b8'
+
+const flowStyles: CSSProperties = {
+  backgroundColor: 'hsl(var(--b1))',
+  backgroundImage: 'radial-gradient(circle at 1px 1px, hsl(var(--b3) / 0.72) 1px, transparent 0)',
+  backgroundSize: '24px 24px',
+}
+
+const nodeTypes = {
+  pipelineJob: PipelineJobNodeCard,
+}
 
 export function PipelineConfigPage() {
   const { pipelineId } = useParams()
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const isDraft = !pipelineId
+
   const [config, setConfig] = useState<ConfigPipelineInfo | null>(null)
+  const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [executing, setExecuting] = useState(false)
+  const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null)
+  const [nodes, setNodes, onNodesChange] = useNodesState<PipelineJobNode>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+
+  const flowRef = useRef<ReactFlowInstance<PipelineJobNode, Edge> | null>(null)
 
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
-  const explorerLink = folderId ? `/pipeline/folders/${folderId}` : '/pipeline'
+  const numericFolderId = folderId ? Number(folderId) : null
+
+  const folderPathNodes = useMemo(() => {
+    if (!tree || !numericFolderId) {
+      return []
+    }
+
+    return findFolderPath(tree, numericFolderId)
+  }, [tree, numericFolderId])
+
+  const jobs = config?.jobs ?? []
+  const selectedJob = selectedJobIndex == null ? null : jobs[selectedJobIndex] ?? null
+
+  async function loadTree() {
+    try {
+      const response = await getPipelineTree()
+      setTree(response)
+    } catch {
+      setTree(null)
+    }
+  }
 
   async function loadConfig() {
     setLoading(true)
@@ -44,10 +100,15 @@ export function PipelineConfigPage() {
   }
 
   useEffect(() => {
+    void loadTree()
+
     if (isDraft) {
       setLoading(false)
       setError(null)
       setConfig(null)
+      setSelectedJobIndex(null)
+      setNodes([])
+      setEdges([])
       return
     }
 
@@ -58,84 +119,57 @@ export function PipelineConfigPage() {
     }
 
     void loadConfig()
-  }, [isDraft, numericPipelineId])
+  }, [isDraft, numericPipelineId, setEdges, setNodes])
 
-  async function handleExecute() {
-    if (!config) {
+  useEffect(() => {
+    if (jobs.length === 0) {
+      setSelectedJobIndex(null)
+      setNodes([])
+      setEdges([])
       return
     }
 
-    setExecuting(true)
-    try {
-      const run = await executePipeline({
-        pipelineId: config.id,
-        useAsyncLaucher: true,
-      })
-      navigate(`/pipeline/items/${config.id}/runs/${run.id}${config.folderId ? `?folderId=${config.folderId}` : ''}`)
-    } catch (executeError) {
-      setError(getApiErrorMessage(executeError, 'Failed to execute pipeline'))
-    } finally {
-      setExecuting(false)
+    setNodes((currentNodes) => buildLinearNodes(jobs, currentNodes))
+    setEdges(buildLinearEdges(jobs))
+
+    if (selectedJobIndex != null && !jobs[selectedJobIndex]) {
+      setSelectedJobIndex(null)
     }
-  }
+  }, [jobs, selectedJobIndex, setEdges, setNodes])
+
+  useEffect(() => {
+    if (!flowRef.current || jobs.length === 0) {
+      return
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      flowRef.current?.fitView({
+        padding: 0.3,
+        duration: 320,
+        maxZoom: 1.1,
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+    }
+  }, [jobs.length])
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <PageToolbar eyebrow="Pipeline config" title="Loading pipeline surface" description="Reading the workflow definition from backend config detail." />
-        <LoadingState cards={4} />
+      <div className="space-y-4">
+        <LoadingState cards={3} />
       </div>
     )
   }
 
-  if (isDraft) {
-    return (
-      <div className="space-y-6">
-        <div className="breadcrumbs border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
-          <ul>
-            <li>
-              <Link to={explorerLink}>Explorer</Link>
-            </li>
-            <li>New pipeline</li>
-          </ul>
-        </div>
+  if (!isDraft && (error || !config)) {
+    const explorerLink = folderId ? `/pipeline/folders/${folderId}` : '/pipeline'
 
-        <PageToolbar
-          eyebrow="Pipeline config"
-          title="New pipeline"
-          description="Draft editor surface only. Create and save flow will be defined in the next pipeline editor phase."
-          actions={
-            <Link to={explorerLink} className="btn border-base-300 bg-base-100">
-              Back to explorer
-            </Link>
-          }
-        />
-
-        <div className="hero min-h-[22rem] rounded-box border border-base-300 bg-base-100 shadow-sm">
-          <div className="hero-content text-center">
-            <div className="max-w-2xl space-y-5">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-box bg-primary/10 text-primary">
-                <FileJson2 size={24} />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">Pipeline editor draft</h2>
-                <p className="text-sm leading-7 text-base-content/65">
-                  Explorer can now hand off into editor creation mode without forcing a backend write first.
-                  The actual pipeline name, jobs, steps, connections, and save contract belong to the next stage.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !config) {
     return (
       <EmptyState
         icon={Waypoints}
-        title="Pipeline surface is unavailable"
+        title="Pipeline payload is unavailable"
         description={error ?? 'The backend did not return a pipeline config payload.'}
         action={
           <Link to={explorerLink} className="btn btn-primary px-5">
@@ -147,187 +181,262 @@ export function PipelineConfigPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="breadcrumbs border border-base-300 bg-base-100 px-4 py-3 text-sm shadow-sm">
-        <ul>
-          <li>
-            <Link to={explorerLink}>Explorer</Link>
-          </li>
-          <li>{config.pipelineName}</li>
-        </ul>
-      </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="card min-h-0 flex-1 rounded-none border-x-0 border-y-0 bg-base-100 shadow-none">
+        <div className="card-body min-h-0 p-0">
+          <div className="grid gap-4 border-b border-base-300 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+            <div className="breadcrumbs text-sm text-base-content/65">
+              <ul>
+                <li>
+                  <Link to="/pipeline">Root</Link>
+                </li>
+                {folderPathNodes.map((folder) => (
+                  <li key={folder.id}>
+                    <Link to={`/pipeline/folders/${folder.id}`}>{folder.folderName}</Link>
+                  </li>
+                ))}
+                <li>{isDraft ? 'New pipeline' : config?.pipelineName}</li>
+              </ul>
+            </div>
 
-      <PageToolbar
-        eyebrow="Pipeline config"
-        title={config.pipelineName}
-        description={`Linear workflow surface built from backend config detail. Folder path: ${config.folderPath}`}
-        actions={
-          <>
-            <Link
-              to={`/pipeline/items/${config.id}/runs${config.folderId ? `?folderId=${config.folderId}` : ''}`}
-              className="btn border-base-300 bg-base-100"
+            <div role="tablist" className="tabs tabs-boxed mx-auto bg-base-200/70 p-1">
+              <button type="button" role="tab" className="tab tab-active">
+                Config
+              </button>
+              {isDraft ? (
+                <button type="button" role="tab" className="tab tab-disabled" disabled>
+                  Runs
+                </button>
+              ) : (
+                <Link
+                  role="tab"
+                  to={`/pipeline/items/${config!.id}/runs${config!.folderId ? `?folderId=${config!.folderId}` : ''}`}
+                  className="tab"
+                >
+                  Runs
+                </Link>
+              )}
+            </div>
+
+            <div className="flex justify-start lg:justify-end">
+              {!isDraft ? (
+                <button type="button" onClick={() => void loadConfig()} className="btn btn-ghost px-4">
+                  <RefreshCw size={16} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div
+              className={`pointer-events-none absolute inset-x-6 top-6 z-20 transition-all duration-300 ease-out ${
+                selectedJob ? 'translate-y-0 opacity-100' : '-translate-y-6 opacity-0'
+              }`}
             >
-              Open runs
-            </Link>
-            <button type="button" onClick={() => void loadConfig()} className="btn border-base-300 bg-base-100">
-              <RefreshCw size={16} />
-              Refresh
-            </button>
-            <button type="button" onClick={() => void handleExecute()} className="btn btn-primary px-5" disabled={executing}>
-              <PlayCircle size={16} />
-              {executing ? 'Executing...' : 'Execute pipeline'}
-            </button>
-          </>
-        }
+              {selectedJob ? (
+                <div className="pointer-events-auto mx-auto w-full max-w-5xl rounded-box border border-base-300 bg-base-100/95 shadow-xl backdrop-blur">
+                  <div className="max-h-[24rem] overflow-auto px-5 py-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">
+                          Job settings
+                        </div>
+                        <h2 className="mt-1 text-2xl font-semibold tracking-tight">{selectedJob.jobName}</h2>
+                        <p className="mt-2 text-sm text-base-content/65">
+                          This panel is still a direct presentation of fetched backend payload. The canvas is only a
+                          workflow surface on top of the same linear job chain.
+                        </p>
+                      </div>
+                      <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setSelectedJobIndex(null)}>
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 xl:grid-cols-4">
+                      <MetadataRow label="Atomic level" value={selectedJob.setting.atomicLevel ?? '-'} />
+                      <MetadataRow label="Fetch size" value={formatNullable(selectedJob.setting.fetchSize)} />
+                      <MetadataRow label="Batch size" value={formatNullable(selectedJob.setting.batchSize)} />
+                      <MetadataRow label="Executions" value={String(selectedJob.executions.length)} />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+                      <div className="space-y-3">
+                        <JsonBlock title="Source" value={selectedJob.database.source} />
+                        <JsonBlock title="Destination" value={selectedJob.database.dest} />
+                      </div>
+                      <JsonBlock title="Selected job payload" value={selectedJob} />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="h-full w-full">
+              <ReactFlow<PipelineJobNode, Edge>
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onNodeDoubleClick={(_, node) => setSelectedJobIndex(node.data.index)}
+                onInit={(instance) => {
+                  flowRef.current = instance
+                }}
+                nodeTypes={nodeTypes}
+                fitView
+                minZoom={0.35}
+                maxZoom={1.8}
+                nodesDraggable
+                nodesConnectable={false}
+                elementsSelectable
+                edgesFocusable={false}
+                edgesReconnectable={false}
+                fitViewOptions={{
+                  padding: 0.22,
+                  maxZoom: 1,
+                }}
+                proOptions={{ hideAttribution: true }}
+                defaultEdgeOptions={{
+                  type: 'straight',
+                  animated: false,
+                  style: {
+                    strokeWidth: 1.5,
+                    stroke: EDGE_COLOR,
+                  },
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    width: 14,
+                    height: 14,
+                    color: EDGE_COLOR,
+                  },
+                }}
+                className="bg-base-100"
+                style={flowStyles}
+              >
+                <Background variant={BackgroundVariant.Dots} gap={24} size={1.4} color="hsl(var(--b3) / 0.72)" />
+              </ReactFlow>
+
+              {jobs.length === 0 ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <button
+                    type="button"
+                    className="pointer-events-auto btn btn-outline min-h-[5rem] border-dashed px-8 text-base font-medium"
+                  >
+                    Add first job
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
+  return (
+    <div
+      className={`rounded-box border bg-base-100 px-2.5 py-2.5 shadow-sm transition-all ${
+        selected ? 'border-primary shadow-xl ring-2 ring-primary/20' : 'border-base-300'
+      }`}
+      style={{ width: `${NODE_WIDTH}px` }}
+    >
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-2.5 !w-2.5 !border-2 !border-slate-400 !bg-base-100"
+        isConnectable={false}
       />
 
-      {error ? <div className="alert alert-error">{error}</div> : null}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <SummaryPill label="Jobs" value={config.jobs.length} description="Linear workflow cards" icon={Layers3} />
-        <SummaryPill label="Folder" value={config.folderPath} description="Registry location" icon={Waypoints} />
-        <SummaryPill label="Pipeline id" value={`#${config.id}`} description="Primary execution identity" icon={Settings2} />
-      </div>
-
-      <div className="space-y-4">
-        {config.jobs.map((job, index) => (
-          <JobCard key={`${job.jobName}-${index}`} job={job} index={index} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function SummaryPill({
-  icon: Icon,
-  label,
-  value,
-  description,
-}: {
-  icon: typeof Layers3
-  label: string
-  value: string | number
-  description: string
-}) {
-  return (
-    <div className="stats rounded-box border border-base-300 bg-base-100 shadow-sm">
-      <div className="stat">
-        <div className="mb-3 flex size-11 items-center justify-center rounded-box bg-base-200 text-primary">
-          <Icon size={18} />
-        </div>
-        <div className="stat-title text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">{label}</div>
-        <div className="stat-value text-2xl font-semibold text-base-content">{value}</div>
-        <div className="stat-desc mt-2 text-sm text-base-content/55">{description}</div>
-      </div>
-    </div>
-  )
-}
-
-function JobCard({ job, index }: { job: SyncJobDefinition; index: number }) {
-  return (
-    <div className="collapse-arrow collapse rounded-box border border-base-300 bg-base-100 shadow-sm">
-      <input defaultChecked={index === 0} type="checkbox" />
-      <div className="collapse-title px-6 py-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="badge badge-primary badge-outline px-3 py-3 font-semibold">JOB {index + 1}</div>
-          <h2 className="text-2xl font-semibold tracking-tight">{job.jobName}</h2>
-          <div className="badge border-0 bg-base-200 px-3 py-3">{job.setting.atomicLevel ?? 'UNKNOWN'}</div>
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <MetricChip label="Executions" value={job.executions.length} />
-          <MetricChip label="Fetch size" value={job.setting.fetchSize ?? '-'} />
-          <MetricChip label="Batch size" value={job.setting.batchSize ?? '-'} />
-        </div>
-      </div>
-      <div className="collapse-content px-6 pb-6">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <div className="space-y-4">
-            <ConnectionCard title="Source" connection={job.database.source} />
-            <ConnectionCard title="Destination" connection={job.database.dest} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">
+            Job {data.index + 1}
           </div>
-
-          <div className="space-y-4">
-            {job.executions.map((execution, executionIndex) => (
-              <ExecutionCard key={`${job.jobName}-${executionIndex}`} execution={execution} executionIndex={executionIndex} />
-            ))}
-          </div>
+          <div className="mt-1 truncate text-sm font-semibold">{data.job.jobName}</div>
         </div>
+        <Grip size={14} className="mt-1 shrink-0 text-base-content/35" />
       </div>
+
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+        <NodeMetric label="Atomic" value={data.job.setting.atomicLevel ?? '-'} />
+        <NodeMetric label="Steps" value={String(data.job.executions.length)} />
+      </div>
+
+      <div className="mt-2.5 text-[10px] text-base-content/50">
+        Double-click to inspect
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!h-2.5 !w-2.5 !border-2 !border-slate-400 !bg-base-100"
+        isConnectable={false}
+      />
     </div>
   )
 }
 
-function MetricChip({ label, value }: { label: string; value: string | number }) {
+function NodeMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-box border border-base-300 bg-base-200/60 px-4 py-3">
+    <div className="rounded-box border border-base-300 bg-base-200/55 px-2 py-1.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-base-content/45">{label}</div>
+      <div className="mt-1 truncate text-[11px] font-medium">{value}</div>
+    </div>
+  )
+}
+
+function MetadataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-box border border-base-300 bg-base-200/40 px-4 py-3">
       <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">{label}</div>
-      <div className="mt-1 text-lg font-semibold">{value}</div>
+      <div className="mt-1 break-all text-sm font-medium">{value}</div>
     </div>
   )
 }
 
-function ConnectionCard({ title, connection }: { title: string; connection: ConnectionInfo | null }) {
+function JsonBlock({ title, value }: { title: string; value: unknown }) {
   return (
-    <div className="rounded-box border border-base-300 bg-base-200/50 p-5">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-box bg-base-100 text-primary">
-          <Database size={18} />
-        </div>
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">{title}</div>
-          <div className="text-lg font-semibold">{connection ? 'Connected definition' : 'Not configured'}</div>
-        </div>
+    <div className="rounded-box border border-base-300 bg-base-100">
+      <div className="border-b border-base-300 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">
+        {title}
       </div>
-      {connection ? (
-        <div className="space-y-3 text-sm">
-          <FieldRow label="Driver" value={connection.driver} />
-          <FieldRow label="URL" value={connection.url} mono />
-          <FieldRow label="Username" value={connection.username} />
-          <FieldRow label="Password" value={connection.password ? '********' : '-'} />
-        </div>
-      ) : (
-        <p className="text-sm text-base-content/55">The backend payload does not include a connection block here.</p>
-      )}
+      <div className="overflow-auto px-4 py-3">
+        <pre className="font-mono text-xs leading-6 text-base-content/80">{JSON.stringify(value, null, 2)}</pre>
+      </div>
     </div>
   )
 }
 
-function FieldRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="rounded-box border border-base-300 bg-base-100 px-4 py-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">{label}</div>
-      <div className={`mt-1 break-all text-sm ${mono ? 'font-mono' : 'font-medium'}`}>{value || '-'}</div>
-    </div>
-  )
+function buildLinearNodes(jobs: SyncJobDefinition[], currentNodes: PipelineJobNode[]): PipelineJobNode[] {
+  const currentPositions = new Map(currentNodes.map((node) => [node.id, node.position]))
+
+  return jobs.map((job, index) => ({
+    id: `job-${index}`,
+    type: 'pipelineJob',
+    position:
+      currentPositions.get(`job-${index}`) ?? {
+        x: INITIAL_NODE_X + index * NODE_SPACING,
+        y: INITIAL_NODE_Y,
+      },
+    data: {
+      index,
+      job,
+    },
+    draggable: true,
+  }))
 }
 
-function ExecutionCard({ execution, executionIndex }: { execution: ExecutionStep; executionIndex: number }) {
-  return (
-    <div className="rounded-box border border-base-300 bg-base-100 p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="badge badge-outline px-3 py-3 font-semibold">STEP {executionIndex + 1}</div>
-        <div className="text-lg font-semibold">{execution.name || execution.type}</div>
-        <div className="badge border-0 bg-primary/10 px-3 py-3 text-primary">{execution.type}</div>
-      </div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <MetricChip label="Destination table" value={execution.destTable || '-'} />
-        <MetricChip label="Parameters" value={execution.parameters?.length ?? 0} />
-      </div>
-      <div className="mt-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">SQL</div>
-        <pre className="mt-2 overflow-x-auto rounded-box border border-base-300 bg-base-200/80 p-4 font-mono text-xs leading-6 text-base-content/70">
-          {execution.sql}
-        </pre>
-      </div>
-      {execution.parameters?.length ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {execution.parameters.map((parameter) => (
-            <span key={parameter.param} className="badge border-0 bg-base-200 px-3 py-3 font-mono text-xs">
-              {parameter.param}: {String(parameter.value)}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
+function buildLinearEdges(jobs: SyncJobDefinition[]): Edge[] {
+  return jobs.slice(0, -1).map((_, index) => ({
+    id: `edge-${index}-${index + 1}`,
+    source: `job-${index}`,
+    target: `job-${index + 1}`,
+    type: 'straight',
+  }))
+}
+
+function formatNullable(value: number | null) {
+  return value == null ? '-' : String(value)
 }
