@@ -21,6 +21,7 @@ export type PipelineCanvasProps = {
   onNodesChange?: OnNodesChange
   onEdgesChange?: OnEdgesChange
   onNodeClick?: (event: React.MouseEvent, node: Node) => void
+  onNodeDoubleClick?: (event: React.MouseEvent, node: Node) => void
   onInit?: (instance: ReactFlowInstance) => void
   nodeTypes?: NodeTypes
   edgeTypes?: EdgeTypes

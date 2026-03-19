@@ -13,6 +13,9 @@ import {
 import {
   Box,
   Grip,
+  Link2,
+  PlayCircle,
+  Server,
 } from 'lucide-react'
 import type { PipelineJobNode } from '../../types/graph'
 import '@xyflow/react/dist/style.css'
@@ -33,10 +36,13 @@ const defaultEdgeTypes: EdgeTypes = {
 const NODE_WIDTH = 280
 
 function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
+  const sourceConfigured = Boolean(data.job.database.source)
+  const destConfigured = Boolean(data.job.database.dest)
+
   return (
     <div
-      className={`rounded-2xl border-2 bg-base-100 p-6 transition-all duration-300 group overflow-visible ${
-        selected ? 'border-primary shadow-2xl scale-[1.05] z-50' : 'border-base-300 shadow-sm opacity-90'
+      className={`group overflow-visible rounded-2xl border bg-base-100 p-5 transition-all duration-300 ${
+        selected ? 'z-50 border-primary shadow-xl ring-4 ring-primary/10' : 'border-base-300 shadow-sm'
       }`}
       style={{ width: `${NODE_WIDTH}px` }}
     >
@@ -46,7 +52,7 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
         className="!left-0 !z-20 !h-3 !w-3 !-translate-x-1/2 !border-2 !border-primary !bg-base-100"
       />
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Box size={20} />
@@ -56,29 +62,45 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
         <Grip size={16} className="text-base-content/20 group-hover:text-primary transition-colors cursor-grab active:cursor-grabbing" />
       </div>
 
-      <div className="truncate text-xl font-bold tracking-tight mb-4">{data.job.jobName}</div>
+      <div className="mb-4 truncate text-lg font-bold tracking-tight" title={data.job.jobName}>
+        {data.job.jobName}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-2 bg-base-200/50 rounded-xl border border-base-300/30">
-           <div className="text-[9px] font-black opacity-30 uppercase tracking-widest mb-1">Scope</div>
+        <div className="rounded-xl border border-base-300/50 bg-base-200/40 p-2">
+           <div className="mb-1 text-[9px] font-black uppercase tracking-widest opacity-30">Atomic</div>
            <div className="text-xs font-bold">{data.job.setting.atomicLevel || 'JOB'}</div>
         </div>
-        <div className="p-2 bg-base-200/50 rounded-xl border border-base-300/30">
-           <div className="text-[9px] font-black opacity-30 uppercase tracking-widest mb-1">Steps</div>
+        <div className="rounded-xl border border-base-300/50 bg-base-200/40 p-2">
+           <div className="mb-1 text-[9px] font-black uppercase tracking-widest opacity-30">Executions</div>
            <div className="text-xs font-bold">{data.job.executions.length}</div>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
-         <div className="flex -space-x-2">
-            {[1, 2, 3].slice(0, data.job.executions.length).map((i) => (
-              <div key={i} className="size-5 rounded-full border-2 border-base-100 bg-base-200 flex items-center justify-center">
-                 <div className="size-1.5 rounded-full bg-primary/40" />
-              </div>
-            ))}
-         </div>
-         <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">Pipeline Job</span>
-       </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-2 rounded-xl border border-base-300/50 bg-base-200/20 px-3 py-2">
+          <Server size={13} className={sourceConfigured ? 'text-success' : 'text-base-content/25'} />
+          <div className="min-w-0">
+            <div className="text-[9px] font-black uppercase tracking-widest opacity-30">Source</div>
+            <div className="truncate text-[11px] font-semibold">{sourceConfigured ? 'Configured' : 'Missing'}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-base-300/50 bg-base-200/20 px-3 py-2">
+          <Link2 size={13} className={destConfigured ? 'text-success' : 'text-base-content/25'} />
+          <div className="min-w-0">
+            <div className="text-[9px] font-black uppercase tracking-widest opacity-30">Dest</div>
+            <div className="truncate text-[11px] font-semibold">{destConfigured ? 'Configured' : 'Missing'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between border-t border-base-300/60 pt-3">
+        <div className="flex items-center gap-2 text-[11px] text-base-content/45">
+          <PlayCircle size={12} />
+          <span>Double-click to inspect</span>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">Definition</span>
+      </div>
 
       <Handle
         type="source"
@@ -95,6 +117,7 @@ export function PipelineCanvas({
   onNodesChange,
   onEdgesChange,
   onNodeClick,
+  onNodeDoubleClick,
   onInit,
   nodeTypes = {},
   edgeTypes = {},
@@ -120,6 +143,7 @@ export function PipelineCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onInit={(instance) => {
           flowRef.current = instance
           onInit?.(instance)

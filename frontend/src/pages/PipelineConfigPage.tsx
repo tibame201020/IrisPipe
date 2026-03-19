@@ -5,27 +5,26 @@ import {
   type Edge,
   type ReactFlowInstance,
 } from '@xyflow/react'
-import { PipelineCanvas } from '../components/GraphEngine/PipelineCanvas'
 import {
-  Box,
   ChevronRight,
-  Cpu,
   Database,
-  Layout,
+  FileJson2,
+  Link2,
+  PlayCircle,
   Settings,
   Waypoints,
-  X
+  X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { PipelineCanvas } from '../components/GraphEngine/PipelineCanvas'
 import { getApiErrorMessage, getPipelineTree } from '../lib/api'
 import { findFolderPath } from '../lib/tree'
-import type { ConfigPipelineInfo, PipelineTreeInfo, SyncJobDefinition } from '../types/irispipe'
 import type { PipelineJobNode } from '../types/graph'
+import type { ConfigPipelineInfo, PipelineTreeInfo, SyncJobDefinition } from '../types/irispipe'
 import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
-
 
 export function PipelineConfigPage() {
   const { pipelineId } = useParams()
@@ -36,7 +35,7 @@ export function PipelineConfigPage() {
   const [draftTree, setDraftTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null)
+  const [inspectedJobIndex, setInspectedJobIndex] = useState<number | null>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<PipelineJobNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
@@ -52,9 +51,12 @@ export function PipelineConfigPage() {
     if (!tree || !numericFolderId) return []
     return findFolderPath(tree, numericFolderId)
   }, [tree, numericFolderId])
-  
+
   const jobs = useMemo(() => config?.jobs ?? [], [config?.jobs])
-  const selectedJob = selectedJobIndex == null ? null : jobs[selectedJobIndex] ?? null
+  const selectedJob = inspectedJobIndex == null ? null : jobs[inspectedJobIndex] ?? null
+  const configuredSourceCount = useMemo(() => jobs.filter((job) => Boolean(job.database.source)).length, [jobs])
+  const configuredDestCount = useMemo(() => jobs.filter((job) => Boolean(job.database.dest)).length, [jobs])
+  const executionStepCount = useMemo(() => jobs.reduce((total, job) => total + job.executions.length, 0), [jobs])
 
   async function loadConfig() {
     setLoading(true)
@@ -85,7 +87,7 @@ export function PipelineConfigPage() {
 
   useEffect(() => {
     if (jobs.length === 0) {
-      setSelectedJobIndex(null)
+      setInspectedJobIndex(null)
       if (nodes.length > 0) setNodes([])
       if (edges.length > 0) setEdges([])
       return
@@ -102,7 +104,7 @@ export function PipelineConfigPage() {
   useEffect(() => {
     if (!flowRef.current || jobs.length === 0) return
     const timer = setTimeout(() => {
-      flowRef.current?.fitView({ padding: 0.4, duration: 800 })
+      flowRef.current?.fitView({ padding: 0.35, duration: 600 })
     }, 100)
     return () => clearTimeout(timer)
   }, [jobs.length])
@@ -123,12 +125,14 @@ export function PipelineConfigPage() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
       {isDraft ? (
-        <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
+        <header className="z-30 flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4">
           <div className="breadcrumbs text-sm opacity-50">
             <ul>
               <li><Link to="/pipeline">Root</Link></li>
-              {folderPathNodes.map((f) => (
-                <li key={f.id}><Link to={`/pipeline/folders/${f.id}`}>{f.folderName}</Link></li>
+              {folderPathNodes.map((folder) => (
+                <li key={folder.id}>
+                  <Link to={`/pipeline/folders/${folder.id}`}>{folder.folderName}</Link>
+                </li>
               ))}
               <li className="font-bold opacity-100">New Pipeline</li>
             </ul>
@@ -136,18 +140,23 @@ export function PipelineConfigPage() {
         </header>
       ) : null}
 
-      <div className="flex flex-1 min-h-0 relative">
-        <main className="flex-1 relative bg-base-200/50">
-          <div className="absolute top-6 left-6 z-20 pointer-events-none">
-             <div className="iris-glass border-primary/10 p-5 rounded-2xl pointer-events-auto shadow-2xl">
-                <div className="flex items-center gap-3 mb-2">
-                   <div className="p-2 bg-primary/10 text-primary rounded-lg"><Waypoints size={16} /></div>
-                   <div className="iris-header">Pipeline Definition</div>
-                </div>
-                <p className="text-xs text-base-content/50 leading-relaxed max-w-[240px]">
-                  Jobs come from the current pipeline definition. Dragging only changes the local canvas layout.
-                </p>
-             </div>
+      <div className="relative flex min-h-0 flex-1">
+        <main className="relative flex-1 bg-base-200/50">
+          <div className="absolute left-6 right-6 top-6 z-20">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-base-300 bg-base-100/90 px-4 py-3 shadow-sm backdrop-blur">
+              <div className="flex flex-wrap items-center gap-3">
+                <ContextMetric label="Jobs" value={jobs.length} icon={FileJson2} />
+                <ContextDivider />
+                <ContextMetric label="Steps" value={executionStepCount} icon={PlayCircle} />
+                <ContextDivider />
+                <ContextMetric label="Source" value={`${configuredSourceCount}/${jobs.length || 0}`} icon={Database} />
+                <ContextDivider />
+                <ContextMetric label="Dest" value={`${configuredDestCount}/${jobs.length || 0}`} icon={Link2} />
+              </div>
+              <span className="text-xs text-base-content/45">
+                Drag repositions locally. Double-click a job to inspect its definition.
+              </span>
+            </div>
           </div>
 
           <div className="h-full w-full">
@@ -156,89 +165,102 @@ export function PipelineConfigPage() {
               edges={edges}
               onNodesChange={onNodesChange as any}
               onEdgesChange={onEdgesChange as any}
-              onNodeClick={(_, node) => setSelectedJobIndex((node as any).data.index)}
-              onInit={(instance) => { flowRef.current = instance as any }}
+              onNodeDoubleClick={(_, node) => {
+                const index = (node as any).data.index as number
+                setInspectedJobIndex(index)
+              }}
+              onInit={(instance) => {
+                flowRef.current = instance as any
+              }}
               readonly={false}
-              fitView={true}
+              fitView
             />
           </div>
         </main>
 
-        <aside className={`w-[450px] border-l border-base-300 bg-base-100 flex flex-col z-20 transition-transform duration-500 ease-in-out ${
-          selectedJob ? 'translate-x-0' : 'translate-x-full absolute right-0'
-        }`}>
+        <aside
+          className={`z-20 flex w-[450px] flex-col border-l border-base-300 bg-base-100 transition-transform duration-300 ease-out ${
+            selectedJob ? 'translate-x-0' : 'absolute right-0 translate-x-full'
+          }`}
+        >
           {selectedJob ? (
             <>
-              <div className="px-8 py-6 border-b border-base-300 flex items-center justify-between bg-base-200/30">
+              <div className="flex items-center justify-between border-b border-base-300 bg-base-200/30 px-8 py-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-base-content text-base-100 rounded-xl"><Settings size={18} /></div>
+                  <div className="rounded-xl bg-base-content p-2.5 text-base-100">
+                    <Settings size={18} />
+                  </div>
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Inspector</div>
-                    <div className="text-lg font-bold">Job Details</div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Definition</div>
+                    <div className="text-lg font-bold">{selectedJob.jobName}</div>
                   </div>
                 </div>
-                <button onClick={() => setSelectedJobIndex(null)} className="btn btn-ghost btn-sm btn-square">
+                <button
+                  type="button"
+                  onClick={() => setInspectedJobIndex(null)}
+                  className="btn btn-ghost btn-sm btn-square"
+                >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                <div>
-                  <h3 className="iris-header mb-4 flex items-center gap-2">
-                    <Layout size={14} /> Basic Information
-                  </h3>
-                  <div className="iris-card p-4 bg-base-200/40">
-                    <label className="text-[10px] font-bold opacity-30 uppercase tracking-widest block mb-2">Internal Name</label>
-                    <div className="font-mono text-sm font-bold">{selectedJob.jobName}</div>
-                  </div>
-                </div>
-
-                <div>
-                   <h3 className="iris-header mb-4 flex items-center gap-2">
-                    <Cpu size={14} /> Execution Context
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                     <PropertyBox label="Atomic" value={selectedJob.setting.atomicLevel || 'JOB'} />
-                     <PropertyBox label="Batch" value={selectedJob.setting.batchSize || 'Default'} />
-                     <PropertyBox label="Fetch" value={selectedJob.setting.fetchSize || 'Default'} />
-                     <PropertyBox label="Steps" value={selectedJob.executions.length} />
-                  </div>
-                </div>
-
-                <div>
-                   <h3 className="iris-header mb-4 flex items-center gap-2">
-                    <Database size={14} /> Connectivity
-                  </h3>
-                  <div className="space-y-4">
-                    <ConnectionBox type="SOURCE" conn={selectedJob.database.source} />
-                    <div className="flex justify-center -my-2 relative z-10">
-                       <div className="p-1 bg-primary text-primary-content rounded-full shadow-lg"><ChevronRight size={12} className="rotate-90" /></div>
+              <div className="flex-1 overflow-y-auto p-8">
+                <div className="space-y-8">
+                  <section>
+                    <div className="iris-header mb-4">Job Summary</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <PropertyBox label="Job Name" value={selectedJob.jobName} mono />
+                      <PropertyBox label="Atomic" value={selectedJob.setting.atomicLevel || 'JOB'} />
+                      <PropertyBox label="Executions" value={selectedJob.executions.length} />
+                      <PropertyBox
+                        label="Fetch / Batch"
+                        value={`${selectedJob.setting.fetchSize ?? '-'} / ${selectedJob.setting.batchSize ?? '-'}`}
+                        mono
+                      />
                     </div>
-                    <ConnectionBox type="DESTINATION" conn={selectedJob.database.dest} />
-                  </div>
-                </div>
+                  </section>
 
-                <div>
-                   <h3 className="iris-header mb-4 flex items-center gap-2">
-                    <Box size={14} /> Logical Steps
-                  </h3>
-                  <div className="space-y-3">
-                    {selectedJob.executions.map((step, idx) => (
-                      <div key={idx} className="iris-card bg-base-100 p-4 border-base-300">
-                         <div className="flex items-center justify-between mb-3">
+                  <section>
+                    <div className="iris-header mb-4">Connectivity</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <PropertyBox label="Source" value={selectedJob.database.source ? 'Configured' : 'Missing'} />
+                      <PropertyBox label="Destination" value={selectedJob.database.dest ? 'Configured' : 'Missing'} />
+                    </div>
+
+                    <div className="mt-4 space-y-4">
+                      <ConnectionBox type="SOURCE" conn={selectedJob.database.source} />
+                      <div className="relative z-10 -my-2 flex justify-center">
+                        <div className="rounded-full bg-primary p-1 text-primary-content shadow-lg">
+                          <ChevronRight size={12} className="rotate-90" />
+                        </div>
+                      </div>
+                      <ConnectionBox type="DESTINATION" conn={selectedJob.database.dest} />
+                    </div>
+                  </section>
+
+                  <section>
+                    <div className="iris-header mb-4">Execution Steps</div>
+                    <div className="space-y-3">
+                      {selectedJob.executions.map((step, idx) => (
+                        <div key={idx} className="iris-card border-base-300 bg-base-100 p-4">
+                          <div className="mb-3 flex items-center justify-between">
                             <span className="badge badge-sm font-black tracking-widest">{step.type}</span>
                             <span className="text-[10px] font-mono opacity-40">STEP {idx + 1}</span>
-                         </div>
-                         <div className="text-sm font-bold mb-2">{step.name || 'Anonymous Step'}</div>
-                         <div className="bg-base-200 p-3 rounded-lg overflow-x-auto">
-                            <code className="text-[10px] font-mono text-primary whitespace-pre">{step.sql}</code>
-                         </div>
-                      </div>
-                    ))}
-                  </div>
+                          </div>
+                          <div className="mb-2 text-sm font-bold">{step.name || 'Anonymous Step'}</div>
+                          <div className="mb-3 grid grid-cols-2 gap-3">
+                            <PropertyBox label="Dest Table" value={step.destTable || '-'} />
+                            <PropertyBox label="Parameters" value={step.parameters?.length ?? 0} />
+                          </div>
+                          <div className="overflow-x-auto rounded-lg bg-base-200 p-3">
+                            <code className="whitespace-pre-wrap break-all text-[10px] font-mono text-primary">{step.sql}</code>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
               </div>
-
             </>
           ) : null}
         </aside>
@@ -247,38 +269,82 @@ export function PipelineConfigPage() {
   )
 }
 
-// End of Inspector logic
+function ContextDivider() {
+  return <div className="h-8 w-px bg-base-300" />
+}
 
-function PropertyBox({ label, value }: { label: string; value: string | number }) {
+function ContextMetric({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: string | number
+  icon: typeof FileJson2
+}) {
   return (
-    <div className="iris-card p-4 bg-base-100 border-base-300">
-      <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">{label}</div>
-      <div className="text-sm font-bold">{value}</div>
+    <div className="flex items-center gap-2">
+      <div className="rounded-lg bg-base-200 p-2 text-primary">
+        <Icon size={14} />
+      </div>
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+        <div className="text-sm font-semibold">{value}</div>
+      </div>
     </div>
   )
 }
 
-function ConnectionBox({ type, conn }: { type: string, conn: any }) {
+function PropertyBox({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string | number
+  mono?: boolean
+}) {
   return (
-    <div className="iris-card p-5 bg-base-100 border-base-300 relative overflow-hidden">
-       <div className="absolute top-0 right-0 p-3 opacity-[0.03] select-none pointer-events-none">
-          <Database size={64} />
-       </div>
-       <div className="text-[10px] font-black tracking-[0.2em] text-primary mb-3">{type} ENDPOINT</div>
-       <div className="space-y-2">
-          <div className="flex justify-between items-center bg-base-200/50 px-3 py-2 rounded-lg">
-             <span className="text-[10px] font-bold opacity-40">Driver</span>
-             <span className="text-xs font-mono font-bold">{conn?.driver || 'Built-in'}</span>
-          </div>
-          <div className="text-[10px] font-mono opacity-60 truncate bg-base-200/50 px-3 py-2 rounded-lg break-all">
-             {conn?.url || 'jdbc:null:connection'}
-          </div>
-       </div>
+    <div className="iris-card border-base-300 bg-base-100 p-4">
+      <div className="mb-1 text-[10px] font-black uppercase tracking-widest opacity-30">{label}</div>
+      <div className={`text-sm font-bold ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
   )
 }
 
-const INITIAL_NODE_X = 100
+function ConnectionBox({
+  type,
+  conn,
+}: {
+  type: string
+  conn: SyncJobDefinition['database']['source']
+}) {
+  return (
+    <div className="iris-card relative overflow-hidden border-base-300 bg-base-100 p-5">
+      <div className="pointer-events-none absolute right-0 top-0 select-none p-3 opacity-[0.03]">
+        <Database size={64} />
+      </div>
+      <div className="mb-3 text-[10px] font-black tracking-[0.2em] text-primary">{type} ENDPOINT</div>
+      {conn ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between rounded-lg bg-base-200/50 px-3 py-2">
+            <span className="text-[10px] font-bold opacity-40">Driver</span>
+            <span className="text-xs font-mono font-bold">{conn.driver || 'Built-in'}</span>
+          </div>
+          <div className="break-all rounded-lg bg-base-200/50 px-3 py-2 text-[10px] font-mono opacity-60">
+            {conn.url || 'jdbc:null:connection'}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-base-300 bg-base-200/30 px-3 py-4 text-sm text-base-content/45">
+          No connection configured
+        </div>
+      )}
+    </div>
+  )
+}
+
+const INITIAL_NODE_X = 140
 const INITIAL_NODE_Y = 200
 const NODE_SPACING = 380
 

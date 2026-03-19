@@ -287,20 +287,15 @@ export function RunDetailPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-base font-bold">{attempt.executionKind}</div>
-                        <StatusBadge status={attempt.status} subtle />
-                      </div>
+                      <div className="text-base font-bold">{attempt.executionKind}</div>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">
                           Attempt #{attempt.executionNo}
                         </span>
                         {isLatest ? <span className="badge badge-ghost badge-sm">Latest</span> : null}
+                        <StatusBadge status={attempt.status} subtle />
                       </div>
                     </div>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
-                      {attempt.jobs.length} jobs / {stepCount} steps
-                    </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-base-content/45">
                     <div className="flex items-center gap-2">
@@ -308,6 +303,11 @@ export function RunDetailPage() {
                       {formatDateTimeLong(attempt.startTime)}
                     </div>
                     <span className="font-mono">{formatDuration(attempt.startTime, attempt.endTime)}</span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
+                    <span>{attempt.jobs.length} jobs</span>
+                    <span>{stepCount} steps</span>
+                    <span>{attempt.requestedAsync == null ? '-' : attempt.requestedAsync ? 'Async' : 'Sync'}</span>
                   </div>
                 </button>
               )

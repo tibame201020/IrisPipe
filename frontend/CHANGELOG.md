@@ -2,6 +2,15 @@
 
 ## 2026-03-19
 
+### Pipeline family narrative pass
+- Reworked the pipeline config canvas into a definition-oriented editor surface instead of a generic workflow card layout.
+- Added a lightweight config context strip that surfaces factual pipeline definition counts: jobs, steps, configured sources, and configured destinations.
+- Switched config job inspection to a deliberate double-click drawer flow so the canvas remains primary until the user explicitly opens definition details.
+- Tightened config job nodes around backend truth: atomic level, execution count, and whether source/destination connections are configured.
+- Restructured the runs family into `PipelineWorkspace -> Runs -> Run Detail` so run detail reads as a focused runs state, not as a different page family.
+- Reordered run-detail attempt cards to lead with execution kind, attempt number, status, duration, and actual jobs/steps counts from the backend.
+- Rebalanced runtime graph nodes so job name and step counters stay primary while status remains readable without overpowering the graph.
+
 ### Runs section continuity
 - Split the pipeline workspace into a real nested `runs` section so `config -> runs -> run detail` stays inside one pipeline workspace instead of three pages imitating the same chrome.
 - Added a dedicated `PipelineRunsLayout` that keeps `Run History` and `Run #id` in the same narrative family while leaving `Config | Runs` ownership at the workspace level.
