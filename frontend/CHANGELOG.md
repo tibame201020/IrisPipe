@@ -9,6 +9,8 @@
 - Converted the runs list top section from three large stat cards into a compact summary/action bar.
 - Reduced run-detail top chrome, tightened the left attempt rail, and shrank the runtime context strip so the graph keeps visual priority.
 - Removed the extra `runs` subheader above run detail and merged breadcrumb, run metadata, and actions into a single run-detail header.
+- Moved run deletion into the top action group and added a confirm dialog so the destructive action lives with the rest of the run controls.
+- Consolidated duplicated run-detail metadata into the graph context strip instead of repeating it above the canvas.
 - Compressed the config canvas context bar into a narrow definition strip and kept the drawer as the only expanded detail surface.
 
 ### Pipeline family narrative pass

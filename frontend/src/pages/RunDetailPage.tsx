@@ -42,6 +42,7 @@ export function RunDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [selectedAttemptId, setSelectedAttemptId] = useState<number | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
 
@@ -190,7 +191,7 @@ export function RunDetailPage() {
   const viewingLatestAttempt = currentAttempt?.executionId === latestAttempt?.executionId
 
   return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
       <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
         <div className="min-w-0">
           <div className="breadcrumbs text-[13px] text-base-content/45">
@@ -202,15 +203,6 @@ export function RunDetailPage() {
               </li>
               <li className="font-semibold text-base-content">Run #{detail.id}</li>
             </ul>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
-            <span className="font-semibold">{workspace.pipeline.pipelineName}</span>
-            <span>&bull;</span>
-            <StatusBadge status={detail.status} mode="text" />
-            <span>&bull;</span>
-            <span>{currentAttempt?.executionKind ?? 'Attempt'}</span>
-            <span>&bull;</span>
-            <span>Attempt #{currentAttempt?.executionNo ?? '-'}</span>
           </div>
         </div>
 
@@ -242,6 +234,15 @@ export function RunDetailPage() {
             >
               <RotateCcw size={14} />
               Rerun
+            </button>
+            <button
+              type="button"
+              disabled={!!pendingAction}
+              className="btn btn-ghost btn-sm h-9 text-error"
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              <Trash2 size={14} />
+              Delete
             </button>
           </div>
           <button type="button" onClick={() => void loadDetail()} className="btn btn-ghost btn-sm btn-square">
@@ -320,30 +321,22 @@ export function RunDetailPage() {
             })}
           </div>
 
-          <div className="border-t border-base-300 bg-base-200/30 p-3">
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm w-full gap-2 text-error"
-              onClick={() => void runAction('delete', () => deleteRun(detail.id))}
-            >
-              <Trash2 size={14} />
-              Delete Run
-            </button>
-          </div>
         </aside>
 
         <main className="relative min-w-0 flex-1 bg-base-200/50">
           <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="badge badge-lg gap-2 border border-base-300 bg-base-100 px-4">
-                <Layers size={14} />
-                <span className="font-semibold">Attempt #{currentAttempt?.executionNo}</span>
-              </div>
-              {currentAttempt ? <StatusBadge status={currentAttempt.status} subtle /> : null}
-              {!viewingLatestAttempt ? <span className="badge badge-warning gap-2"><Info size={12} />Earlier attempt</span> : null}
-            </div>
-
             <div className="flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-3 py-2 shadow-sm backdrop-blur">
+              <div className="flex items-center gap-2 pr-1">
+                <Layers size={14} className="text-base-content/55" />
+                <span className="text-sm font-semibold">{workspace.pipeline.pipelineName}</span>
+              </div>
+              <ContextDivider />
+              <ContextMetric label="Run" value={`#${detail.id}`} />
+              <ContextDivider />
+              <ContextMetric label="Attempt" value={`#${currentAttempt?.executionNo ?? '-'}`} />
+              <ContextDivider />
+              <ContextMetric label="Status" value={currentAttempt?.status ?? detail.status} />
+              <ContextDivider />
               <ContextMetric label="Kind" value={currentAttempt?.executionKind ?? '-'} />
               <ContextDivider />
               <ContextMetric label="Jobs" value={currentAttempt?.jobs.length ?? 0} />
@@ -365,6 +358,15 @@ export function RunDetailPage() {
                 label="Duration"
                 value={formatDuration(currentAttempt?.startTime, currentAttempt?.endTime)}
               />
+              {!viewingLatestAttempt ? (
+                <>
+                  <ContextDivider />
+                  <span className="badge badge-warning badge-sm gap-1">
+                    <Info size={11} />
+                    Earlier attempt
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -393,6 +395,39 @@ export function RunDetailPage() {
           ) : null}
         </main>
       </div>
+
+      {deleteConfirmOpen ? (
+        <dialog open className="modal modal-open">
+          <div className="modal-box max-w-md border border-base-300">
+            <h3 className="text-lg font-bold">Delete Run</h3>
+            <p className="mt-3 text-sm text-base-content/65">
+              Delete run #{detail.id}. This only removes the selected run. It does not purge the whole pipeline history.
+            </p>
+            {error ? <div className="alert alert-error mt-4 text-sm">{error}</div> : null}
+            <div className="modal-action">
+              <button type="button" className="btn btn-ghost" onClick={() => setDeleteConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-error"
+                disabled={pendingAction === 'delete'}
+                onClick={async () => {
+                  await runAction('delete', () => deleteRun(detail.id))
+                  setDeleteConfirmOpen(false)
+                }}
+              >
+                {pendingAction === 'delete' ? 'Deleting...' : 'Delete Run'}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button type="button" onClick={() => setDeleteConfirmOpen(false)}>
+              close
+            </button>
+          </form>
+        </dialog>
+      ) : null}
     </div>
   )
 }
