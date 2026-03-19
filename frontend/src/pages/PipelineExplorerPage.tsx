@@ -204,154 +204,111 @@ export function PipelineExplorerPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="card flex min-h-0 flex-1 rounded-none border-x-0 border-y-0 bg-base-100 shadow-none">
-        <div className="card-body flex min-h-0 flex-1 flex-col p-6">
-          <div className="mb-5 flex shrink-0 items-center justify-between gap-4">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">
-                Explorer contents
-              </div>
-              <div className="mt-2 breadcrumbs text-sm text-base-content/65">
-                <ul>
-                  <li>
-                    <Link to="/pipeline" className="hover:text-base-content">
-                      Root
+    <div className="flex h-full min-h-0 flex-col bg-base-200/50">
+      <div className="flex shrink-0 flex-col border-b border-base-300 bg-base-100 px-8 py-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="iris-header">Mission Control</div>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight">Pipeline Explorer</h1>
+            <div className="mt-3 breadcrumbs text-[13px] text-base-content/50">
+              <ul className="flex items-center gap-1">
+                <li>
+                  <Link to="/pipeline" className="hover:text-primary transition-colors">Root</Link>
+                </li>
+                {currentPath.map((folder) => (
+                  <li key={folder.id}>
+                    <Link to={buildExplorerLocation(folder.id)} className="hover:text-primary transition-colors">
+                      {folder.folderName}
                     </Link>
                   </li>
-                  {currentPath.map((folder) => (
-                    <li key={folder.id}>
-                      <Link to={buildExplorerLocation(folder.id)} className="hover:text-base-content">
-                        {folder.folderName}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight">{current.folderName}</h2>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <button type="button" className="btn btn-ghost px-4" onClick={() => void loadTree()}>
-                <RefreshCw size={16} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost px-4"
-                onClick={() => {
-                  setCreateFolderOpen(true)
-                  setFolderNameDraft('')
-                  setActionError(null)
-                }}
-              >
-                <FolderPlus size={16} />
-                <span className="hidden sm:inline">New folder</span>
-              </button>
-              <Link
-                to={`/pipeline/new/config${numericFolderId ? `?folderId=${numericFolderId}` : ''}`}
-                className="btn btn-primary px-4"
-              >
-                <FileJson2 size={16} />
-                <span className="hidden sm:inline">New pipeline</span>
-              </Link>
+                ))}
+              </ul>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <button type="button" className="btn btn-ghost btn-sm h-10 gap-2 border-base-300" onClick={() => void loadTree()}>
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+            <div className="h-6 w-px bg-base-300 mx-1" />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm h-10 gap-2 border-base-300"
+              onClick={() => {
+                setCreateFolderOpen(true)
+                setFolderNameDraft('')
+                setActionError(null)
+              }}
+            >
+              <FolderPlus size={14} />
+              New Folder
+            </button>
+            <Link
+              to={`/pipeline/new/config${numericFolderId ? `?folderId=${numericFolderId}` : ''}`}
+              className="btn btn-primary btn-sm h-10 gap-2 px-5"
+            >
+              <FileJson2 size={14} />
+              New Pipeline
+            </Link>
+          </div>
+        </div>
 
-          {actionError ? <div className="alert alert-error mb-4 shrink-0">{actionError}</div> : null}
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <ExplorerStat label="Total Items" value={folders.length + pipelines.length} />
+          <ExplorerStat label="Sub-folders" value={folders.length} />
+          <ExplorerStat label="Pipelines Here" value={pipelines.length} />
+        </div>
+      </div>
 
-          {folders.length === 0 && pipelines.length === 0 ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200/40">
-              <div className="text-center">
-                <div className="text-lg font-medium">This folder is empty</div>
-                <div className="mt-2 text-sm text-base-content/55">
-                  The backend registry has no child folders or pipelines at this level yet.
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-8">
+        {actionError ? <div className="alert alert-error mb-6 shadow-sm">{actionError}</div> : null}
+
+        {folders.length === 0 && pipelines.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-base-300 bg-base-100/50">
+            <div className="rounded-full bg-base-200 p-4 text-base-content/20">
+              <FolderTree size={48} />
+            </div>
+            <div className="mt-4 text-lg font-semibold">This directory is empty</div>
+            <div className="mt-1 text-sm text-base-content/50">Start by creating a new folder or pipeline config.</div>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {folders.length > 0 && (
+              <div className="mb-2">
+                <div className="iris-header mb-4 px-1">Directories</div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {folders.map((folder) => (
+                    <FolderItem 
+                      key={folder.id} 
+                      folder={folder} 
+                      onRename={() => {
+                        setRenamingFolder(folder)
+                        setFolderNameDraft(folder.folderName)
+                        setActionError(null)
+                      }}
+                      onDelete={() => void openDeleteFolder(folder)}
+                    />
+                  ))}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <div className="space-y-3">
-                {folders.map((folder) => (
-                  <div
-                    key={folder.id}
-                    className="flex items-center gap-3 rounded-box border border-base-300 bg-base-100 px-5 py-4 transition-colors hover:bg-base-200"
-                  >
-                    <Link to={buildExplorerLocation(folder.id)} className="flex min-w-0 flex-1 items-center gap-4">
-                      <div className="flex size-11 items-center justify-center rounded-box bg-warning/10 text-warning">
-                        <Folder size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-base font-semibold">{folder.folderName}</div>
-                        <div className="truncate text-sm text-base-content/55">
-                          {renderFolderSummary(folder.folders.length, folder.pipelines.length)}
-                        </div>
-                      </div>
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Link to={buildExplorerLocation(folder.id)} className="btn btn-ghost btn-sm px-3">
-                        <FolderOpen size={15} />
-                        <span className="hidden md:inline">Open</span>
-                      </Link>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm px-3"
-                        onClick={() => {
-                          setRenamingFolder(folder)
-                          setFolderNameDraft(folder.folderName)
-                          setActionError(null)
-                        }}
-                      >
-                        <PencilLine size={15} />
-                        <span className="hidden md:inline">Rename</span>
-                      </button>
-                      <button type="button" className="btn btn-ghost btn-sm px-3 text-error" onClick={() => void openDeleteFolder(folder)}>
-                        <Trash2 size={15} />
-                        <span className="hidden md:inline">Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            )}
 
-                {pipelines.map((pipeline) => (
-                  <div
-                    key={pipeline.id}
-                    className="flex items-center gap-3 rounded-box border border-base-300 bg-base-100 px-5 py-4 transition-colors hover:bg-base-200"
-                  >
-                    <Link
-                      to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                      className="flex min-w-0 flex-1 items-center gap-4"
-                    >
-                      <div className="flex size-11 items-center justify-center rounded-box bg-primary/10 text-primary">
-                        <FileJson2 size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-base font-semibold">{pipeline.pipelineName}</div>
-                        <div className="truncate text-sm text-base-content/55">{pipeline.folderPath}</div>
-                      </div>
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Link
-                        to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                        className="btn btn-ghost btn-sm px-3"
-                      >
-                        <PencilLine size={15} />
-                        <span className="hidden md:inline">Edit</span>
-                      </Link>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm px-3 text-error"
-                        onClick={() => setDeletePipelineTarget(pipeline)}
-                      >
-                        <Trash2 size={15} />
-                        <span className="hidden md:inline">Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            {pipelines.length > 0 && (
+              <div className="mt-4">
+                <div className="iris-header mb-4 px-1">Pipeline Definitions</div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {pipelines.map((pipeline) => (
+                    <PipelineItem 
+                      key={pipeline.id} 
+                      pipeline={pipeline} 
+                      onDelete={() => setDeletePipelineTarget(pipeline)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <NameDialog
@@ -442,6 +399,87 @@ function renderFolderSummary(folderCount: number, pipelineCount: number) {
   return `${folderCount} ${folderLabel} / ${pipelineCount} ${pipelineLabel}`
 }
 
+function ExplorerStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="iris-card px-5 py-4">
+      <div className="iris-header">{label}</div>
+      <div className="mt-1 text-2xl font-bold">{value}</div>
+    </div>
+  )
+}
+
+function FolderItem({ 
+  folder, 
+  onRename, 
+  onDelete 
+}: { 
+  folder: FolderTreeNodeInfo; 
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="iris-card group flex items-center justify-between p-4 bg-base-100">
+      <Link to={buildExplorerLocation(folder.id)} className="flex min-w-0 flex-1 items-center gap-4">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-warning/10 text-warning transition-transform group-hover:scale-110">
+          <Folder size={20} fill="currentColor" fillOpacity={0.2} />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-base font-bold text-base-content">{folder.folderName}</div>
+          <div className="mt-0.5 truncate text-[12px] font-medium text-base-content/40">
+            {renderFolderSummary(folder.folders.length, folder.pipelines.length)}
+          </div>
+        </div>
+      </Link>
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onRename}>
+          <PencilLine size={14} />
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm btn-square text-error" onClick={onDelete}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PipelineItem({ 
+  pipeline, 
+  onDelete 
+}: { 
+  pipeline: ConfigPipelineSummary;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="iris-card group flex items-center justify-between p-4 bg-base-100 border-primary/10">
+      <Link 
+        to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`} 
+        className="flex min-w-0 flex-1 items-center gap-4"
+      >
+        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
+          <FileJson2 size={20} />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-base font-bold text-base-content">{pipeline.pipelineName}</div>
+          <div className="mt-0.5 truncate text-[12px] font-medium text-base-content/40">
+            Pipeline definition
+          </div>
+        </div>
+      </Link>
+      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <Link 
+          to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+          className="btn btn-ghost btn-sm btn-square"
+        >
+          <FolderOpen size={14} />
+        </Link>
+        <button type="button" className="btn btn-ghost btn-sm btn-square text-error" onClick={onDelete}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function renderDeleteFolderDescription(
   folder: FolderTreeNodeInfo | null,
   preview: FolderDeletePreviewInfo | null,
@@ -481,30 +519,37 @@ function NameDialog({ open, title, label, value, submitting, submitLabel, onChan
 
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <div className="mt-4 space-y-2">
-          <label className="text-sm font-medium" htmlFor="entity-name-input">
-            {label}
-          </label>
-          <input
-            id="entity-name-input"
-            type="text"
-            className="input input-bordered w-full"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-          />
+      <div className="modal-box p-0 overflow-hidden rounded-2xl border border-base-300 shadow-2xl">
+        <div className="bg-base-200 px-6 py-4 border-b border-base-300">
+          <h3 className="text-sm font-bold uppercase tracking-widest opacity-50">{title}</h3>
         </div>
-        <div className="modal-action">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="button" className="btn btn-primary" onClick={() => void onSubmit()} disabled={submitting}>
-            {submitLabel}
-          </button>
+        <div className="p-6">
+          <div className="space-y-4">
+            <div className="form-control">
+              <label className="label py-0 mb-2" htmlFor="entity-name-input">
+                <span className="label-text font-bold text-base-content/60">{label}</span>
+              </label>
+              <input
+                id="entity-name-input"
+                type="text"
+                className="input input-bordered w-full font-bold focus:border-primary"
+                value={value}
+                autoFocus
+                onChange={(event) => onChange(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="modal-action mt-8">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary px-8" onClick={() => void onSubmit()} disabled={submitting}>
+              {submitLabel}
+            </button>
+          </div>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop">
+      <form method="dialog" className="modal-backdrop bg-base-300/60 backdrop-blur-sm">
         <button type="button" onClick={onClose}>
           close
         </button>
@@ -540,20 +585,24 @@ function ConfirmDialog({
 
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="mt-3 text-sm leading-6 text-base-content/70">{description}</p>
-        {warning ? <div className="alert alert-warning mt-4">{warning}</div> : null}
-        <div className="modal-action">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="button" className="btn btn-error" onClick={() => void onConfirm()} disabled={confirmDisabled}>
-            {confirmLabel}
-          </button>
+      <div className="modal-box p-0 overflow-hidden rounded-2xl border border-base-300 shadow-2xl">
+        <div className="bg-error/10 px-6 py-4 border-b border-error/20">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-error">{title}</h3>
+        </div>
+        <div className="p-6">
+          <p className="text-base font-medium leading-relaxed text-base-content/80">{description}</p>
+          {warning ? <div className="alert alert-warning mt-4 p-3 text-sm font-bold">{warning}</div> : null}
+          <div className="modal-action mt-8">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-error px-8" onClick={() => void onConfirm()} disabled={confirmDisabled}>
+              {confirmLabel}
+            </button>
+          </div>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop">
+      <form method="dialog" className="modal-backdrop bg-base-300/60 backdrop-blur-sm">
         <button type="button" onClick={onClose}>
           close
         </button>

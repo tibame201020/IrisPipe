@@ -9,38 +9,34 @@
     color-scheme: light;
     --theme-font: 'Outfit', sans-serif;
     --theme-mono-font: 'Share Tech Mono', monospace;
+
+    /* IrisPipe State Tokens - Light */
+    --status-pending: 215 16% 47%;
+    --status-running: 217 91% 60%;
+    --status-success: 142 71% 45%;
+    --status-failed: 0 84% 60%;
+    --status-stopped: 38 92% 50%;
+    --status-abandoned: 215 14% 34%;
   }
 
   [data-theme='business'] {
     color-scheme: dark;
-  }
+    --theme-font: 'Outfit', sans-serif;
 
-  [data-theme='cyberpunk'],
-  [data-theme='synthwave'],
-  [data-theme='aqua'],
-  [data-theme='night'] {
-    --theme-font: 'Orbitron', sans-serif;
-  }
-
-  [data-theme='luxury'],
-  [data-theme='dracula'],
-  [data-theme='halloween'],
-  [data-theme='forest'],
-  [data-theme='business'],
-  [data-theme='coffee'] {
-    --theme-font: 'Playfair Display', serif;
-  }
-
-  [data-theme='retro'],
-  [data-theme='lofi'],
-  [data-theme='wireframe'],
-  [data-theme='black'] {
-    --theme-font: 'Share Tech Mono', monospace;
+    /* IrisPipe State Tokens - Dark */
+    --status-pending: 215 20% 45%;
+    --status-running: 217 91% 65%;
+    --status-success: 142 71% 55%;
+    --status-failed: 0 84% 65%;
+    --status-stopped: 38 92% 55%;
+    --status-abandoned: 215 14% 28%;
   }
 
   * {
     box-sizing: border-box;
     user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html,
@@ -51,9 +47,12 @@
   }
 
   body {
-    @apply bg-base-200 font-sans text-base-content antialiased;
+    @apply bg-base-200 font-sans text-base-content selection:bg-primary/20;
     font-family: var(--theme-font);
     overflow: hidden;
+    /* Command Center Background Texture */
+    background-image: radial-gradient(circle at 2px 2px, hsl(var(--bc) / 0.05) 1px, transparent 0);
+    background-size: 24px 24px;
   }
 
   a,
@@ -61,6 +60,7 @@
   [role='button'],
   summary {
     cursor: pointer;
+    @apply transition-all duration-200 active:scale-95;
   }
 
   input,
@@ -70,13 +70,9 @@
     user-select: text;
   }
 
-  ::selection {
-    @apply bg-primary/20 text-base-content;
-  }
-
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -84,10 +80,48 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-base-300;
+    @apply rounded-full bg-base-content/10 hover:bg-base-content/20;
+  }
+}
+
+@layer components {
+  .iris-glass {
+    @apply border border-white/10 bg-white/5 backdrop-blur-md;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-base-content/20;
+  .iris-card {
+    @apply rounded-xl border border-base-300 bg-base-100 shadow-sm transition-all hover:shadow-md;
+  }
+
+  .iris-header {
+    @apply text-[11px] font-bold uppercase tracking-[0.2em] text-base-content/40;
+  }
+
+  /* Pulse animation for running jobs */
+  @keyframes iris-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+  }
+
+  .animate-iris-pulse {
+    animation: iris-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Audit Edge Premium Styling */
+  .react-flow__edge-path.audit-edge-path {
+    stroke: hsl(var(--p) / 0.6) !important;
+    stroke-width: 3px !important;
+    filter: drop-shadow(0 0 4px hsl(var(--p) / 0.4));
+  }
+
+  .audit-flow-circle {
+    fill: #60a5fa !important;
+    filter: drop-shadow(0 0 8px #3b82f6);
+    animation: audit-flow 3s linear infinite;
+  }
+
+  @keyframes audit-flow {
+    from { offset-distance: 0%; }
+    to { offset-distance: 100%; }
   }
 }

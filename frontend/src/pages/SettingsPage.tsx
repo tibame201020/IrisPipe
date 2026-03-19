@@ -1,5 +1,6 @@
 import { Check, Palette } from 'lucide-react'
-import { availableThemes, useTheme } from '../state/theme'
+import { useTheme } from '../state/theme'
+import { availableThemes } from '../state/theme.constants'
 
 export function SettingsPage() {
   const { themeName, setThemeName } = useTheme()

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getApiErrorMessage, getHealth } from '../lib/api'
 import { StatusBadge } from '../components/StatusBadge'
-import { availableThemes, useTheme } from '../state/theme'
+import { useTheme } from '../state/theme'
+import { availableThemes } from '../state/theme.constants'
 
 function resolveTitle(pathname: string) {
   if (pathname.startsWith('/pipeline/items/') && pathname.includes('/runs/')) {

@@ -2,6 +2,19 @@
 
 ## 2026-03-19
 
+### Backend-aligned frontend semantics
+- Pulled frontend wording and unsupported UI actions back to the current backend contract.
+- Replaced overstated dashboard language in `overview` with actuator-backed health and factual run summaries.
+- Renamed explorer and runs metrics so they only describe what the current API actually returns.
+- Removed unsupported `Save Blueprint` / JSON-view affordances from the config page until a real save flow exists.
+- Renamed run-detail destructive action from history purge semantics to single-run deletion.
+- Removed default animated pipeline edges so the graph no longer implies runtime flow telemetry the backend does not expose.
+
+### Build and delivery cleanup
+- Added route-level lazy loading in `src/App.tsx` to split page bundles.
+- Removed the Vite chunk size warning by turning the single large app bundle into page-level chunks.
+- Kept the `@xyflow/react` graph surface in its own chunk so the heavier editor/runtime pages load separately.
+
 ### Frontend reset
 - Rebuilt the main `frontend` app on `Vite + React + TailwindCSS + DaisyUI`.
 - Aligned the new app around `overview`, `pipeline`, `settings`, and dedicated run detail routes.

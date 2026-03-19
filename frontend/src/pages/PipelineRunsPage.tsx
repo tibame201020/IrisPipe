@@ -1,9 +1,17 @@
-import { ArrowRight, PlayCircle, RefreshCw, TimerReset } from 'lucide-react'
+import { 
+  Activity, 
+  ArrowLeft, 
+  ArrowRight, 
+  History, 
+  PlayCircle, 
+  RefreshCw, 
+  TimerReset, 
+  Zap 
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
-import { PageToolbar } from '../components/PageToolbar'
 import { StatusBadge } from '../components/StatusBadge'
 import { executePipeline, getApiErrorMessage, getPipelineConfig, getPipelineRuns } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
@@ -63,10 +71,7 @@ export function PipelineRunsPage() {
   }, [numericPipelineId])
 
   async function handleExecute() {
-    if (!pipeline) {
-      return
-    }
-
+    if (!pipeline) return
     setExecuting(true)
     try {
       const run = await executePipeline({
@@ -81,115 +86,155 @@ export function PipelineRunsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <PageToolbar eyebrow="Runs" title="Loading pipeline runs" description="Building the runtime history from the backend run history endpoint." />
-        <LoadingState cards={4} />
-      </div>
-    )
-  }
+  if (loading) return <div className="p-12"><LoadingState /></div>
 
   if (error || !pipeline) {
     return (
       <EmptyState
         icon={TimerReset}
-        title="Run history is unavailable"
-        description={error ?? 'The backend did not return the pipeline run history.'}
-        action={
-          <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary px-5">
-            Back to explorer
-          </Link>
-        }
+        title="Run history unavailable"
+        description={error ?? 'Unable to connect to the runtime history service.'}
+        action={<Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary">Back to Explorer</Link>}
       />
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="breadcrumbs border-b border-base-300 bg-base-100 px-6 py-4 text-sm">
-        <ul>
-          <li>
-            <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'}>Explorer</Link>
-          </li>
-          <li>
-            <Link to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}>{pipeline.pipelineName}</Link>
-          </li>
-          <li>Runs</li>
-        </ul>
-      </div>
+    <div className="flex h-screen flex-col bg-base-200/50 overflow-hidden">
+      {/* Page Header */}
+      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5 z-20 shadow-sm">
+        <div className="flex items-center gap-6">
+          <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-ghost btn-sm btn-square">
+             <ArrowLeft size={20} />
+          </Link>
+          <div>
+            <div className="iris-header flex items-center gap-2">
+              <History size={12} className="text-secondary" />
+              Runtime History
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">{pipeline.pipelineName}</h1>
+          </div>
+        </div>
 
-      <PageToolbar
-        eyebrow="Pipeline runs"
-        title={`${pipeline.pipelineName} runtime`}
-        description="List first, detail second. Each row opens a dedicated run surface with control actions and attempt timelines."
-        actions={
-          <>
-            <Link
-              to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className="btn border-base-300 bg-base-100"
-            >
-              Open config
-            </Link>
-            <button type="button" onClick={() => void loadRuns(true)} className="btn border-base-300 bg-base-100">
-              <RefreshCw size={16} />
-              Refresh
-            </button>
-            <button type="button" onClick={() => void handleExecute()} className="btn btn-primary px-5" disabled={executing}>
-              <PlayCircle size={16} />
-              {executing ? 'Executing...' : 'Execute pipeline'}
-            </button>
-          </>
-        }
-      />
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-sm btn-square">
+            <RefreshCw size={18} className={loading && !runs.length ? 'animate-spin' : ''} />
+          </button>
+          <div className="h-6 w-[1px] bg-base-300 mx-1" />
+          <Link
+            to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+            className="btn btn-ghost btn-sm px-4"
+          >
+            Blueprint
+          </Link>
+          <button 
+            type="button" 
+            onClick={() => void handleExecute()} 
+            className="btn btn-primary btn-sm px-6 gap-2" 
+            disabled={executing}
+          >
+            <Zap size={14} className={executing ? 'animate-pulse' : ''} />
+            {executing ? 'Launching...' : 'Execute Now'}
+          </button>
+        </div>
+      </header>
 
-      {error ? <div className="alert alert-error">{error}</div> : null}
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Stats Bar */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
+             <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300">
+                <div>
+                  <div className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Runs In View</div>
+                  <div className="text-2xl font-bold">{runs.length}</div>
+                </div>
+                <div className="p-3 bg-secondary/10 text-secondary rounded-xl"><History size={20} /></div>
+             </div>
+             <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300">
+                <div>
+                  <div className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Completed In View</div>
+                  <div className="text-2xl font-bold">{runs.filter((run) => run.status === 'COMPLETED').length}</div>
+                </div>
+                <div className="p-3 bg-success/10 text-success rounded-xl"><Activity size={20} /></div>
+             </div>
+             <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300 shadow-xl shadow-primary/5">
+                <div className="flex-1">
+                  <div className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Latest Status</div>
+                  <div className="mt-1">
+                    {runs.length > 0 ? <StatusBadge status={runs[0].status} /> : <span className="text-sm font-bold opacity-20 italic">No Activity</span>}
+                  </div>
+                </div>
+                <div className="p-3 bg-primary/10 text-primary rounded-xl"><PlayCircle size={20} /></div>
+             </div>
+          </div>
 
-      <div className="card min-h-[32rem] rounded-none border-x-0 border-b-0 border-t border-base-300 bg-base-100 shadow-none">
-        <div className="card-body p-6">
-        {runs.length === 0 ? (
-            <div className="flex min-h-72 items-center justify-center rounded-box border border-dashed border-base-300 bg-base-200/40">
-            <div className="text-center">
-              <div className="text-lg font-medium">No runs yet</div>
-              <div className="mt-2 text-sm text-base-content/55">
-                Execute the pipeline to populate this history surface.
+          {/* Runs Table/List */}
+          <div className="iris-card p-0 bg-base-100 border-base-300 overflow-hidden shadow-2xl">
+            <div className="px-8 py-4 border-b border-base-300 bg-base-200/30 flex items-center gap-2">
+              <History size={16} className="text-primary" />
+              <h2 className="text-xs font-black uppercase tracking-widest opacity-50">Run History</h2>
+            </div>
+
+            {runs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 bg-base-200/20 text-center">
+                 <div className="p-6 bg-base-100 rounded-full mb-6 shadow-sm border border-base-300">
+                    <TimerReset size={40} className="text-base-content/10" />
+                 </div>
+                 <h3 className="text-xl font-bold">No runs yet</h3>
+                 <p className="text-sm text-base-content/40 max-w-sm mt-2">
+                   Execute this pipeline to create the first run history entry.
+                 </p>
               </div>
-            </div>
+            ) : (
+              <div className="divide-y divide-base-300">
+                {runs.map((run) => (
+                  <Link
+                    key={run.id}
+                    to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+                    className="flex items-center justify-between px-8 py-5 hover:bg-base-200/50 transition-all group"
+                  >
+                    <div className="flex items-center gap-6">
+                       <div className="flex flex-col">
+                          <span className="text-[10px] font-black opacity-30 tracking-[0.2em]">RUN ID</span>
+                          <span className="font-mono font-bold text-lg"># {run.id}</span>
+                       </div>
+                       <div className="h-8 w-[1px] bg-base-300" />
+                       <div className="flex flex-col">
+                          <span className="text-[10px] font-black opacity-30 tracking-[0.2em]">TIMESTAMP</span>
+                          <span className="text-sm font-bold">{formatDateTime(run.createdAt)}</span>
+                       </div>
+                       <div className="hidden sm:flex flex-col">
+                          <span className="text-[10px] font-black opacity-30 tracking-[0.2em]">DURATION</span>
+                          <span className="text-sm font-mono font-bold">{formatDuration(run.startTime ?? run.createdAt, run.endTime)}</span>
+                       </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-6">
+                       <StatusBadge status={run.status} />
+                       <div className="p-2 rounded-lg bg-base-200 group-hover:bg-primary group-hover:text-primary-content transition-all border border-base-300">
+                          <ArrowRight size={16} />
+                       </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            
+            {beforeRunId && (
+              <div className="p-6 bg-base-200/30 text-center">
+                <button 
+                  type="button" 
+                  onClick={() => void loadRuns(false)} 
+                  className="btn btn-ghost btn-sm gap-2" 
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
+                  Load older runs
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {runs.map((run) => (
-              <Link
-                key={run.id}
-                to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                className="grid gap-4 rounded-box border border-base-300 bg-base-100 px-5 py-4 transition-colors hover:bg-base-200/70 lg:grid-cols-[minmax(0,1.3fr)_auto_auto_auto]"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-base font-semibold">Run #{run.id}</div>
-                  <div className="truncate text-sm text-base-content/55">{run.folderPath}</div>
-                </div>
-                <div className="text-sm text-base-content/60">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Created</div>
-                  <div className="mt-1">{formatDateTime(run.createdAt)}</div>
-                </div>
-                <div className="text-sm text-base-content/60">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Duration</div>
-                  <div className="mt-1">{formatDuration(run.startTime ?? run.createdAt, run.endTime)}</div>
-                </div>
-                <div className="flex items-center justify-between gap-3 lg:justify-end">
-                  <StatusBadge status={run.status} />
-                  <ArrowRight size={16} className="text-base-content/35" />
-                </div>
-              </Link>
-            ))}
-
-            <div className="pt-4">
-              <button type="button" onClick={() => void loadRuns(false)} className="btn border-base-300 bg-base-100" disabled={loadingMore || !beforeRunId}>
-                {loadingMore ? 'Loading...' : 'Load older runs'}
-              </button>
-            </div>
-          </div>
-        )}
         </div>
       </div>
     </div>
