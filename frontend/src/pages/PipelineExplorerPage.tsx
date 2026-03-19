@@ -33,6 +33,7 @@ export function PipelineExplorerPage() {
   const { folderId } = useParams()
   const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [folderNameDraft, setFolderNameDraft] = useState('')
@@ -48,23 +49,40 @@ export function PipelineExplorerPage() {
   const [deletePipelineSubmitting, setDeletePipelineSubmitting] = useState(false)
   const numericFolderId = folderId ? Number(folderId) : null
 
-  async function loadTree() {
-    setLoading(true)
-    setError(null)
+  async function loadTree(options?: { initial?: boolean }) {
+    const initial = options?.initial ?? tree == null
+    if (initial) {
+      setLoading(true)
+      setError(null)
+    } else {
+      setRefreshing(true)
+    }
 
     try {
       const response = await getPipelineTree()
       setTree(response)
+      setActionError(null)
     } catch (loadError) {
-      setError(getApiErrorMessage(loadError, 'Failed to load pipeline explorer'))
+      const message = getApiErrorMessage(loadError, 'Failed to load pipeline explorer')
+      if (initial || tree == null) {
+        setError(message)
+      } else {
+        setActionError(message)
+      }
     } finally {
-      setLoading(false)
+      if (initial) {
+        setLoading(false)
+      } else {
+        setRefreshing(false)
+      }
     }
   }
 
   useEffect(() => {
-    void loadTree()
-  }, [folderId])
+    if (!tree) {
+      void loadTree({ initial: true })
+    }
+  }, [tree])
 
   if (loading) {
     return (
@@ -81,7 +99,7 @@ export function PipelineExplorerPage() {
         title="Pipeline explorer is unavailable"
         description={error ?? 'The folder tree could not be resolved from the backend.'}
         action={
-          <button type="button" onClick={() => void loadTree()} className="btn btn-primary px-5">
+          <button type="button" onClick={() => void loadTree({ initial: true })} className="btn btn-primary px-5">
             Retry
           </button>
         }
@@ -109,7 +127,7 @@ export function PipelineExplorerPage() {
         folderName,
       })
       setFolderNameDraft('')
-      await loadTree()
+      await loadTree({ initial: false })
       return true
     } catch (createError) {
       setActionError(getApiErrorMessage(createError, 'Failed to create folder'))
@@ -139,7 +157,7 @@ export function PipelineExplorerPage() {
       })
       setRenamingFolder(null)
       setFolderNameDraft('')
-      await loadTree()
+      await loadTree({ initial: false })
       return true
     } catch (renameError) {
       setActionError(getApiErrorMessage(renameError, 'Failed to rename folder'))
@@ -177,7 +195,7 @@ export function PipelineExplorerPage() {
       await deleteFolder(deleteFolderTarget.id, recursive)
       setDeleteFolderTarget(null)
       setDeleteFolderPreview(null)
-      await loadTree()
+      await loadTree({ initial: false })
     } catch (deleteError) {
       setActionError(getApiErrorMessage(deleteError, 'Failed to delete folder'))
     } finally {
@@ -195,7 +213,7 @@ export function PipelineExplorerPage() {
     try {
       await deletePipelineConfig(deletePipelineTarget.id)
       setDeletePipelineTarget(null)
-      await loadTree()
+      await loadTree({ initial: false })
     } catch (deleteError) {
       setActionError(getApiErrorMessage(deleteError, 'Failed to delete pipeline'))
     } finally {
@@ -205,12 +223,18 @@ export function PipelineExplorerPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-base-200/50">
-      <div className="flex shrink-0 flex-col border-b border-base-300 bg-base-100 px-8 py-6">
+      <div className="flex shrink-0 flex-col border-b border-base-300 bg-base-100 px-6 py-4">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="iris-header">Explorer</div>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">Pipeline Explorer</h1>
-            <div className="mt-3 breadcrumbs text-[13px] text-base-content/50">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">Pipeline Explorer</h1>
+              <div className="hidden flex-wrap items-center gap-2 md:flex">
+                <span className="badge badge-ghost badge-sm">{folders.length} folders</span>
+                <span className="badge badge-ghost badge-sm">{pipelines.length} pipelines</span>
+                <span className="badge badge-ghost badge-sm">{folders.length + pipelines.length} items</span>
+              </div>
+            </div>
+            <div className="mt-2 breadcrumbs text-[13px] text-base-content/50">
               <ul className="flex items-center gap-1">
                 <li>
                   <Link to="/pipeline" className="hover:text-primary transition-colors">Root</Link>
@@ -226,8 +250,12 @@ export function PipelineExplorerPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" className="btn btn-ghost btn-sm h-10 gap-2 border-base-300" onClick={() => void loadTree()}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm h-10 gap-2 border-base-300"
+              onClick={() => void loadTree({ initial: false })}
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               Refresh
             </button>
             <div className="h-6 w-px bg-base-300 mx-1" />
@@ -252,15 +280,9 @@ export function PipelineExplorerPage() {
             </Link>
           </div>
         </div>
-
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <ExplorerStat label="Total Items" value={folders.length + pipelines.length} />
-          <ExplorerStat label="Sub-folders" value={folders.length} />
-          <ExplorerStat label="Pipelines Here" value={pipelines.length} />
-        </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 py-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
         {actionError ? <div className="alert alert-error mb-6 shadow-sm">{actionError}</div> : null}
 
         {folders.length === 0 && pipelines.length === 0 ? (
@@ -397,15 +419,6 @@ function renderFolderSummary(folderCount: number, pipelineCount: number) {
   const pipelineLabel = pipelineCount === 1 ? 'pipeline' : 'pipelines'
 
   return `${folderCount} ${folderLabel} / ${pipelineCount} ${pipelineLabel}`
-}
-
-function ExplorerStat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="iris-card px-5 py-4">
-      <div className="iris-header">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
-    </div>
-  )
 }
 
 function FolderItem({ 

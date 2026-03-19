@@ -1,8 +1,6 @@
 import {
-  Activity,
   ArrowRight,
   History,
-  PlayCircle,
   RefreshCw,
   TimerReset,
   Zap,
@@ -97,8 +95,18 @@ export function PipelineRunsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <div className="flex shrink-0 items-center justify-end border-b border-base-300 bg-base-100 px-8 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
+          <span className="badge badge-ghost badge-sm">{runs.length} runs in view</span>
+          <span className="badge badge-ghost badge-sm">
+            {runs.filter((run) => run.status === 'COMPLETED').length} completed
+          </span>
+          <span className="badge badge-ghost badge-sm">
+            latest {runs[0]?.status ?? 'none'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-sm btn-square">
             <RefreshCw size={18} className={loading && !runs.length ? 'animate-spin' : ''} />
           </button>
@@ -114,38 +122,10 @@ export function PipelineRunsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-base-200/50 p-8">
-        <div className="mx-auto w-full max-w-6xl space-y-6">
-          {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-6 mb-8">
-             <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300">
-                <div>
-                  <div className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Runs In View</div>
-                  <div className="text-2xl font-bold">{runs.length}</div>
-                </div>
-                <div className="p-3 bg-secondary/10 text-secondary rounded-xl"><History size={20} /></div>
-             </div>
-             <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300">
-                <div>
-                  <div className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Completed In View</div>
-                  <div className="text-2xl font-bold">{runs.filter((run) => run.status === 'COMPLETED').length}</div>
-                </div>
-                <div className="p-3 bg-success/10 text-success rounded-xl"><Activity size={20} /></div>
-             </div>
-             <div className="iris-card p-6 bg-base-100 flex items-center justify-between border-base-300 shadow-xl shadow-primary/5">
-                <div className="flex-1">
-                  <div className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Latest Status</div>
-                  <div className="mt-1">
-                    {runs.length > 0 ? <StatusBadge status={runs[0].status} /> : <span className="text-sm font-bold opacity-20 italic">No Activity</span>}
-                  </div>
-                </div>
-                <div className="p-3 bg-primary/10 text-primary rounded-xl"><PlayCircle size={20} /></div>
-             </div>
-          </div>
-
-          {/* Runs Table/List */}
+      <div className="flex-1 overflow-y-auto bg-base-200/40 p-6">
+        <div className="mx-auto w-full max-w-6xl">
           <div className="iris-card p-0 bg-base-100 border-base-300 overflow-hidden shadow-xl">
-            <div className="px-8 py-4 border-b border-base-300 bg-base-200/30 flex items-center gap-2">
+            <div className="px-6 py-3 border-b border-base-300 bg-base-200/30 flex items-center gap-2">
               <History size={16} className="text-primary" />
               <h2 className="text-xs font-black uppercase tracking-widest opacity-50">Run History</h2>
             </div>
@@ -166,7 +146,7 @@ export function PipelineRunsPage() {
                   <Link
                     key={run.id}
                     to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                    className="flex items-center justify-between px-8 py-5 hover:bg-base-200/50 transition-all group"
+                    className="flex items-center justify-between px-6 py-4 hover:bg-base-200/50 transition-all group"
                   >
                     <div className="flex items-center gap-6">
                        <div className="flex flex-col">
@@ -184,11 +164,11 @@ export function PipelineRunsPage() {
                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                        <StatusBadge status={run.status} />
                        <div className="p-2 rounded-lg bg-base-200 group-hover:bg-primary group-hover:text-primary-content transition-all border border-base-300">
                           <ArrowRight size={16} />
-                       </div>
+                        </div>
                     </div>
                   </Link>
                 ))}

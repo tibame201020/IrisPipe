@@ -87,8 +87,8 @@ export function PipelineWorkspaceLayout() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <header className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4 z-30">
-        <div className="breadcrumbs text-sm opacity-50">
+      <header className="z-30 flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="breadcrumbs text-[13px] text-base-content/50">
           <ul>
             <li><Link to="/pipeline">Root</Link></li>
             {folderPathNodes.map((folder) => (
@@ -100,21 +100,19 @@ export function PipelineWorkspaceLayout() {
           </ul>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1">
+        <div role="tablist" className="tabs tabs-boxed tabs-sm bg-base-200/60 p-1">
             <Link
               to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className={`tab btn-sm h-8 px-4 ${runsActive ? 'opacity-60' : 'tab-active font-bold'}`}
+              className={`tab h-8 px-4 ${runsActive ? 'opacity-60' : 'tab-active font-bold'}`}
             >
               Config
             </Link>
             <Link
               to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className={`tab btn-sm h-8 px-4 ${runsActive ? 'tab-active font-bold' : 'opacity-60'}`}
+              className={`tab h-8 px-4 ${runsActive ? 'tab-active font-bold' : 'opacity-60'}`}
             >
               Runs
             </Link>
-          </div>
         </div>
       </header>
 

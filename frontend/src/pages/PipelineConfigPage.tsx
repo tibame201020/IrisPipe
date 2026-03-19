@@ -8,10 +8,8 @@ import {
 import {
   ChevronRight,
   Database,
-  FileJson2,
-  Link2,
-  PlayCircle,
   Settings,
+  Shapes,
   Waypoints,
   X,
 } from 'lucide-react'
@@ -143,18 +141,22 @@ export function PipelineConfigPage() {
       <div className="relative flex min-h-0 flex-1">
         <main className="relative flex-1 bg-base-200/50">
           <div className="absolute left-6 right-6 top-6 z-20">
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-base-300 bg-base-100/90 px-4 py-3 shadow-sm backdrop-blur">
-              <div className="flex flex-wrap items-center gap-3">
-                <ContextMetric label="Jobs" value={jobs.length} icon={FileJson2} />
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-base-300 bg-base-100/90 px-3 py-2 shadow-sm backdrop-blur">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="badge badge-ghost badge-sm gap-2">
+                  <Shapes size={12} />
+                  Definition Canvas
+                </span>
+                <ContextMetric label="Jobs" value={jobs.length} />
                 <ContextDivider />
-                <ContextMetric label="Steps" value={executionStepCount} icon={PlayCircle} />
+                <ContextMetric label="Steps" value={executionStepCount} />
                 <ContextDivider />
-                <ContextMetric label="Source" value={`${configuredSourceCount}/${jobs.length || 0}`} icon={Database} />
+                <ContextMetric label="Source" value={`${configuredSourceCount}/${jobs.length || 0}`} />
                 <ContextDivider />
-                <ContextMetric label="Dest" value={`${configuredDestCount}/${jobs.length || 0}`} icon={Link2} />
+                <ContextMetric label="Dest" value={`${configuredDestCount}/${jobs.length || 0}`} />
               </div>
-              <span className="text-xs text-base-content/45">
-                Drag repositions locally. Double-click a job to inspect its definition.
+              <span className="text-[11px] text-base-content/40">
+                Double-click a job to inspect its definition.
               </span>
             </div>
           </div>
@@ -276,21 +278,14 @@ function ContextDivider() {
 function ContextMetric({
   label,
   value,
-  icon: Icon,
 }: {
   label: string
   value: string | number
-  icon: typeof FileJson2
 }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="rounded-lg bg-base-200 p-2 text-primary">
-        <Icon size={14} />
-      </div>
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
-        <div className="text-sm font-semibold">{value}</div>
-      </div>
+      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</span>
+      <span className="text-sm font-semibold">{value}</span>
     </div>
   )
 }

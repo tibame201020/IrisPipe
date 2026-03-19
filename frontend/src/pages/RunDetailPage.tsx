@@ -190,18 +190,24 @@ export function RunDetailPage() {
   const viewingLatestAttempt = currentAttempt?.executionId === latestAttempt?.executionId
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
-      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-4">
-        <div>
-          <div className="iris-header">Run Detail</div>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
+      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="min-w-0">
+          <div className="breadcrumbs text-[13px] text-base-content/45">
+            <ul>
+              <li>
+                <Link to={`/pipeline/items/${numericPipelineId}/runs${folderId ? `?folderId=${folderId}` : ''}`}>
+                  Run History
+                </Link>
+              </li>
+              <li className="font-semibold text-base-content">Run #{detail.id}</li>
+            </ul>
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
-            <span className="font-mono">Run #{detail.id}</span>
-            <span>&bull;</span>
             <span className="font-semibold">{workspace.pipeline.pipelineName}</span>
             <span>&bull;</span>
             <StatusBadge status={detail.status} mode="text" />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+            <span>&bull;</span>
             <span>{currentAttempt?.executionKind ?? 'Attempt'}</span>
             <span>&bull;</span>
             <span>Attempt #{currentAttempt?.executionNo ?? '-'}</span>
@@ -245,10 +251,10 @@ export function RunDetailPage() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-80 flex-col border-r border-base-300 bg-base-100">
-          <div className="border-b border-base-300 px-6 py-6">
+        <aside className="flex w-72 flex-col border-r border-base-300 bg-base-100">
+          <div className="border-b border-base-300 px-5 py-5">
             <div className="iris-header">Run Summary</div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <SummaryTile label="Status" value={detail.status} />
               <SummaryTile label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
               <SummaryTile label="Attempts" value={detail.attempts.length} />
@@ -256,7 +262,7 @@ export function RunDetailPage() {
             </div>
           </div>
 
-          <div className="border-b border-base-300 px-6 py-4">
+          <div className="border-b border-base-300 px-5 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <History size={16} className="text-primary" />
@@ -268,7 +274,7 @@ export function RunDetailPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {detail.attempts.slice().reverse().map((attempt) => {
               const isLatest = attempt.executionId === latestAttempt?.executionId
               const isSelected = attempt.executionId === currentAttempt?.executionId
@@ -278,7 +284,7 @@ export function RunDetailPage() {
                 <button
                   key={attempt.executionId}
                   type="button"
-                  className={`w-full rounded-xl border p-4 text-left transition-all ${
+                  className={`w-full rounded-xl border p-3 text-left transition-all ${
                     isSelected
                       ? 'border-primary bg-primary/5 shadow-sm'
                       : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/30'
@@ -297,14 +303,14 @@ export function RunDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-base-content/45">
+                  <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-base-content/45">
                     <div className="flex items-center gap-2">
                       <Clock size={11} />
                       {formatDateTimeLong(attempt.startTime)}
                     </div>
                     <span className="font-mono">{formatDuration(attempt.startTime, attempt.endTime)}</span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
+                  <div className="mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
                     <span>{attempt.jobs.length} jobs</span>
                     <span>{stepCount} steps</span>
                     <span>{attempt.requestedAsync == null ? '-' : attempt.requestedAsync ? 'Async' : 'Sync'}</span>
@@ -314,7 +320,7 @@ export function RunDetailPage() {
             })}
           </div>
 
-          <div className="border-t border-base-300 bg-base-200/30 p-4">
+          <div className="border-t border-base-300 bg-base-200/30 p-3">
             <button
               type="button"
               className="btn btn-ghost btn-sm w-full gap-2 text-error"
@@ -327,7 +333,7 @@ export function RunDetailPage() {
         </aside>
 
         <main className="relative min-w-0 flex-1 bg-base-200/50">
-          <div className="absolute left-6 right-6 top-6 z-10 flex items-center justify-between gap-4">
+          <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <div className="badge badge-lg gap-2 border border-base-300 bg-base-100 px-4">
                 <Layers size={14} />
@@ -337,7 +343,7 @@ export function RunDetailPage() {
               {!viewingLatestAttempt ? <span className="badge badge-warning gap-2"><Info size={12} />Earlier attempt</span> : null}
             </div>
 
-            <div className="flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-4 py-3 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-3 py-2 shadow-sm backdrop-blur">
               <ContextMetric label="Kind" value={currentAttempt?.executionKind ?? '-'} />
               <ContextDivider />
               <ContextMetric label="Jobs" value={currentAttempt?.jobs.length ?? 0} />
@@ -371,8 +377,8 @@ export function RunDetailPage() {
           </div>
 
           {selectedJob ? (
-            <aside className="absolute right-0 top-0 z-20 h-full w-[360px] border-l border-base-300 bg-base-100 shadow-2xl">
-              <div className="border-b border-base-300 px-6 py-6">
+            <aside className="absolute right-0 top-0 z-20 h-full w-[340px] border-l border-base-300 bg-base-100 shadow-2xl">
+              <div className="border-b border-base-300 px-5 py-5">
                 <div className="iris-header">Job Details</div>
                 <div className="mt-2 text-lg font-bold">{selectedJob.jobName}</div>
                 <div className="mt-2 text-sm text-base-content/55">
@@ -380,7 +386,7 @@ export function RunDetailPage() {
                 </div>
               </div>
 
-              <div className="h-[calc(100%-109px)] overflow-y-auto p-6">
+              <div className="h-[calc(100%-101px)] overflow-y-auto p-5">
                 <JobDetailsPanel job={selectedJob} onClose={() => setSelectedJobId(null)} />
               </div>
             </aside>
