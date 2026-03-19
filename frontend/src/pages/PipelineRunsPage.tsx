@@ -110,7 +110,7 @@ export function PipelineRunsPage() {
           <div>
             <div className="iris-header flex items-center gap-2">
               <History size={12} className="text-secondary" />
-              Runtime History
+              Run History
             </div>
             <h1 className="text-2xl font-bold tracking-tight">{pipeline.pipelineName}</h1>
           </div>
@@ -125,7 +125,7 @@ export function PipelineRunsPage() {
             to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
             className="btn btn-ghost btn-sm px-4"
           >
-            Blueprint
+            Open Config
           </Link>
           <button 
             type="button" 

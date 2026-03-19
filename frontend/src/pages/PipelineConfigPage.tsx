@@ -142,7 +142,7 @@ export function PipelineConfigPage() {
              <div className="iris-glass border-primary/10 p-5 rounded-2xl pointer-events-auto shadow-2xl">
                 <div className="flex items-center gap-3 mb-2">
                    <div className="p-2 bg-primary/10 text-primary rounded-lg"><Waypoints size={16} /></div>
-                   <div className="iris-header">Pipeline Canvas</div>
+                   <div className="iris-header">Pipeline Definition</div>
                 </div>
                 <p className="text-xs text-base-content/50 leading-relaxed max-w-[240px]">
                   Jobs come from the current pipeline definition. Dragging only changes the local canvas layout.

@@ -74,7 +74,7 @@ export function OverviewPage() {
       <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-6">
         <div>
           <div className="iris-header">Overview</div>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Backend Overview</h1>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Pipeline Engine Overview</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="iris-card flex items-center gap-3 px-4 py-2 bg-success/5 border-success/20">
@@ -92,23 +92,23 @@ export function OverviewPage() {
         <div className="grid gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             icon={FolderTree}
-            label="Namespace Hierarchy"
+            label="Folders"
             value={stats.folderCount}
-            subValue="Folders Organized"
+            subValue="Current explorer tree"
             color="text-warning"
           />
           <MetricCard
             icon={Layers3}
-            label="Pipeline Inventory"
+            label="Pipelines"
             value={stats.pipelineCount}
-            subValue="Configured Entities"
+            subValue="Configured definitions"
             color="text-primary"
           />
           <MetricCard
             icon={Activity}
-            label="Active Operations"
+            label="Active Runs"
             value={activeRuns.length}
-            subValue="Runs in Progress"
+            subValue="Recent runs still active"
             color="text-success"
           />
           <MetricCard

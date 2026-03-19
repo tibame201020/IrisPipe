@@ -101,13 +101,12 @@ export function RunDetailPage() {
 
     const edges: Edge[] = []
     for (let i = 0; i < nodes.length - 1; i++) {
-      edges.push({
-        id: `edge-${i}`,
-        source: nodes[i].id,
-        target: nodes[i+1].id,
-        type: 'audit',
-        animated: nodes[i].data.status === 'STARTED' || nodes[i].data.status === 'STARTING',
-      })
+        edges.push({
+          id: `edge-${i}`,
+          source: nodes[i].id,
+          target: nodes[i+1].id,
+          type: 'audit',
+        })
     }
 
     return { graphNodes: nodes, graphEdges: edges }
@@ -268,12 +267,12 @@ export function RunDetailPage() {
           <div className="absolute top-6 left-6 z-10 flex items-center gap-2">
              <div className="badge badge-lg iris-glass border-primary/20 gap-2 h-10 px-4">
                <Layers size={14} />
-               <span className="font-bold text-sm">Attempt View: {currentAttempt?.executionNo}</span>
+               <span className="font-bold text-sm">Attempt #{currentAttempt?.executionNo}</span>
              </div>
              {selectedAttemptId !== detail.attempts[detail.attempts.length - 1].executionId && (
-               <div className="badge badge-warning h-10 px-4 gap-2 font-bold animate-pulse">
-                 <Info size={14} /> Historical Snapshot
-               </div>
+                <div className="badge badge-warning h-10 px-4 gap-2 font-bold animate-pulse">
+                  <Info size={14} /> Earlier Attempt
+                </div>
              )}
           </div>
 
@@ -294,7 +293,7 @@ export function RunDetailPage() {
                      <LayoutDashboard size={18} />
                    </div>
                    <div>
-                     <div className="text-[10px] font-black tracking-[0.2em] opacity-40">INSIGHTS</div>
+                      <div className="text-[10px] font-black tracking-[0.2em] opacity-40">SUMMARY</div>
                       <div className="text-sm font-bold">Run Graph</div>
                    </div>
                  </div>

@@ -15,6 +15,11 @@
 - Removed the Vite chunk size warning by turning the single large app bundle into page-level chunks.
 - Kept the `@xyflow/react` graph surface in its own chunk so the heavier editor/runtime pages load separately.
 
+### Domain wording refinement
+- Tightened remaining explorer, config, runs, and run-detail labels so the UI speaks in terms of folders, pipeline definitions, runs, attempts, and jobs.
+- Removed the last animated run-graph edge behavior so the runtime graph no longer implies live data-flow telemetry.
+- Replaced leftover productized canvas wording with definition-oriented language that matches the current backend model.
+
 ### Frontend reset
 - Rebuilt the main `frontend` app on `Vite + React + TailwindCSS + DaisyUI`.
 - Aligned the new app around `overview`, `pipeline`, `settings`, and dedicated run detail routes.

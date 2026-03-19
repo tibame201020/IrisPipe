@@ -208,7 +208,7 @@ export function PipelineExplorerPage() {
       <div className="flex shrink-0 flex-col border-b border-base-300 bg-base-100 px-8 py-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="iris-header">Mission Control</div>
+            <div className="iris-header">Explorer</div>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Pipeline Explorer</h1>
             <div className="mt-3 breadcrumbs text-[13px] text-base-content/50">
               <ul className="flex items-center gap-1">

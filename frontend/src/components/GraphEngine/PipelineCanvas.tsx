@@ -72,8 +72,8 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
               </div>
             ))}
          </div>
-         <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">Blueprint Ready</span>
-      </div>
+         <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">Pipeline Job</span>
+       </div>
 
       <Handle type="source" position={Position.Right} className="!h-3 !w-3 !border-2 !border-primary !bg-base-100" />
     </div>
