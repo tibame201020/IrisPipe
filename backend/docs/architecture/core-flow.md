@@ -147,8 +147,15 @@ Stop is cooperative, not force-kill.
 4. Load logical run-job rows for latest projection
 5. Enrich job details from `JobExplorer` through `last_job_execution_id`
 6. Render:
+   - top-level latest `stages`
    - top-level latest `jobs`
    - ordered `attempts`
+   - per-attempt `stages`
+
+Run detail is therefore stage-first and job-detailed at the same time:
+
+- stage gives barrier-level orchestration context
+- job gives execution-level counters and Spring Batch linkage
 
 ## 9. Run Delete Flow
 

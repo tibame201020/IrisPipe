@@ -3,6 +3,7 @@ package irispipe.model.dto;
 import static irispipe.api.validation.RequestValidationPatterns.FOLDER_NAME;
 import static irispipe.api.validation.RequestValidationPatterns.PIPELINE_NAME;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import irispipe.model.SyncJobDefinition;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -78,6 +79,21 @@ public interface SyncConfigDTO {
             String folderPath,
             String pipelineName,
             List<String> stages,
+            List<ConfigPipelineStageInfo> stageInfos,
+            List<SyncJobDefinition> jobs) {
+    }
+
+    /**
+     * Stage-first projection for one persisted pipeline config.
+     *
+     * @param stageName stage name
+     * @param stageSequenceOrder stage order inside the pipeline
+     * @param jobs jobs that belong to the stage
+     */
+    record ConfigPipelineStageInfo(
+            @JsonProperty("stage")
+            String stageName,
+            Integer stageSequenceOrder,
             List<SyncJobDefinition> jobs) {
     }
 

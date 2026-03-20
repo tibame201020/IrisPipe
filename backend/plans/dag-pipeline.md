@@ -1,112 +1,65 @@
-# DAG Pipeline 規劃
+# Stage First Pipeline 規劃與落地說明
 
-## 1. 目的
+## 1. 文件目的
 
-IrisPipe 目前的真實模型是：
+本文件記錄 IrisPipe pipeline orchestration 的演進方向。
 
-- `pipeline -> jobs -> steps`
-- `job -> job` 由 IrisPipe 自行編排
-- `step -> step` 仍是 Spring Batch 的線性 step chain
-- `AtomicLevel = JOB | CHUNK`
-- `resume` / `rerun` 都依賴 snapshot 中保存的 materialized job config
+目前只落實第一段：
 
-這代表目前最合理的演進方向不是直接跳成任意 DAG，而是先把 pipeline orchestration 升級成：
+- 將 `stage` 提升為 backend domain 的一級概念
+- 維持 `stage -> jobs -> steps`
+- 不引入 job-level DAG
+- 不改變 step 線性 chain 與 `AtomicLevel = JOB | CHUNK` 的既有語意
 
-- `stage -> jobs -> steps`
+換句話說，現在的目標不是「任意 DAG」，而是：
 
-其中：
+- `pipeline -> stages -> jobs -> steps`
+- 同 stage 可平行執行 jobs
+- stage 與 stage 之間有明確 barrier
+- stop / resume / rerun / snapshot 都以 stage-first 模型解釋
 
-- 同一個 `stage` 內的 jobs 可平行執行
-- `stage` 與 `stage` 之間仍保留 barrier
-- `step` 與 `step` 繼續保持線性
-- `JOB / CHUNK` 的 atomic semantics 不被破壞
+## 2. 已查證的現況
 
-這份文件的定位是：
+### 2.1 Spring Batch 仍然是 job/step 執行底座
 
-- 說明為什麼要先做 stage-based parallel orchestration
-- 定義 config / runtime / snapshot / resume / rerun 的閉環規則
-- 作為後續 backend 實作與 migration 的依據
+IrisPipe 並未放棄 Spring Batch。
 
-## 2. 目前 backend 已確認的事實
+- `job` 仍然是 Spring Batch `Job`
+- `step` 仍然是 Spring Batch `Step`
+- `SyncJobFactory` 會把一個 `SyncJobDefinition` 建成一個線性 step chain
 
-### 2.1 Domain 模型
+這代表：
 
-目前 backend 的 pipeline config 與 runtime 都建立在：
+- `step -> step` 仍然保持線性
+- `JOB / CHUNK` 的 transaction 與 restart semantics 仍然以 Spring Batch 為準
 
-- pipeline 包含多個 jobs
-- job 包含多個 executions / steps
+### 2.2 job-to-job orchestration 由 IrisPipe 控制
 
-對應程式碼：
+目前 `job -> job` 的調度不是交給 Spring Batch flow graph，而是由 IrisPipe 自己控制。
 
-- [SyncJobDefinition.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/model/SyncJobDefinition.java)
-- [PipelineJobDefinition.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/infrastructure/entity/config/PipelineJobDefinition.java)
-- [PipelineExecutionDefinition.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/infrastructure/entity/config/PipelineExecutionDefinition.java)
+這也是為什麼 stage 能自然插入在 pipeline 與 job 之間：
 
-### 2.2 job-to-job orchestration
+- `pipeline` 決定 stage barrier
+- `stage` 決定同群組 jobs 的平行調度
+- `job` 內部仍維持 step chain
 
-目前 `job -> job` 不是交給 Spring Batch flow graph，而是由 IrisPipe 控制：
+### 2.3 stage 能力已存在，但原本不夠像一級 domain
 
-- config 以 `sequenceOrder` 表示 job 的線性順序
-- runtime 以 `jobSequenceOrder` 表示 job 的線性順序
-- launch service 逐個 job 啟動
+在本次落地前，repo 已有：
 
-對應程式碼：
+- `stageName`
+- `stageSequenceOrder`
+- 同 stage jobs 平行啟動
+- stop / fail 後 future stages 標成 `NOT_RUN`
+- resume 會從第一個 incomplete stage 繼續
 
-- [PipelineDefinitionAggregatePersistenceService.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/infrastructure/service/config/PipelineDefinitionAggregatePersistenceService.java)
-- [PipelineRunCommandService.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/core/service/PipelineRunCommandService.java)
-- [PipelineRunLaunchService.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/core/service/PipelineRunLaunchService.java)
+但 stage 原本主要是掛在 job 上的欄位，還不是完整的一級 read/write model。
 
-### 2.3 step-to-step orchestration
-
-目前 `step -> step` 仍是線性 chain：
-
-- `SyncJobFactory` 先把 executions 轉成 `List<Step>`
-- 再透過 `.start(first).next(...)` 組成 step chain
-
-對應程式碼：
-
-- [SyncJobFactory.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/core/factory/SyncJobFactory.java)
-
-### 2.4 Atomic semantics
-
-`AtomicLevel` 目前只定義：
-
-- `JOB`
-- `CHUNK`
-
-這是 job-local 的 transaction / restart granularity，不是 pipeline-level atomicity。
-
-對應程式碼：
-
-- [AtomicLevel.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/model/AtomicLevel.java)
-- [JobSetting.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/model/JobSetting.java)
-- [CustomJobListener.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/batch/listener/CustomJobListener.java)
-
-### 2.5 rerun / resume
-
-目前 public lifecycle 是：
-
-- `execute`
-- `rerun`
-- `resume`
-
-其中：
-
-- `rerun` 會建立新的 logical pipeline run
-- `resume` 會在同一個 logical pipeline run 上建立新的 execution attempt
-- 兩者都依賴 snapshot 中保存的 materialized job config
-
-對應程式碼：
-
-- [PipelineExecutionService.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/core/service/PipelineExecutionService.java)
-- [PipelineRunControlPolicy.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/core/service/PipelineRunControlPolicy.java)
-- [PipelineRunSnapshotService.java](/C:/Users/16/Downloads/codes/IrisPipe/backend/src/main/java/irispipe/infrastructure/service/runtime/PipelineRunSnapshotService.java)
+本次工作的重點，就是把它補齊成真正的 backend domain 概念。
 
 ## 3. 目標模型
 
-### 3.1 Domain shape
-
-目標模型：
+### 3.1 Domain 形狀
 
 ```text
 Pipeline
@@ -117,48 +70,40 @@ Pipeline
       -> Job C
 ```
 
-規則：
+語意如下：
 
-- `stage` 是 job orchestration group
-- 同一個 `stage` 內的 job 可以平行執行
-- `stage` 與 `stage` 之間用 barrier 串接
-- `step` 不改成 graph
+- `Pipeline`
+  - IrisPipe 的完整 orchestration 單位
+- `Stage`
+  - pipeline 內的 barrier 群組
+  - 同 stage 的 jobs 可以平行執行
+  - 下一 stage 必須等前一 stage 收斂後才可進入
+- `Job`
+  - Spring Batch Job 封裝單位
+  - 原子邊界仍然是 job，或其內的 chunk
+- `Step`
+  - Spring Batch Step
+  - 仍保持線性，不做 graph 化
 
-### 3.2 保留 sequenceOrder
+### 3.2 不做的事
 
-即使引入 stage，仍應保留 `sequenceOrder`：
+本階段明確不做：
 
-- `stageSequenceOrder`：描述 stage 的順序
-- `stage`：描述 job 屬於哪個 stage
-- `sequenceOrder`：描述 stage 內 job 的穩定順序
+- job-level arbitrary DAG
+- step-level DAG
+- branch / condition edges
+- stage dependency graph
 
-原因：
+理由很直接：
 
-- query / snapshot / UI 仍需要 deterministic order
-- backward compatibility 較容易保留
-
-### 3.3 不把 step 改成 DAG
-
-目前不應把 `step -> step` 改成 graph。
-
-原因：
-
-- 會直接衝擊 Spring Batch 的 step chain 與 restart semantics
-- 會讓 `JOB / CHUNK` 的 transaction 邊界更難維持
-- 這不是目前最小可行演進
+- 目前 resume / rerun / snapshot / k6 都已建立在 stage barrier 模型上
+- 先把 stage 做成一級 domain，比直接推 job DAG 風險低很多
 
 ## 4. Config Contract
 
-### 4.1 public payload
+### 4.1 對外 contract
 
-建議 public contract 以 stage-first 為主：
-
-- pipeline-level:
-  - `stages: string[]`
-- job-level:
-  - `stage: string`
-
-例如：
+對外 config 採 stage-first 語意：
 
 ```yml
 stages:
@@ -177,203 +122,170 @@ jobs:
       fetchSize: 100
       batchSize: 100
       atomicLevel: JOB
-  - jobName: job_b
-    stage: stage2
-    executions:
-      - type: INSERT
-        name: job_b_insert
-        sql: select * from source_b
-        destTable: dest_b
-    setting:
-      fetchSize: 1000
-      batchSize: 1000
-      atomicLevel: CHUNK
 ```
 
-### 4.2 backward compatibility
+規則：
 
-為了 migration 平滑，backend 可以接受：
+- `stages[]` 定義 stage 順序
+- job 必須明確宣告 `stage`
+- 同 stage 內 jobs 的執行順序仍保持 deterministic
+- backend 會保留 `stageName` 作為 legacy alias 輸入，但主語意是 `stage`
 
-- 缺少 `stages`
-- job 缺少 `stage`
-- legacy `stageName`
+### 4.2 Validation 規則
 
-但 materialization 後，內部應該一律轉成顯式 stage-aware 模型。
+stage-first config 至少要滿足：
 
-## 5. Persistence
+- `stages[]` 不可重複
+- job `stage` 必須存在於 `stages[]`
+- stage 順序必須 deterministic
+- 同 stage 內 job 順序必須 deterministic
+- stage 不可為空白
 
-### 5.1 Config schema
+Legacy 線性 config 仍可作 backward compatibility，但不再是主語意。
 
-`iris_pipeline_job` 需要保存：
+## 5. Runtime Model
 
-- `stage_name`
-- `stage_sequence_order`
-- `sequence_order`
+### 5.1 execute
 
-### 5.2 Runtime schema
+`execute` 的期望行為：
 
-`iris_pipeline_run_job` 需要保存：
+1. 讀取最新 persisted pipeline config
+2. materialize snapshot
+3. 建立 logical run 與 initial execution
+4. 依 `stageSequenceOrder` 分組
+5. 同 stage jobs 平行啟動
+6. 等待 stage barrier 收斂
+7. 全部成功才進下一 stage
+8. 若某 stage fail / stop，future stages 一律 `NOT_RUN`
 
-- `stage_name`
-- `stage_sequence_order`
-- `job_sequence_order`
+### 5.2 stop
 
-`iris_pipeline_run_execution_job` 不需要重複存 stage，只需透過 parent logical run job 投影 stage metadata。
+`stop` 的期望行為：
 
-### 5.3 Snapshot
+- 當前 active stage 的 in-flight jobs 接受 stop 請求
+- 已完成 jobs 維持 `COMPLETED`
+- 尚未進入的 future stages 一律 `NOT_RUN`
+- pipeline execution 最終收斂為 `STOPPED`
 
-snapshot 需要保存：
+### 5.3 resume on stop
+
+`resume` 的期望行為：
+
+- 找出第一個 incomplete stage
+- upstream completed stages 不重跑
+- target stage 中已完成 jobs 標成 `SKIPPED`
+- target stage 中 stopped / not-run / failed jobs 繼續執行
+- target stage 收斂完成後，才往 downstream stages 推進
+
+### 5.4 resume on fail
+
+當同一 stage 中：
+
+- job A `COMPLETED`
+- job B `FAILED`
+
+則：
+
+- pipeline 不可進入下一 stage
+- future stages 一律 `NOT_RUN`
+- resume 時只處理 failed / incomplete jobs
+- 已完成的同 stage job 不得重跑
+
+### 5.5 rerun
+
+`rerun` 的期望行為：
+
+- 建立新的 logical run
+- 複製 source run snapshot
+- 不讀取最新 config
+- stage-first topology 必須與來源 snapshot 一致
+
+## 6. Snapshot Semantics
+
+snapshot 必須保留：
 
 - `stage`
 - `stageSequenceOrder`
 - `sequenceOrder`
+- `atomicLevel`
+- `fetchSize`
+- `batchSize`
+- database config
+- executions / parameters
 
-原因：
+理由：
 
-- `resume` 不能讀最新 config
-- `rerun` 不能受 config drift 影響
+- `resume` 必須吃同一份 materialized config
+- `rerun` 也必須使用來源 run 的 snapshot，而不是最新 config
 
-## 6. Runtime Orchestration
+這是避免 config drift 破壞 lifecycle correctness 的核心。
 
-### 6.1 Stage barrier
+## 7. 本次落地範圍
 
-launcher 的規則應該是：
+本次實作的完成標準是：
 
-1. 依 `stageSequenceOrder` 分組
-2. 同一個 stage 內把所有 `PENDING` jobs 一次 launch
-3. 等待該 stage barrier
-4. 若 stage 全部成功，才進下一個 stage
-5. 若任一 job `FAILED / STOPPED / ABANDONED / UNKNOWN`
-   - 終止該 execution
-   - future stage jobs 標成 `NOT_RUN`
+1. `stage` 成為 backend 一級 read/write model
+2. config detail 可直接提供 stage-first projection
+3. run detail / attempt timeline 可直接提供 stage-first projection
+4. lifecycle 規則明確支援：
+   - execute
+   - stop
+   - resume on stop
+   - resume on fail
+   - rerun
+5. k6 不再只驗 1 stage / 1 job，而是補齊 multi-stage / multi-job 證據
 
-### 6.2 Stop
+## 8. k6 驗證重點
 
-當 pipeline stop 發生時：
+為了證明 stage 是真正落地，不只存在欄位，本次 k6 需覆蓋：
 
-- 同 stage 已經 in-flight 的 job 由 stop request 收斂
-- 已完成的 job 保持 `COMPLETED`
-- current stage 的 stop target 會變成 `STOPPED`
-- future stage jobs 變成 `NOT_RUN`
+### 8.1 multi-stage parallel execute
 
-### 6.3 Failure
+- stage1 兩個 job
+- stage2 一個 job
+- 驗證：
+  - 同 stage jobs 有平行啟動證據
+  - stage2 不會早於 stage1 barrier 開始
 
-當某個 stage 的 job 失敗時：
+### 8.2 multi-stage stop / resume
 
-- 已完成 upstream job 保持 `COMPLETED`
-- 失敗 job 標成 `FAILED`
-- future stage jobs 變成 `NOT_RUN`
+- stop 發生在中間 stage
+- 驗證：
+  - upstream stage 已完成 jobs 保持 `COMPLETED`
+  - same-stage incomplete jobs 會被 stop
+  - future stages `NOT_RUN`
+  - resume 後只從 target stage 繼續
 
-## 7. Resume / Rerun 規則
+### 8.3 same-stage fail barrier
 
-### 7.1 Rerun
+- 同 stage 內一個 job success、一個 job fail
+- 驗證：
+  - pipeline 不進下一 stage
+  - future stages `NOT_RUN`
+  - resume 只補 failed branch，不重跑 completed branch
 
-`rerun`：
+### 8.4 stage-aware rerun
 
-- 建立新的 logical pipeline run
-- 複製 source run snapshot
-- lineage 指向 source run
+- multi-stage pipeline rerun
+- 驗證：
+  - 新 logical run 仍保留 stage topology
+  - 來源 snapshot 不被最新 config 汙染
 
-### 7.2 Resume
+## 9. 結論
 
-`resume`：
+本文件對應的實作方向只有一個：
 
-- 在原 logical run 上新增 execution attempt
-- 找第一個 incomplete stage
-- 該 stage 內：
-  - `COMPLETED` 的 job -> `SKIPPED`
-  - `FAILED / STOPPED / NOT_RUN` 的 job -> `PENDING`
-- future stage job -> `PENDING`
+- **把 stage 做成 backend domain 的一級概念**
 
-### 7.3 AtomicLevel 不變
+不是：
 
-resume / rerun 不應改變：
+- 直接導入 DAG
+- 改變 step 線性模型
+- 破壞 `JOB / CHUNK` atomic semantics
 
-- `AtomicLevel=JOB` 的 replay / rollback semantics
-- `AtomicLevel=CHUNK` 的 partial commit / restart semantics
+這樣的好處是：
 
-### 7.4 例子
-
-如果 Stage 2 有三個 job：
-
-- Job A：`COMPLETED`
-- Job B：`FAILED`
-- Job C：`COMPLETED`
-
-resume 後：
-
-- Job A -> `SKIPPED`
-- Job B -> `PENDING`
-- Job C -> `SKIPPED`
-
-原因：
-
-- 同 stage 中已完成 job 不應重跑
-- 失敗 job 是真正 resume target
-- 同 stage 其他已完成 job 也不能破壞既有 `JOB / CHUNK` semantics
-
-## 8. Query / DTO
-
-對外 DTO 建議：
-
-- config detail
-  - `stages[]`
-  - job 的 `stage`
-- run detail
-  - job 的 `stage`
-  - `stageSequenceOrder`
-
-目前不需要對外暴露完整 arbitrary graph model。
-
-## 9. 實作切片
-
-### Phase 1：schema / model / contract
-
-目標：
-
-- config / snapshot / runtime row 先全面帶入 stage
-- 保留 legacy 線性 payload 的 materialization
-
-內容：
-
-- migration 新增 stage 欄位
-- entity / DTO / import / config contract 帶入 stage
-- snapshot 帶 stage
-- read model 帶 stage
-
-### Phase 2：runtime orchestration
-
-目標：
-
-- 從 job-sequential launcher 升級成 stage-barrier orchestration
-- stop / resume / rerun policy 變成 stage-aware
-
-內容：
-
-- 同 stage 平行啟動
-- stage barrier 等待
-- failure / stop 後 future stage `NOT_RUN`
-- resume 從 incomplete stage 恢復
-
-## 10. 測試重點
-
-1. legacy config 沒有 stage 時，仍能正確 materialize 成線性 stage
-2. 同 stage 多 job 能平行執行
-3. 憑 stage 順序正確進入下一個 stage
-4. stage 失敗時，future stage 全部 `NOT_RUN`
-5. stage stop 時，future stage 全部 `NOT_RUN`
-6. resume 時：
-   - upstream completed -> `SKIPPED`
-   - target stage failed/stopped/not_run -> `PENDING`
-7. `JOB / CHUNK` atomic semantics 仍正確
-
-## 11. 結論
-
-最合理的做法不是直接做 arbitrary DAG，而是：
-
-1. 先做 **stage-based parallel orchestration**
-2. 保留 `sequenceOrder`
-3. step 仍維持線性，保住 Spring Batch 的 `JOB / CHUNK` semantics
-4. 讓 resume / rerun / stop / failure 都在 stage-aware 規則下閉環
-
-這樣可以讓 backend domain 從「線性 pipeline」演進到「stage-based、DAG-ready pipeline」，但不會一次把整個 runtime 模型打碎。
+- 風險低
+- 與現有 Spring Batch 底座相容
+- 能讓 frontend 與 k6 都建立在真實 stage domain 上
+- 為未來若真的要做 stage dependency 或更高階 orchestration 保留空間

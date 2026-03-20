@@ -50,6 +50,9 @@ Key semantics:
 - public config payloads now use:
   - `stages[]`
   - per-job `stage`
+- backend read models now also project stage-first structure directly:
+  - `stageInfos`
+  - grouped stage jobs with stable stage order
 - pipeline jobs are persisted and projected with ordered stage metadata:
   - `stageName`
   - `stageSequenceOrder`
@@ -66,6 +69,22 @@ Key semantics:
 - `iris_pipeline_execution_parameter`
 
 These tables are the source of truth for fresh execute.
+
+### Stage as a First-Class Domain Concept
+
+`stage` is no longer only a pair of job columns.
+
+The backend now treats stage as an explicit domain projection:
+
+- config queries can render `pipeline -> stages -> jobs`
+- runtime queries can render `run -> stages -> jobs`
+- attempts can also be projected stage-first
+
+Current implementation note:
+
+- persistence still stores stage metadata on job rows
+- stage does not yet have its own dedicated table
+- but stage is already a first-class backend read/write concept
 
 ## 4. Config Input Modes
 
@@ -195,6 +214,8 @@ As a result:
 
 - run summary stays lightweight
 - run detail can expose both latest jobs and ordered `attempts`
+- run detail can expose ordered `stages`
+- attempts can expose ordered `stages`
 - stage metadata remains available for UI projection without forcing the public API to expose a full arbitrary graph model
 
 ## 8. Delete Rules

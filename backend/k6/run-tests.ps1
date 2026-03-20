@@ -29,10 +29,13 @@ $testCatalog = [ordered]@{
     "pipeline-api" = @{ Name = "Sync Pipeline API"; Path = "pipeline/sync-pipeline-api.test.js" }
     "pipeline-async-trigger" = @{ Name = "Sync Pipeline Async Trigger"; Path = "pipeline/sync-pipeline-async.test.js" }
     "pipeline-history-browser" = @{ Name = "Sync Pipeline History Browser"; Path = "pipeline/sync-pipeline-history-browser.test.js" }
+    "pipeline-stage-parallel" = @{ Name = "Sync Pipeline Stage Parallel"; Path = "pipeline/sync-pipeline-stage-parallel.test.js" }
     "pipeline-resume-job" = @{ Name = "Sync Pipeline Resume"; Path = "pipeline/sync-pipeline-resume.test.js" }
     "pipeline-resume-chunk" = @{ Name = "Sync Pipeline Chunk Resume"; Path = "pipeline/sync-pipeline-resume-chunk.test.js" }
     "pipeline-resume-async" = @{ Name = "Sync Pipeline Async Resume"; Path = "pipeline/sync-pipeline-resume-async.test.js" }
     "pipeline-resume-mixed" = @{ Name = "Sync Pipeline Mixed Resume"; Path = "pipeline/sync-pipeline-resume-mixed.test.js" }
+    "pipeline-stage-resume-stop" = @{ Name = "Sync Pipeline Stage Stop Resume"; Path = "pipeline/sync-pipeline-stage-stop-resume.test.js" }
+    "pipeline-stage-resume-fail" = @{ Name = "Sync Pipeline Stage Fail Resume"; Path = "pipeline/sync-pipeline-stage-fail-resume.test.js" }
     "pipeline-stop-sync-chunk" = @{ Name = "Sync Pipeline Sync Stop Chunk"; Path = "pipeline/sync-pipeline-stop-chunk-sync.test.js" }
     "pipeline-stop-sync-job" = @{ Name = "Sync Pipeline Sync Stop Job"; Path = "pipeline/sync-pipeline-stop-job-sync.test.js" }
     "pipeline-stop-sync-mixed" = @{ Name = "Sync Pipeline Sync Stop Mixed"; Path = "pipeline/sync-pipeline-stop-mixed-sync.test.js" }
@@ -44,6 +47,7 @@ $testCatalog = [ordered]@{
     "pipeline-observability-smoke" = @{ Name = "Sync Pipeline Observability Smoke"; Path = "pipeline/sync-pipeline-observability-smoke.test.js" }
     "pipeline-rerun-sync" = @{ Name = "Sync Pipeline Rerun"; Path = "pipeline/sync-pipeline-rerun.test.js" }
     "pipeline-rerun-async" = @{ Name = "Sync Pipeline Async Rerun"; Path = "pipeline/sync-pipeline-rerun-async.test.js" }
+    "pipeline-stage-rerun" = @{ Name = "Sync Pipeline Stage Rerun"; Path = "pipeline/sync-pipeline-stage-rerun.test.js" }
     "pipeline-control-flow" = @{ Name = "Sync Pipeline Async Control Flow"; Path = "pipeline/sync-pipeline-control-flow-async.test.js" }
     "runtime-success" = @{ Name = "Sync Pipeline Success"; Path = "runtime/sync-job-success.test.js" }
     "runtime-fail-atomic" = @{ Name = "Sync Pipeline Fail/Atomic"; Path = "runtime/sync-job-fail.test.js" }
@@ -67,13 +71,16 @@ $suiteCatalog = [ordered]@{
     "pipeline-core" = @(
         "pipeline-api",
         "pipeline-async-trigger",
-        "pipeline-history-browser"
+        "pipeline-history-browser",
+        "pipeline-stage-parallel"
     )
     "pipeline-resume" = @(
         "pipeline-resume-job",
         "pipeline-resume-chunk",
         "pipeline-resume-async",
-        "pipeline-resume-mixed"
+        "pipeline-resume-mixed",
+        "pipeline-stage-resume-stop",
+        "pipeline-stage-resume-fail"
     )
     "pipeline-stop" = @(
         "pipeline-stop-sync-chunk",
@@ -92,7 +99,8 @@ $suiteCatalog = [ordered]@{
     )
     "pipeline-rerun" = @(
         "pipeline-rerun-sync",
-        "pipeline-rerun-async"
+        "pipeline-rerun-async",
+        "pipeline-stage-rerun"
     )
     "pipeline-control-loop" = @(
         "pipeline-control-flow"

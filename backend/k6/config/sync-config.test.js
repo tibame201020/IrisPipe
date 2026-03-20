@@ -132,6 +132,11 @@ export default function () {
             Array.isArray(body.stages)
             && body.stages.length === 1
             && body.stages[0] === 'stage1'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1'
+            && Array.isArray(body.stageInfos[0].jobs)
+            && body.stageInfos[0].jobs.length === 1
             && Array.isArray(body.jobs)
             && body.jobs[0].stage === 'stage1',
         'create config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
@@ -148,7 +153,12 @@ export default function () {
             Array.isArray(body.jobs)
             && body.jobs.length === 1
             && body.jobs[0].jobName === 'k6_test_config_v1'
-            && body.jobs[0].stage === 'stage1',
+            && body.jobs[0].stage === 'stage1'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1'
+            && Array.isArray(body.stageInfos[0].jobs)
+            && body.stageInfos[0].jobs[0].jobName === 'k6_test_config_v1',
         'config detail keeps root metadata without hidden root id': (body) =>
             body.pipelineName === initialPipelineName
             && body.folderId === null
@@ -186,7 +196,10 @@ export default function () {
             && body.jobs[0].jobName === 'k6_test_config_v2'
             && body.jobs[0].stage === 'stage1'
             && Array.isArray(body.stages)
-            && body.stages[0] === 'stage1',
+            && body.stages[0] === 'stage1'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1',
         'update config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
@@ -203,7 +216,10 @@ export default function () {
             && body.jobs[0].jobName === 'k6_test_config_v3'
             && body.jobs[0].stage === 'stage1'
             && Array.isArray(body.stages)
-            && body.stages[0] === 'stage1',
+            && body.stages[0] === 'stage1'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1',
         'patch config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 

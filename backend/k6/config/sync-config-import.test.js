@@ -108,7 +108,10 @@ export default function () {
         'yaml import returns parsed jobs': (body) =>
             Array.isArray(body.jobs)
             && body.jobs.length === 1
-            && body.jobs[0].jobName === 'k6_test_config',
+            && body.jobs[0].jobName === 'k6_test_config'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1',
     });
 
     response = listConfigs();
@@ -154,6 +157,9 @@ export default function () {
             && Array.isArray(body.stages)
             && body.stages.length === 1
             && body.stages[0] === 'stage1'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1'
             && body.jobs[0].executions[0].name === namespacedExecutionName(importedJsonExecutionName),
     });
 
@@ -171,7 +177,10 @@ export default function () {
             && body.jobs[0].jobName === importedJsonJobName
             && body.jobs[0].stage === 'stage1'
             && Array.isArray(body.stages)
-            && body.stages[0] === 'stage1',
+            && body.stages[0] === 'stage1'
+            && Array.isArray(body.stageInfos)
+            && body.stageInfos.length === 1
+            && body.stageInfos[0].stage === 'stage1',
     });
 
     response = getPipelineTree();

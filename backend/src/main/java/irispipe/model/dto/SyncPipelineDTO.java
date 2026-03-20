@@ -148,6 +148,7 @@ public interface SyncPipelineDTO {
             LocalDateTime createdAt,
             LocalDateTime startTime,
             LocalDateTime endTime,
+            List<PipelineRunStageInfo> stages,
             List<PipelineRunJobInfo> jobs,
             List<PipelineRunAttemptInfo> attempts) {
 
@@ -166,6 +167,7 @@ public interface SyncPipelineDTO {
         public static PipelineRunDetailInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
                 PipelineRun pipelineRun,
                 PipelineRunExecution pipelineRunExecution,
+                List<PipelineRunStageInfo> stages,
                 List<PipelineRunJobInfo> jobs,
                 List<PipelineRunAttemptInfo> attempts) {
             return new PipelineRunDetailInfo(
@@ -179,6 +181,7 @@ public interface SyncPipelineDTO {
                     pipelineRun.getCreatedAt(),
                     pipelineRunExecution == null ? pipelineRun.getStartTime() : pipelineRunExecution.getStartTime(),
                     pipelineRunExecution == null ? pipelineRun.getEndTime() : pipelineRunExecution.getEndTime(),
+                    stages,
                     jobs,
                     attempts);
         }
@@ -204,6 +207,7 @@ public interface SyncPipelineDTO {
             Boolean requestedAsync,
             LocalDateTime startTime,
             LocalDateTime endTime,
+            List<PipelineRunStageInfo> stages,
             List<PipelineRunJobInfo> jobs) {
 
         /**
@@ -214,6 +218,7 @@ public interface SyncPipelineDTO {
          * @return execution attempt payload
          */
         public static PipelineRunAttemptInfo render(PipelineRunExecution pipelineRunExecution,
+                List<PipelineRunStageInfo> stages,
                 List<PipelineRunJobInfo> jobs) {
             return new PipelineRunAttemptInfo(
                     pipelineRunExecution.getId(),
@@ -223,8 +228,29 @@ public interface SyncPipelineDTO {
                     pipelineRunExecution.getRequestedAsync(),
                     pipelineRunExecution.getStartTime(),
                     pipelineRunExecution.getEndTime(),
+                    stages,
                     jobs);
         }
+    }
+
+    /**
+     * Stage projection payload for logical runs and execution attempts.
+     *
+     * @param stageName stage name
+     * @param stageSequenceOrder stage order inside the pipeline
+     * @param status aggregated stage status
+     * @param startTime earliest job start time inside the stage
+     * @param endTime latest job end time inside the stage
+     * @param jobs jobs that belong to the stage
+     */
+    record PipelineRunStageInfo(
+            @JsonProperty("stage")
+            String stageName,
+            Integer stageSequenceOrder,
+            PipelineRunStatus status,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            List<PipelineRunJobInfo> jobs) {
     }
 
     /**

@@ -53,6 +53,12 @@ export default function (data) {
     check(detail, {
         'Pipeline detail marks requestedAsync as false': (item) => item.requestedAsync === false,
         'Pipeline detail returns one job node': (item) => Array.isArray(item.jobs) && item.jobs.length === 1,
+        'Pipeline detail returns one stage node': (item) =>
+            Array.isArray(item.stages)
+            && item.stages.length === 1
+            && item.stages[0].stage === 'stage1'
+            && Array.isArray(item.stages[0].jobs)
+            && item.stages[0].jobs.length === 1,
         'Pipeline detail keeps completed pipeline status': (item) => item.status === 'COMPLETED',
         'Pipeline detail job stores root job instance id': (item) =>
             item.jobs.length === 1 && Number.isInteger(item.jobs[0].rootJobInstanceId) && item.jobs[0].rootJobInstanceId > 0,

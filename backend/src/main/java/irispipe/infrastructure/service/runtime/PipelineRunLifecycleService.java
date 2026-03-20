@@ -86,7 +86,9 @@ public class PipelineRunLifecycleService {
         PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
 
-        if (!pipelineRunStatusPolicy.isStopStatus(pipelineRunExecution.getStatus())) {
+        if (!pipelineRunStatusPolicy.isStopStatus(pipelineRunExecution.getStatus())
+                && !pipelineRunStatusPolicy.isTerminalFailure(pipelineRunExecution.getStatus())
+                && pipelineRunExecution.getStatus() != PipelineRunStatus.COMPLETED) {
             pipelineRunExecution.setStatus(PipelineRunStatus.STARTED);
         }
         pipelineRunExecution.setStartTime(pipelineRunExecution.getStartTime() == null ? startTime : pipelineRunExecution.getStartTime());
@@ -170,46 +172,61 @@ public class PipelineRunLifecycleService {
         pipelineRunJobRepo.save(pipelineRunJob);
         pipelineRunObservationService.publishJobObservation(pipelineRunJob, pipelineRunExecutionJob);
 
-        if (pipelineRunStatusPolicy.isTerminalFailure(pipelineRunExecution.getStatus())) {
-            pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
+        PipelineRunExecution latestPipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        if (pipelineRunStatusPolicy.isTerminalFailure(latestPipelineRunExecution.getStatus())) {
+            pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
             pipelineRunRepo.save(pipelineRun);
             return;
         }
 
         if (pipelineRunStatusPolicy.isTerminalFailure(jobStatus)) {
-            pipelineRunExecution.setStatus(jobStatus);
-            pipelineRunExecution.setEndTime(jobExecution.getEndTime() != null ? jobExecution.getEndTime() : now);
-            pipelineRunExecution.setUpdatedAt(now);
-            pipelineRunExecutionRepo.save(pipelineRunExecution);
+            latestPipelineRunExecution.setStatus(jobStatus);
+            latestPipelineRunExecution.setEndTime(jobExecution.getEndTime() != null ? jobExecution.getEndTime() : now);
+            latestPipelineRunExecution.setUpdatedAt(now);
+            pipelineRunExecutionRepo.save(latestPipelineRunExecution);
 
-            pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
+            pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
             pipelineRunRepo.save(pipelineRun);
             if (PipelineRunStatus.FAILED.equals(jobStatus)) {
-                pipelineRunObservationService.publishExecutionObservation(pipelineRunExecution);
+                pipelineRunObservationService.publishExecutionObservation(latestPipelineRunExecution);
             }
             return;
         }
 
         List<PipelineRunExecutionJob> pipelineRunExecutionJobs = pipelineRunExecutionJobRepo
                 .findByPipelineRunExecutionId(pipelineRunExecutionId);
+        boolean anyTerminalFailure = pipelineRunExecutionJobs.stream()
+                .anyMatch(executionJob -> pipelineRunStatusPolicy.isTerminalFailure(executionJob.getStatus()));
         boolean allCompleted = pipelineRunExecutionJobs.stream()
                 .allMatch(executionJob -> pipelineRunStatusPolicy.isSuccessfulTerminalStatus(executionJob.getStatus()));
 
-        if (pipelineRunExecution.getStatus() == PipelineRunStatus.STOPPED) {
-            pipelineRunExecution.setEndTime(pipelineRunExecution.getEndTime() == null ? now : pipelineRunExecution.getEndTime());
-        } else if (pipelineRunExecution.getStatus() == PipelineRunStatus.STOPPING && !allCompleted) {
-            pipelineRunExecution.setEndTime(null);
-        } else {
-            pipelineRunExecution.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
-            pipelineRunExecution.setEndTime(allCompleted ? now : null);
+        latestPipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        if (pipelineRunStatusPolicy.isTerminalFailure(latestPipelineRunExecution.getStatus())) {
+            pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
+            pipelineRunRepo.save(pipelineRun);
+            return;
         }
-        pipelineRunExecution.setUpdatedAt(now);
-        pipelineRunExecutionRepo.save(pipelineRunExecution);
 
-        pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
+        if (latestPipelineRunExecution.getStatus() == PipelineRunStatus.STOPPED) {
+            latestPipelineRunExecution.setEndTime(
+                    latestPipelineRunExecution.getEndTime() == null ? now : latestPipelineRunExecution.getEndTime());
+        } else if (anyTerminalFailure) {
+            latestPipelineRunExecution.setStatus(PipelineRunStatus.FAILED);
+            latestPipelineRunExecution.setEndTime(now);
+        } else if (latestPipelineRunExecution.getStatus() == PipelineRunStatus.STOPPING && !allCompleted) {
+            latestPipelineRunExecution.setEndTime(null);
+        } else {
+            latestPipelineRunExecution.setStatus(allCompleted ? PipelineRunStatus.COMPLETED : PipelineRunStatus.STARTED);
+            latestPipelineRunExecution.setEndTime(allCompleted ? now : null);
+        }
+        latestPipelineRunExecution.setUpdatedAt(now);
+        pipelineRunExecutionRepo.save(latestPipelineRunExecution);
+
+        pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
-        if (PipelineRunStatus.COMPLETED.equals(pipelineRunExecution.getStatus())) {
-            pipelineRunObservationService.publishExecutionObservation(pipelineRunExecution);
+        if (PipelineRunStatus.COMPLETED.equals(latestPipelineRunExecution.getStatus())
+                || PipelineRunStatus.FAILED.equals(latestPipelineRunExecution.getStatus())) {
+            pipelineRunObservationService.publishExecutionObservation(latestPipelineRunExecution);
         }
     }
 

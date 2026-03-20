@@ -1,4 +1,4 @@
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 import {
     getActuatorHealth,
     getActuatorMetric,
@@ -53,6 +53,11 @@ export function setup() {
 
 export default function (data) {
     let pipelineRunId = null;
+    const baselineRunTriggeredCount = readMetricValue('irispipe.pipeline.run.triggered', 'COUNT');
+    const baselineExecutionCompletedCount = readMetricValue('irispipe.pipeline.execution.completed', 'COUNT');
+    const baselineJobCompletedCount = readMetricValue('irispipe.pipeline.job.completed', 'COUNT');
+    const baselineRunsActive = readMetricValue('irispipe.pipeline.runs.active', 'VALUE');
+    const baselineExecutionsActive = readMetricValue('irispipe.pipeline.executions.active', 'VALUE');
 
     try {
         const { summary } = runPipelineAndGetSummary(data.pipelineId);
@@ -79,6 +84,20 @@ export default function (data) {
         const executionsActiveMetric = jsonOrFallback(executionsActiveMetricResponse, {});
         const executionDurationMetric = jsonOrFallback(executionDurationMetricResponse, {});
         const jobDurationMetric = jsonOrFallback(jobDurationMetricResponse, {});
+        const runsActiveRecovered = waitForMetricValue(
+            'irispipe.pipeline.runs.active',
+            'VALUE',
+            baselineRunsActive,
+            10,
+            0.2,
+        );
+        const executionsActiveRecovered = waitForMetricValue(
+            'irispipe.pipeline.executions.active',
+            'VALUE',
+            baselineExecutionsActive,
+            10,
+            0.2,
+        );
 
         const smokeChecksPassed = check(completedSummary, {
             'Observability smoke pipeline completes before probing actuator': (item) => item.status === 'COMPLETED',
@@ -94,20 +113,20 @@ export default function (data) {
         }) && check(runTriggeredMetricResponse, {
             'Run-triggered metric endpoint is reachable': (res) => res.status === 200,
         }) && check(runTriggeredMetric, {
-            'Run-triggered metric reports at least one logical run': (body) =>
-                getMeasurementValue(body, 'COUNT') >= 1,
+            'Run-triggered metric reports one additional logical run': (body) =>
+                getMeasurementValue(body, 'COUNT') >= baselineRunTriggeredCount + 1,
         }) && check(executionCompletedMetric, {
-            'Execution-completed metric reports at least one completed attempt': (body) =>
-                getMeasurementValue(body, 'COUNT') >= 1,
+            'Execution-completed metric reports one additional completed attempt': (body) =>
+                getMeasurementValue(body, 'COUNT') >= baselineExecutionCompletedCount + 1,
         }) && check(jobCompletedMetric, {
-            'Job-completed metric reports at least one completed job': (body) =>
-                getMeasurementValue(body, 'COUNT') >= 1,
-        }) && check(runsActiveMetric, {
-            'Runs-active gauge returns to zero after completion': (body) =>
-                getMeasurementValue(body, 'VALUE') === 0,
-        }) && check(executionsActiveMetric, {
-            'Executions-active gauge returns to zero after completion': (body) =>
-                getMeasurementValue(body, 'VALUE') === 0,
+            'Job-completed metric reports additional completed jobs': (body) =>
+                getMeasurementValue(body, 'COUNT') >= baselineJobCompletedCount + 1,
+        }) && check(runsActiveRecovered, {
+            'Runs-active gauge returns to its baseline after completion': (value) =>
+                value === baselineRunsActive,
+        }) && check(executionsActiveRecovered, {
+            'Executions-active gauge returns to its baseline after completion': (value) =>
+                value === baselineExecutionsActive,
         }) && check(executionDurationMetric, {
             'Execution-duration timer reports at least one observation': (body) =>
                 getMeasurementValue(body, 'COUNT') >= 1,
@@ -162,4 +181,23 @@ function safeDeletePipelineRun(pipelineRunId, label) {
     } catch (error) {
         console.error(`Failed to delete pipeline run ${pipelineRunId}: ${error.message}`);
     }
+}
+
+function readMetricValue(metricName, statistic) {
+    const response = getActuatorMetric(metricName);
+    const metric = jsonOrFallback(response, {});
+    return getMeasurementValue(metric, statistic);
+}
+
+function waitForMetricValue(metricName, statistic, expectedValue, timeoutSeconds = 10, intervalSeconds = 0.2) {
+    const maxAttempts = Math.ceil(timeoutSeconds / intervalSeconds);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const currentValue = readMetricValue(metricName, statistic);
+        if (currentValue === expectedValue) {
+            return currentValue;
+        }
+        sleep(intervalSeconds);
+    }
+
+    return Number.NaN;
 }

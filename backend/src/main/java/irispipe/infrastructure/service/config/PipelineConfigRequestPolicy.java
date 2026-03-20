@@ -10,6 +10,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import irispipe.model.PipelineStageDefinition;
 import irispipe.model.SyncJobDefinition;
 
 /**
@@ -56,22 +57,40 @@ public class PipelineConfigRequestPolicy {
      * @return ordered distinct stage names
      */
     public List<String> renderStageNames(List<SyncJobDefinition> syncJobs) {
-        List<String> stageNames = syncJobs.stream()
-                .collect(Collectors.toMap(
-                        SyncJobDefinition::getStageName,
-                        SyncJobDefinition::getStageSequenceOrder,
-                        (left, right) -> left,
-                        LinkedHashMap::new))
-                .entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+        List<String> stageNames = renderStages(syncJobs).stream()
+                .map(PipelineStageDefinition::stageName)
                 .toList();
 
         if (stageNames.stream().allMatch(stageName -> stageName.startsWith(IMPLICIT_STAGE_PREFIX))) {
             return List.of();
         }
         return stageNames;
+    }
+
+    /**
+     * Groups normalized jobs into stage-first domain projections.
+     *
+     * @param syncJobs normalized job payload
+     * @return ordered stage projections
+     */
+    public List<PipelineStageDefinition> renderStages(List<SyncJobDefinition> syncJobs) {
+        return syncJobs.stream()
+                .collect(Collectors.toMap(
+                        SyncJobDefinition::getStageName,
+                        syncJob -> new PipelineStageDefinition(
+                                syncJob.getStageName(),
+                                syncJob.getStageSequenceOrder(),
+                                new ArrayList<>(List.of(syncJob))),
+                        (left, right) -> new PipelineStageDefinition(
+                                left.stageName(),
+                                left.stageSequenceOrder(),
+                                mergeStageJobs(left.jobs(), right.jobs())),
+                        LinkedHashMap::new))
+                .values()
+                .stream()
+                .sorted(java.util.Comparator.comparing(PipelineStageDefinition::stageSequenceOrder))
+                .peek(PipelineStageDefinition::validate)
+                .toList();
     }
 
     /**
@@ -210,5 +229,12 @@ public class PipelineConfigRequestPolicy {
 
     private String renderImplicitStageName(int index) {
         return IMPLICIT_STAGE_PREFIX + (index + 1);
+    }
+
+    private List<SyncJobDefinition> mergeStageJobs(List<SyncJobDefinition> left, List<SyncJobDefinition> right) {
+        List<SyncJobDefinition> merged = new ArrayList<>(left.size() + right.size());
+        merged.addAll(left);
+        merged.addAll(right);
+        return List.copyOf(merged);
     }
 }

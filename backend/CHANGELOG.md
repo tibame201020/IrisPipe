@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [Stage First Domain Projection] - 2026-03-21
+
+### Added
+- **Stage-First Domain Types**: Added `PipelineStageDefinition`, `PipelineRunStageProjection`, and `PipelineStageProjectionService` so backend config and runtime queries can project `pipeline -> stages -> jobs -> steps` directly instead of forcing callers to regroup flat job lists.
+- **Multi-Stage Regression Fixtures**: Added explicit multi-stage / multi-job k6 fixtures and scenarios for stage parallel execution, stop/resume inside one stage, same-stage fail barrier recovery, and stage-aware rerun.
+
+### Changed
+- **Config Read Model**: Config detail responses now include explicit stage projections in addition to ordered jobs, making stage a first-class backend read model instead of a job-only annotation.
+- **Run Detail Projection**: Pipeline run detail and attempt history now expose stage summaries with aggregated status, start/end windows, and grouped jobs.
+- **Lifecycle Projection Hardening**: Execution lifecycle synchronization now preserves terminal failure state while recomputing latest run projection, so stage summaries stay consistent after same-stage partial completion plus failure.
+- **K6 Stage Coverage**: Local full regression now validates explicit multi-stage behavior, including same-stage parallelism evidence, stage barriers, resume-on-stop, resume-on-fail, and stage-aware rerun.
+
+### Verified
+- **Compile Validation**: Re-ran `mvn -q -DskipTests compile`.
+- **Isolated Full K6 Regression**: Re-ran `backend/k6/run-tests.ps1` against an isolated backend instance with isolated H2 URL override; all 35 tests passed.
+
 ## [Stage-Based Parallel Pipeline Runtime] - 2026-03-20
 
 ### Added

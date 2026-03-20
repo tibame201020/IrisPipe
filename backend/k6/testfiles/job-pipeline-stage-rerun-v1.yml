@@ -1,0 +1,80 @@
+stages:
+  - stage1
+  - stage2
+
+jobs:
+  - jobName: k6_pipeline_stage_rerun_job_a
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_stage_rerun_truncate_a
+        sql: truncate table test_stage_rerun_dest_a
+      - type: INSERT
+        name: k6_pipeline_stage_rerun_insert_a
+        sql: select * from test_stage_rerun_source_a where id <= 3 order by id asc
+        destTable: test_stage_rerun_dest_a
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_stage_rerun_job_b
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_stage_rerun_truncate_b
+        sql: truncate table test_stage_rerun_dest_b
+      - type: INSERT
+        name: k6_pipeline_stage_rerun_insert_b
+        sql: select * from test_stage_rerun_source_b where id <= 2 order by id asc
+        destTable: test_stage_rerun_dest_b
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_stage_rerun_job_c
+    stage: stage2
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_stage_rerun_truncate_c
+        sql: truncate table test_stage_rerun_dest_c
+      - type: INSERT
+        name: k6_pipeline_stage_rerun_insert_c
+        sql: select * from test_stage_rerun_source_c where id <= 2 order by id asc
+        destTable: test_stage_rerun_dest_c
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

@@ -1,0 +1,71 @@
+stages:
+  - stage1
+  - stage2
+
+jobs:
+  - jobName: k6_pipeline_stage_parallel_job_a
+    stage: stage1
+    executions:
+      - type: INSERT
+        name: k6_pipeline_stage_parallel_insert_a
+        sql: select * from test_stage_parallel_source_a order by id asc
+        destTable: test_stage_parallel_dest_a
+    setting:
+      fetchSize: 10
+      batchSize: 10
+      atomicLevel: CHUNK
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_stage_parallel_job_b
+    stage: stage1
+    executions:
+      - type: INSERT
+        name: k6_pipeline_stage_parallel_insert_b
+        sql: select * from test_stage_parallel_source_b order by id asc
+        destTable: test_stage_parallel_dest_b
+    setting:
+      fetchSize: 10
+      batchSize: 10
+      atomicLevel: CHUNK
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_stage_parallel_job_c
+    stage: stage2
+    executions:
+      - type: INSERT
+        name: k6_pipeline_stage_parallel_insert_c
+        sql: select * from test_stage_parallel_source_c order by id asc
+        destTable: test_stage_parallel_dest_c
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

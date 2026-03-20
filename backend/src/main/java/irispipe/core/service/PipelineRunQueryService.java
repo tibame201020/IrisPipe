@@ -26,6 +26,7 @@ import irispipe.infrastructure.repo.runtime.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
 import irispipe.infrastructure.service.folder.PipelineFolderService;
 import irispipe.infrastructure.service.workspace.WorkspaceContextService;
+import irispipe.model.PipelineRunStageProjection;
 import irispipe.model.dto.SyncPipelineDTO;
 
 /**
@@ -42,6 +43,7 @@ public class PipelineRunQueryService {
     private final PipelineFolderService pipelineFolderService;
     private final WorkspaceContextService workspaceContextService;
     private final JobExplorer jobExplorer;
+    private final PipelineStageProjectionService pipelineStageProjectionService;
 
     /**
      * Creates the run query service with repositories, folder metadata, and Spring
@@ -55,6 +57,7 @@ public class PipelineRunQueryService {
      * @param pipelineFolderService folder metadata helper
      * @param workspaceContextService current workspace resolver
      * @param jobExplorer Spring Batch job explorer
+     * @param pipelineStageProjectionService stage projection helper
      */
     public PipelineRunQueryService(PipelineDefinitionRepo pipelineDefinitionRepo,
             PipelineRunRepo pipelineRunRepo,
@@ -63,7 +66,8 @@ public class PipelineRunQueryService {
             PipelineRunJobRepo pipelineRunJobRepo,
             PipelineFolderService pipelineFolderService,
             WorkspaceContextService workspaceContextService,
-            JobExplorer jobExplorer) {
+            JobExplorer jobExplorer,
+            PipelineStageProjectionService pipelineStageProjectionService) {
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
@@ -72,6 +76,7 @@ public class PipelineRunQueryService {
         this.pipelineFolderService = pipelineFolderService;
         this.workspaceContextService = workspaceContextService;
         this.jobExplorer = jobExplorer;
+        this.pipelineStageProjectionService = pipelineStageProjectionService;
     }
 
     /**
@@ -166,13 +171,27 @@ public class PipelineRunQueryService {
                         ? Map.of()
                         : executionJobsByExecutionId.getOrDefault(latestExecution.getId(), Map.of()),
                 jobExecutionCache);
+        List<PipelineRunStageProjection> latestStages = pipelineStageProjectionService.renderRunStages(latestJobs);
         List<SyncPipelineDTO.PipelineRunAttemptInfo> attempts = pipelineRunExecutions.stream()
-                .map(pipelineRunExecution -> SyncPipelineDTO.PipelineRunAttemptInfo.render(
-                        pipelineRunExecution,
-                        buildPipelineRunJobInfos(
-                                pipelineRunJobs,
-                                executionJobsByExecutionId.getOrDefault(pipelineRunExecution.getId(), Map.of()),
-                                jobExecutionCache)))
+                .map(pipelineRunExecution -> {
+                    List<SyncPipelineDTO.PipelineRunJobInfo> attemptJobs = buildPipelineRunJobInfos(
+                            pipelineRunJobs,
+                            executionJobsByExecutionId.getOrDefault(pipelineRunExecution.getId(), Map.of()),
+                            jobExecutionCache);
+                    List<PipelineRunStageProjection> attemptStages = pipelineStageProjectionService.renderRunStages(attemptJobs);
+                    return SyncPipelineDTO.PipelineRunAttemptInfo.render(
+                            pipelineRunExecution,
+                            attemptStages.stream()
+                                    .map(stageProjection -> new SyncPipelineDTO.PipelineRunStageInfo(
+                                            stageProjection.stageName(),
+                                            stageProjection.stageSequenceOrder(),
+                                            stageProjection.status(),
+                                            stageProjection.startTime(),
+                                            stageProjection.endTime(),
+                                            stageProjection.jobs()))
+                                    .toList(),
+                            attemptJobs);
+                })
                 .toList();
 
         return SyncPipelineDTO.PipelineRunDetailInfo.render(
@@ -181,6 +200,15 @@ public class PipelineRunQueryService {
                 pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
                 pipelineRun,
                 latestExecution,
+                latestStages.stream()
+                        .map(stageProjection -> new SyncPipelineDTO.PipelineRunStageInfo(
+                                stageProjection.stageName(),
+                                stageProjection.stageSequenceOrder(),
+                                stageProjection.status(),
+                                stageProjection.startTime(),
+                                stageProjection.endTime(),
+                                stageProjection.jobs()))
+                        .toList(),
                 latestJobs,
                 attempts);
     }

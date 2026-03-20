@@ -47,3 +47,9 @@ Lightweight tests should not replace K6.
 - `IRISPIPE_BASE_URL`, `IRISPIPE_PORT`, and `IRISPIPE_H2_DB_URL` may be set when validating against an isolated local backend instance instead of the default `http://localhost:8080`.
 - GitHub Actions executes the same suite catalog as the local runner, so local and CI still cover the same end-to-end scenarios even though local no longer defaults to PowerShell-managed suite parallelism.
 - Stage-aware regression fixtures now declare `stages[]` and per-job `stage` explicitly; legacy linear payload materialization still exists in backend code, but k6 fixtures no longer rely on it.
+- Stage coverage is no longer limited to one-stage / one-job pipelines. The regression suite now includes explicit multi-stage / multi-job scenarios for:
+  - same-stage parallel execution evidence
+  - stage barrier progression
+  - stop then resume inside one stage
+  - same-stage fail barrier with resume recovery
+  - stage-aware rerun from snapshot

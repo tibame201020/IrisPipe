@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import irispipe.core.service.PipelineStageProjectionService;
 import irispipe.infrastructure.entity.config.PipelineConnectionRole;
 import irispipe.infrastructure.entity.config.PipelineDefinition;
 import irispipe.infrastructure.entity.config.PipelineExecutionDefinition;
@@ -27,6 +28,7 @@ import irispipe.model.DatabaseConfig;
 import irispipe.model.ExecutionStep;
 import irispipe.model.JobParameter;
 import irispipe.model.JobSetting;
+import irispipe.model.PipelineStageDefinition;
 import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncConfigDTO;
 
@@ -41,6 +43,7 @@ public class PipelineConfigReadModelService {
     private final PipelineExecutionParameterRepo pipelineExecutionParameterRepo;
     private final PipelineFolderService pipelineFolderService;
     private final PipelineConfigRequestPolicy pipelineConfigRequestPolicy;
+    private final PipelineStageProjectionService pipelineStageProjectionService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -51,6 +54,7 @@ public class PipelineConfigReadModelService {
      * @param pipelineExecutionDefinitionRepo pipeline execution repository
      * @param pipelineExecutionParameterRepo pipeline execution parameter repository
      * @param pipelineFolderService folder and folder-path helper service
+     * @param pipelineStageProjectionService stage projection helper
      * @param objectMapper JSON serializer for persisted parameter values
      */
     public PipelineConfigReadModelService(PipelineJobDefinitionRepo pipelineJobDefinitionRepo,
@@ -59,6 +63,7 @@ public class PipelineConfigReadModelService {
             PipelineExecutionParameterRepo pipelineExecutionParameterRepo,
             PipelineFolderService pipelineFolderService,
             PipelineConfigRequestPolicy pipelineConfigRequestPolicy,
+            PipelineStageProjectionService pipelineStageProjectionService,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
         this.pipelineJobDefinitionRepo = pipelineJobDefinitionRepo;
         this.pipelineJobConnectionRepo = pipelineJobConnectionRepo;
@@ -66,6 +71,7 @@ public class PipelineConfigReadModelService {
         this.pipelineExecutionParameterRepo = pipelineExecutionParameterRepo;
         this.pipelineFolderService = pipelineFolderService;
         this.pipelineConfigRequestPolicy = pipelineConfigRequestPolicy;
+        this.pipelineStageProjectionService = pipelineStageProjectionService;
         this.objectMapper = objectMapper;
     }
 
@@ -130,12 +136,19 @@ public class PipelineConfigReadModelService {
      * @return folder-aware pipeline detail DTO
      */
     public SyncConfigDTO.ConfigPipelineInfo renderConfigPipelineInfo(PipelineDefinition pipeline, List<SyncJobDefinition> jobs) {
+        List<PipelineStageDefinition> stageDefinitions = pipelineStageProjectionService.renderConfigStages(jobs);
         return new SyncConfigDTO.ConfigPipelineInfo(
                 pipeline.getId(),
                 pipelineFolderService.renderPublicFolderId(pipeline.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipeline.getFolderId()),
                 pipeline.getPipelineName(),
                 pipelineConfigRequestPolicy.renderStageNames(jobs),
+                stageDefinitions.stream()
+                        .map(stageDefinition -> new SyncConfigDTO.ConfigPipelineStageInfo(
+                                stageDefinition.stageName(),
+                                stageDefinition.stageSequenceOrder(),
+                                stageDefinition.jobs()))
+                        .toList(),
                 jobs);
     }
 
