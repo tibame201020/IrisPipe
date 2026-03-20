@@ -1,9 +1,6 @@
 param(
     [string[]]$Suite = @("all"),
     [switch]$ListSuites,
-    [switch]$Sequential,
-    [int]$MaxParallel = 4,
-    [switch]$InternalRun,
     [string]$Namespace,
     [string]$PipelinePrefix
 )
@@ -14,6 +11,7 @@ Write-Host "=========================================="
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
+$overallStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 $testCatalog = [ordered]@{
     "config-validation" = @{ Name = "Config API Validation"; Path = "config/sync-config-validation.test.js" }
@@ -157,6 +155,22 @@ try {
     exit 1
 }
 
+function Format-Duration {
+    param(
+        [timespan]$Elapsed
+    )
+
+    if ($Elapsed.TotalSeconds -lt 1) {
+        return "{0:N0} ms" -f $Elapsed.TotalMilliseconds
+    }
+
+    if ($Elapsed.TotalMinutes -lt 1) {
+        return "{0:N1} s" -f $Elapsed.TotalSeconds
+    }
+
+    return "{0:mm\:ss}" -f $Elapsed
+}
+
 function Invoke-TestBatch {
     param(
         [array]$SelectedTests,
@@ -177,141 +191,65 @@ function Invoke-TestBatch {
     }
 
     $failed = @()
+    $results = @()
 
     foreach ($test in $SelectedTests) {
         Write-Host "`n---> Running $($test.Name) ($($test.Path))"
+        $testStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         $null = (& k6 run `
             --address "127.0.0.1:0" `
             -e "IRISPIPE_BASE_URL=$IRISPIPE_BASE_URL" `
             -e "IRISPIPE_K6_NAMESPACE=$ExecutionNamespace" `
             -e "IRISPIPE_PIPELINE_NAME_PREFIX=$ExecutionPipelinePrefix" `
             $test.Path | Out-Host)
+        $testStopwatch.Stop()
+        $durationLabel = Format-Duration -Elapsed $testStopwatch.Elapsed
+
         if ($LASTEXITCODE -ne 0) {
             $failed += $test.Name
+            Write-Host "[FAILED] $($test.Name) in $durationLabel" -ForegroundColor Red
+        } else {
+            Write-Host "[OK] $($test.Name) in $durationLabel" -ForegroundColor Green
+        }
+
+        $results += [pscustomobject]@{
+            Name = $test.Name
+            Path = $test.Path
+            Duration = $testStopwatch.Elapsed
+            Passed = ($LASTEXITCODE -eq 0)
         }
     }
-
-    return $failed
-}
-
-function Start-SuiteProcess {
-    param(
-        [string]$SuiteName,
-        [string]$SessionToken,
-        [string]$ShellPath,
-        [string]$ScriptPath,
-        [string]$ScriptRoot
-    )
-
-    $suiteToken = ($SuiteName -replace '[^A-Za-z0-9]+', '_').Trim('_').ToLowerInvariant()
-    $suiteNamespace = "${suiteToken}_${SessionToken}"
-    $suitePipelinePrefix = "${SessionToken}-${suiteToken}"
-    $tmpDir = Join-Path $ScriptRoot '.tmp'
-    $stdoutPath = Join-Path $tmpDir "${suiteToken}_${SessionToken}.log"
-    $stderrPath = Join-Path $tmpDir "${suiteToken}_${SessionToken}.err.log"
-
-    New-Item -Path $tmpDir -ItemType Directory -Force | Out-Null
-    Remove-Item $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
-
-    $process = Start-Process `
-        -FilePath $ShellPath `
-        -ArgumentList @(
-            '-NoProfile',
-            '-ExecutionPolicy', 'Bypass',
-            '-File', $ScriptPath,
-            '-Suite', $SuiteName,
-            '-Sequential',
-            '-InternalRun',
-            '-Namespace', $suiteNamespace,
-            '-PipelinePrefix', $suitePipelinePrefix
-        ) `
-        -WorkingDirectory $ScriptRoot `
-        -PassThru `
-        -RedirectStandardOutput $stdoutPath `
-        -RedirectStandardError $stderrPath
 
     return [pscustomobject]@{
-        SuiteName = $SuiteName
-        Namespace = $suiteNamespace
-        PipelinePrefix = $suitePipelinePrefix
-        StdoutPath = $stdoutPath
-        StderrPath = $stderrPath
-        Process = $process
+        Failed = $failed
+        Results = $results
     }
 }
+$runResult = Invoke-TestBatch -SelectedTests $tests -ExecutionNamespace $Namespace -ExecutionPipelinePrefix $PipelinePrefix
+$failedTests = $runResult.Failed
+$suiteResults = @($runResult.Results)
+$overallStopwatch.Stop()
 
-if (-not $InternalRun -and -not $Sequential -and $requestedSuites.Count -gt 1) {
-    $parallelism = [Math]::Max(1, [Math]::Min($MaxParallel, $requestedSuites.Count))
-    $sessionToken = "$(Get-Date -Format 'yyyyMMddHHmmss')-$([Guid]::NewGuid().ToString('N').Substring(0, 6))"
-    $shellPath = (Get-Process -Id $PID).Path
-    $queue = [System.Collections.Generic.Queue[string]]::new()
-    $running = [System.Collections.Generic.List[object]]::new()
-    $failedSuites = @()
-
-    foreach ($suiteName in $requestedSuites) {
-        $queue.Enqueue($suiteName)
-    }
-
-    Write-Host "[PARALLEL] Running suites in parallel (max=$parallelism)"
-
-    while ($queue.Count -gt 0 -or $running.Count -gt 0) {
-        while ($queue.Count -gt 0 -and $running.Count -lt $parallelism) {
-            $suiteName = $queue.Dequeue()
-            $suiteProcess = Start-SuiteProcess `
-                -SuiteName $suiteName `
-                -SessionToken $sessionToken `
-                -ShellPath $shellPath `
-                -ScriptPath $PSCommandPath `
-                -ScriptRoot $PSScriptRoot
-            $running.Add($suiteProcess)
+if ($suiteResults.Count -gt 0) {
+    Write-Host "`nSlowest tests:"
+    $suiteResults |
+        Sort-Object Duration -Descending |
+        Select-Object -First ([Math]::Min(5, $suiteResults.Count)) |
+        ForEach-Object {
+            $status = if ($_.Passed) { "OK" } else { "FAILED" }
+            Write-Host (" - [{0}] {1} ({2})" -f $status, $_.Name, (Format-Duration -Elapsed $_.Duration))
         }
-
-        Start-Sleep -Seconds 1
-        $completed = @($running | Where-Object { $_.Process.HasExited })
-
-        foreach ($suiteProcess in $completed) {
-            $suiteProcess.Process.WaitForExit()
-            $suiteProcess.Process.Refresh()
-            Write-Host "`n===== Suite: $($suiteProcess.SuiteName) ====="
-            if (Test-Path $suiteProcess.StdoutPath) {
-                Get-Content $suiteProcess.StdoutPath
-            }
-            if (Test-Path $suiteProcess.StderrPath) {
-                $stderrContent = Get-Content $suiteProcess.StderrPath
-                if ($stderrContent) {
-                    Write-Host $stderrContent -ForegroundColor Red
-                }
-            }
-
-            if ([int]$suiteProcess.Process.ExitCode -ne 0) {
-                $failedSuites += $suiteProcess.SuiteName
-            }
-
-            [void]$running.Remove($suiteProcess)
-        }
-    }
-
-    Write-Host "`n=========================================="
-    if ($failedSuites.Count -eq 0) {
-        Write-Host "            Testing Complete!            "
-        Write-Host "=========================================="
-        exit 0
-    }
-
-    Write-Host " Failed suites: $($failedSuites -join ', ')" -ForegroundColor Red
-    Write-Host "=========================================="
-    exit 1
 }
-
-$failedTests = Invoke-TestBatch -SelectedTests $tests -ExecutionNamespace $Namespace -ExecutionPipelinePrefix $PipelinePrefix
 
 Write-Host "`n=========================================="
 if ($failedTests.Count -eq 0) {
     Write-Host "            Testing Complete!            "
+    Write-Host " Total duration: $(Format-Duration -Elapsed $overallStopwatch.Elapsed)"
     Write-Host "=========================================="
     exit 0
 }
 
 Write-Host " Failed suites: $($failedTests -join ', ')" -ForegroundColor Red
+Write-Host " Total duration: $(Format-Duration -Elapsed $overallStopwatch.Elapsed)" -ForegroundColor Red
 Write-Host "=========================================="
 exit 1

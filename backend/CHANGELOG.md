@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [Local K6 Runner Stabilization] - 2026-03-20
+
+### Changed
+- **Stable Local Regression Flow**: Restored `backend/k6/run-tests.ps1` to sequential-by-default execution so local full-suite validation stays deterministic and avoids PowerShell-managed child-process noise.
+- **Timing Visibility**: Added per-test timing output and a slowest-tests summary so the next optimization round can target the actual long-running suites instead of relying on opaque suite-level parallelism.
+
+### Preserved
+- **CI Scenario Coverage**: GitHub Actions still executes the full suite catalog through matrix jobs, and namespace support remains available for isolated fixture execution when needed.
+
+---
+
 ## [Schema Baseline Consolidation] - 2026-03-20
 
 ### Changed
