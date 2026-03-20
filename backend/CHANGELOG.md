@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [Schema Baseline Consolidation] - 2026-03-20
+
+### Changed
+- **Single Flyway Baseline**: Consolidated the previously layered V3-V9 schema setup into one stable baseline migration `V3__init_irispipe_schema.sql` for development-time database resets.
+- **No Runtime Logic Change**: This baseline rewrite only reorganizes schema bootstrap SQL; it does not change the current backend runtime contract or control flow semantics.
+
+### Verified
+- **Baseline Validation**: The consolidated Flyway baseline was validated with `mvn clean spring-boot:run` and the full local K6 regression flow before being committed.
+
+---
+
 ## [Phase 14: Workspace-Scoped Engine Boundary] - 2026-03-17
 
 ### Added
