@@ -1,6 +1,7 @@
 import { check } from 'k6';
 import { singleRunOptions } from '../utils/test-options.js';
 import { jsonOrFallback } from '../utils/test-helpers.js';
+import { namespacedExecutionName } from '../utils/namespace.js';
 import {
     deleteConfig,
     getConfigDetail,
@@ -145,7 +146,7 @@ export default function () {
             Array.isArray(body.jobs)
             && body.jobs.length === 1
             && body.jobs[0].jobName === importedJsonJobName
-            && body.jobs[0].executions[0].name === importedJsonExecutionName,
+            && body.jobs[0].executions[0].name === namespacedExecutionName(importedJsonExecutionName),
     });
 
     response = getConfigDetail(pipelineId);

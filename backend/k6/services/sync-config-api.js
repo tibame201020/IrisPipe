@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { buildApiUrl, getJsonHeaders, getMultipartHeaders, withWorkspaceOptions } from './api-client.js';
+import { namespaceImportedConfigContent, namespaceJobs } from '../utils/namespace.js';
 
 function buildMultipartPayload(fields, fileName, fileContent, fileContentType = 'application/x-yaml') {
     const boundary = `----IrisPipeK6Boundary${Math.random().toString(16).slice(2)}`;
@@ -31,6 +32,7 @@ function buildMultipartPayload(fields, fileName, fileContent, fileContentType = 
 
 function requestConfigImport(method, path, folderId, pipelineName, format, fileName, fileContent, workspaceKey = null) {
     const contentType = format === 'json' ? 'application/json' : 'application/x-yaml';
+    const namespacedContent = namespaceImportedConfigContent(fileContent, format);
     const { boundary, body } = buildMultipartPayload(
         {
             folderId,
@@ -38,7 +40,7 @@ function requestConfigImport(method, path, folderId, pipelineName, format, fileN
             format,
         },
         fileName,
-        fileContent,
+        namespacedContent,
         contentType,
     );
 
@@ -48,7 +50,12 @@ function requestConfigImport(method, path, folderId, pipelineName, format, fileN
 }
 
 function requestConfigJson(method, path, payload, workspaceKey = null) {
-    return http.request(method, buildApiUrl(path), JSON.stringify(payload), {
+    const namespacedPayload = {
+        ...payload,
+        jobs: namespaceJobs(payload.jobs),
+    };
+
+    return http.request(method, buildApiUrl(path), JSON.stringify(namespacedPayload), {
         headers: getJsonHeaders(workspaceKey),
     });
 }

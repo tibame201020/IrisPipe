@@ -274,3 +274,15 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 - **Critical Bug**: `BatchUpsertWriter` now correctly handles named-to-positional parameter conversion for the "exists check" query, preventing `JdbcSQLSyntaxErrorException` on composite PK UPSERTs.
+## [K6 Runner Optimization] - 2026-03-20
+
+### Added
+- **Per-Suite K6 Namespacing**: Added local K6 fixture namespacing for test tables and watermark execution names so multiple suites can safely share one backend instance.
+
+### Changed
+- **Local K6 Execution Model**: `backend/k6/run-tests.ps1` now parallelizes multi-suite runs locally, instead of forcing all suites through one long sequential pass.
+- **Runner Process Isolation**: Each local `k6 run` child process now binds an ephemeral REST API port, avoiding the default `localhost:6565` conflict during parallel execution.
+- **CI Suite Coverage**: Expanded GitHub Actions K6 matrix coverage to include `workspace`, `pipeline-operator-safety`, and `pipeline-observability`.
+- **Runner Consistency**: GitHub Actions now sets the same K6 namespace/pipeline prefix inputs used by the local runner, and its matrix now matches the full local suite catalog.
+
+---

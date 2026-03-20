@@ -71,12 +71,18 @@ jobs:
         suite:
           - id: config
             name: Config
+          - id: workspace
+            name: Workspace
           - id: pipeline-core
             name: Pipeline Core
           - id: pipeline-resume
             name: Pipeline Resume
           - id: pipeline-stop
             name: Pipeline Stop
+          - id: pipeline-operator-safety
+            name: Pipeline Operator Safety
+          - id: pipeline-observability
+            name: Pipeline Observability
           - id: pipeline-rerun
             name: Pipeline Rerun
           - id: pipeline-control-loop
@@ -87,6 +93,8 @@ jobs:
       K6_TMP_DIR: ${{ github.workspace }}/.k6-tmp
       APP_LOG: ${{ github.workspace }}/.k6-tmp/irispipe-k6-${{ matrix.suite.id }}.log
       APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/irispipe-k6-${{ matrix.suite.id }}.pid
+      IRISPIPE_K6_NAMESPACE: ${{ matrix.suite.id }}
+      IRISPIPE_PIPELINE_NAME_PREFIX: gha-${{ matrix.suite.id }}-${{ github.run_id }}
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
 
