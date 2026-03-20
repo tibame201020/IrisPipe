@@ -65,8 +65,10 @@ public class PipelineConfigImportService {
             String resolvedFormat = pipelineConfigRequestPolicy.resolveImportFormat(format, file);
             byte[] fileBytes = file.getBytes();
             String fileContent = new String(fileBytes, StandardCharsets.UTF_8);
-            List<SyncJobDefinition> syncJobs = readSyncJobs(fileContent, resolvedFormat);
-            pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
+            ImportedConfigPayload importedConfigPayload = readImportedConfigPayload(fileContent, resolvedFormat);
+            List<SyncJobDefinition> syncJobs = pipelineConfigRequestPolicy.validateSyncJobs(
+                    importedConfigPayload.stages(),
+                    importedConfigPayload.jobs());
 
             return new ParsedConfig(
                     targetFolderId,
@@ -101,10 +103,32 @@ public class PipelineConfigImportService {
      * @param format normalized import format
      * @return parsed job definitions
      */
-    private List<SyncJobDefinition> readSyncJobs(String content, String format) {
+    private ImportedConfigPayload readImportedConfigPayload(String content, String format) {
         FileProvider fileProvider = getFileProvider(format);
-        return fileProvider.convertContentToClass(content, new TypeReference<List<SyncJobDefinition>>() {
-        });
+        String trimmedContent = content == null ? "" : content.stripLeading();
+        if (trimmedContent.startsWith("[") || trimmedContent.startsWith("-")) {
+            return new ImportedConfigPayload(
+                    null,
+                    fileProvider.convertContentToClass(content, new TypeReference<List<SyncJobDefinition>>() {
+                    }));
+        }
+
+        try {
+            ImportedConfigPayload payload = fileProvider.convertContentToClass(
+                    content,
+                    new TypeReference<ImportedConfigPayload>() {
+                    });
+            if (payload != null && payload.jobs() != null) {
+                return payload;
+            }
+        } catch (Exception e) {
+            // Fallback to legacy list contract.
+        }
+
+        return new ImportedConfigPayload(
+                null,
+                fileProvider.convertContentToClass(content, new TypeReference<List<SyncJobDefinition>>() {
+                }));
     }
 
     /**
@@ -149,5 +173,10 @@ public class PipelineConfigImportService {
             String pipelineName,
             String contentHash,
             List<SyncJobDefinition> syncJobs) {
+    }
+
+    private record ImportedConfigPayload(
+            List<String> stages,
+            List<SyncJobDefinition> jobs) {
     }
 }

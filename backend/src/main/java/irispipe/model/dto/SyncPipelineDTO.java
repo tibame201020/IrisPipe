@@ -93,16 +93,31 @@ public interface SyncPipelineDTO {
          */
         public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
                 PipelineRun pipelineRun) {
+            return render(pipelineDefinition, folderId, folderPath, pipelineRun, null);
+        }
+
+        /**
+         * Builds a run summary from persisted pipeline, run, and latest execution rows.
+         *
+         * @param pipelineDefinition pipeline definition row
+         * @param folderId public folder id, or {@code null} for root
+         * @param folderPath public folder path
+         * @param pipelineRun logical run row
+         * @param pipelineRunExecution latest execution row, or {@code null}
+         * @return run summary payload
+         */
+        public static PipelineRunSummaryInfo render(PipelineDefinition pipelineDefinition, Long folderId, String folderPath,
+                PipelineRun pipelineRun, PipelineRunExecution pipelineRunExecution) {
             return new PipelineRunSummaryInfo(
                     pipelineRun.getId(),
                     pipelineDefinition.getId(),
                     folderId,
                     folderPath,
                     pipelineDefinition.getPipelineName(),
-                    pipelineRun.getStatus(),
+                    pipelineRunExecution == null ? pipelineRun.getStatus() : pipelineRunExecution.getStatus(),
                     pipelineRun.getCreatedAt(),
-                    pipelineRun.getStartTime(),
-                    pipelineRun.getEndTime());
+                    pipelineRunExecution == null ? pipelineRun.getStartTime() : pipelineRunExecution.getStartTime(),
+                    pipelineRunExecution == null ? pipelineRun.getEndTime() : pipelineRunExecution.getEndTime());
         }
     }
 
@@ -229,6 +244,8 @@ public interface SyncPipelineDTO {
      */
     record PipelineRunJobInfo(
             Long id,
+            String stageName,
+            Integer stageSequenceOrder,
             Integer sequenceOrder,
             String jobName,
             AtomicLevel atomicLevel,
@@ -258,6 +275,8 @@ public interface SyncPipelineDTO {
 
             return new PipelineRunJobInfo(
                     pipelineRunJob.getId(),
+                    pipelineRunJob.getStageName(),
+                    pipelineRunJob.getStageSequenceOrder(),
                     pipelineRunJob.getJobSequenceOrder(),
                     pipelineRunJob.getJobName(),
                     pipelineRunJob.getAtomicLevel(),

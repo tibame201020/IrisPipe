@@ -29,6 +29,7 @@ public interface SyncConfigDTO {
             @NotBlank(message = "pipelineName can not be blank")
             @Pattern(regexp = PIPELINE_NAME, message = "pipelineName contains unsupported characters")
             String pipelineName,
+            List<String> stages,
             @NotEmpty(message = "jobs can not be empty")
             List<SyncJobDefinition> jobs) {
     }
@@ -76,6 +77,7 @@ public interface SyncConfigDTO {
             Long folderId,
             String folderPath,
             String pipelineName,
+            List<String> stages,
             List<SyncJobDefinition> jobs) {
     }
 

@@ -16,10 +16,16 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SyncJobDefinition {
+    String stageName;
+    Integer stageSequenceOrder;
     String jobName;
     List<ExecutionStep> executions;
     JobSetting setting;
     DatabaseConfig database;
+
+    public SyncJobDefinition(String jobName, List<ExecutionStep> executions, JobSetting setting, DatabaseConfig database) {
+        this(null, null, jobName, executions, setting, database);
+    }
 
     /**
      * Validates this job definition and wraps nested execution errors with job and
@@ -28,6 +34,14 @@ public class SyncJobDefinition {
     public void validate() {
         if (StringUtils.isBlank(jobName)) {
             throw new ConfigValidationException("", "", "jobName can not be blank");
+        }
+
+        if (StringUtils.isBlank(stageName)) {
+            throw new ConfigValidationException(jobName, "", "stageName can not be blank");
+        }
+
+        if (stageSequenceOrder == null || stageSequenceOrder < 0) {
+            throw new ConfigValidationException(jobName, "", "stageSequenceOrder must be >= 0");
         }
 
         if (executions == null || executions.isEmpty()) {

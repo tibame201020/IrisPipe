@@ -40,6 +40,7 @@ public class PipelineConfigReadModelService {
     private final PipelineExecutionDefinitionRepo pipelineExecutionDefinitionRepo;
     private final PipelineExecutionParameterRepo pipelineExecutionParameterRepo;
     private final PipelineFolderService pipelineFolderService;
+    private final PipelineConfigRequestPolicy pipelineConfigRequestPolicy;
     private final ObjectMapper objectMapper;
 
     /**
@@ -57,12 +58,14 @@ public class PipelineConfigReadModelService {
             PipelineExecutionDefinitionRepo pipelineExecutionDefinitionRepo,
             PipelineExecutionParameterRepo pipelineExecutionParameterRepo,
             PipelineFolderService pipelineFolderService,
+            PipelineConfigRequestPolicy pipelineConfigRequestPolicy,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
         this.pipelineJobDefinitionRepo = pipelineJobDefinitionRepo;
         this.pipelineJobConnectionRepo = pipelineJobConnectionRepo;
         this.pipelineExecutionDefinitionRepo = pipelineExecutionDefinitionRepo;
         this.pipelineExecutionParameterRepo = pipelineExecutionParameterRepo;
         this.pipelineFolderService = pipelineFolderService;
+        this.pipelineConfigRequestPolicy = pipelineConfigRequestPolicy;
         this.objectMapper = objectMapper;
     }
 
@@ -73,7 +76,8 @@ public class PipelineConfigReadModelService {
      * @return normalized job definitions ordered by job sequence
      */
     public List<SyncJobDefinition> renderSyncJobs(Long pipelineId) {
-        List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo.findByPipelineIdOrderBySequenceOrder(pipelineId);
+        List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo
+                .findByPipelineIdOrderByStageSequenceOrderAscSequenceOrderAsc(pipelineId);
         if (jobDefinitions.isEmpty()) {
             return List.of();
         }
@@ -103,6 +107,8 @@ public class PipelineConfigReadModelService {
 
         return jobDefinitions.stream()
                 .map(jobDefinition -> new SyncJobDefinition(
+                        jobDefinition.getStageName(),
+                        jobDefinition.getStageSequenceOrder(),
                         jobDefinition.getJobName(),
                         renderExecutions(
                                 executionsByJobId.getOrDefault(jobDefinition.getId(), List.of()),
@@ -129,6 +135,7 @@ public class PipelineConfigReadModelService {
                 pipelineFolderService.renderPublicFolderId(pipeline.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipeline.getFolderId()),
                 pipeline.getPipelineName(),
+                pipelineConfigRequestPolicy.renderStageNames(jobs),
                 jobs);
     }
 

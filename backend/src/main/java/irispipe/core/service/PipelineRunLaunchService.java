@@ -1,8 +1,17 @@
 package irispipe.core.service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +62,8 @@ public class PipelineRunLaunchService {
     private final PipelineRunExecutionJobRepo pipelineRunExecutionJobRepo;
     private final PipelineRunJobRepo pipelineRunJobRepo;
     private final PipelineRunControlPolicy pipelineRunControlPolicy;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /**
      * Creates the launch helper with Spring Batch, job factory, execution record,
@@ -98,7 +109,7 @@ public class PipelineRunLaunchService {
     }
 
     /**
-     * Launches one pipeline run execution from the requested job sequence.
+     * Launches one pipeline run execution.
      *
      * @param launchRequest immutable launch payload
      * @param requestedAsync whether the execution should run asynchronously
@@ -120,77 +131,70 @@ public class PipelineRunLaunchService {
     public void requestStop(Long pipelineRunId, PipelineRunExecution latestExecution) {
         pipelineRunLifecycleService.markStopRequested(pipelineRunId, latestExecution.getId());
 
-        Long runningBatchExecutionId = findRunningBatchExecutionId(pipelineRunId, latestExecution.getId());
-        if (runningBatchExecutionId == null) {
+        List<Long> runningBatchExecutionIds = findRunningBatchExecutionIds(pipelineRunId, latestExecution.getId());
+        if (runningBatchExecutionIds.isEmpty()) {
             markPendingExecutionJobsNotRun(latestExecution.getId());
             pipelineRunLifecycleService.markStopped(pipelineRunId, latestExecution.getId());
             return;
         }
 
-        try {
-            jobOperator.stop(runningBatchExecutionId);
-        } catch (NoSuchJobExecutionException | JobExecutionNotRunningException e) {
-            logger.warn("pipeline run {} stop target {} was no longer running: {}",
-                    pipelineRunId,
-                    runningBatchExecutionId,
-                    e.getMessage());
+        boolean stoppedAny = false;
+        for (Long runningBatchExecutionId : runningBatchExecutionIds) {
+            try {
+                jobOperator.stop(runningBatchExecutionId);
+                stoppedAny = true;
+            } catch (NoSuchJobExecutionException | JobExecutionNotRunningException e) {
+                logger.warn("pipeline run {} stop target {} was no longer running: {}",
+                        pipelineRunId,
+                        runningBatchExecutionId,
+                        e.getMessage());
+            }
+        }
+
+        if (!stoppedAny) {
             markPendingExecutionJobsNotRun(latestExecution.getId());
             pipelineRunLifecycleService.markStopped(pipelineRunId, latestExecution.getId());
         }
     }
 
     /**
-     * Executes the pipeline run job-by-job until completion, stop, or failure.
+     * Executes the pipeline run stage-by-stage until completion, stop, or failure.
      *
      * @param launchRequest immutable launch payload
      */
     private void executePipelineRun(PipelineRunLaunchRequest launchRequest) {
-        for (int jobSequence = launchRequest.startJobSequence(); jobSequence < launchRequest.syncJobs().size(); jobSequence++) {
+        Map<Integer, List<JobLaunchSlot>> stageLaunchPlan = buildStageLaunchPlan(launchRequest);
+        for (Map.Entry<Integer, List<JobLaunchSlot>> stageEntry : stageLaunchPlan.entrySet()) {
             if (finalizeStopIfRequested(launchRequest.pipelineRunExecution().getId())) {
                 return;
             }
 
-            SyncJobDefinition syncJob = launchRequest.syncJobs().get(jobSequence);
-            PipelineRunJob pipelineRunJob = launchRequest.pipelineRunJobs().get(jobSequence);
-            PipelineRunExecutionJob pipelineRunExecutionJob = launchRequest.pipelineRunExecutionJobs().get(jobSequence);
-            SyncJobContext syncJobContext = null;
-            boolean closeSyncJobContext = true;
-            try {
-                syncJobContext = syncJobContextFactory.initialSyncJobContext(syncJob, executionRecordService);
-                Job job = syncJobFactory.createBatchJob(syncJobContext);
-                JobParameters jobParameters = buildJobParameters(
-                        launchRequest.pipelineId(),
-                        syncJob,
-                        pipelineRunJob,
-                        launchRequest.pipelineRunExecution(),
-                        pipelineRunExecutionJob,
-                        jobSequence);
+            List<JobLaunchSlot> stageSlots = stageEntry.getValue();
+            List<JobLaunchSlot> pendingStageSlots = stageSlots.stream()
+                    .filter(jobLaunchSlot -> PipelineRunStatus.PENDING.equals(jobLaunchSlot.pipelineRunExecutionJob().getStatus()))
+                    .toList();
+            if (pendingStageSlots.isEmpty()) {
+                continue;
+            }
 
-                JobExecution jobExecution = jobLauncher.run(job, jobParameters);
-                closeSyncJobContext = false;
+            List<PipelineRunStatus> stageOutcomes = executeStage(launchRequest, pendingStageSlots);
 
-                if (finalizeStopIfRequested(launchRequest.pipelineRunExecution().getId())) {
-                    return;
-                }
-
-                if (!BatchStatus.COMPLETED.equals(jobExecution.getStatus())) {
-                    markRemainingJobsNotRun(launchRequest.pipelineRunExecutionJobs(), jobSequence);
-                    return;
-                }
-            } catch (Exception e) {
-                logger.error("pipeline {} stopped on job {}: {}", launchRequest.pipelineId(), syncJob.getJobName(),
-                        e.getMessage());
-                pipelineRunLifecycleService.markLaunchFailed(
-                        pipelineRunJob.getPipelineRunId(),
-                        launchRequest.pipelineRunExecution().getId(),
-                        pipelineRunJob.getId(),
-                        pipelineRunExecutionJob.getId());
-                markRemainingJobsNotRun(launchRequest.pipelineRunExecutionJobs(), jobSequence);
+            PipelineRunExecution latestExecution = pipelineRunExecutionRepo
+                    .findById(launchRequest.pipelineRunExecution().getId())
+                    .orElse(null);
+            if (latestExecution == null) {
                 return;
-            } finally {
-                if (closeSyncJobContext && syncJobContext != null) {
-                    syncJobContext.close();
-                }
+            }
+            if (pipelineRunControlPolicy.isStopState(latestExecution.getStatus())) {
+                markFutureStagesNotRun(stageLaunchPlan, stageEntry.getKey());
+                finalizeStopIfRequested(launchRequest.pipelineRunExecution().getId());
+                return;
+            }
+
+            boolean stageFailed = stageOutcomes.stream().anyMatch(this::isTerminalFailure);
+            if (stageFailed) {
+                markFutureStagesNotRun(stageLaunchPlan, stageEntry.getKey());
+                return;
             }
         }
     }
@@ -222,23 +226,58 @@ public class PipelineRunLaunchService {
     }
 
     /**
-     * Marks the remaining execution jobs as not run after one job fails or stops
-     * the execution.
+     * Launches all pending jobs in one stage and waits for the stage barrier.
      *
-     * @param pipelineRunExecutionJobs execution jobs for the current execution
-     * @param currentJobSequence zero-based job sequence that just finished
+     * @param launchRequest immutable launch payload
+     * @param pendingStageSlots pending execution jobs that belong to one stage
      */
-    private void markRemainingJobsNotRun(List<PipelineRunExecutionJob> pipelineRunExecutionJobs, int currentJobSequence) {
-        if (currentJobSequence + 1 >= pipelineRunExecutionJobs.size()) {
-            return;
-        }
-
-        List<Long> remainingExecutionJobIds = pipelineRunExecutionJobs.subList(
-                currentJobSequence + 1,
-                pipelineRunExecutionJobs.size()).stream()
-                .map(PipelineRunExecutionJob::getId)
+    private List<PipelineRunStatus> executeStage(PipelineRunLaunchRequest launchRequest, List<JobLaunchSlot> pendingStageSlots) {
+        Executor executor = pipelineTaskExecutor::execute;
+        List<CompletableFuture<PipelineRunStatus>> futures = pendingStageSlots.stream()
+                .map(jobLaunchSlot -> CompletableFuture.supplyAsync(
+                        () -> executeJobSlot(launchRequest.pipelineId(), launchRequest.pipelineRunExecution(), jobLaunchSlot),
+                        executor))
                 .toList();
-        pipelineRunLifecycleService.markExecutionJobsNotRun(remainingExecutionJobIds);
+
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+        return futures.stream()
+                .map(CompletableFuture::join)
+                .toList();
+    }
+
+    private PipelineRunStatus executeJobSlot(Long pipelineId, PipelineRunExecution pipelineRunExecution, JobLaunchSlot jobLaunchSlot) {
+        SyncJobContext syncJobContext = null;
+        boolean closeSyncJobContext = true;
+        try {
+            syncJobContext = syncJobContextFactory.initialSyncJobContext(jobLaunchSlot.syncJob(), executionRecordService);
+            Job job = syncJobFactory.createBatchJob(syncJobContext);
+            JobParameters jobParameters = buildJobParameters(
+                    pipelineId,
+                    jobLaunchSlot.syncJob(),
+                    jobLaunchSlot.pipelineRunJob(),
+                    pipelineRunExecution,
+                    jobLaunchSlot.pipelineRunExecutionJob(),
+                    jobLaunchSlot.jobSequence());
+
+            JobExecution jobExecution = jobLauncher.run(job, jobParameters);
+            closeSyncJobContext = false;
+            return PipelineRunStatus.from(jobExecution.getStatus());
+        } catch (Exception e) {
+            logger.error("pipeline {} stopped on job {}: {}",
+                    pipelineId,
+                    jobLaunchSlot.syncJob().getJobName(),
+                    e.getMessage());
+            pipelineRunLifecycleService.markLaunchFailed(
+                    jobLaunchSlot.pipelineRunJob().getPipelineRunId(),
+                    pipelineRunExecution.getId(),
+                    jobLaunchSlot.pipelineRunJob().getId(),
+                    jobLaunchSlot.pipelineRunExecutionJob().getId());
+            return PipelineRunStatus.FAILED;
+        } finally {
+            if (closeSyncJobContext && syncJobContext != null) {
+                syncJobContext.close();
+            }
+        }
     }
 
     /**
@@ -274,32 +313,96 @@ public class PipelineRunLaunchService {
         return true;
     }
 
+    private Map<Integer, List<JobLaunchSlot>> buildStageLaunchPlan(PipelineRunLaunchRequest launchRequest) {
+        Map<Integer, List<JobLaunchSlot>> stageLaunchPlan = new LinkedHashMap<>();
+        for (int jobSequence = 0; jobSequence < launchRequest.syncJobs().size(); jobSequence++) {
+            PipelineRunJob pipelineRunJob = launchRequest.pipelineRunJobs().get(jobSequence);
+            stageLaunchPlan.computeIfAbsent(pipelineRunJob.getStageSequenceOrder(), ignored -> new ArrayList<>())
+                    .add(new JobLaunchSlot(
+                            launchRequest.syncJobs().get(jobSequence),
+                            pipelineRunJob,
+                            launchRequest.pipelineRunExecutionJobs().get(jobSequence),
+                            jobSequence));
+        }
+        return stageLaunchPlan;
+    }
+
+    private List<PipelineRunExecutionJob> refreshExecutionJobs(List<JobLaunchSlot> stageSlots) {
+        return pipelineRunExecutionJobRepo.findAllById(
+                stageSlots.stream()
+                        .map(jobLaunchSlot -> jobLaunchSlot.pipelineRunExecutionJob().getId())
+                        .toList());
+    }
+
+    private void markFutureStagesNotRun(Map<Integer, List<JobLaunchSlot>> stageLaunchPlan, int currentStageSequenceOrder) {
+        List<Long> pendingExecutionJobIds = stageLaunchPlan.entrySet().stream()
+                .filter(stageEntry -> stageEntry.getKey() > currentStageSequenceOrder)
+                .flatMap(stageEntry -> stageEntry.getValue().stream())
+                .map(JobLaunchSlot::pipelineRunExecutionJob)
+                .map(PipelineRunExecutionJob::getId)
+                .toList();
+        pipelineRunLifecycleService.markExecutionJobsNotRun(pendingExecutionJobIds);
+    }
+
     /**
-     * Finds the currently running Spring Batch execution id for one pipeline run
+     * Waits briefly for lifecycle projections to reflect the terminal execution
+     * state before a synchronous controller response is rendered.
+     *
+     * @param pipelineRunExecutionId pipeline run execution id
+     */
+    public void awaitExecutionProjection(Long pipelineRunExecutionId) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (System.nanoTime() < deadline) {
+            entityManager.clear();
+            PipelineRunExecution latestExecution = pipelineRunExecutionRepo.findById(pipelineRunExecutionId)
+                    .orElse(null);
+            if (latestExecution == null || pipelineRunControlPolicy.isTerminalStatus(latestExecution.getStatus())) {
+                return;
+            }
+
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Finds the currently running Spring Batch execution ids for one pipeline run
      * execution.
      *
      * @param pipelineRunId pipeline run id
      * @param pipelineRunExecutionId pipeline run execution id
-     * @return running Spring Batch execution id, or {@code null} when not found
+     * @return running Spring Batch execution ids
      */
-    private Long findRunningBatchExecutionId(Long pipelineRunId, Long pipelineRunExecutionId) {
-        Long currentExecutionId = pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(pipelineRunExecutionId).stream()
+    private List<Long> findRunningBatchExecutionIds(Long pipelineRunId, Long pipelineRunExecutionId) {
+        List<Long> currentExecutionIds = pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(pipelineRunExecutionId).stream()
                 .filter(pipelineRunExecutionJob -> PipelineRunStatus.STARTED.equals(pipelineRunExecutionJob.getStatus()))
                 .map(PipelineRunExecutionJob::getLastJobExecutionId)
                 .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-        if (currentExecutionId != null) {
-            return currentExecutionId;
+                .distinct()
+                .toList();
+        if (!currentExecutionIds.isEmpty()) {
+            return currentExecutionIds;
         }
 
-        return pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId).stream()
+        return pipelineRunJobRepo.findByPipelineRunIdOrderByStageSequenceOrderAscJobSequenceOrderAsc(pipelineRunId).stream()
                 .map(PipelineRunJob::getJobName)
+                .distinct()
                 .flatMap(jobName -> jobExplorer.findRunningJobExecutions(jobName).stream())
                 .filter(jobExecution -> matchesPipelineExecution(jobExecution, pipelineRunId, pipelineRunExecutionId))
                 .map(JobExecution::getId)
-                .max(Comparator.naturalOrder())
-                .orElse(null);
+                .sorted(Comparator.naturalOrder())
+                .toList();
+    }
+
+    private boolean isTerminalFailure(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.FAILED
+                || pipelineRunStatus == PipelineRunStatus.STOPPED
+                || pipelineRunStatus == PipelineRunStatus.ABANDONED
+                || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
     }
 
     /**
@@ -317,5 +420,12 @@ public class PipelineRunLaunchService {
                 .getLong(PipelineRunJobParameterKeys.PIPELINE_RUN_EXECUTION_ID);
         return Objects.equals(pipelineRunId, jobPipelineRunId)
                 && Objects.equals(pipelineRunExecutionId, jobPipelineRunExecutionId);
+    }
+
+    private record JobLaunchSlot(
+            SyncJobDefinition syncJob,
+            PipelineRunJob pipelineRunJob,
+            PipelineRunExecutionJob pipelineRunExecutionJob,
+            int jobSequence) {
     }
 }

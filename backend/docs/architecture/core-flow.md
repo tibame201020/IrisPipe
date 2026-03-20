@@ -72,7 +72,10 @@ Import is now only an alternative input mode.
    - initial `PipelineRunExecution`
    - initial `PipelineRunExecutionJob`
 4. `PipelineRunSnapshotService` materializes stable execution names and persists snapshot JSON
-5. `PipelineRunLaunchService` bridges into Spring Batch execution
+5. `PipelineRunLaunchService` groups logical jobs by `stageSequenceOrder`
+6. Jobs in the same stage are launched in parallel
+7. The launcher waits on the stage barrier before moving to the next stage
+8. If one stage fails or is stopped, future stages are projected as `NOT_RUN`
 
 Fresh execute is the only runtime path that reads the latest stored pipeline config.
 
@@ -81,13 +84,13 @@ Fresh execute is the only runtime path that reads the latest stored pipeline con
 1. Resolve the logical run in the current workspace
 2. Load the persisted snapshot for that run
 3. Load the latest execution attempt
-4. Determine the resume target:
-   - failed or stopped node
-   - or first `NOT_RUN` node when stop landed between jobs
+4. Determine the first incomplete stage:
+   - first stage containing `FAILED`, `STOPPED`, or `NOT_RUN` jobs
 5. Create a new `PipelineRunExecution(kind = RESUME)`
-6. Create new execution-job rows
-7. Mark upstream nodes as `SKIPPED`
-8. Relaunch from the resolved resume point
+6. Create new execution-job rows for the whole logical run
+7. Mark completed upstream jobs as `SKIPPED`
+8. Mark resumable jobs in the target stage as `PENDING`
+9. Relaunch only from the resolved stage barrier
 
 Resume semantics per node:
 
@@ -103,7 +106,7 @@ Resume semantics per node:
 3. Copy the source snapshot
 4. Create new logical run jobs
 5. Create initial execution and execution-job rows
-6. Relaunch sequence-first from the beginning
+6. Relaunch from the beginning using stage barriers and intra-stage parallelism
 
 Rerun never reads the latest pipeline config.
 
@@ -113,8 +116,9 @@ Rerun never reads the latest pipeline config.
 2. Validate latest execution is `STARTING`, `STARTED`, or `STOPPING`
 3. Project latest execution to `STOPPING`
 4. If a live Spring Batch job execution exists, request stop through `JobOperator.stop(...)`
-5. Listener-driven lifecycle updates converge to final `STOPPED`
-6. Pending downstream nodes in the stopped attempt become `NOT_RUN`
+5. All in-flight jobs in the active stage receive a stop request
+6. Listener-driven lifecycle updates converge to final `STOPPED`
+7. Pending jobs in future stages become `NOT_RUN`
 
 Stop is cooperative, not force-kill.
 

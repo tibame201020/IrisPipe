@@ -80,6 +80,8 @@ public class PipelineDefinitionAggregatePersistenceService {
             PipelineJobDefinition jobDefinition = new PipelineJobDefinition();
             jobDefinition.setPipelineId(pipelineId);
             jobDefinition.setSequenceOrder(jobOrder);
+            jobDefinition.setStageName(syncJob.getStageName());
+            jobDefinition.setStageSequenceOrder(syncJob.getStageSequenceOrder());
             jobDefinition.setJobName(syncJob.getJobName());
             jobDefinition.setFetchSize(setting.fetchSize());
             jobDefinition.setBatchSize(setting.batchSize());
@@ -98,7 +100,8 @@ public class PipelineDefinitionAggregatePersistenceService {
      * @param pipelineId target pipeline id
      */
     public void deletePipelineChildren(Long pipelineId) {
-        List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo.findByPipelineIdOrderBySequenceOrder(pipelineId);
+        List<PipelineJobDefinition> jobDefinitions = pipelineJobDefinitionRepo
+                .findByPipelineIdOrderByStageSequenceOrderAscSequenceOrderAsc(pipelineId);
         if (jobDefinitions.isEmpty()) {
             return;
         }

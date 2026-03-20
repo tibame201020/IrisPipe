@@ -116,8 +116,9 @@ public class PipelineConfigService {
      */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo createSyncConfig(Long folderId, String pipelineName,
+            List<String> stages,
             List<SyncJobDefinition> syncJobs) {
-        PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, syncJobs);
+        PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, stages, syncJobs);
         Long pipelineId = pipelineConfigCommandService.createConfig(command);
         return getPipelineConfigInfo(pipelineId);
     }
@@ -133,9 +134,10 @@ public class PipelineConfigService {
      */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo updateSyncConfig(Long pipelineId, Long folderId, String pipelineName,
+            List<String> stages,
             List<SyncJobDefinition> syncJobs) {
         PipelineDefinition pipeline = getPipelineDefinition(pipelineId);
-        PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, syncJobs);
+        PipelineConfigCommandService.PipelineConfigCommand command = buildJsonConfigCommand(folderId, pipelineName, stages, syncJobs);
         pipelineConfigCommandService.replaceConfig(pipeline, command);
         return getPipelineConfigInfo(pipelineId);
     }
@@ -153,8 +155,9 @@ public class PipelineConfigService {
      */
     @Transactional
     public SyncConfigDTO.ConfigPipelineInfo patchSyncConfig(Long pipelineId, Long folderId, String pipelineName,
+            List<String> stages,
             List<SyncJobDefinition> syncJobs) {
-        return updateSyncConfig(pipelineId, folderId, pipelineName, syncJobs);
+        return updateSyncConfig(pipelineId, folderId, pipelineName, stages, syncJobs);
     }
 
     /**
@@ -212,9 +215,10 @@ public class PipelineConfigService {
      * @return normalized command payload for create or replace flows
      */
     private PipelineConfigCommandService.PipelineConfigCommand buildJsonConfigCommand(Long folderId, String pipelineName,
+            List<String> stages,
             List<SyncJobDefinition> syncJobs) {
         String normalizedPipelineName = pipelineConfigRequestPolicy.normalizePipelineName(pipelineName);
-        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(syncJobs);
+        List<SyncJobDefinition> validatedSyncJobs = pipelineConfigRequestPolicy.validateSyncJobs(stages, syncJobs);
         Long targetFolderId = pipelineFolderService.resolveFolderIdOrRoot(folderId);
         String contentHash = pipelineConfigImportService.renderContentHash(validatedSyncJobs);
         return new PipelineConfigCommandService.PipelineConfigCommand(

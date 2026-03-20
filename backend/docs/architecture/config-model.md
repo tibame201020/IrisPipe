@@ -47,6 +47,12 @@ Key semantics:
 - `pipelineName` is the user-facing identifier
 - uniqueness is `(workspace, folder, pipelineName)`
 - file path and file name are no longer part of pipeline identity
+- pipeline jobs may now belong to ordered stages through:
+  - `stageName`
+  - `stageSequenceOrder`
+- legacy linear configs remain valid:
+  - missing stage metadata is materialized as implicit one-job-per-stage order
+  - public read models hide those implicit stage names
 
 ### Normalized Child Tables
 
@@ -105,6 +111,8 @@ Logical job nodes for one run.
 
 Stores:
 
+- `stage_name`
+- `stage_sequence_order`
 - `job_sequence_order`
 - `job_name`
 - `atomic_level`
@@ -133,6 +141,9 @@ Stores:
 - `last_job_execution_id`
 - timestamps
 
+Execution-job rows still represent one logical run job inside one execution attempt.
+Stage membership remains on the logical run job projection, not the execution-job row itself.
+
 ### `iris_watermark_record`
 
 Persistent execution watermark state keyed by:
@@ -159,6 +170,14 @@ Snapshot behavior is explicit and stable:
 
 This protects resume and rerun from config drift.
 
+Snapshot payload now also preserves:
+
+- `stageName`
+- `stageSequenceOrder`
+- `sequenceOrder`
+
+This keeps stage-aware resume deterministic even after the stored pipeline config changes.
+
 ## 7. Projection and History
 
 Runtime persistence intentionally mixes projection and history:
@@ -172,6 +191,7 @@ As a result:
 
 - run summary stays lightweight
 - run detail can expose both latest jobs and ordered `attempts`
+- stage metadata remains available for UI projection without forcing the public API to expose a full arbitrary graph model
 
 ## 8. Delete Rules
 

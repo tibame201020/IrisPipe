@@ -137,6 +137,8 @@ public class PipelineRunSnapshotService {
                 .toList();
 
         return new SyncJobDefinition(
+                syncJob.getStageName(),
+                syncJob.getStageSequenceOrder(),
                 syncJob.getJobName(),
                 materializedExecutions,
                 copySetting(syncJob.getSetting()),

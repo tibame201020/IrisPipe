@@ -16,6 +16,5 @@ record PipelineRunLaunchRequest(
         List<SyncJobDefinition> syncJobs,
         PipelineRunExecution pipelineRunExecution,
         List<PipelineRunJob> pipelineRunJobs,
-        List<PipelineRunExecutionJob> pipelineRunExecutionJobs,
-        int startJobSequence) {
+        List<PipelineRunExecutionJob> pipelineRunExecutionJobs) {
 }

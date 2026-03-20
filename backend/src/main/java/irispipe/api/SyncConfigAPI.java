@@ -83,6 +83,7 @@ public class SyncConfigAPI {
         return pipelineConfigService.createSyncConfig(
                 configPipelineUpsertRequest.folderId(),
                 configPipelineUpsertRequest.pipelineName(),
+                configPipelineUpsertRequest.stages(),
                 configPipelineUpsertRequest.jobs());
     }
 
@@ -121,6 +122,7 @@ public class SyncConfigAPI {
                 pipelineId,
                 configPipelineUpsertRequest.folderId(),
                 configPipelineUpsertRequest.pipelineName(),
+                configPipelineUpsertRequest.stages(),
                 configPipelineUpsertRequest.jobs());
     }
 
@@ -140,6 +142,7 @@ public class SyncConfigAPI {
                 pipelineId,
                 configPipelineUpsertRequest.folderId(),
                 configPipelineUpsertRequest.pipelineName(),
+                configPipelineUpsertRequest.stages(),
                 configPipelineUpsertRequest.jobs());
     }
 

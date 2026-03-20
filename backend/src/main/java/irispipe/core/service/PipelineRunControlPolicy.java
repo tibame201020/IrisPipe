@@ -58,27 +58,30 @@ public class PipelineRunControlPolicy {
      * @param latestExecutionJobsByRunJobId latest execution jobs keyed by run job id
      * @return zero-based job sequence that should be launched on resume
      */
-    public int findResumeJobSequence(Long pipelineRunId, PipelineRunExecution latestExecution,
+    public int findResumeStageSequenceOrder(Long pipelineRunId, PipelineRunExecution latestExecution,
             List<PipelineRunJob> pipelineRunJobs,
             Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId) {
-        Integer firstNotRunJobSequence = null;
-        for (int jobSequence = 0; jobSequence < pipelineRunJobs.size(); jobSequence++) {
-            PipelineRunExecutionJob executionJob = latestExecutionJobsByRunJobId.get(pipelineRunJobs.get(jobSequence).getId());
-            if (executionJob != null && isTerminalFailure(executionJob.getStatus())) {
-                return jobSequence;
-            }
-            if (firstNotRunJobSequence == null
-                    && executionJob != null
-                    && PipelineRunStatus.NOT_RUN.equals(executionJob.getStatus())) {
-                firstNotRunJobSequence = jobSequence;
+        Integer firstIncompleteStageSequenceOrder = null;
+        for (PipelineRunJob pipelineRunJob : pipelineRunJobs) {
+            PipelineRunExecutionJob executionJob = latestExecutionJobsByRunJobId.get(pipelineRunJob.getId());
+            if (executionJob != null && !isSuccessfulTerminalStatus(executionJob.getStatus())) {
+                firstIncompleteStageSequenceOrder = pipelineRunJob.getStageSequenceOrder();
+                break;
             }
         }
 
-        if (PipelineRunStatus.STOPPED.equals(latestExecution.getStatus()) && firstNotRunJobSequence != null) {
-            return firstNotRunJobSequence;
+        if (firstIncompleteStageSequenceOrder != null) {
+            return firstIncompleteStageSequenceOrder;
         }
 
-        throw new IllegalArgumentException("Pipeline run has no failed job to resume: " + pipelineRunId);
+        if (PipelineRunStatus.STOPPED.equals(latestExecution.getStatus())) {
+            return pipelineRunJobs.stream()
+                    .map(PipelineRunJob::getStageSequenceOrder)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Pipeline run has no failed stage to resume: " + pipelineRunId));
+        }
+
+        throw new IllegalArgumentException("Pipeline run has no failed stage to resume: " + pipelineRunId);
     }
 
     /**
@@ -87,9 +90,26 @@ public class PipelineRunControlPolicy {
      * @param pipelineRunId pipeline run id used in validation errors
      * @param pipelineRunJob target logical run job
      */
-    public void validateResumeStrategy(Long pipelineRunId, PipelineRunJob pipelineRunJob) {
-        if (!AtomicLevel.JOB.equals(pipelineRunJob.getAtomicLevel())
-                && !AtomicLevel.CHUNK.equals(pipelineRunJob.getAtomicLevel())) {
+    public void validateResumeStrategy(Long pipelineRunId,
+            List<PipelineRunJob> pipelineRunJobs,
+            Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId,
+            int resumeStageSequenceOrder) {
+        List<PipelineRunJob> resumablePipelineRunJobs = pipelineRunJobs.stream()
+                .filter(pipelineRunJob -> pipelineRunJob.getStageSequenceOrder() == resumeStageSequenceOrder)
+                .filter(pipelineRunJob -> {
+                    PipelineRunExecutionJob executionJob = latestExecutionJobsByRunJobId.get(pipelineRunJob.getId());
+                    return executionJob != null && !isSuccessfulTerminalStatus(executionJob.getStatus());
+                })
+                .toList();
+
+        if (resumablePipelineRunJobs.isEmpty()) {
+            throw new IllegalArgumentException("Pipeline run has no resumable jobs in target stage: " + pipelineRunId);
+        }
+
+        boolean unsupportedAtomicLevel = resumablePipelineRunJobs.stream()
+                .anyMatch(pipelineRunJob -> !AtomicLevel.JOB.equals(pipelineRunJob.getAtomicLevel())
+                        && !AtomicLevel.CHUNK.equals(pipelineRunJob.getAtomicLevel()));
+        if (unsupportedAtomicLevel) {
             throw new IllegalArgumentException(
                     "Pipeline resume currently supports only failed JOB or CHUNK nodes: " + pipelineRunId);
         }
@@ -137,6 +157,17 @@ public class PipelineRunControlPolicy {
     }
 
     /**
+     * Returns whether one status is terminal for an execution or run.
+     *
+     * @param pipelineRunStatus run status to inspect
+     * @return {@code true} when the status is terminal
+     */
+    public boolean isTerminalStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || isTerminalFailure(pipelineRunStatus);
+    }
+
+    /**
      * Returns whether one status should be treated as a terminal failure for
      * resume decisions.
      *
@@ -148,6 +179,11 @@ public class PipelineRunControlPolicy {
                 || pipelineRunStatus == PipelineRunStatus.STOPPED
                 || pipelineRunStatus == PipelineRunStatus.ABANDONED
                 || pipelineRunStatus == PipelineRunStatus.UNKNOWN;
+    }
+
+    private boolean isSuccessfulTerminalStatus(PipelineRunStatus pipelineRunStatus) {
+        return pipelineRunStatus == PipelineRunStatus.COMPLETED
+                || pipelineRunStatus == PipelineRunStatus.SKIPPED;
     }
 
     /**

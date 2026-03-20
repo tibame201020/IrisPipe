@@ -2,6 +2,7 @@ const rawNamespace = (__ENV.IRISPIPE_K6_NAMESPACE || '').trim();
 const normalizedNamespace = rawNamespace
     ? rawNamespace.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase()
     : '';
+const overriddenH2Url = (__ENV.IRISPIPE_H2_DB_URL || '').trim();
 
 const tableIdentifierPattern = /\b(?:test_[A-Za-z0-9_]+|source_composite|dest_composite|source_watermark|dest_watermark)\b/g;
 const executionNamePattern = /\b(?:k6_[A-Za-z0-9_]+|phase12_[A-Za-z0-9_]+)\b/g;
@@ -36,6 +37,14 @@ export function namespaceSql(sql) {
         .replace(executionNamePattern, (identifier) => namespacedExecutionName(identifier));
 }
 
+function overrideDatabaseUrl(url) {
+    if (!overriddenH2Url || !url) {
+        return url;
+    }
+
+    return /^jdbc:h2:/i.test(url) ? overriddenH2Url : url;
+}
+
 function namespaceExecutionYamlLine(line) {
     const executionNameMatch = line.match(/^(\s*name:\s*)(['"]?)([^'"\r\n]+)\2(\s*)$/);
     if (executionNameMatch) {
@@ -52,6 +61,11 @@ function namespaceExecutionYamlLine(line) {
         return `${destTableMatch[1]}${destTableMatch[2]}${namespacedTableName(destTableMatch[3].trim())}${destTableMatch[2]}${destTableMatch[4]}`;
     }
 
+    const urlMatch = line.match(/^(\s*url:\s*)(['"]?)([^'"\r\n]+)\2(\s*)$/);
+    if (urlMatch) {
+        return `${urlMatch[1]}${urlMatch[2]}${overrideDatabaseUrl(urlMatch[3].trim())}${urlMatch[2]}${urlMatch[4]}`;
+    }
+
     return line;
 }
 
@@ -64,10 +78,10 @@ function namespaceYamlContent(fileContent) {
 
 export function namespaceJobs(jobs = []) {
     if (!hasNamespace() || !Array.isArray(jobs)) {
-        return jobs;
+        return applyDatabaseUrlOverrideToJobs(jobs);
     }
 
-    return jobs.map((job) => ({
+    return applyDatabaseUrlOverrideToJobs(jobs.map((job) => ({
         ...job,
         executions: Array.isArray(job.executions)
             ? job.executions.map((execution) => ({
@@ -77,11 +91,59 @@ export function namespaceJobs(jobs = []) {
                 destTable: execution.destTable ? namespacedTableName(execution.destTable) : execution.destTable,
             }))
             : job.executions,
+    })));
+}
+
+function applyDatabaseUrlOverrideToJobs(jobs = []) {
+    if (!Array.isArray(jobs)) {
+        return jobs;
+    }
+
+    return jobs.map((job) => ({
+        ...job,
+        database: job.database
+            ? {
+                ...job.database,
+                source: job.database.source
+                    ? { ...job.database.source, url: overrideDatabaseUrl(job.database.source.url) }
+                    : job.database.source,
+                dest: job.database.dest
+                    ? { ...job.database.dest, url: overrideDatabaseUrl(job.database.dest.url) }
+                    : job.database.dest,
+            }
+            : job.database,
     }));
 }
 
 export function namespaceImportedConfigContent(fileContent, format = null) {
     if (!hasNamespace() || !fileContent) {
+        return overrideImportedDatabaseUrls(fileContent, format);
+    }
+
+    const trimmedContent = fileContent.trim();
+    const isJsonPayload = format === 'json' || trimmedContent.startsWith('[') || trimmedContent.startsWith('{');
+
+    if (isJsonPayload) {
+        const parsed = JSON.parse(fileContent);
+        if (Array.isArray(parsed)) {
+            return JSON.stringify(namespaceJobs(parsed), null, 2);
+        }
+
+        if (parsed && Array.isArray(parsed.jobs)) {
+            return JSON.stringify({
+                ...parsed,
+                jobs: namespaceJobs(parsed.jobs),
+            }, null, 2);
+        }
+
+        return JSON.stringify(parsed, null, 2);
+    }
+
+    return namespaceYamlContent(fileContent);
+}
+
+function overrideImportedDatabaseUrls(fileContent, format = null) {
+    if (!overriddenH2Url || !fileContent) {
         return fileContent;
     }
 
@@ -90,7 +152,16 @@ export function namespaceImportedConfigContent(fileContent, format = null) {
 
     if (isJsonPayload) {
         const parsed = JSON.parse(fileContent);
-        return JSON.stringify(namespaceJobs(parsed), null, 2);
+        if (Array.isArray(parsed)) {
+            return JSON.stringify(applyDatabaseUrlOverrideToJobs(parsed), null, 2);
+        }
+        if (parsed && Array.isArray(parsed.jobs)) {
+            return JSON.stringify({
+                ...parsed,
+                jobs: applyDatabaseUrlOverrideToJobs(parsed.jobs),
+            }, null, 2);
+        }
+        return JSON.stringify(parsed, null, 2);
     }
 
     return namespaceYamlContent(fileContent);

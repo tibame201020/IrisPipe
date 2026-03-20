@@ -170,6 +170,12 @@ public class PipelineRunLifecycleService {
         pipelineRunJobRepo.save(pipelineRunJob);
         pipelineRunObservationService.publishJobObservation(pipelineRunJob, pipelineRunExecutionJob);
 
+        if (pipelineRunStatusPolicy.isTerminalFailure(pipelineRunExecution.getStatus())) {
+            pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
+            pipelineRunRepo.save(pipelineRun);
+            return;
+        }
+
         if (pipelineRunStatusPolicy.isTerminalFailure(jobStatus)) {
             pipelineRunExecution.setStatus(jobStatus);
             pipelineRunExecution.setEndTime(jobExecution.getEndTime() != null ? jobExecution.getEndTime() : now);

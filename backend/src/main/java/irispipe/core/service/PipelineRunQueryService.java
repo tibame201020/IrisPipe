@@ -151,7 +151,8 @@ public class PipelineRunQueryService {
     public SyncPipelineDTO.PipelineRunDetailInfo getPipelineRunDetail(Long pipelineRunId) {
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
         PipelineDefinition pipelineDefinition = getPipelineDefinition(pipelineRun.getPipelineId());
-        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId);
+        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo
+                .findByPipelineRunIdOrderByStageSequenceOrderAscJobSequenceOrderAsc(pipelineRunId);
         List<PipelineRunExecution> pipelineRunExecutions = pipelineRunExecutionRepo
                 .findByPipelineRunIdOrderByExecutionNoAsc(pipelineRunId);
         PipelineRunExecution latestExecution = getLatestExecution(pipelineRun, pipelineRunExecutions);

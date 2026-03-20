@@ -12,5 +12,5 @@ import irispipe.infrastructure.entity.runtime.PipelineRunJob;
  */
 @Repository
 public interface PipelineRunJobRepo extends JpaRepository<PipelineRunJob, Long> {
-    List<PipelineRunJob> findByPipelineRunIdOrderByJobSequenceOrder(Long pipelineRunId);
+    List<PipelineRunJob> findByPipelineRunIdOrderByStageSequenceOrderAscJobSequenceOrderAsc(Long pipelineRunId);
 }

@@ -34,6 +34,12 @@ public class PipelineJobDefinition {
     @Column(name = "sequence_order")
     private Integer sequenceOrder;
 
+    @Column(name = "stage_name")
+    private String stageName;
+
+    @Column(name = "stage_sequence_order")
+    private Integer stageSequenceOrder;
+
     @Column(name = "job_name")
     private String jobName;
 

@@ -13,5 +13,5 @@ import irispipe.infrastructure.entity.config.PipelineJobDefinition;
 @Repository
 public interface PipelineJobDefinitionRepo extends JpaRepository<PipelineJobDefinition, Long> {
 
-    List<PipelineJobDefinition> findByPipelineIdOrderBySequenceOrder(Long pipelineId);
+    List<PipelineJobDefinition> findByPipelineIdOrderByStageSequenceOrderAscSequenceOrderAsc(Long pipelineId);
 }

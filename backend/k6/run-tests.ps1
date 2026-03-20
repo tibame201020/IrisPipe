@@ -149,8 +149,8 @@ $tests = foreach ($testKey in $selectedTestKeys) {
 Write-Host "Selected suites: $($requestedSuites -join ', ')"
 Write-Host "Selected tests: $($tests.Count)"
 
-$PORT = "8080"
-$IRISPIPE_BASE_URL = "http://localhost:$PORT/api/v1"
+$PORT = if ($env:IRISPIPE_PORT) { $env:IRISPIPE_PORT } else { "8080" }
+$IRISPIPE_BASE_URL = if ($env:IRISPIPE_BASE_URL) { $env:IRISPIPE_BASE_URL } else { "http://localhost:$PORT/api/v1" }
 $env:IRISPIPE_BASE_URL = $IRISPIPE_BASE_URL
 
 Write-Host "[WAITING] Checking if backend is running on $IRISPIPE_BASE_URL ..."

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +49,8 @@ public class PipelineExecutionService {
     private final PipelineRunCommandService pipelineRunCommandService;
     private final PipelineRunControlPolicy pipelineRunControlPolicy;
     private final PipelineRunLaunchService pipelineRunLaunchService;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /**
      * Creates the execution facade with repositories, workspace resolution, and
@@ -151,16 +155,21 @@ public class PipelineExecutionService {
         pipelineRunControlPolicy.validateResumablePipelineRun(pipelineRunId, latestExecution);
 
         List<SyncJobDefinition> snapshotSyncJobs = pipelineRunSnapshotService.getSnapshotSyncJobs(pipelineRunId);
-        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId);
+        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo
+                .findByPipelineRunIdOrderByStageSequenceOrderAscJobSequenceOrderAsc(pipelineRunId);
         pipelineRunControlPolicy.validatePipelineRunTopology(pipelineRunId, snapshotSyncJobs, pipelineRunJobs);
 
         Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId = getExecutionJobsByRunJobId(latestExecution.getId());
-        int resumeJobSequence = pipelineRunControlPolicy.findResumeJobSequence(
+        int resumeStageSequenceOrder = pipelineRunControlPolicy.findResumeStageSequenceOrder(
                 pipelineRunId,
                 latestExecution,
                 pipelineRunJobs,
                 latestExecutionJobsByRunJobId);
-        pipelineRunControlPolicy.validateResumeStrategy(pipelineRunId, pipelineRunJobs.get(resumeJobSequence));
+        pipelineRunControlPolicy.validateResumeStrategy(
+                pipelineRunId,
+                pipelineRunJobs,
+                latestExecutionJobsByRunJobId,
+                resumeStageSequenceOrder);
 
         PipelineRunExecution pipelineRunExecution = pipelineRunCommandService.createPipelineRunExecution(
                 pipelineRun,
@@ -171,7 +180,7 @@ public class PipelineExecutionService {
                         pipelineRunExecution.getId(),
                         pipelineRunJobs,
                         latestExecutionJobsByRunJobId,
-                        resumeJobSequence);
+                        resumeStageSequenceOrder);
 
         pipelineRunLaunchService.launch(
                 new PipelineRunLaunchRequest(
@@ -179,9 +188,11 @@ public class PipelineExecutionService {
                         snapshotSyncJobs,
                         pipelineRunExecution,
                         pipelineRunJobs,
-                        pipelineRunExecutionJobs,
-                        resumeJobSequence),
+                        pipelineRunExecutionJobs),
                 requestedAsync);
+        if (!requestedAsync) {
+            pipelineRunLaunchService.awaitExecutionProjection(pipelineRunExecution.getId());
+        }
         return renderSummary(pipelineDefinition, pipelineRunId);
     }
 
@@ -245,9 +256,11 @@ public class PipelineExecutionService {
                         syncJobs,
                         pipelineRunExecution,
                         pipelineRunJobs,
-                        pipelineRunExecutionJobs,
-                        0),
+                        pipelineRunExecutionJobs),
                 requestedAsync);
+        if (!requestedAsync) {
+            pipelineRunLaunchService.awaitExecutionProjection(pipelineRunExecution.getId());
+        }
         return renderSummary(pipelineDefinition, pipelineRun.getId());
     }
 
@@ -312,10 +325,14 @@ public class PipelineExecutionService {
      * @return run summary for API responses
      */
     private SyncPipelineDTO.PipelineRunSummaryInfo renderSummary(PipelineDefinition pipelineDefinition, Long pipelineRunId) {
+        entityManager.clear();
+        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        PipelineRunExecution latestExecution = getLatestExecution(pipelineRun);
         return SyncPipelineDTO.PipelineRunSummaryInfo.render(
                 pipelineDefinition,
                 pipelineFolderService.renderPublicFolderId(pipelineDefinition.getFolderId()),
                 pipelineFolderService.buildFolderPath(pipelineDefinition.getFolderId()),
-                getPipelineRun(pipelineRunId));
+                pipelineRun,
+                latestExecution);
     }
 }

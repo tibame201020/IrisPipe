@@ -104,6 +104,8 @@ public class PipelineRunCommandService {
                     PipelineRunJob pipelineRunJob = new PipelineRunJob();
                     pipelineRunJob.setPipelineRunId(pipelineRunId);
                     pipelineRunJob.setJobSequenceOrder(jobSequence);
+                    pipelineRunJob.setStageName(syncJob.getStageName());
+                    pipelineRunJob.setStageSequenceOrder(syncJob.getStageSequenceOrder());
                     pipelineRunJob.setJobName(syncJob.getJobName());
                     pipelineRunJob.setAtomicLevel(syncJob.getSetting().atomicLevel());
                     pipelineRunJob.setStatus(PipelineRunStatus.PENDING);
@@ -188,25 +190,30 @@ public class PipelineRunCommandService {
     public List<PipelineRunExecutionJob> createResumePipelineRunExecutionJobs(Long pipelineRunExecutionId,
             List<PipelineRunJob> pipelineRunJobs,
             Map<Long, PipelineRunExecutionJob> latestExecutionJobsByRunJobId,
-            int resumeJobSequence) {
+            int resumeStageSequenceOrder) {
         LocalDateTime now = LocalDateTime.now();
         return java.util.stream.IntStream.range(0, pipelineRunJobs.size())
                 .mapToObj(jobSequence -> {
                     PipelineRunJob pipelineRunJob = pipelineRunJobs.get(jobSequence);
                     PipelineRunExecutionJob previousExecutionJob = latestExecutionJobsByRunJobId.get(pipelineRunJob.getId());
+                    boolean previouslyCompleted = previousExecutionJob != null
+                            && (PipelineRunStatus.COMPLETED.equals(previousExecutionJob.getStatus())
+                                    || PipelineRunStatus.SKIPPED.equals(previousExecutionJob.getStatus()));
+                    boolean shouldSkip = previouslyCompleted
+                            && pipelineRunJob.getStageSequenceOrder() <= resumeStageSequenceOrder;
 
                     PipelineRunExecutionJob pipelineRunExecutionJob = new PipelineRunExecutionJob();
                     pipelineRunExecutionJob.setPipelineRunExecutionId(pipelineRunExecutionId);
                     pipelineRunExecutionJob.setPipelineRunJobId(pipelineRunJob.getId());
-                    pipelineRunExecutionJob.setStatus(jobSequence < resumeJobSequence
+                    pipelineRunExecutionJob.setStatus(shouldSkip
                             ? PipelineRunStatus.SKIPPED
                             : PipelineRunStatus.PENDING);
-                    pipelineRunExecutionJob.setRootJobInstanceId(jobSequence < resumeJobSequence
+                    pipelineRunExecutionJob.setRootJobInstanceId(shouldSkip
                             ? previousExecutionJob == null
                                     ? pipelineRunJob.getRootJobInstanceId()
                                     : previousExecutionJob.getRootJobInstanceId()
                             : null);
-                    pipelineRunExecutionJob.setLastJobExecutionId(jobSequence < resumeJobSequence
+                    pipelineRunExecutionJob.setLastJobExecutionId(shouldSkip
                             ? previousExecutionJob == null
                                     ? pipelineRunJob.getLastJobExecutionId()
                                     : previousExecutionJob.getLastJobExecutionId()
@@ -233,7 +240,8 @@ public class PipelineRunCommandService {
         List<PipelineRunExecutionJob> pipelineRunExecutionJobs = pipelineRunExecutionIds.isEmpty()
                 ? List.of()
                 : pipelineRunExecutionJobRepo.findByPipelineRunExecutionIdIn(pipelineRunExecutionIds);
-        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo.findByPipelineRunIdOrderByJobSequenceOrder(pipelineRunId);
+        List<PipelineRunJob> pipelineRunJobs = pipelineRunJobRepo
+                .findByPipelineRunIdOrderByStageSequenceOrderAscJobSequenceOrderAsc(pipelineRunId);
 
         pipelineRunExecutionJobs.stream()
                 .map(PipelineRunExecutionJob::getLastJobExecutionId)
