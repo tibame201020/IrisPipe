@@ -20,7 +20,7 @@ export const options = singleRunOptions;
 const yamlContent = open('../testfiles/job-pipeline-stop-job.yml');
 const fileName = 'job-pipeline-observe-timeline.yml';
 const filePath = pipelineNameFor(fileName);
-const totalRows = Number.parseInt(__ENV.IRISPIPE_TIMELINE_ROWS || '1000000', 10);
+const totalRows = Number.parseInt(__ENV.IRISPIPE_TIMELINE_ROWS || '12000', 10);
 const expectedJobNames = ['k6_pipeline_stop_job_a', 'k6_pipeline_stop_job_b'];
 
 export function setup() {
@@ -58,7 +58,7 @@ export default function (data) {
         const { summary: initialSummary } = runPipelineAndGetSummary(data.pipelineId, true);
         initialRunId = initialSummary.id;
         waitForPipelineStatus(initialRunId, ['STARTED'], 30, 0.2);
-        sleep(1);
+        sleep(0.4);
 
         stopPipelineRunAndGetSummary(initialRunId);
         const initialStoppedSummary = waitForPipelineStatus(initialRunId, ['STOPPED'], 60, 0.5);
@@ -142,7 +142,7 @@ export default function (data) {
             'timeline rerun lineage query',
         );
         waitForPipelineStatus(rerunRunId, ['STARTED'], 30, 0.2);
-        sleep(1);
+        sleep(0.4);
 
         stopPipelineRunAndGetSummary(rerunRunId);
         const rerunStoppedSummary = waitForPipelineStatus(rerunRunId, ['STOPPED'], 60, 0.5);

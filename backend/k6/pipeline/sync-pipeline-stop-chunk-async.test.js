@@ -19,7 +19,7 @@ export const options = singleRunOptions;
 const yamlContent = open('../testfiles/job-pipeline-stop-chunk.yml');
 const fileName = 'job-pipeline-stop-chunk.yml';
 const filePath = pipelineNameFor(fileName);
-const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_ROWS || '2000000', 10);
+const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_ROWS || '15000', 10);
 const downstreamRows = 3;
 const resumeCompletionTimeoutSeconds = Number.parseInt(
     __ENV.IRISPIPE_STOP_CHUNK_RESUME_TIMEOUT_SECONDS || '180',

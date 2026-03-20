@@ -11,6 +11,13 @@ Write-Host "=========================================="
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
+try {
+    chcp 65001 > $null
+} catch {
+}
 $overallStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 $testCatalog = [ordered]@{

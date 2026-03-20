@@ -23,9 +23,9 @@ const yamlContentV2 = open('../testfiles/job-pipeline-control-flow-v2.yml');
 const fileName = 'job-pipeline-control-flow.yml';
 const filePath = pipelineNameFor(fileName);
 const firstRows = 1000;
-const middleRows = Number.parseInt(__ENV.IRISPIPE_CONTROL_FLOW_ROWS || '1500000', 10);
+const middleRows = Number.parseInt(__ENV.IRISPIPE_CONTROL_FLOW_ROWS || '15000', 10);
 const thirdRowsV1 = 3;
-const minPartialRows = Math.min(10000, middleRows - 1);
+const minPartialRows = Math.min(1000, middleRows - 1);
 
 export function setup() {
     executeStatementsOrFail([

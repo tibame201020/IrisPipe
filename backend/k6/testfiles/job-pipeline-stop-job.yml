@@ -5,8 +5,8 @@
       sql: select * from test_stop_job_source_a order by id asc
       destTable: test_stop_job_dest_a
   setting:
-    fetchSize: 1000
-    batchSize: 1000
+    fetchSize: 5
+    batchSize: 5
     atomicLevel: JOB
   database:
     source:

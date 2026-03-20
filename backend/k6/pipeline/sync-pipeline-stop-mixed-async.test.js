@@ -19,7 +19,7 @@ export const options = singleRunOptions;
 const yamlContent = open('../testfiles/job-pipeline-stop-mixed.yml');
 const fileName = 'job-pipeline-stop-mixed.yml';
 const filePath = pipelineNameFor(fileName);
-const middleRows = Number.parseInt(__ENV.IRISPIPE_STOP_MIXED_ROWS || '1500000', 10);
+const middleRows = Number.parseInt(__ENV.IRISPIPE_STOP_MIXED_ROWS || '15000', 10);
 const firstRows = 1000;
 const thirdRows = 3;
 

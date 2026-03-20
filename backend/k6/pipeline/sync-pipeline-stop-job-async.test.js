@@ -19,7 +19,7 @@ export const options = singleRunOptions;
 const yamlContent = open('../testfiles/job-pipeline-stop-job.yml');
 const fileName = 'job-pipeline-stop-job.yml';
 const filePath = pipelineNameFor(fileName);
-const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_JOB_ROWS || '1000000', 10);
+const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_JOB_ROWS || '12000', 10);
 const downstreamRows = 3;
 
 export function setup() {
@@ -52,7 +52,7 @@ export function setup() {
 export default function (data) {
     const { summary } = runPipelineAndGetSummary(data.pipelineId, true);
     const startedSummary = waitForPipelineStatus(summary.id, ['STARTED'], 30, 0.2);
-    sleep(1);
+    sleep(0.4);
 
     const { summary: stopRequestedSummary } = stopPipelineRunAndGetSummary(summary.id);
     const stoppedSummary = waitForPipelineStatus(summary.id, ['STOPPED'], 60, 0.5);

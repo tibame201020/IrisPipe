@@ -22,7 +22,7 @@ export const options = singleRunOptions;
 const yamlContent = open('../testfiles/job-pipeline-stop-job.yml');
 const fileName = 'job-pipeline-stop-job.yml';
 const filePath = pipelineNameFor(fileName);
-const totalRows = Number.parseInt(__ENV.IRISPIPE_DELETE_GUARD_ROWS || '1000000', 10);
+const totalRows = Number.parseInt(__ENV.IRISPIPE_DELETE_GUARD_ROWS || '12000', 10);
 
 function resetDeleteGuardTables() {
     executeStatementsOrFail([
@@ -127,7 +127,7 @@ export function setup() {
 export default function (data) {
     const { summary: inFlightRun } = runPipelineAndGetSummary(data.pipelineId, true);
     waitForPipelineStatus(inFlightRun.id, ['STARTED'], 30, 0.2);
-    sleep(1);
+    sleep(0.4);
 
     expectDeleteRejectedForInFlightRun(inFlightRun.id);
 
@@ -157,7 +157,7 @@ export default function (data) {
 
     const { summary: stoppedRun } = runPipelineAndGetSummary(data.pipelineId, true);
     waitForPipelineStatus(stoppedRun.id, ['STARTED'], 30, 0.2);
-    sleep(1);
+    sleep(0.4);
 
     stopPipelineRunAndGetSummary(stoppedRun.id);
     const finalStoppedSummary = waitForPipelineStatus(stoppedRun.id, ['STOPPED'], 60, 0.5);

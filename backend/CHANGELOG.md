@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [K6 Lifecycle Tuning] - 2026-03-20
+
+### Changed
+- **Stop/Resume Fixture Tuning**: Rebalanced the slow pipeline lifecycle K6 suites to rely less on oversized H2 fixtures and more on controlled `fetchSize` / `batchSize` settings for the specific job that needs to stay in-flight.
+- **Stable Local Defaults**: Reduced the default row counts for `stop-job`, `delete-guard`, `observe-timeline`, `stop-chunk`, `stop-mixed`, and `control-flow` scenarios while keeping stop/resume/rerun/timeline assertions intact.
+- **Cleaner Local K6 Output**: Updated `backend/k6/run-tests.ps1` to initialize UTF-8 console/output encoding so native `k6 run` output no longer renders banner garbage in PowerShell.
+
+### Verified
+- **Full Local Regression**: Re-ran the full sequential local K6 suite against a live backend and kept all 31 tests green while reducing total wall-clock time from roughly 20 minutes to roughly 1 minute.
+- **Workflow Parity**: Re-checked the local suite catalog against `.github/workflows/backend-k6-check.yml`; both still cover the same 10 K6 suites with no missing scenario groups.
+
+---
+
 ## [Local K6 Runner Stabilization] - 2026-03-20
 
 ### Changed
@@ -302,8 +315,6 @@ All notable changes to this project are documented in this file.
 - **Per-Suite K6 Namespacing**: Added local K6 fixture namespacing for test tables and watermark execution names so multiple suites can safely share one backend instance.
 
 ### Changed
-- **Local K6 Execution Model**: `backend/k6/run-tests.ps1` now parallelizes multi-suite runs locally, instead of forcing all suites through one long sequential pass.
-- **Runner Process Isolation**: Each local `k6 run` child process now binds an ephemeral REST API port, avoiding the default `localhost:6565` conflict during parallel execution.
 - **CI Suite Coverage**: Expanded GitHub Actions K6 matrix coverage to include `workspace`, `pipeline-operator-safety`, and `pipeline-observability`.
 - **Runner Consistency**: GitHub Actions now sets the same K6 namespace/pipeline prefix inputs used by the local runner, and its matrix now matches the full local suite catalog.
 

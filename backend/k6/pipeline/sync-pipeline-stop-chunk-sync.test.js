@@ -38,7 +38,7 @@ export const options = {
 const yamlContent = open('../testfiles/job-pipeline-stop-chunk.yml');
 const fileName = 'job-pipeline-stop-chunk.yml';
 const filePath = pipelineNameFor(`sync-${fileName}`);
-const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_SYNC_ROWS || '2000000', 10);
+const totalRows = Number.parseInt(__ENV.IRISPIPE_STOP_SYNC_ROWS || '15000', 10);
 const downstreamRows = 3;
 
 export function setup() {
