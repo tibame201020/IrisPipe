@@ -23,6 +23,7 @@ jobs:
     env:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
@@ -89,6 +90,7 @@ jobs:
       APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/irispipe-k6-${{ matrix.suite.id }}.pid
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
