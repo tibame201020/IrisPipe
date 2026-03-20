@@ -1,21 +1,26 @@
-- jobName: k6_test_config
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-  executions:
-    - type: INSERT
-      name: test_exec
-      sql: SELECT 1
-      destTable: test_table
+﻿stages:
+  - stage1
+
+jobs:
+  - jobName: k6_test_config
+    stage: stage1
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+    executions:
+      - type: INSERT
+        name: test_exec
+        sql: SELECT 1
+        destTable: test_table

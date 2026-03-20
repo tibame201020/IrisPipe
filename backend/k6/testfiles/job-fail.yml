@@ -1,26 +1,31 @@
-- jobName: k6_test_job_fail
-  executions:
-    - type: INSERT
-      name: k6_insert_fail
-      sql: select * from test_source where update_time > :_LAST_UPDATE order by update_time asc
-      destTable: test_dest
-      watermarkColumn: UPDATE_TIME
-      parameters:
-        - param: _LAST_UPDATE
-          type: timestamp
-          value: '1970-01-01 00:00:00'
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
+﻿stages:
+  - stage1
+
+jobs:
+  - jobName: k6_test_job_fail
+    stage: stage1
+    executions:
+      - type: INSERT
+        name: k6_insert_fail
+        sql: select * from test_source where update_time > :_LAST_UPDATE order by update_time asc
+        destTable: test_dest
+        watermarkColumn: UPDATE_TIME
+        parameters:
+          - param: _LAST_UPDATE
+            type: timestamp
+            value: '1970-01-01 00:00:00'
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

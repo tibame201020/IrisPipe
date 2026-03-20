@@ -1,24 +1,29 @@
-- jobName: k6_pipeline_rerun_job
-  executions:
-    - type: EXECUTE
-      name: k6_pipeline_rerun_truncate
-      sql: truncate table test_rerun_dest
-    - type: INSERT
-      name: k6_pipeline_rerun_insert
-      sql: select * from test_rerun_source where id <= 2 order by id asc
-      destTable: test_rerun_dest
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
+﻿stages:
+  - stage1
+
+jobs:
+  - jobName: k6_pipeline_rerun_job
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_rerun_truncate
+        sql: truncate table test_rerun_dest
+      - type: INSERT
+        name: k6_pipeline_rerun_insert
+        sql: select * from test_rerun_source where id <= 2 order by id asc
+        destTable: test_rerun_dest
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

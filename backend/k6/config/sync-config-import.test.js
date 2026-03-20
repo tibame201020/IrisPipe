@@ -26,38 +26,42 @@ const importedYamlFileName = 'test-config.yml';
 const importedJsonFileName = 'import-payload';
 const importedJsonJobName = `phase12_import_json_${seed}`;
 const importedJsonExecutionName = `phase12_import_exec_${seed}`;
-const importedJsonContent = JSON.stringify([
-    {
-        jobName: importedJsonJobName,
-        setting: {
-            fetchSize: 100,
-            batchSize: 100,
-            atomicLevel: 'JOB',
+const importedJsonContent = JSON.stringify({
+    stages: ['stage1'],
+    jobs: [
+        {
+            stage: 'stage1',
+            jobName: importedJsonJobName,
+            setting: {
+                fetchSize: 100,
+                batchSize: 100,
+                atomicLevel: 'JOB',
+            },
+            database: {
+                source: {
+                    driver: 'org.h2.Driver',
+                    url: 'jdbc:h2:./h2data/data',
+                    username: 'sa',
+                    password: 'sa',
+                },
+                dest: {
+                    driver: 'org.h2.Driver',
+                    url: 'jdbc:h2:./h2data/data',
+                    username: 'sa',
+                    password: 'sa',
+                },
+            },
+            executions: [
+                {
+                    type: 'INSERT',
+                    name: importedJsonExecutionName,
+                    sql: 'SELECT 1',
+                    destTable: 'test_table',
+                },
+            ],
         },
-        database: {
-            source: {
-                driver: 'org.h2.Driver',
-                url: 'jdbc:h2:./h2data/data',
-                username: 'sa',
-                password: 'sa',
-            },
-            dest: {
-                driver: 'org.h2.Driver',
-                url: 'jdbc:h2:./h2data/data',
-                username: 'sa',
-                password: 'sa',
-            },
-        },
-        executions: [
-            {
-                type: 'INSERT',
-                name: importedJsonExecutionName,
-                sql: 'SELECT 1',
-                destTable: 'test_table',
-            },
-        ],
-    },
-], null, 2);
+    ],
+}, null, 2);
 
 function findFolderNode(folders, folderName) {
     for (const folder of folders || []) {
@@ -146,6 +150,10 @@ export default function () {
             Array.isArray(body.jobs)
             && body.jobs.length === 1
             && body.jobs[0].jobName === importedJsonJobName
+            && body.jobs[0].stage === 'stage1'
+            && Array.isArray(body.stages)
+            && body.stages.length === 1
+            && body.stages[0] === 'stage1'
             && body.jobs[0].executions[0].name === namespacedExecutionName(importedJsonExecutionName),
     });
 
@@ -160,7 +168,10 @@ export default function () {
             && body.folderId === targetFolderId
             && body.folderPath === `/${targetFolderName}`
             && !Object.prototype.hasOwnProperty.call(body, 'path')
-            && body.jobs[0].jobName === importedJsonJobName,
+            && body.jobs[0].jobName === importedJsonJobName
+            && body.jobs[0].stage === 'stage1'
+            && Array.isArray(body.stages)
+            && body.stages[0] === 'stage1',
     });
 
     response = getPipelineTree();

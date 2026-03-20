@@ -1,5 +1,8 @@
 package irispipe.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import io.micrometer.common.util.StringUtils;
 import irispipe.infrastructure.error.exception.ConfigValidationException;
 import lombok.AllArgsConstructor;
@@ -16,6 +19,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SyncJobDefinition {
+    @JsonProperty("stage")
+    @JsonAlias("stageName")
     String stageName;
     Integer stageSequenceOrder;
     String jobName;

@@ -1,30 +1,35 @@
-- jobName: k6_test_job_multi_step
-  executions:
-    - type: EXECUTE
-      name: k6_multi_step_truncate
-      sql: truncate table test_dest
-    - type: INSERT
-      name: k6_multi_step_insert
-      sql: select * from test_source order by update_time asc
-      destTable: test_dest
-    - type: EXECUTE
-      name: k6_multi_step_update
-      sql: update test_dest set name = name || '_UPDATED'
-    - type: EXECUTE
-      name: k6_multi_step_delete
-      sql: delete from test_dest where id = 2
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
+﻿stages:
+  - stage1
+
+jobs:
+  - jobName: k6_test_job_multi_step
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: k6_multi_step_truncate
+        sql: truncate table test_dest
+      - type: INSERT
+        name: k6_multi_step_insert
+        sql: select * from test_source order by update_time asc
+        destTable: test_dest
+      - type: EXECUTE
+        name: k6_multi_step_update
+        sql: update test_dest set name = name || '_UPDATED'
+      - type: EXECUTE
+        name: k6_multi_step_delete
+        sql: delete from test_dest where id = 2
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

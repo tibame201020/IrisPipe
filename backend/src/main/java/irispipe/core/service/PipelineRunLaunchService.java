@@ -138,6 +138,8 @@ public class PipelineRunLaunchService {
             return;
         }
 
+        markFutureStagesNotRun(latestExecution.getId());
+
         boolean stoppedAny = false;
         for (Long runningBatchExecutionId : runningBatchExecutionIds) {
             try {
@@ -292,6 +294,43 @@ public class PipelineRunLaunchService {
                 .map(PipelineRunExecutionJob::getId)
                 .toList();
         pipelineRunLifecycleService.markExecutionJobsNotRun(pendingExecutionJobIds);
+    }
+
+    private void markFutureStagesNotRun(Long pipelineRunExecutionId) {
+        List<PipelineRunExecutionJob> executionJobs = pipelineRunExecutionJobRepo.findByPipelineRunExecutionId(pipelineRunExecutionId);
+        if (executionJobs.isEmpty()) {
+            return;
+        }
+
+        Map<Long, PipelineRunJob> pipelineRunJobsById = pipelineRunJobRepo.findAllById(
+                executionJobs.stream()
+                        .map(PipelineRunExecutionJob::getPipelineRunJobId)
+                        .distinct()
+                        .toList())
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(PipelineRunJob::getId, pipelineRunJob -> pipelineRunJob));
+
+        Integer currentStageSequenceOrder = executionJobs.stream()
+                .filter(pipelineRunExecutionJob -> PipelineRunStatus.STARTED.equals(pipelineRunExecutionJob.getStatus()))
+                .map(PipelineRunExecutionJob::getPipelineRunJobId)
+                .map(pipelineRunJobsById::get)
+                .filter(Objects::nonNull)
+                .map(PipelineRunJob::getStageSequenceOrder)
+                .max(Integer::compareTo)
+                .orElse(null);
+        if (currentStageSequenceOrder == null) {
+            return;
+        }
+
+        List<Long> pendingFutureExecutionJobIds = executionJobs.stream()
+                .filter(pipelineRunExecutionJob -> PipelineRunStatus.PENDING.equals(pipelineRunExecutionJob.getStatus()))
+                .filter(pipelineRunExecutionJob -> {
+                    PipelineRunJob pipelineRunJob = pipelineRunJobsById.get(pipelineRunExecutionJob.getPipelineRunJobId());
+                    return pipelineRunJob != null && pipelineRunJob.getStageSequenceOrder() > currentStageSequenceOrder;
+                })
+                .map(PipelineRunExecutionJob::getId)
+                .toList();
+        pipelineRunLifecycleService.markExecutionJobsNotRun(pendingFutureExecutionJobIds);
     }
 
     /**

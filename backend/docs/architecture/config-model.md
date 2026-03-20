@@ -47,11 +47,15 @@ Key semantics:
 - `pipelineName` is the user-facing identifier
 - uniqueness is `(workspace, folder, pipelineName)`
 - file path and file name are no longer part of pipeline identity
-- pipeline jobs may now belong to ordered stages through:
+- public config payloads now use:
+  - `stages[]`
+  - per-job `stage`
+- pipeline jobs are persisted and projected with ordered stage metadata:
   - `stageName`
   - `stageSequenceOrder`
 - legacy linear configs remain valid:
   - missing stage metadata is materialized as implicit one-job-per-stage order
+  - legacy `stageName` input is still accepted as a compatibility alias
   - public read models hide those implicit stage names
 
 ### Normalized Child Tables
@@ -172,7 +176,7 @@ This protects resume and rerun from config drift.
 
 Snapshot payload now also preserves:
 
-- `stageName`
+- `stage`
 - `stageSequenceOrder`
 - `sequenceOrder`
 

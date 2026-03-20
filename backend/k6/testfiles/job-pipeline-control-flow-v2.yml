@@ -1,72 +1,81 @@
-- jobName: k6_pipeline_control_job_a
-  executions:
-    - type: EXECUTE
-      name: k6_pipeline_control_job_a_truncate
-      sql: truncate table test_control_dest_a
-    - type: INSERT
-      name: k6_pipeline_control_job_a_insert
-      sql: select * from test_control_source_a order by id asc
-      destTable: test_control_dest_a
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-- jobName: k6_pipeline_control_job_b
-  executions:
-    - type: EXECUTE
-      name: k6_pipeline_control_job_b_truncate
-      sql: truncate table test_control_dest_b
-    - type: INSERT
-      name: k6_pipeline_control_job_b_insert
-      sql: select * from test_control_source_b order by id asc
-      destTable: test_control_dest_b
-  setting:
-    fetchSize: 10
-    batchSize: 10
-    atomicLevel: CHUNK
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-- jobName: k6_pipeline_control_job_c
-  executions:
-    - type: EXECUTE
-      name: k6_pipeline_control_job_c_truncate
-      sql: truncate table test_control_dest_c
-    - type: INSERT
-      name: k6_pipeline_control_job_c_insert
-      sql: select * from test_control_source_c_v2 order by id asc
-      destTable: test_control_dest_c
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
+﻿stages:
+  - stage1
+  - stage2
+  - stage3
+
+jobs:
+  - jobName: k6_pipeline_control_job_a
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_control_job_a_truncate
+        sql: truncate table test_control_dest_a
+      - type: INSERT
+        name: k6_pipeline_control_job_a_insert
+        sql: select * from test_control_source_a order by id asc
+        destTable: test_control_dest_a
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_control_job_b
+    stage: stage2
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_control_job_b_truncate
+        sql: truncate table test_control_dest_b
+      - type: INSERT
+        name: k6_pipeline_control_job_b_insert
+        sql: select * from test_control_source_b order by id asc
+        destTable: test_control_dest_b
+    setting:
+      fetchSize: 10
+      batchSize: 10
+      atomicLevel: CHUNK
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_control_job_c
+    stage: stage3
+    executions:
+      - type: EXECUTE
+        name: k6_pipeline_control_job_c_truncate
+        sql: truncate table test_control_dest_c
+      - type: INSERT
+        name: k6_pipeline_control_job_c_insert
+        sql: select * from test_control_source_c_v2 order by id asc
+        destTable: test_control_dest_c
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

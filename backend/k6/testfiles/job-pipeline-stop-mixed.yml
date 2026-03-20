@@ -1,63 +1,72 @@
-- jobName: k6_pipeline_stop_mixed_job_a
-  executions:
-    - type: INSERT
-      name: k6_pipeline_stop_mixed_insert_a
-      sql: select * from test_stop_mixed_source_a order by id asc
-      destTable: test_stop_mixed_dest_a
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-- jobName: k6_pipeline_stop_mixed_job_b
-  executions:
-    - type: INSERT
-      name: k6_pipeline_stop_mixed_insert_b
-      sql: select * from test_stop_mixed_source_b order by id asc
-      destTable: test_stop_mixed_dest_b
-  setting:
-    fetchSize: 10
-    batchSize: 10
-    atomicLevel: CHUNK
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-- jobName: k6_pipeline_stop_mixed_job_c
-  executions:
-    - type: INSERT
-      name: k6_pipeline_stop_mixed_insert_c
-      sql: select * from test_stop_mixed_source_c order by id asc
-      destTable: test_stop_mixed_dest_c
-  setting:
-    fetchSize: 100
-    batchSize: 100
-    atomicLevel: JOB
-  database:
-    source:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
-    dest:
-      driver: org.h2.Driver
-      url: jdbc:h2:./h2data/data
-      username: sa
-      password: "sa"
+﻿stages:
+  - stage1
+  - stage2
+  - stage3
+
+jobs:
+  - jobName: k6_pipeline_stop_mixed_job_a
+    stage: stage1
+    executions:
+      - type: INSERT
+        name: k6_pipeline_stop_mixed_insert_a
+        sql: select * from test_stop_mixed_source_a order by id asc
+        destTable: test_stop_mixed_dest_a
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_stop_mixed_job_b
+    stage: stage2
+    executions:
+      - type: INSERT
+        name: k6_pipeline_stop_mixed_insert_b
+        sql: select * from test_stop_mixed_source_b order by id asc
+        destTable: test_stop_mixed_dest_b
+    setting:
+      fetchSize: 10
+      batchSize: 10
+      atomicLevel: CHUNK
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+  - jobName: k6_pipeline_stop_mixed_job_c
+    stage: stage3
+    executions:
+      - type: INSERT
+        name: k6_pipeline_stop_mixed_insert_c
+        sql: select * from test_stop_mixed_source_c order by id asc
+        destTable: test_stop_mixed_dest_c
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

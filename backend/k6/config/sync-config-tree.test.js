@@ -28,6 +28,7 @@ const pipelineName = `phase12-pipeline-${seed}`;
 
 const syncJobs = [
     {
+        stage: 'stage1',
         jobName: `phase12_job_${seed}`,
         executions: [
             {
@@ -132,6 +133,12 @@ export default function () {
             body.pipelineName === pipelineName
             && body.folderId === childFolderId
             && body.folderPath === `/${rootFolderName}/${childFolderName}`,
+        'config json create returns explicit stage metadata': (body) =>
+            Array.isArray(body.stages)
+            && body.stages.length === 1
+            && body.stages[0] === 'stage1'
+            && Array.isArray(body.jobs)
+            && body.jobs[0].stage === 'stage1',
         'config json create no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
@@ -169,7 +176,10 @@ export default function () {
     check(payload, {
         'config detail reflects renamed folder path': (body) =>
             body.pipelineName === pipelineName
-            && body.folderPath === `/${rootFolderName}/${renamedChildFolderName}`,
+            && body.folderPath === `/${rootFolderName}/${renamedChildFolderName}`
+            && Array.isArray(body.stages)
+            && body.stages[0] === 'stage1'
+            && body.jobs[0].stage === 'stage1',
         'config detail in tree flow no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 

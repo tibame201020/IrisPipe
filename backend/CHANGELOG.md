@@ -5,21 +5,23 @@ All notable changes to this project are documented in this file.
 ## [Stage-Based Parallel Pipeline Runtime] - 2026-03-20
 
 ### Added
-- **Stage Metadata in Config and Runtime**: Added `stageName` and `stageSequenceOrder` to pipeline config jobs, run-job projections, snapshots, and DTOs so one pipeline can group jobs into ordered stages without breaking existing linear configs.
+- **Stage Metadata in Config and Runtime**: Added stage metadata to pipeline config jobs, run-job projections, snapshots, and DTOs so one pipeline can group jobs into ordered stages.
 - **Stage Support Migration**: Added `V4__add_pipeline_stage_support.sql` to extend persisted config and runtime tables with stage metadata.
 - **DAG Planning Document**: Added `backend/plans/dag-pipeline.md` as the design and migration guide for stage-based parallel orchestration and future DAG evolution.
 
 ### Changed
 - **Stage-Aware Materialization**: Config CRUD, import, read models, and snapshot persistence now preserve explicit stage metadata while still materializing legacy linear payloads into implicit stages for backward compatibility.
 - **Barrier-Based Launch Orchestration**: `PipelineRunLaunchService` now executes jobs stage by stage, launches jobs in the same stage in parallel, waits on the stage barrier, and marks future stages as `NOT_RUN` after stop or failure.
-- **Stage-Aware Resume Semantics**: Resume now identifies the first incomplete stage, skips completed upstream jobs, replays or restarts only the resumable jobs in the target stage, and preserves `JOB` / `CHUNK` semantics through snapshot-backed config.
-- **Fresh Summary Projection**: Execute and resume flows now reload fresh `PipelineRun` / `PipelineRunExecution` state before rendering API summaries so synchronous requests no longer return stale attempt status.
-- **Isolated K6 Validation Support**: Local K6 helpers now support overriding backend base URL, port, and imported H2 JDBC URL so stage work can be validated against isolated backend instances without touching the user’s running server.
+- **Stage-Aware Resume Semantics**: Resume now identifies the first incomplete stage, skips completed upstream jobs, and only relaunches resumable jobs in the target stage while preserving `JOB` / `CHUNK` semantics through snapshot-backed config.
+- **Stage-Named Public Contract**: Public config and runtime payloads now expose job stage metadata through the `stage` field while still accepting legacy `stageName` input as a compatibility alias during migration.
+- **Explicit Stage-First Fixtures**: K6 JSON payloads and YAML fixtures now declare `stages[]` plus per-job `stage`, so test files themselves are the source of truth for stage-aware pipelines instead of relying on implicit linear materialization.
+- **Async Stop Projection Fix**: Async stop flows now mark future-stage jobs as `NOT_RUN` early enough for detail queries to reflect the correct lifecycle state immediately after the pipeline enters `STOPPED`.
+- **Isolated K6 Validation Support**: Local K6 helpers now support overriding backend base URL, port, and imported H2 JDBC URL so stage work can be validated against isolated backend instances without touching the user's running server.
 
 ### Verified
 - **Compile Validation**: Re-ran `mvn -q -DskipTests compile` after the stage runtime and resume/query adjustments.
-- **Targeted K6 Validation**: Re-validated the affected `pipeline-core` and `pipeline-resume` suites against a clean isolated backend instance.
-- **Full K6 Regression**: Re-ran the full local K6 regression suite against a clean isolated backend database; all 31 tests passed.
+- **Targeted K6 Validation**: Re-validated the affected async stop suites after tightening `NOT_RUN` projection semantics.
+- **Full K6 Regression**: Re-ran the full local K6 regression suite with explicit stage fixtures; all 31 tests passed.
 
 ---
 

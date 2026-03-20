@@ -244,6 +244,7 @@ public interface SyncPipelineDTO {
      */
     record PipelineRunJobInfo(
             Long id,
+            @JsonProperty("stage")
             String stageName,
             Integer stageSequenceOrder,
             Integer sequenceOrder,

@@ -314,6 +314,7 @@ export default function () {
 function buildJobs(jobSuffix, sourceTable, destTable, executionName) {
     return [
         {
+            stage: 'stage1',
             jobName: `workspace_job_${jobSuffix}_${seed}`,
             executions: [
                 {

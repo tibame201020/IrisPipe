@@ -17,6 +17,7 @@ const updatedPipelineName = pipelineNameFor('test-config-v2');
 const patchedPipelineName = pipelineNameFor('test-config-v3');
 const initialJobs = [
     {
+        stage: 'stage1',
         jobName: 'k6_test_config_v1',
         setting: {
             fetchSize: 100,
@@ -49,6 +50,7 @@ const initialJobs = [
 ];
 const updatedJobs = [
     {
+        stage: 'stage1',
         jobName: 'k6_test_config_v2',
         setting: {
             fetchSize: 200,
@@ -81,6 +83,7 @@ const updatedJobs = [
 ];
 const patchedJobs = [
     {
+        stage: 'stage1',
         jobName: 'k6_test_config_v3',
         setting: {
             fetchSize: 300,
@@ -125,6 +128,12 @@ export default function () {
             body.pipelineName === initialPipelineName
             && body.folderId === null
             && body.folderPath === '/',
+        'create config response returns explicit stage metadata': (body) =>
+            Array.isArray(body.stages)
+            && body.stages.length === 1
+            && body.stages[0] === 'stage1'
+            && Array.isArray(body.jobs)
+            && body.jobs[0].stage === 'stage1',
         'create config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
@@ -136,7 +145,10 @@ export default function () {
     check(payload, {
         'config detail returns requested pipeline id': (body) => body.id === pipelineId,
         'config detail returns uploaded job': (body) =>
-            Array.isArray(body.jobs) && body.jobs.length === 1 && body.jobs[0].jobName === 'k6_test_config_v1',
+            Array.isArray(body.jobs)
+            && body.jobs.length === 1
+            && body.jobs[0].jobName === 'k6_test_config_v1'
+            && body.jobs[0].stage === 'stage1',
         'config detail keeps root metadata without hidden root id': (body) =>
             body.pipelineName === initialPipelineName
             && body.folderId === null
@@ -171,7 +183,10 @@ export default function () {
             body.pipelineName === updatedPipelineName
             && body.folderId === null
             && body.folderPath === '/'
-            && body.jobs[0].jobName === 'k6_test_config_v2',
+            && body.jobs[0].jobName === 'k6_test_config_v2'
+            && body.jobs[0].stage === 'stage1'
+            && Array.isArray(body.stages)
+            && body.stages[0] === 'stage1',
         'update config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 
@@ -185,7 +200,10 @@ export default function () {
             body.pipelineName === patchedPipelineName
             && body.folderId === null
             && body.folderPath === '/'
-            && body.jobs[0].jobName === 'k6_test_config_v3',
+            && body.jobs[0].jobName === 'k6_test_config_v3'
+            && body.jobs[0].stage === 'stage1'
+            && Array.isArray(body.stages)
+            && body.stages[0] === 'stage1',
         'patch config response no longer exposes path/fileName fields': (body) => hasNoLegacyPathFields(body),
     });
 

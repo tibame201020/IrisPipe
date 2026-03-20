@@ -2,6 +2,25 @@ import http from 'k6/http';
 import { buildApiUrl, getJsonHeaders, getMultipartHeaders, withWorkspaceOptions } from './api-client.js';
 import { namespaceImportedConfigContent, namespaceJobs } from '../utils/namespace.js';
 
+function normalizeStageName(job, index) {
+    return job.stage || job.stageName || `stage${index + 1}`;
+}
+
+function resolveStages(payloadStages, jobs = []) {
+    if (Array.isArray(payloadStages) && payloadStages.length > 0) {
+        return payloadStages;
+    }
+
+    const orderedStages = [];
+    jobs.forEach((job, index) => {
+        const stage = normalizeStageName(job, index);
+        if (!orderedStages.includes(stage)) {
+            orderedStages.push(stage);
+        }
+    });
+    return orderedStages;
+}
+
 function buildMultipartPayload(fields, fileName, fileContent, fileContentType = 'application/x-yaml') {
     const boundary = `----IrisPipeK6Boundary${Math.random().toString(16).slice(2)}`;
     const parts = [];
@@ -50,9 +69,14 @@ function requestConfigImport(method, path, folderId, pipelineName, format, fileN
 }
 
 function requestConfigJson(method, path, payload, workspaceKey = null) {
+    const normalizedJobs = (payload.jobs || []).map((job, index) => ({
+        ...job,
+        stage: normalizeStageName(job, index),
+    }));
     const namespacedPayload = {
         ...payload,
-        jobs: namespaceJobs(payload.jobs),
+        stages: resolveStages(payload.stages, normalizedJobs),
+        jobs: namespaceJobs(normalizedJobs),
     };
 
     return http.request(method, buildApiUrl(path), JSON.stringify(namespacedPayload), {
