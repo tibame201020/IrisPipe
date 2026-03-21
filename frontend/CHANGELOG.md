@@ -11,6 +11,11 @@
 - Rebuilt stage, job, and step reordering around stable drag-and-drop interactions, including stage reordering, job cross-stage moves, and step sorting.
 - Reduced side chrome in the config page so summary and validation stay lightweight while the lane board remains the primary focus.
 
+### Pipeline family stage-first runtime surfaces
+- Added `Import File` to the explorer so large or multi-stage definitions can enter the pipeline workspace without leaving the main flow.
+- Reworked the runs page into a stage-first workspace with the current saved topology shown as a read-only stage board above the runtime history list.
+- Reworked run detail around the same stage lane board language used by the config editor so stage barriers, same-stage parallel jobs, and selected job details all read from one consistent layout model.
+
 ## 2026-03-19
 
 ### Pipeline family completion

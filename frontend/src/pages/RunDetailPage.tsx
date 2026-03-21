@@ -1,34 +1,16 @@
-import {
-  Clock,
-  History,
-  Info,
-  Layers,
-  PlayCircle,
-  RefreshCw,
-  RotateCcw,
-  Square,
-  Trash2,
-} from 'lucide-react'
+import { Clock, PlayCircle, RefreshCw, RotateCcw, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import type { Edge, Node } from '@xyflow/react'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { StatusBadge } from '../components/StatusBadge'
-import { PipelineCanvas } from '../components/GraphEngine/PipelineCanvas'
-import {
-  deleteRun,
-  getApiErrorMessage,
-  getRunDetail,
-  rerunRun,
-  resumeRun,
-  stopRun,
-} from '../lib/api'
+import { deleteRun, getApiErrorMessage, getRunDetail, rerunRun, resumeRun, stopRun } from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
-import type { StatusNodeData } from '../types/graph'
 import type {
   PipelineRunDetailInfo,
   PipelineRunJobInfo,
+  PipelineRunStageInfo,
   PipelineRunStatus,
 } from '../types/irispipe'
 import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
@@ -101,52 +83,39 @@ export function RunDetailPage() {
     setSelectedJobId(null)
   }, [selectedAttemptId])
 
-  const selectedJob = useMemo(() => {
-    if (!currentAttempt || !selectedJobId) return null
-    return currentAttempt.jobs.find((job) => job.id === selectedJobId) ?? null
-  }, [currentAttempt, selectedJobId])
-
   const currentAttemptStepCount = useMemo(() => {
     if (!currentAttempt) return 0
     return currentAttempt.jobs.reduce((total, job) => total + job.stepExecutionInfos.length, 0)
   }, [currentAttempt])
 
-  const { graphNodes, graphEdges } = useMemo(() => {
-    if (!currentAttempt) {
-      return { graphNodes: [], graphEdges: [] }
-    }
+  const selectedJob = useMemo(() => {
+    if (!currentAttempt || !selectedJobId) return null
+    return currentAttempt.jobs.find((job) => job.id === selectedJobId) ?? null
+  }, [currentAttempt, selectedJobId])
 
-    const nodes: Node<StatusNodeData>[] = currentAttempt.jobs.map((job, index) => ({
-      id: `job-${job.id}`,
-      type: 'statusNode',
-      position: { x: index * 350, y: 140 },
-      data: {
-        label: job.jobName,
-        index: job.sequenceOrder + 1,
+  const stageLanes = useMemo<StageLaneData[]>(() => {
+    if (!currentAttempt) return []
+
+    return currentAttempt.stages.map((stage) => ({
+      id: stage.stage,
+      title: stage.stage,
+      status: stage.status,
+      summary: buildStageSummary(stage),
+      jobs: stage.jobs.map((job) => ({
+        id: String(job.id),
+        title: job.jobName,
         status: job.status,
-        stats: job.stepExecutionInfos.reduce(
-          (acc, step) => ({
-            read: (acc.read || 0) + step.readCount,
-            write: (acc.write || 0) + step.writeCount,
-            stepCount: (acc.stepCount || 0) + 1,
-          }),
-          { read: 0, write: 0, stepCount: 0 },
-        ),
-      },
+        selected: job.id === selectedJobId,
+        onClick: () => setSelectedJobId(job.id),
+        onDoubleClick: () => setSelectedJobId(job.id),
+        badges: [
+          `Read ${sumStepMetric(job, 'readCount')}`,
+          `Write ${sumStepMetric(job, 'writeCount')}`,
+          `${job.stepExecutionInfos.length} steps`,
+        ],
+      })),
     }))
-
-    const edges: Edge[] = []
-    for (let index = 0; index < nodes.length - 1; index += 1) {
-      edges.push({
-        id: `edge-${index}`,
-        source: nodes[index].id,
-        target: nodes[index + 1].id,
-        type: 'audit',
-      })
-    }
-
-    return { graphNodes: nodes, graphEdges: edges }
-  }, [currentAttempt])
+  }, [currentAttempt, selectedJobId])
 
   async function runAction(actionName: string, action: () => Promise<unknown>) {
     setPendingAction(actionName)
@@ -165,7 +134,13 @@ export function RunDetailPage() {
     }
   }
 
-  if (loading && !detail) return <div className="p-12"><LoadingState /></div>
+  if (loading && !detail) {
+    return (
+      <div className="p-12">
+        <LoadingState />
+      </div>
+    )
+  }
 
   if (error || !detail) {
     return (
@@ -188,25 +163,26 @@ export function RunDetailPage() {
   const canStop = ['STARTING', 'STARTED'].includes(detail.status)
   const canResume = ['FAILED', 'STOPPED'].includes(detail.status)
   const canRerun = ['FAILED', 'STOPPED', 'COMPLETED', 'ABANDONED'].includes(detail.status)
-  const viewingLatestAttempt = currentAttempt?.executionId === latestAttempt?.executionId
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/30">
-      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
-        <div className="min-w-0">
-          <div className="breadcrumbs text-[13px] text-base-content/45">
-            <ul>
-              <li>
-                <Link to={`/pipeline/items/${numericPipelineId}/runs${folderId ? `?folderId=${folderId}` : ''}`}>
-                  Run History
-                </Link>
-              </li>
-              <li className="font-semibold text-base-content">Run #{detail.id}</li>
-            </ul>
-          </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
+          <span className="badge badge-ghost badge-sm">Run #{detail.id}</span>
+          <StatusBadge status={currentAttempt?.status ?? detail.status} subtle />
+          <span className="badge badge-ghost badge-sm">{currentAttempt?.executionKind ?? '-'}</span>
+          <span className="badge badge-ghost badge-sm">{currentAttempt?.stages.length ?? 0} stages</span>
+          <span className="badge badge-ghost badge-sm">{currentAttempt?.jobs.length ?? 0} jobs</span>
+          <span className="badge badge-ghost badge-sm">{currentAttemptStepCount} steps</span>
+          <span className="badge badge-ghost badge-sm">
+            {currentAttempt?.requestedAsync == null ? '-' : currentAttempt.requestedAsync ? 'Async' : 'Sync'}
+          </span>
+          <span className="text-[11px] font-medium text-base-content/40">
+            Same-stage jobs run in parallel. Future stages stay blocked until the current stage converges.
+          </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-lg bg-base-200/50 p-1">
             <button
               type="button"
@@ -251,144 +227,97 @@ export function RunDetailPage() {
         </div>
       </div>
 
+      {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
+
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-72 flex-col border-r border-base-300 bg-base-100">
-          <div className="border-b border-base-300 px-5 py-5">
-            <div className="iris-header">Run Summary</div>
-            <div className="mt-3 space-y-2">
-              <SummaryRow label="Status" value={detail.status} />
-              <SummaryRow label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
-              <SummaryRow label="Attempts" value={detail.attempts.length} />
-              <SummaryRow label="Created" value={formatDateTimeLong(detail.createdAt)} />
+        <aside className="flex w-[300px] shrink-0 flex-col border-r border-base-300 bg-base-100">
+          <div className="border-b border-base-300 px-5 py-4">
+            <div className="iris-header">Attempt History</div>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <SummaryTile label="Status" value={detail.status} />
+              <SummaryTile label="Attempts" value={detail.attempts.length} />
+              <SummaryTile label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
+              <SummaryTile label="Created" value={formatDateTimeLong(detail.createdAt)} />
             </div>
           </div>
 
-          <div className="border-b border-base-300 px-5 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History size={16} className="text-primary" />
-                <span className="iris-header">Attempts</span>
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/40">
-                {detail.attempts.length} total
-              </span>
-            </div>
-          </div>
+          <div className="flex-1 space-y-3 overflow-y-auto p-3">
+            {detail.attempts
+              .slice()
+              .reverse()
+              .map((attempt) => {
+                const isLatest = attempt.executionId === latestAttempt?.executionId
+                const isSelected = attempt.executionId === currentAttempt?.executionId
+                const stepCount = attempt.jobs.reduce((count, job) => count + job.stepExecutionInfos.length, 0)
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {detail.attempts.slice().reverse().map((attempt) => {
-              const isLatest = attempt.executionId === latestAttempt?.executionId
-              const isSelected = attempt.executionId === currentAttempt?.executionId
-              const stepCount = attempt.jobs.reduce((count, job) => count + job.stepExecutionInfos.length, 0)
-
-              return (
-                <button
-                  key={attempt.executionId}
-                  type="button"
-                  className={`w-full rounded-xl border p-3 text-left transition-all ${
-                    isSelected
-                      ? 'border-primary bg-primary/5 shadow-sm'
-                      : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/30'
-                  }`}
-                  onClick={() => setSelectedAttemptId(attempt.executionId)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-base font-bold">{attempt.executionKind}</div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">
-                          Attempt #{attempt.executionNo}
-                        </span>
-                        {isLatest ? <span className="badge badge-ghost badge-sm">Latest</span> : null}
-                        <StatusBadge status={attempt.status} subtle />
+                return (
+                  <button
+                    key={attempt.executionId}
+                    type="button"
+                    className={`w-full rounded-xl border p-4 text-left transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
+                        : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/30'
+                    }`}
+                    onClick={() => setSelectedAttemptId(attempt.executionId)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="badge badge-ghost badge-sm">Attempt #{attempt.executionNo}</span>
+                          {isLatest ? <span className="badge badge-primary badge-sm">Latest</span> : null}
+                        </div>
+                        <div className="mt-3 text-base font-bold">{attempt.executionKind}</div>
                       </div>
+                      <StatusBadge status={attempt.status} subtle />
                     </div>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-base-content/45">
-                    <div className="flex items-center gap-2">
-                      <Clock size={11} />
-                      {formatDateTimeLong(attempt.startTime)}
-                    </div>
-                    <span className="font-mono">{formatDuration(attempt.startTime, attempt.endTime)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
-                    <span>{attempt.jobs.length} jobs</span>
-                    <span>{stepCount} steps</span>
-                    <span>{attempt.requestedAsync == null ? '-' : attempt.requestedAsync ? 'Async' : 'Sync'}</span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
 
+                    <div className="mt-3 flex items-center gap-2 text-[11px] text-base-content/45">
+                      <Clock size={11} />
+                      <span>{formatDateTimeLong(attempt.startTime)}</span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
+                      <span>{attempt.stages.length} stages</span>
+                      <span>{attempt.jobs.length} jobs</span>
+                      <span>{stepCount} steps</span>
+                      <span>{attempt.requestedAsync == null ? '-' : attempt.requestedAsync ? 'Async' : 'Sync'}</span>
+                      <span>{formatDuration(attempt.startTime, attempt.endTime)}</span>
+                    </div>
+                  </button>
+                )
+              })}
+          </div>
         </aside>
 
-        <main className="relative min-w-0 flex-1 bg-base-200/50">
-          <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/90 px-3 py-2 shadow-sm backdrop-blur">
-              <div className="flex items-center gap-2 pr-1">
-                <Layers size={14} className="text-base-content/55" />
-                <span className="text-sm font-semibold">{workspace.pipeline.pipelineName}</span>
+        <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/40">
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-base-300 bg-base-100 px-5 py-4">
+              <div>
+                <div className="iris-header">Runtime Stage Board</div>
+                <div className="mt-1 text-sm text-base-content/50">
+                  Inspect stage convergence, parallel jobs, and the current attempt runtime state.
+                </div>
               </div>
-              <ContextDivider />
-              <ContextMetric label="Run" value={`#${detail.id}`} />
-              <ContextDivider />
-              <ContextMetric label="Attempt" value={`#${currentAttempt?.executionNo ?? '-'}`} />
-              <ContextDivider />
-              <ContextMetric label="Status" value={currentAttempt?.status ?? detail.status} />
-              <ContextDivider />
-              <ContextMetric label="Kind" value={currentAttempt?.executionKind ?? '-'} />
-              <ContextDivider />
-              <ContextMetric label="Jobs" value={currentAttempt?.jobs.length ?? 0} />
-              <ContextDivider />
-              <ContextMetric label="Steps" value={currentAttemptStepCount} />
-              <ContextDivider />
-              <ContextMetric
-                label="Mode"
-                value={
-                  currentAttempt?.requestedAsync == null
-                    ? '-'
-                    : currentAttempt.requestedAsync
-                      ? 'Async'
-                      : 'Sync'
-                }
-              />
-              <ContextDivider />
-              <ContextMetric
-                label="Duration"
-                value={formatDuration(currentAttempt?.startTime, currentAttempt?.endTime)}
-              />
-              {!viewingLatestAttempt ? (
-                <>
-                  <ContextDivider />
-                  <span className="badge badge-warning badge-sm gap-1">
-                    <Info size={11} />
-                    Earlier attempt
-                  </span>
-                </>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="badge badge-ghost badge-sm">{currentAttempt?.executionKind ?? '-'}</span>
+                <span className="badge badge-ghost badge-sm">{currentAttempt?.stages.length ?? 0} stages</span>
+                <span className="badge badge-ghost badge-sm">{currentAttempt?.jobs.length ?? 0} jobs</span>
+                <span className="badge badge-ghost badge-sm">{currentAttemptStepCount} steps</span>
+              </div>
             </div>
-          </div>
 
-          <div className="absolute inset-0 min-h-0">
-            <PipelineCanvas
-              nodes={graphNodes}
-              edges={graphEdges}
-              onNodeClick={(_, node) => setSelectedJobId(Number(node.id.split('-')[1]))}
-            />
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <StageLaneBoard
+                stages={stageLanes}
+                emptyTitle="No attempt stages"
+                emptyDescription="This attempt did not materialize any runtime stage projection."
+              />
+            </div>
           </div>
 
           {selectedJob ? (
-            <aside className="absolute right-0 top-0 z-20 h-full w-[320px] border-l border-base-300 bg-base-100 shadow-2xl">
-              <div className="border-b border-base-300 px-5 py-5">
-                <div className="iris-header">Job Details</div>
-                <div className="mt-2 text-lg font-bold">{selectedJob.jobName}</div>
-              </div>
-
-              <div className="h-[calc(100%-101px)] overflow-y-auto p-5">
-                <JobDetailsPanel job={selectedJob} onClose={() => setSelectedJobId(null)} />
-              </div>
-            </aside>
+            <JobRuntimeDrawer job={selectedJob} onClose={() => setSelectedJobId(null)} />
           ) : null}
         </main>
       </div>
@@ -429,60 +358,7 @@ export function RunDetailPage() {
   )
 }
 
-function ContextDivider() {
-  return <div className="h-8 w-px bg-base-300" />
-}
-
-function ContextMetric({
-  label,
-  value,
-}: {
-  label: string
-  value: string | number
-}) {
-  return (
-    <div className="text-center">
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
-      <div className="mt-1 text-xs font-semibold">{value}</div>
-    </div>
-  )
-}
-
-function SummaryTile({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string
-  value: string | number
-  mono?: boolean
-}) {
-  return (
-    <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
-      <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''}`}>{value}</div>
-    </div>
-  )
-}
-
-function SummaryRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string
-  value: string | number
-  mono?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/35">{label}</div>
-      <div className={`text-sm font-semibold text-right ${mono ? 'font-mono' : ''}`}>{value}</div>
-    </div>
-  )
-}
-
-function JobDetailsPanel({
+function JobRuntimeDrawer({
   job,
   onClose,
 }: {
@@ -500,50 +376,88 @@ function JobDetailsPanel({
   )
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryTile label="Sequence" value={job.sequenceOrder + 1} />
-        <SummaryTile label="Status" value={job.status} />
-        <SummaryTile label="Steps" value={job.stepExecutionInfos.length} />
-        <SummaryTile label="Atomic" value={job.atomicLevel} />
-      </div>
-
-      <div>
-        <div className="iris-header mb-3">Step Totals</div>
-        <div className="grid grid-cols-2 gap-3">
-          <SummaryTile label="Read" value={totals.read} mono />
-          <SummaryTile label="Write" value={totals.write} mono />
-          <SummaryTile label="Commit" value={totals.commit} mono />
-          <SummaryTile label="Rollback" value={totals.rollback} mono />
-        </div>
-      </div>
-
-      <div>
-        <div className="iris-header mb-3">Step Details</div>
-        <div className="space-y-3">
-          {job.stepExecutionInfos.map((step) => (
-            <div key={step.id} className="rounded-xl border border-base-300 bg-base-100 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="font-semibold">{step.stepName}</div>
-                  <div className="mt-1 text-xs text-base-content/45">{step.exitCode}</div>
-                </div>
-                <StatusBadge status={step.status as PipelineRunStatus} subtle />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <SummaryTile label="Read" value={step.readCount} mono />
-                <SummaryTile label="Write" value={step.writeCount} mono />
-                <SummaryTile label="Commit" value={step.commitCount} mono />
-                <SummaryTile label="Rollback" value={step.rollbackCount} mono />
-              </div>
+    <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex justify-end">
+      <aside className="pointer-events-auto h-full w-[420px] max-w-[92vw] border-l border-base-300 bg-base-100 shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="badge badge-ghost badge-sm">Job #{job.sequenceOrder + 1}</span>
+              <StatusBadge status={job.status} subtle />
             </div>
-          ))}
+            <div className="mt-3 truncate text-xl font-bold">{job.jobName}</div>
+            <div className="mt-1 text-sm text-base-content/50">Inspect runtime step counters for the selected job.</div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" onClick={onClose} aria-label="Close job details">
+            <X size={16} />
+          </button>
         </div>
-      </div>
 
-      <button type="button" className="btn btn-ghost btn-sm w-full" onClick={onClose}>
-        Close Details
-      </button>
+        <div className="h-[calc(100%-96px)] overflow-y-auto px-5 py-5">
+          <div className="grid grid-cols-2 gap-3">
+            <SummaryTile label="Atomic" value={job.atomicLevel} />
+            <SummaryTile label="Steps" value={job.stepExecutionInfos.length} />
+            <SummaryTile label="Read" value={totals.read} mono />
+            <SummaryTile label="Write" value={totals.write} mono />
+            <SummaryTile label="Commit" value={totals.commit} mono />
+            <SummaryTile label="Rollback" value={totals.rollback} mono />
+          </div>
+
+          <div className="mt-6">
+            <div className="iris-header">Step Details</div>
+            <div className="mt-3 space-y-3">
+              {job.stepExecutionInfos.map((step) => (
+                <div key={step.id} className="rounded-xl border border-base-300 bg-base-100 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">{step.stepName}</div>
+                      <div className="mt-1 text-xs text-base-content/45">{step.exitCode}</div>
+                    </div>
+                    <StatusBadge status={step.status as PipelineRunStatus} subtle />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <SummaryTile label="Read" value={step.readCount} mono />
+                    <SummaryTile label="Write" value={step.writeCount} mono />
+                    <SummaryTile label="Commit" value={step.commitCount} mono />
+                    <SummaryTile label="Rollback" value={step.rollbackCount} mono />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function buildStageSummary(stage: PipelineRunStageInfo) {
+  const completedJobs = stage.jobs.filter((job) => job.status === 'COMPLETED').length
+  const failedJobs = stage.jobs.filter((job) => job.status === 'FAILED').length
+  const stoppedJobs = stage.jobs.filter((job) => job.status === 'STOPPED').length
+
+  if (failedJobs > 0) return `${failedJobs} failed, ${completedJobs} completed`
+  if (stoppedJobs > 0) return `${stoppedJobs} stopped, ${completedJobs} completed`
+  return `${completedJobs}/${stage.jobs.length} completed`
+}
+
+function sumStepMetric(job: PipelineRunJobInfo, field: 'readCount' | 'writeCount') {
+  return job.stepExecutionInfos.reduce((total, step) => total + step[field], 0)
+}
+
+function SummaryTile({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string | number
+  mono?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+      <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
   )
 }

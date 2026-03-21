@@ -91,6 +91,7 @@ export function StageLaneBoard({
 
   const activeJob = activeDrag?.type === 'job' ? jobMap.get(activeDrag.jobId)?.job ?? null : null
   const activeStage = activeDrag?.type === 'stage' ? stages.find((stage) => stage.id === activeDrag.stageId) ?? null : null
+  const jobsDnDEnabled = Boolean(onMoveJob)
 
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as AnyDragItem | undefined
@@ -163,6 +164,7 @@ export function StageLaneBoard({
                 stage={stage}
                 showConnector={index < stages.length - 1}
                 stageDnDEnabled={Boolean(onMoveStage)}
+                jobsDnDEnabled={jobsDnDEnabled}
                 activeDragType={activeDrag?.type ?? null}
               />
             ))}
@@ -182,11 +184,13 @@ function StageLane({
   stage,
   showConnector,
   stageDnDEnabled,
+  jobsDnDEnabled,
   activeDragType,
 }: {
   stage: StageLaneData
   showConnector: boolean
   stageDnDEnabled: boolean
+  jobsDnDEnabled: boolean
   activeDragType: 'stage' | 'job' | null
 }) {
   const {
@@ -284,7 +288,12 @@ function StageLane({
             </div>
           ) : (
             stage.jobs.map((job) => (
-              <StageLaneJob key={job.id} job={job} stageId={stage.id} dragDisabled={activeDragType === 'stage'} />
+              <StageLaneJob
+                key={job.id}
+                job={job}
+                stageId={stage.id}
+                dragDisabled={!jobsDnDEnabled || activeDragType === 'stage'}
+              />
             ))
           )}
         </SortableContext>
@@ -333,9 +342,11 @@ function StageLaneJob({
         job.selected
           ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
           : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/35'
-      } ${isOver ? 'border-primary/60 bg-primary/6 ring-2 ring-primary/20 shadow-md' : ''} cursor-grab active:cursor-grabbing`}
+      } ${isOver ? 'border-primary/60 bg-primary/6 ring-2 ring-primary/20 shadow-md' : ''} ${
+        dragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+      }`}
       aria-label={`Job ${job.title}`}
-      title="Drag to reorder or move across stages"
+      title={dragDisabled ? undefined : 'Drag to reorder or move across stages'}
     >
       {isOver ? (
         <>

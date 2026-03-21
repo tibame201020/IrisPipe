@@ -1,14 +1,9 @@
-import {
-  ArrowRight,
-  History,
-  RefreshCw,
-  TimerReset,
-  Zap,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ArrowRight, History, PlayCircle, RefreshCw, TimerReset, Zap } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { StatusBadge } from '../components/StatusBadge'
 import { executePipeline, getApiErrorMessage, getPipelineRuns } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
@@ -30,6 +25,22 @@ export function PipelineRunsPage() {
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
   const pipeline = workspace.pipeline
+
+  const definitionLanes = useMemo<StageLaneData[]>(
+    () =>
+      pipeline.stageInfos.map((stage) => ({
+        id: stage.stage,
+        title: stage.stage,
+        summary: `${stage.jobs.length} jobs`,
+        jobs: stage.jobs.map((job) => ({
+          id: `${stage.stage}:${job.jobName}`,
+          title: job.jobName,
+          badges: [`${job.executions.length} steps`, `${job.setting.atomicLevel ?? 'JOB'} atomic`],
+          onDoubleClick: () => navigate(`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`),
+        })),
+      })),
+    [navigate, pipeline.folderId, pipeline.id, pipeline.stageInfos],
+  )
 
   async function loadRuns(reset = false) {
     if (reset) {
@@ -80,7 +91,13 @@ export function PipelineRunsPage() {
     }
   }
 
-  if (loading) return <div className="p-12"><LoadingState /></div>
+  if (loading) {
+    return (
+      <div className="p-12">
+        <LoadingState />
+      </div>
+    )
+  }
 
   if (error || !pipeline) {
     return (
@@ -88,27 +105,33 @@ export function PipelineRunsPage() {
         icon={TimerReset}
         title="Run history unavailable"
         description={error ?? 'Unable to connect to the runtime history service.'}
-        action={<Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary">Back to Explorer</Link>}
+        action={
+          <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary">
+            Back to Explorer
+          </Link>
+        }
       />
     )
   }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
+      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
+          <span className="badge badge-ghost badge-sm">{pipeline.stageInfos.length} stages</span>
+          <span className="badge badge-ghost badge-sm">{pipeline.jobs.length} jobs</span>
           <span className="badge badge-ghost badge-sm">{runs.length} runs in view</span>
           <span className="badge badge-ghost badge-sm">
             {runs.filter((run) => run.status === 'COMPLETED').length} completed
           </span>
-          <span className="badge badge-ghost badge-sm">
-            latest {runs[0]?.status ?? 'none'}
+          <span className="text-[11px] font-medium text-base-content/40">
+            The board below reflects the current saved stage topology. Open a run to inspect runtime stage status.
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-sm btn-square">
-            <RefreshCw size={18} className={loading && !runs.length ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={loading && runs.length === 0 ? 'animate-spin' : ''} />
           </button>
           <button
             type="button"
@@ -122,70 +145,123 @@ export function PipelineRunsPage() {
         </div>
       </div>
 
+      {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
+
       <div className="flex-1 overflow-y-auto bg-base-200/40 p-6">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="iris-card overflow-hidden border-base-300 bg-base-100 p-0 shadow-xl">
+        <div className="mx-auto flex w-full max-w-[1400px] min-h-full flex-col gap-5">
+          <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-4">
+              <div>
+                <div className="iris-header">Current Definition</div>
+                <div className="mt-1 text-sm text-base-content/50">
+                  Review the saved stage structure before opening a specific run.
+                </div>
+              </div>
+              <Link
+                to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+                className="btn btn-ghost btn-sm gap-2"
+              >
+                <PlayCircle size={14} />
+                Open Config
+              </Link>
+            </div>
+            <div className="bg-base-200/35">
+              <StageLaneBoard
+                stages={definitionLanes}
+                emptyTitle="No stages"
+                emptyDescription="This pipeline does not currently define any stage lanes."
+              />
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-4">
+              <div>
+                <div className="iris-header">Run History</div>
+                <div className="mt-1 text-sm text-base-content/50">
+                  Each run preserves runtime status and timing. Open one to inspect stage execution and attempts.
+                </div>
+              </div>
+              <span className="badge badge-ghost badge-sm">{runs.length} loaded</span>
+            </div>
+
             {runs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 bg-base-200/20 text-center">
-                 <div className="p-6 bg-base-100 rounded-full mb-6 shadow-sm border border-base-300">
-                    <TimerReset size={40} className="text-base-content/10" />
-                 </div>
-                 <h3 className="text-xl font-bold">No runs yet</h3>
-                 <p className="text-sm text-base-content/40 max-w-sm mt-2">
-                   Execute this pipeline to create the first run history entry.
-                 </p>
+              <div className="flex flex-col items-center justify-center bg-base-200/20 py-20 text-center">
+                <div className="mb-6 rounded-full border border-base-300 bg-base-100 p-6 shadow-sm">
+                  <TimerReset size={40} className="text-base-content/10" />
+                </div>
+                <h3 className="text-xl font-bold">No runs yet</h3>
+                <p className="mt-2 max-w-sm text-sm text-base-content/40">
+                  Execute this pipeline to create the first runtime history entry.
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-base-300">
-                {runs.map((run) => (
-                  <Link
+                {runs.map((run, index) => (
+                  <RunHistoryCard
                     key={run.id}
+                    run={run}
+                    latest={index === 0}
                     to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-base-200/50 transition-all group"
-                  >
-                    <div className="flex items-center gap-6">
-                       <div className="flex flex-col">
-                          <span className="text-[10px] font-black opacity-30 tracking-[0.2em]">RUN ID</span>
-                          <span className="font-mono font-bold text-lg"># {run.id}</span>
-                       </div>
-                       <div className="h-8 w-[1px] bg-base-300" />
-                       <div className="flex flex-col">
-                          <span className="text-[10px] font-black opacity-30 tracking-[0.2em]">TIMESTAMP</span>
-                          <span className="text-sm font-bold">{formatDateTime(run.createdAt)}</span>
-                       </div>
-                       <div className="hidden sm:flex flex-col">
-                          <span className="text-[10px] font-black opacity-30 tracking-[0.2em]">DURATION</span>
-                          <span className="text-sm font-mono font-bold">{formatDuration(run.startTime ?? run.createdAt, run.endTime)}</span>
-                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                       <StatusBadge status={run.status} />
-                       <div className="p-2 rounded-lg bg-base-200 group-hover:bg-primary group-hover:text-primary-content transition-all border border-base-300">
-                          <ArrowRight size={16} />
-                        </div>
-                    </div>
-                  </Link>
+                    stageCount={pipeline.stageInfos.length}
+                  />
                 ))}
               </div>
             )}
-            
-            {beforeRunId && (
-              <div className="p-6 bg-base-200/30 text-center">
-                <button 
-                  type="button" 
-                  onClick={() => void loadRuns(false)} 
-                  className="btn btn-ghost btn-sm gap-2" 
-                  disabled={loadingMore}
-                >
+
+            {beforeRunId ? (
+              <div className="border-t border-base-300 bg-base-200/30 p-5 text-center">
+                <button type="button" onClick={() => void loadRuns(false)} className="btn btn-ghost btn-sm gap-2" disabled={loadingMore}>
                   {loadingMore ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
                   Load older runs
                 </button>
               </div>
-            )}
-          </div>
+            ) : null}
+          </section>
         </div>
       </div>
     </div>
+  )
+}
+
+function RunHistoryCard({
+  run,
+  latest,
+  to,
+  stageCount,
+}: {
+  run: PipelineRunSummaryInfo
+  latest: boolean
+  to: string
+  stageCount: number
+}) {
+  return (
+    <Link to={to} className="group block px-5 py-4 transition-colors hover:bg-base-200/35">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="badge badge-ghost badge-sm">Run #{run.id}</span>
+            {latest ? <span className="badge badge-primary badge-sm">Latest</span> : null}
+            <StatusBadge status={run.status} subtle />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/35">
+            <span>{stageCount} stages</span>
+            <span>Created {formatDateTime(run.createdAt)}</span>
+            <span>Duration {formatDuration(run.startTime ?? run.createdAt, run.endTime)}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3 text-right">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">Status</div>
+            <div className="mt-1 text-sm font-semibold">{run.status}</div>
+          </div>
+          <div className="rounded-xl border border-base-300 bg-base-100 p-3 transition-all group-hover:border-primary/40 group-hover:bg-primary group-hover:text-primary-content">
+            <ArrowRight size={16} />
+          </div>
+        </div>
+      </div>
+    </Link>
   )
 }

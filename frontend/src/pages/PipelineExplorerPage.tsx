@@ -1,5 +1,6 @@
 import {
   FileJson2,
+  FileUp,
   Folder,
   FolderPlus,
   FolderTree,
@@ -9,9 +10,10 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { PipelineImportDialog } from '../components/PipelineImportDialog'
 import {
   createFolder,
   deleteFolder,
@@ -19,6 +21,7 @@ import {
   getApiErrorMessage,
   getFolderDeletePreview,
   getPipelineTree,
+  importPipelineConfig,
   updateFolder,
 } from '../lib/api'
 import { buildExplorerLocation, findFolderPath, getFolderChildren, sortExplorerItems } from '../lib/tree'
@@ -31,6 +34,7 @@ import type {
 
 export function PipelineExplorerPage() {
   const { folderId } = useParams()
+  const navigate = useNavigate()
   const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -47,6 +51,9 @@ export function PipelineExplorerPage() {
   const [deleteFolderSubmitting, setDeleteFolderSubmitting] = useState(false)
   const [deletePipelineTarget, setDeletePipelineTarget] = useState<ConfigPipelineSummary | null>(null)
   const [deletePipelineSubmitting, setDeletePipelineSubmitting] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importSubmitting, setImportSubmitting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
   const numericFolderId = folderId ? Number(folderId) : null
 
   async function loadTree(options?: { initial?: boolean }) {
@@ -221,6 +228,27 @@ export function PipelineExplorerPage() {
     }
   }
 
+  async function handleImportPipeline(payload: { pipelineName: string; file: File; format?: string }) {
+    setImportSubmitting(true)
+    setImportError(null)
+    setActionError(null)
+    try {
+      const imported = await importPipelineConfig({
+        folderId: numericFolderId,
+        pipelineName: payload.pipelineName,
+        file: payload.file,
+        format: payload.format,
+      })
+      await loadTree({ initial: false })
+      setImportDialogOpen(false)
+      navigate(`/pipeline/items/${imported.id}/config${imported.folderId ? `?folderId=${imported.folderId}` : ''}`)
+    } catch (importLoadError) {
+      setImportError(getApiErrorMessage(importLoadError, 'Failed to import pipeline config'))
+    } finally {
+      setImportSubmitting(false)
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-base-200/50">
       <div className="flex shrink-0 flex-col border-b border-base-300 bg-base-100 px-6 py-4">
@@ -270,6 +298,18 @@ export function PipelineExplorerPage() {
             >
               <FolderPlus size={14} />
               New Folder
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm h-10 gap-2 border-base-300"
+              onClick={() => {
+                setImportDialogOpen(true)
+                setImportError(null)
+                setActionError(null)
+              }}
+            >
+              <FileUp size={14} />
+              Import File
             </button>
             <Link
               to={`/pipeline/new/config${numericFolderId ? `?folderId=${numericFolderId}` : ''}`}
@@ -409,6 +449,21 @@ export function PipelineExplorerPage() {
         onConfirm={async () => {
           await handleDeleteFolder()
         }}
+      />
+
+      <PipelineImportDialog
+        open={importDialogOpen}
+        title="Import pipeline"
+        description="Create a new pipeline definition from a JSON or YAML file. The backend import endpoint parses the file and persists the imported pipeline directly."
+        submitLabel="Import pipeline"
+        initialPipelineName=""
+        submitting={importSubmitting}
+        error={importError}
+        onClose={() => {
+          setImportDialogOpen(false)
+          setImportError(null)
+        }}
+        onSubmit={handleImportPipeline}
       />
     </div>
   )
