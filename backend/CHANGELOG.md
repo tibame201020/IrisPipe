@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [Stage Execution Convergence Fix] - 2026-03-21
+
+### Changed
+- **Same-Stage Failure Convergence**: Serialized pipeline run execution lifecycle updates with a pessimistic execution lock so one completed job in the same stage can no longer overwrite a terminal `FAILED` execution back to `STARTED` while another job fails.
+
+### Verified
+- **Compile Validation**: Re-ran `mvn -q -DskipTests compile`.
+- **Full K6 Regression**: Re-ran the full local `backend/k6/run-tests.ps1` suite against an isolated backend instance and confirmed `Sync Pipeline Stage Fail Resume` no longer flakes under full regression load.
+
 ## [Stage First Domain Projection] - 2026-03-21
 
 ### Added

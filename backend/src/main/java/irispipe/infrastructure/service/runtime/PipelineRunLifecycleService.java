@@ -82,7 +82,7 @@ public class PipelineRunLifecycleService {
         LocalDateTime startTime = jobExecution.getStartTime() != null ? jobExecution.getStartTime() : now;
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
-        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
         PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
 
@@ -153,7 +153,7 @@ public class PipelineRunLifecycleService {
         LocalDateTime now = LocalDateTime.now();
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
-        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
         PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
 
@@ -172,7 +172,7 @@ public class PipelineRunLifecycleService {
         pipelineRunJobRepo.save(pipelineRunJob);
         pipelineRunObservationService.publishJobObservation(pipelineRunJob, pipelineRunExecutionJob);
 
-        PipelineRunExecution latestPipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecution latestPipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
         if (pipelineRunStatusPolicy.isTerminalFailure(latestPipelineRunExecution.getStatus())) {
             pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
             pipelineRunRepo.save(pipelineRun);
@@ -200,7 +200,7 @@ public class PipelineRunLifecycleService {
         boolean allCompleted = pipelineRunExecutionJobs.stream()
                 .allMatch(executionJob -> pipelineRunStatusPolicy.isSuccessfulTerminalStatus(executionJob.getStatus()));
 
-        latestPipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        latestPipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
         if (pipelineRunStatusPolicy.isTerminalFailure(latestPipelineRunExecution.getStatus())) {
             pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
             pipelineRunRepo.save(pipelineRun);
@@ -245,7 +245,7 @@ public class PipelineRunLifecycleService {
         LocalDateTime now = LocalDateTime.now();
 
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
-        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
         PipelineRunJob pipelineRunJob = getPipelineRunJob(pipelineRunJobId);
         PipelineRunExecutionJob pipelineRunExecutionJob = getPipelineRunExecutionJob(pipelineRunExecutionJobId);
 
@@ -284,7 +284,7 @@ public class PipelineRunLifecycleService {
     public void markStopRequested(Long pipelineRunId, Long pipelineRunExecutionId) {
         LocalDateTime now = LocalDateTime.now();
         PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
-        PipelineRunExecution pipelineRunExecution = getPipelineRunExecution(pipelineRunExecutionId);
+        PipelineRunExecution pipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
 
         if (!pipelineRunStatusPolicy.isTerminalStatus(pipelineRunExecution.getStatus())) {
             pipelineRunExecution.setStatus(PipelineRunStatus.STOPPING);
@@ -387,6 +387,20 @@ public class PipelineRunLifecycleService {
      */
     private PipelineRunExecution getPipelineRunExecution(Long pipelineRunExecutionId) {
         return pipelineRunExecutionRepo.findById(pipelineRunExecutionId)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Pipeline run execution not found: " + pipelineRunExecutionId));
+    }
+
+    /**
+     * Loads one pipeline run execution by id with a pessimistic write lock so
+     * concurrent same-stage job completions cannot overwrite terminal execution
+     * state with stale in-flight projection.
+     *
+     * @param pipelineRunExecutionId pipeline run execution id
+     * @return locked pipeline run execution
+     */
+    private PipelineRunExecution getPipelineRunExecutionForUpdate(Long pipelineRunExecutionId) {
+        return pipelineRunExecutionRepo.findByIdForUpdate(pipelineRunExecutionId)
                 .orElseThrow(
                         () -> new IllegalArgumentException("Pipeline run execution not found: " + pipelineRunExecutionId));
     }
