@@ -193,6 +193,10 @@ Snapshot behavior is explicit and stable:
 
 This protects resume and rerun from config drift.
 
+Resume also includes a short Spring Batch metadata settlement guard before a new execution is launched.
+That guard exists because IrisPipe runtime projection can already be terminal while the underlying Batch repository
+is still finalizing the stopped or failed execution metadata.
+
 Snapshot payload now also preserves:
 
 - `stage`

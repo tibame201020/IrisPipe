@@ -86,11 +86,15 @@ Fresh execute is the only runtime path that reads the latest stored pipeline con
 3. Load the latest execution attempt
 4. Determine the first incomplete stage:
    - first stage containing `FAILED`, `STOPPED`, or `NOT_RUN` jobs
-5. Create a new `PipelineRunExecution(kind = RESUME)`
-6. Create new execution-job rows for the whole logical run
-7. Mark completed upstream jobs as `SKIPPED`
-8. Mark resumable jobs in the target stage as `PENDING`
-9. Relaunch only from the resolved stage barrier
+5. Validate the resumable stage topology against the persisted snapshot
+6. Wait briefly for the latest stopped or failed Spring Batch metadata to settle
+   - this avoids racing a just-stopped Batch execution whose IrisPipe runtime row is already terminal
+   - the guard exists before the new resume attempt is created
+7. Create a new `PipelineRunExecution(kind = RESUME)`
+8. Create new execution-job rows for the whole logical run
+9. Mark completed upstream jobs as `SKIPPED`
+10. Mark resumable jobs in the target stage as `PENDING`
+11. Relaunch only from the resolved stage barrier
 
 Resume semantics per node:
 
@@ -121,6 +125,8 @@ Rerun never reads the latest pipeline config.
 7. Pending jobs in future stages become `NOT_RUN`
 
 Stop is cooperative, not force-kill.
+Because Spring Batch metadata may still be finalizing for a short period after IrisPipe has already projected `STOPPED`,
+the resume path performs its own settlement guard before launching a new execution.
 
 ## 8. Query Flow
 
@@ -184,6 +190,10 @@ Runtime lifecycle is listener-driven.
   - updates job rows
   - synchronizes latest projection
   - publishes observation events
+- `PipelineRunLaunchService`
+  - enforces stage barriers
+  - launches same-stage jobs in parallel
+  - waits for Batch metadata settlement before resume launch
 - `PipelineRunQueryService`
   - assembles read models without owning runtime mutation logic
 
