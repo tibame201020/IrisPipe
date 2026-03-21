@@ -171,6 +171,8 @@ public class PipelineExecutionService {
                 latestExecutionJobsByRunJobId,
                 resumeStageSequenceOrder);
 
+        pipelineRunLaunchService.awaitBatchExecutionSettlement(latestExecution.getId());
+
         PipelineRunExecution pipelineRunExecution = pipelineRunCommandService.createPipelineRunExecution(
                 pipelineRun,
                 requestedAsync,

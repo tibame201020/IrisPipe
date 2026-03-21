@@ -1,6 +1,8 @@
 package irispipe.core.service;
 
 import java.util.ArrayList;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -156,6 +158,39 @@ public class PipelineRunLaunchService {
         if (!stoppedAny) {
             markPendingExecutionJobsNotRun(latestExecution.getId());
             pipelineRunLifecycleService.markStopped(pipelineRunId, latestExecution.getId());
+        }
+    }
+
+    /**
+     * Waits briefly until Spring Batch metadata of the latest execution settles
+     * before a resume command launches a new execution for the same logical jobs.
+     *
+     * <p>This prevents resume from racing a just-stopped job instance whose
+     * terminal state has been projected to IrisPipe runtime tables but whose
+     * Batch metadata has not fully converged yet.</p>
+     *
+     * @param pipelineRunExecutionId latest pipeline run execution id
+     */
+    public void awaitBatchExecutionSettlement(Long pipelineRunExecutionId) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (System.nanoTime() < deadline) {
+            List<PipelineRunExecutionJob> executionJobs = pipelineRunExecutionJobRepo
+                    .findByPipelineRunExecutionId(pipelineRunExecutionId);
+            boolean settled = executionJobs.stream()
+                    .map(PipelineRunExecutionJob::getLastJobExecutionId)
+                    .filter(Objects::nonNull)
+                    .map(jobExplorer::getJobExecution)
+                    .allMatch(this::isBatchExecutionSettled);
+            if (settled) {
+                return;
+            }
+
+            try {
+                Thread.sleep(25);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
     }
 
@@ -350,6 +385,24 @@ public class PipelineRunLaunchService {
         markPendingExecutionJobsNotRun(pipelineRunExecutionId);
         pipelineRunLifecycleService.markStopped(latestExecution.getPipelineRunId(), pipelineRunExecutionId);
         return true;
+    }
+
+    private boolean isBatchExecutionSettled(JobExecution jobExecution) {
+        if (jobExecution == null) {
+            return true;
+        }
+        BatchStatus batchStatus = jobExecution.getStatus();
+        if (batchStatus == BatchStatus.STARTING
+                || batchStatus == BatchStatus.STARTED
+                || batchStatus == BatchStatus.STOPPING) {
+            return false;
+        }
+
+        LocalDateTime lastUpdated = jobExecution.getLastUpdated();
+        if (lastUpdated == null) {
+            return false;
+        }
+        return Duration.between(lastUpdated, LocalDateTime.now()).toMillis() >= 100;
     }
 
     private Map<Integer, List<JobLaunchSlot>> buildStageLaunchPlan(PipelineRunLaunchRequest launchRequest) {

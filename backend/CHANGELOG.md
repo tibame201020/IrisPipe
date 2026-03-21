@@ -6,10 +6,12 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 - **Same-Stage Failure Convergence**: Serialized pipeline run execution lifecycle updates with a pessimistic execution lock so one completed job in the same stage can no longer overwrite a terminal `FAILED` execution back to `STARTED` while another job fails.
+- **Resume Launch Settlement Guard**: Added a short Spring Batch metadata settlement wait before `resume` launches a new execution so async stop/resume flows no longer race the final Batch repository update of the stopped execution.
 
 ### Verified
 - **Compile Validation**: Re-ran `mvn -q -DskipTests compile`.
 - **Full K6 Regression**: Re-ran the full local `backend/k6/run-tests.ps1` suite against an isolated backend instance and confirmed `Sync Pipeline Stage Fail Resume` no longer flakes under full regression load.
+- **Repeated Full Regression**: Re-ran the full local `backend/k6/run-tests.ps1` suite 10 consecutive times against the live local backend; all 10 runs passed.
 
 ## [Stage First Domain Projection] - 2026-03-21
 
