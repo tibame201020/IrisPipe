@@ -1,5 +1,16 @@
 # Frontend Changelog
 
+## 2026-03-21
+
+### Pipeline config editor polish
+- Reworked the pipeline config surface into a stage-first editor board so the main screen matches the backend `pipeline -> stages -> jobs -> steps` model.
+- Added direct stage board actions for adding jobs, inserting a stage to the right, and deleting a stage without opening the drawer first.
+- Switched job editing to a double-click full-screen modal and kept the stage lane board visible as the primary structure surface.
+- Split job editing into three clear areas: job settings, step ordering, and focused step editing.
+- Added field-level validation highlighting for pipeline, stage, job, connection, and step inputs so users can see the exact failing control instead of only a summary message.
+- Rebuilt stage, job, and step reordering around stable drag-and-drop interactions, including stage reordering, job cross-stage moves, and step sorting.
+- Reduced side chrome in the config page so summary and validation stay lightweight while the lane board remains the primary focus.
+
 ## 2026-03-19
 
 ### Pipeline family completion

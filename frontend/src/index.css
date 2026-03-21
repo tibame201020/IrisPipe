@@ -107,6 +107,21 @@
     animation: iris-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+  @keyframes iris-slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-iris-slide-in-right {
+    animation: iris-slide-in-right 180ms ease-out;
+  }
+
   /* Audit Edge Premium Styling */
   .react-flow__edge-path.audit-edge-path {
     stroke: #6f7cff !important;

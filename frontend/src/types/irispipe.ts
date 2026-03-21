@@ -55,6 +55,8 @@ export interface ExecutionStep {
 }
 
 export interface SyncJobDefinition {
+  stage: string
+  stageSequenceOrder: number
   jobName: string
   executions: ExecutionStep[]
   setting: JobSetting
@@ -68,13 +70,22 @@ export interface ConfigPipelineSummary {
   pipelineName: string
 }
 
+export interface ConfigPipelineStageInfo {
+  stage: string
+  stageSequenceOrder: number
+  jobs: SyncJobDefinition[]
+}
+
 export interface ConfigPipelineInfo extends ConfigPipelineSummary {
+  stages: string[]
+  stageInfos: ConfigPipelineStageInfo[]
   jobs: SyncJobDefinition[]
 }
 
 export interface ConfigPipelineUpsertRequest {
   folderId: number | null
   pipelineName: string
+  stages: string[]
   jobs: SyncJobDefinition[]
 }
 
@@ -176,6 +187,8 @@ export interface StepExecutionInfo {
 
 export interface PipelineRunJobInfo {
   id: number
+  stage: string
+  stageSequenceOrder: number
   sequenceOrder: number
   jobName: string
   atomicLevel: AtomicLevel
@@ -188,6 +201,15 @@ export interface PipelineRunJobInfo {
   stepExecutionInfos: StepExecutionInfo[]
 }
 
+export interface PipelineRunStageInfo {
+  stage: string
+  stageSequenceOrder: number
+  status: PipelineRunStatus
+  startTime: LocalDateTimeInput
+  endTime: LocalDateTimeInput
+  jobs: PipelineRunJobInfo[]
+}
+
 export interface PipelineRunAttemptInfo {
   executionId: number
   executionNo: number
@@ -196,6 +218,7 @@ export interface PipelineRunAttemptInfo {
   requestedAsync: boolean | null
   startTime: LocalDateTimeInput
   endTime: LocalDateTimeInput
+  stages: PipelineRunStageInfo[]
   jobs: PipelineRunJobInfo[]
 }
 
@@ -210,6 +233,7 @@ export interface PipelineRunDetailInfo {
   createdAt: LocalDateTimeInput
   startTime: LocalDateTimeInput
   endTime: LocalDateTimeInput
+  stages: PipelineRunStageInfo[]
   jobs: PipelineRunJobInfo[]
   attempts: PipelineRunAttemptInfo[]
 }

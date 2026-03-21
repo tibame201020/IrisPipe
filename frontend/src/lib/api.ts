@@ -40,8 +40,51 @@ export async function createPipelineConfig(payload: ConfigPipelineUpsertRequest)
   return response.data
 }
 
+export async function importPipelineConfig(payload: {
+  folderId?: number | null
+  pipelineName: string
+  file: File
+  format?: string
+}) {
+  const formData = new FormData()
+  formData.append('pipelineName', payload.pipelineName)
+  formData.append('file', payload.file)
+  if (payload.folderId != null) formData.append('folderId', String(payload.folderId))
+  if (payload.format) formData.append('format', payload.format)
+
+  const response = await http.post<ConfigPipelineInfo>('/api/v1/sync-config/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  return response.data
+}
+
 export async function updatePipelineConfig(pipelineId: number, payload: ConfigPipelineUpsertRequest) {
   const response = await http.put<ConfigPipelineInfo>(`/api/v1/sync-config/${pipelineId}`, payload)
+  return response.data
+}
+
+export async function importIntoPipelineConfig(
+  pipelineId: number,
+  payload: {
+    folderId?: number | null
+    pipelineName: string
+    file: File
+    format?: string
+  },
+) {
+  const formData = new FormData()
+  formData.append('pipelineName', payload.pipelineName)
+  formData.append('file', payload.file)
+  if (payload.folderId != null) formData.append('folderId', String(payload.folderId))
+  if (payload.format) formData.append('format', payload.format)
+
+  const response = await http.put<ConfigPipelineInfo>(`/api/v1/sync-config/${pipelineId}/import`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
   return response.data
 }
 
