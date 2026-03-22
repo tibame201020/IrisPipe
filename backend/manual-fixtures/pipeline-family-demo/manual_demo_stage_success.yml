@@ -1,0 +1,213 @@
+stages:
+  - stage1
+  - stage2
+  - stage3
+  - stage4
+
+jobs:
+  - jobName: manual_demo_success_orders_ingest
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: manual_demo_success_orders_truncate
+        sql: truncate table manual_demo_success_stage1_orders
+      - type: INSERT
+        name: manual_demo_success_orders_insert
+        sql: select id, customer_id, order_code, amount, updated_at from manual_demo_success_source_orders order by id asc
+        destTable: manual_demo_success_stage1_orders
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_success_customers_ingest
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: manual_demo_success_customers_truncate
+        sql: truncate table manual_demo_success_stage1_customers
+      - type: INSERT
+        name: manual_demo_success_customers_insert
+        sql: select customer_id, owner_name, tier, updated_at from manual_demo_success_source_customers order by customer_id asc
+        destTable: manual_demo_success_stage1_customers
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_success_enrich
+    stage: stage2
+    executions:
+      - type: EXECUTE
+        name: manual_demo_success_enriched_truncate
+        sql: truncate table manual_demo_success_stage2_enriched
+      - type: INSERT
+        name: manual_demo_success_enriched_insert
+        sql: >
+          select
+            o.id,
+            o.customer_id,
+            o.order_code,
+            c.owner_name,
+            c.tier,
+            o.amount,
+            o.updated_at
+          from manual_demo_success_stage1_orders o
+          join manual_demo_success_stage1_customers c on c.customer_id = o.customer_id
+          order by o.id asc
+        destTable: manual_demo_success_stage2_enriched
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_success_priority_bucket
+    stage: stage3
+    executions:
+      - type: EXECUTE
+        name: manual_demo_success_priority_truncate
+        sql: truncate table manual_demo_success_stage3_priority
+      - type: INSERT
+        name: manual_demo_success_priority_insert
+        sql: >
+          select
+            id,
+            customer_id,
+            order_code,
+            owner_name,
+            tier,
+            amount,
+            updated_at
+          from manual_demo_success_stage2_enriched
+          where amount >= 500
+          order by id asc
+        destTable: manual_demo_success_stage3_priority
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_success_standard_bucket
+    stage: stage3
+    executions:
+      - type: EXECUTE
+        name: manual_demo_success_standard_truncate
+        sql: truncate table manual_demo_success_stage3_standard
+      - type: INSERT
+        name: manual_demo_success_standard_insert
+        sql: >
+          select
+            id,
+            customer_id,
+            order_code,
+            owner_name,
+            tier,
+            amount,
+            updated_at
+          from manual_demo_success_stage2_enriched
+          where amount < 500
+          order by id asc
+        destTable: manual_demo_success_stage3_standard
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_success_publish
+    stage: stage4
+    executions:
+      - type: EXECUTE
+        name: manual_demo_success_report_truncate
+        sql: truncate table manual_demo_success_stage4_report
+      - type: INSERT
+        name: manual_demo_success_report_insert
+        sql: >
+          select
+            id,
+            'PRIORITY' as stage_bucket,
+            owner_name,
+            order_code,
+            amount,
+            updated_at
+          from manual_demo_success_stage3_priority
+          union all
+          select
+            id,
+            'STANDARD' as stage_bucket,
+            owner_name,
+            order_code,
+            amount,
+            updated_at
+          from manual_demo_success_stage3_standard
+          order by id asc
+        destTable: manual_demo_success_stage4_report
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

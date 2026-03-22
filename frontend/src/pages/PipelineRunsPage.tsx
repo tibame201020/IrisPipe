@@ -1,9 +1,8 @@
-import { ArrowRight, History, PlayCircle, RefreshCw, TimerReset, Zap } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, History, RefreshCw, TimerReset, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
-import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { StatusBadge } from '../components/StatusBadge'
 import { executePipeline, getApiErrorMessage, getPipelineRuns } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
@@ -25,22 +24,6 @@ export function PipelineRunsPage() {
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
   const pipeline = workspace.pipeline
-
-  const definitionLanes = useMemo<StageLaneData[]>(
-    () =>
-      pipeline.stageInfos.map((stage) => ({
-        id: stage.stage,
-        title: stage.stage,
-        summary: `${stage.jobs.length} jobs`,
-        jobs: stage.jobs.map((job) => ({
-          id: `${stage.stage}:${job.jobName}`,
-          title: job.jobName,
-          badges: [`${job.executions.length} steps`, `${job.setting.atomicLevel ?? 'JOB'} atomic`],
-          onDoubleClick: () => navigate(`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`),
-        })),
-      })),
-    [navigate, pipeline.folderId, pipeline.id, pipeline.stageInfos],
-  )
 
   async function loadRuns(reset = false) {
     if (reset) {
@@ -118,14 +101,14 @@ export function PipelineRunsPage() {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
       <div className="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
-          <span className="badge badge-ghost badge-sm">{pipeline.stageInfos.length} stages</span>
-          <span className="badge badge-ghost badge-sm">{pipeline.jobs.length} jobs</span>
           <span className="badge badge-ghost badge-sm">{runs.length} runs in view</span>
+          <span className="badge badge-ghost badge-sm">{pipeline.stageInfos.length} saved stages</span>
+          <span className="badge badge-ghost badge-sm">{pipeline.jobs.length} saved jobs</span>
           <span className="badge badge-ghost badge-sm">
             {runs.filter((run) => run.status === 'COMPLETED').length} completed
           </span>
           <span className="text-[11px] font-medium text-base-content/40">
-            The board below reflects the current saved stage topology. Open a run to inspect runtime stage status.
+            Open a run to inspect runtime stage status, attempts, and the stage snapshot that execution actually used.
           </span>
         </div>
 
@@ -152,34 +135,9 @@ export function PipelineRunsPage() {
           <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
             <div className="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-4">
               <div>
-                <div className="iris-header">Current Definition</div>
-                <div className="mt-1 text-sm text-base-content/50">
-                  Review the saved stage structure before opening a specific run.
-                </div>
-              </div>
-              <Link
-                to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                className="btn btn-ghost btn-sm gap-2"
-              >
-                <PlayCircle size={14} />
-                Open Config
-              </Link>
-            </div>
-            <div className="bg-base-200/35">
-              <StageLaneBoard
-                stages={definitionLanes}
-                emptyTitle="No stages"
-                emptyDescription="This pipeline does not currently define any stage lanes."
-              />
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-4">
-              <div>
                 <div className="iris-header">Run History</div>
                 <div className="mt-1 text-sm text-base-content/50">
-                  Each run preserves runtime status and timing. Open one to inspect stage execution and attempts.
+                  Each run preserves its own runtime stage snapshot. Open one to inspect stage execution, attempts, stop/resume, and rerun behavior.
                 </div>
               </div>
               <span className="badge badge-ghost badge-sm">{runs.length} loaded</span>

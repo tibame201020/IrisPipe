@@ -1,0 +1,168 @@
+stages:
+  - stage1
+  - stage2
+  - stage3
+
+jobs:
+  - jobName: manual_demo_fail_orders_ingest
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: manual_demo_fail_orders_truncate
+        sql: truncate table manual_demo_fail_stage1_orders
+      - type: INSERT
+        name: manual_demo_fail_orders_insert
+        sql: select id, label_id, item_code, amount, updated_at from manual_demo_fail_source_orders order by id asc
+        destTable: manual_demo_fail_stage1_orders
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_fail_labels_ingest
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: manual_demo_fail_labels_truncate
+        sql: truncate table manual_demo_fail_stage1_labels
+      - type: INSERT
+        name: manual_demo_fail_labels_insert
+        sql: select label_id, label_name, updated_at from manual_demo_fail_source_labels order by label_id asc
+        destTable: manual_demo_fail_stage1_labels
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_fail_join_ok
+    stage: stage2
+    executions:
+      - type: EXECUTE
+        name: manual_demo_fail_pass_truncate
+        sql: truncate table manual_demo_fail_stage2_pass
+      - type: INSERT
+        name: manual_demo_fail_pass_insert
+        sql: >
+          select
+            o.id,
+            o.label_id,
+            o.item_code,
+            l.label_name,
+            o.amount,
+            o.updated_at
+          from manual_demo_fail_stage1_orders o
+          join manual_demo_fail_stage1_labels l on l.label_id = o.label_id
+          order by o.id asc
+        destTable: manual_demo_fail_stage2_pass
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_fail_join_missing_dest
+    stage: stage2
+    executions:
+      - type: INSERT
+        name: manual_demo_fail_missing_insert
+        sql: >
+          select
+            o.id,
+            o.label_id,
+            o.item_code,
+            l.label_name,
+            o.amount,
+            o.updated_at
+          from manual_demo_fail_stage1_orders o
+          join manual_demo_fail_stage1_labels l on l.label_id = o.label_id
+          order by o.id asc
+        destTable: manual_demo_fail_stage2_missing_dest
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_fail_publish
+    stage: stage3
+    executions:
+      - type: EXECUTE
+        name: manual_demo_fail_report_truncate
+        sql: truncate table manual_demo_fail_stage3_report
+      - type: INSERT
+        name: manual_demo_fail_report_insert
+        sql: >
+          select
+            id,
+            'PASS' as branch_name,
+            item_code,
+            amount,
+            updated_at
+          from manual_demo_fail_stage2_pass
+          union all
+          select
+            id,
+            'FIXED' as branch_name,
+            item_code,
+            amount,
+            updated_at
+          from manual_demo_fail_stage2_missing_dest
+          order by id asc
+        destTable: manual_demo_fail_stage3_report
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"

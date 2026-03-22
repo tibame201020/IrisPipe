@@ -1,0 +1,118 @@
+stages:
+  - stage1
+  - stage2
+  - stage3
+
+jobs:
+  - jobName: manual_demo_stop_lookup_prepare
+    stage: stage1
+    executions:
+      - type: EXECUTE
+        name: manual_demo_stop_lookup_truncate
+        sql: truncate table manual_demo_stop_stage1_lookup
+      - type: INSERT
+        name: manual_demo_stop_lookup_insert
+        sql: select category, note, updated_at from manual_demo_stop_source_meta order by category asc
+        destTable: manual_demo_stop_stage1_lookup
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_stop_large_copy
+    stage: stage2
+    executions:
+      - type: EXECUTE
+        name: manual_demo_stop_large_truncate
+        sql: truncate table manual_demo_stop_stage2_large
+      - type: INSERT
+        name: manual_demo_stop_large_insert
+        sql: select id, category, payload, updated_at from manual_demo_stop_source_large order by id asc
+        destTable: manual_demo_stop_stage2_large
+    setting:
+      fetchSize: 1
+      batchSize: 1
+      atomicLevel: CHUNK
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_stop_meta_copy
+    stage: stage2
+    executions:
+      - type: EXECUTE
+        name: manual_demo_stop_meta_truncate
+        sql: truncate table manual_demo_stop_stage2_meta
+      - type: INSERT
+        name: manual_demo_stop_meta_insert
+        sql: select category, note, updated_at from manual_demo_stop_stage1_lookup order by category asc
+        destTable: manual_demo_stop_stage2_meta
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+
+  - jobName: manual_demo_stop_publish
+    stage: stage3
+    executions:
+      - type: EXECUTE
+        name: manual_demo_stop_report_truncate
+        sql: truncate table manual_demo_stop_stage3_report
+      - type: INSERT
+        name: manual_demo_stop_report_insert
+        sql: >
+          select
+            l.id,
+            l.category,
+            l.payload,
+            m.note,
+            l.updated_at
+          from manual_demo_stop_stage2_large l
+          left join manual_demo_stop_stage2_meta m on m.category = l.category
+          order by l.id asc
+        destTable: manual_demo_stop_stage3_report
+    setting:
+      fetchSize: 100
+      batchSize: 100
+      atomicLevel: JOB
+    database:
+      source:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
+      dest:
+        driver: org.h2.Driver
+        url: jdbc:h2:./h2data/data
+        username: sa
+        password: "sa"
