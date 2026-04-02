@@ -1,105 +1,95 @@
-import { Activity, Check, Palette } from 'lucide-react'
+import { Check, Palette, Wifi, WifiOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getApiErrorMessage, getHealth } from '../lib/api'
-import { StatusBadge } from '../components/StatusBadge'
 import { useTheme } from '../state/theme'
 import { availableThemes } from '../state/theme.constants'
-
-function resolveTitle(pathname: string) {
-  if (pathname.startsWith('/pipeline/items/') && pathname.includes('/runs/')) {
-    return 'Run detail'
-  }
-  if (pathname.startsWith('/pipeline/items/') && pathname.endsWith('/runs')) {
-    return 'Pipeline runs'
-  }
-  if (pathname.startsWith('/pipeline/items/') && pathname.endsWith('/config')) {
-    return 'Pipeline config'
-  }
-  if (pathname.startsWith('/pipeline/new/config')) {
-    return 'Pipeline config'
-  }
-  if (pathname.startsWith('/pipeline')) {
-    return 'Pipeline'
-  }
-  if (pathname.startsWith('/settings')) {
-    return 'Settings'
-  }
-
-  return 'Overview'
-}
 
 export function ConsoleHeader() {
   const location = useLocation()
   const { themeName, setThemeName } = useTheme()
-  const [healthStatus, setHealthStatus] = useState('UP')
-  const [healthMessage, setHealthMessage] = useState('Backend control surface is responding')
+  const [healthStatus, setHealthStatus] = useState<'UP' | 'DOWN' | 'CHECKING'>('CHECKING')
 
   useEffect(() => {
     let active = true
-
     const loadHealth = async () => {
       try {
         const response = await getHealth()
-        if (!active) {
-          return
-        }
-
-        setHealthStatus(response.status)
-        setHealthMessage('Backend control surface is responding')
+        if (!active) return
+        setHealthStatus(response.status === 'UP' ? 'UP' : 'DOWN')
       } catch (error) {
-        if (!active) {
-          return
-        }
-
+        if (!active) return
         setHealthStatus('DOWN')
-        setHealthMessage(getApiErrorMessage(error, 'Backend health is unavailable'))
+        getApiErrorMessage(error, '')
       }
     }
-
-    loadHealth()
-    const timer = window.setInterval(loadHealth, 15000)
-
-    return () => {
-      active = false
-      window.clearInterval(timer)
-    }
+    void loadHealth()
+    const timer = window.setInterval(() => void loadHealth(), 15000)
+    return () => { active = false; window.clearInterval(timer) }
   }, [])
 
-  const title = resolveTitle(location.pathname)
+  const isUp = healthStatus === 'UP'
+  const isChecking = healthStatus === 'CHECKING'
 
   return (
-    <header className="navbar h-20 border-b border-base-300 bg-base-100 px-6">
-      <div className="flex-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-5 gap-4">
+      {/* ── Left: Breadcrumb path label ── */}
+      <div className="min-w-0 flex-1">
+        <PageLabel pathname={location.pathname} />
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="tooltip tooltip-bottom" data-tip={healthMessage}>
-          <div className="btn btn-ghost btn-sm border border-base-300 bg-base-100 px-4 hover:bg-base-200">
-            <Activity size={16} className="text-primary" />
-            <StatusBadge status={healthStatus} subtle mode="text" />
-          </div>
+      {/* ── Right: Controls ── */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Backend health indicator */}
+        <div
+          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
+            isChecking
+              ? 'bg-base-200 text-base-content/40'
+              : isUp
+              ? 'bg-success/10 text-success'
+              : 'bg-error/10 text-error'
+          }`}
+        >
+          {isChecking ? (
+            <span className="size-1.5 rounded-full bg-base-content/30 animate-pulse" />
+          ) : isUp ? (
+            <Wifi size={12} strokeWidth={2.5} />
+          ) : (
+            <WifiOff size={12} strokeWidth={2.5} />
+          )}
+          <span className="hidden sm:inline">{isChecking ? 'Connecting' : isUp ? 'Connected' : 'Offline'}</span>
         </div>
+
+        {/* Theme picker */}
         <div className="dropdown dropdown-end">
-          <label tabIndex={0} className="btn btn-ghost btn-sm gap-2 border border-base-300 bg-base-100 normal-case shadow-none hover:bg-base-200">
-            <Palette size={16} />
-            <span className="uppercase">{themeName}</span>
+          <label
+            tabIndex={0}
+            className="btn btn-ghost btn-sm h-8 gap-1.5 rounded-full border border-base-300 bg-base-100 px-3 text-[11px] font-semibold uppercase tracking-wider hover:bg-base-200"
+          >
+            <Palette size={13} />
+            <span className="capitalize hidden sm:inline">{themeName}</span>
           </label>
-          <div tabIndex={0} className="dropdown-content z-[100] mt-3 w-64 border border-base-300 bg-base-100 p-2 shadow-2xl">
-            <ul className="menu max-h-80 flex-nowrap gap-px overflow-y-auto p-1">
-              <li className="menu-title px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Available themes</li>
+          <div
+            tabIndex={0}
+            className="dropdown-content z-[100] mt-2 w-56 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-2xl"
+          >
+            <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/30">
+              Theme
+            </div>
+            <ul className="max-h-72 space-y-0.5 overflow-y-auto p-1">
               {availableThemes.map((theme) => (
                 <li key={theme}>
                   <button
                     type="button"
                     onClick={() => setThemeName(theme)}
-                    className={`flex items-center justify-between px-4 py-3 text-xs font-bold transition-colors ${
-                      themeName === theme ? 'bg-primary/10 text-primary' : 'opacity-70 hover:bg-base-200 hover:opacity-100'
+                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
+                      themeName === theme
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
                     }`}
                     data-theme={theme}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <div className="flex gap-0.5">
                         <div className="h-3 w-1.5 rounded-sm bg-primary" />
                         <div className="h-3 w-1.5 rounded-sm bg-secondary" />
@@ -107,7 +97,7 @@ export function ConsoleHeader() {
                       </div>
                       <span className="capitalize">{theme}</span>
                     </div>
-                    {themeName === theme ? <Check size={12} /> : null}
+                    {themeName === theme && <Check size={12} />}
                   </button>
                 </li>
               ))}
@@ -117,4 +107,53 @@ export function ConsoleHeader() {
       </div>
     </header>
   )
+}
+
+function PageLabel({ pathname }: { pathname: string }) {
+  const segments = buildPageSegments(pathname)
+  if (segments.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-1.5 text-sm min-w-0">
+      {segments.map((seg, i) => (
+        <span key={i} className="flex items-center gap-1.5 min-w-0">
+          {i > 0 && <span className="text-base-content/20 shrink-0">/</span>}
+          <span
+            className={`truncate ${
+              i === segments.length - 1
+                ? 'font-semibold text-base-content'
+                : 'text-base-content/40 font-medium'
+            }`}
+          >
+            {seg}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function buildPageSegments(pathname: string): string[] {
+  if (pathname.startsWith('/pipeline/items/') && pathname.includes('/runs/')) {
+    return ['Pipeline', 'Runs', 'Run Detail']
+  }
+  if (pathname.startsWith('/pipeline/items/') && pathname.endsWith('/runs')) {
+    return ['Pipeline', 'Run History']
+  }
+  if (pathname.startsWith('/pipeline/items/') && pathname.endsWith('/config')) {
+    return ['Pipeline', 'Config Editor']
+  }
+  if (pathname.startsWith('/pipeline/new/config')) {
+    return ['Pipeline', 'New Pipeline']
+  }
+  if (pathname.startsWith('/pipeline/folders/')) {
+    return ['Pipeline', 'Explorer']
+  }
+  if (pathname.startsWith('/pipeline')) {
+    return ['Pipeline', 'Explorer']
+  }
+  if (pathname.startsWith('/settings')) {
+    return ['Settings']
+  }
+  return ['Overview']
 }

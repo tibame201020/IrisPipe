@@ -250,3 +250,20 @@ export interface PipelineResumeRequest {
 export interface PipelineRerunRequest {
   useAsyncLaucher?: boolean
 }
+
+export interface ActuatorMetricsListResponse {
+  names: string[]
+}
+
+export interface ActuatorMetricMeasurement {
+  statistic: string
+  value: number
+}
+
+export interface ActuatorMetricResponse {
+  name: string
+  description: string | null
+  baseUnit: string | null
+  measurements: ActuatorMetricMeasurement[]
+  availableTags: { tag: string; values: string[] }[]
+}

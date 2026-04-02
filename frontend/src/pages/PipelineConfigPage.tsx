@@ -1,4 +1,4 @@
-﻿import { ArrowDown, ArrowUp, FileUp, Link2, Plus, Save, Server, Trash2, Waypoints } from 'lucide-react'
+import { ArrowDown, ArrowUp, FileUp, Link2, Plus, Save, Server, Trash2, Waypoints } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -981,9 +981,9 @@ function JobEditorModal({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-base-300/55" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-base-300/60 backdrop-blur-[2px] transition-all" onClick={onClose}>
       <div
-        className="h-[92vh] max-h-[92vh] w-[96vw] max-w-none overflow-hidden rounded-2xl border border-base-300 bg-base-100 p-0 shadow-2xl"
+        className="h-[94vh] max-h-[1400px] w-[98vw] max-w-none overflow-hidden rounded-2xl border border-base-300 bg-base-100 p-0 shadow-2xl ring-1 ring-base-content/5"
         onClick={(event) => event.stopPropagation()}
       >
         <JobEditorPanel {...props} onDismiss={onClose} />
@@ -1102,32 +1102,32 @@ function JobEditorPanel({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 overflow-hidden p-5">
-      <div className="flex items-start justify-between gap-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+      <div className="flex items-start justify-between gap-4 border-b border-base-300 bg-base-200/50 px-6 py-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="badge badge-ghost badge-sm truncate">{stage.stageName}</span>
-            <span className="badge badge-ghost badge-sm">{job.executions.length} steps</span>
-            <span className="badge badge-ghost badge-sm">{job.setting.atomicLevel ?? 'JOB'} atomic</span>
+            <span className="badge badge-primary badge-sm truncate font-semibold">{stage.stageName}</span>
+            <span className="badge badge-ghost badge-sm font-medium">{job.executions.length} steps</span>
+            <span className="badge badge-ghost badge-sm font-medium">{job.setting.atomicLevel ?? 'JOB'} atomic</span>
           </div>
-          <div className="mt-3 truncate text-xl font-bold">{job.jobName || 'Untitled job'}</div>
-          <div className="mt-1 text-sm text-base-content/50">Edit job settings, reorder steps, and update the selected step without leaving the stage board context.</div>
+          <div className="mt-2 truncate text-2xl font-bold tracking-tight">{job.jobName || 'Untitled job'}</div>
+          <div className="mt-1 text-[13px] text-base-content/50">Edit job settings, reorder steps, and configure SQL operations without leaving the stage board context.</div>
         </div>
-        <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" aria-label="Close editor" onClick={onDismiss}>
-          <X size={16} />
+        <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0 hover:bg-base-300" aria-label="Close editor" onClick={onDismiss}>
+          <X size={18} />
         </button>
       </div>
 
-      <div className="grid min-h-[680px] gap-4 xl:grid-cols-[minmax(320px,1.05fr)_minmax(280px,0.82fr)_minmax(440px,1.18fr)]">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100">
-          <div className="border-b border-base-300 bg-base-200/35 px-4 py-4">
+      <div className="grid min-h-0 flex-1 gap-0 xl:grid-cols-[minmax(320px,0.85fr)_minmax(320px,0.75fr)_minmax(480px,1.4fr)] divide-y xl:divide-y-0 xl:divide-x divide-base-300">
+        <section className="flex min-h-0 flex-col overflow-hidden bg-base-100">
+          <div className="border-b border-base-300 bg-base-200/30 px-5 py-4">
             <div className="iris-header">Job Settings</div>
-            <div className="mt-1 text-xs text-base-content/45">Define the job runtime, move it across stages, and configure connections.</div>
+            <div className="mt-1 text-xs text-base-content/50">Define runtime behavior and data connections.</div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            <div className="space-y-4">
-              <div className="rounded-xl border border-base-300 bg-base-200/20 p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            <div className="space-y-6">
+              <div className="rounded-xl border border-base-300 bg-base-100 shadow-sm p-4">
                 <label className="form-control">
                   <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Job Name</span>
                   <input
@@ -1140,10 +1140,10 @@ function JobEditorPanel({
                   <FieldMessages messages={jobNameErrors} />
                 </label>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-5 grid grid-cols-2 gap-4">
                   <label className="form-control">
                     <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage</span>
-                    <select className="select select-bordered" value={stage.editorId} onChange={(event) => onMoveToStage(event.target.value)}>
+                    <select className="select select-bordered focus:border-primary" value={stage.editorId} onChange={(event) => onMoveToStage(event.target.value)}>
                       {stageOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -1155,7 +1155,7 @@ function JobEditorPanel({
                   <label className="form-control">
                     <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Atomic Level</span>
                     <select
-                      className={getControlClass(atomicLevelErrors.length > 0, 'select select-bordered')}
+                      className={getControlClass(atomicLevelErrors.length > 0, 'select select-bordered focus:border-primary')}
                       value={job.setting.atomicLevel ?? 'JOB'}
                       onChange={(event) =>
                         onChange((current) => ({
@@ -1194,7 +1194,7 @@ function JobEditorPanel({
                   />
                 </div>
 
-                <div className="mt-4 rounded-xl border border-base-300 bg-base-100/70 px-3 py-3">
+                <div className="mt-5 pt-5 border-t border-base-300">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage Movement</div>
                   <div className="mt-1 text-xs text-base-content/50">
                     Jobs inside the same stage execute in parallel. Reordering within a stage only changes presentation order.
@@ -1202,16 +1202,16 @@ function JobEditorPanel({
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="btn btn-outline border-base-300 btn-sm hover:bg-base-200 hover:border-base-300"
                       disabled={!previousStage}
                       onClick={() => previousStage && onMoveToStage(previousStage.value)}
                     >
                       <ArrowLeft size={14} />
-                      Previous Stage
+                      Prev Stage
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="btn btn-outline border-base-300 btn-sm hover:bg-base-200 hover:border-base-300"
                       disabled={!nextStage}
                       onClick={() => nextStage && onMoveToStage(nextStage.value)}
                     >
@@ -1220,18 +1220,11 @@ function JobEditorPanel({
                     </button>
                   </div>
                 </div>
-                <FieldMessages messages={executionsErrors} className="mt-3" />
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button type="button" className="btn btn-ghost btn-sm text-error" onClick={onRemoveJob}>
-                    <Trash2 size={14} />
-                    Remove Job
-                  </button>
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-5">
                 <ConnectionPanel
-                  title="Source"
+                  title="Source Node"
                   icon={Server}
                   configured={sourceConfigured}
                   connection={job.database.source}
@@ -1239,7 +1232,7 @@ function JobEditorPanel({
                   onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, source: connection } }))}
                 />
                 <ConnectionPanel
-                  title="Destination"
+                  title="Destination Node"
                   icon={Link2}
                   configured={destConfigured}
                   connection={job.database.dest}
@@ -1247,16 +1240,24 @@ function JobEditorPanel({
                   onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, dest: connection } }))}
                 />
               </div>
+
+              <div className="pt-2">
+                <FieldMessages messages={executionsErrors} className="mb-3" />
+                <button type="button" className="btn btn-ghost btn-sm text-error bg-error/5 hover:bg-error/10 w-full" onClick={onRemoveJob}>
+                  <Trash2 size={14} />
+                  Delete Job
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100">
-          <div className="border-b border-base-300 bg-base-200/35 px-4 py-4">
+        <section className="flex min-h-0 flex-col overflow-hidden bg-base-100">
+          <div className="border-b border-base-300 bg-base-200/30 px-5 py-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="iris-header">Execution Steps</div>
-                <div className="mt-1 text-xs text-base-content/45">Use this column as the navigator. Reorder or remove steps here, then edit the selected step on the right.</div>
+                <div className="mt-1 text-xs text-base-content/50">Navigator. Select a step to edit details.</div>
               </div>
               <button type="button" className="btn btn-primary btn-sm gap-2" onClick={handleAddStep}>
                 <Plus size={14} />
@@ -1433,11 +1434,11 @@ function ExecutionStepEditorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-base-300 bg-base-200/35 px-4 py-4">
+      <div className="border-b border-base-300 bg-base-200/30 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="iris-header">Step {stepIndex + 1}</div>
-            <div className="mt-1 text-xs text-base-content/45">Edit SQL, target mapping, watermark, and named parameters.</div>
+            <div className="mt-1 text-xs text-base-content/50">Edit SQL statement and target mappings.</div>
           </div>
           <div className="flex items-center gap-1">
             {issueCount > 0 ? <span className="badge badge-warning badge-sm mr-1">{issueCount} issues</span> : null}
@@ -1527,13 +1528,18 @@ function ExecutionStepEditorPanel({
             </div>
 
             {activeTab === 'sql' ? (
-              <div className="mt-4">
-                <label className="form-control">
-                  <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">SQL Statement</span>
+              <div className="mt-4 flex flex-col h-[600px] max-h-max">
+                <label className="form-control flex-1 flex flex-col min-h-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">SQL Statement</span>
+                    <span className="text-[10px] text-base-content/30 font-mono">{step.sql.length} chars</span>
+                  </div>
                   <textarea
-                    className={getControlClass(sqlErrors.length > 0, 'textarea textarea-bordered min-h-52 font-mono text-xs')}
+                    className={getControlClass(sqlErrors.length > 0, 'iris-code-area flex-1 w-full p-4 resize-none focus:outline-primary/50')}
                     value={step.sql}
                     onChange={(event) => onChange((current) => ({ ...current, sql: event.target.value }))}
+                    placeholder="SELECT * FROM source_table"
+                    spellCheck={false}
                   />
                   <FieldMessages messages={sqlErrors} />
                 </label>
@@ -1656,34 +1662,38 @@ function ConnectionPanel({
   const hasErrors = Boolean(errors?.driver?.length || errors?.url?.length || errors?.username?.length || errors?.password?.length)
 
   return (
-    <div className={`rounded-2xl border bg-base-200/20 p-4 ${hasErrors ? 'border-warning/50 ring-1 ring-warning/20' : 'border-base-300'}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`rounded-lg p-2 ${hasErrors ? 'bg-warning/10 text-warning' : configured ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/35'}`}>
-            <Icon size={14} />
+    <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
+      <div className={`flex items-center justify-between px-4 py-3 border-b ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/40 border-base-300'}`}>
+        <div className="flex items-center gap-2.5">
+          <div className="opacity-60">
+            <Icon size={15} />
           </div>
-          <div className="iris-header">{title}</div>
+          <div className="text-sm font-bold tracking-wide">{title}</div>
         </div>
-        <span className={`badge badge-sm ${hasErrors ? 'badge-warning' : configured ? 'badge-success' : 'badge-ghost'}`}>
-          {hasErrors ? 'Needs fields' : configured ? 'Configured' : 'Optional'}
+        <span className={`badge badge-sm font-semibold tracking-wider ${hasErrors ? 'badge-warning' : configured ? 'badge-success' : 'badge-ghost'}`}>
+          {hasErrors ? 'Needs config' : configured ? 'Ready' : 'Optional'}
         </span>
       </div>
 
-      <div className="mt-4 space-y-3">
-        <div>
-          <input type="text" className={getControlClass(Boolean(errors?.driver?.length), 'input input-bordered input-sm w-full')} placeholder="Driver" value={currentConnection.driver} onChange={(event) => onChange({ ...currentConnection, driver: event.target.value })} />
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-px bg-base-300 p-px ${hasErrors ? 'bg-warning/20' : ''}`}>
+        <div className="bg-base-100 p-3 flex flex-col justify-center">
+          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">Driver</div>
+          <input type="text" className={getControlClass(Boolean(errors?.driver?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm font-mono')} placeholder="com.mysql.cj.jdbc.Driver" value={currentConnection.driver} onChange={(event) => onChange({ ...currentConnection, driver: event.target.value })} />
           <FieldMessages messages={errors?.driver} />
         </div>
-        <div>
-          <input type="text" className={getControlClass(Boolean(errors?.url?.length), 'input input-bordered input-sm w-full')} placeholder="URL" value={currentConnection.url} onChange={(event) => onChange({ ...currentConnection, url: event.target.value })} />
+        <div className="bg-base-100 p-3 flex flex-col justify-center">
+          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">URL</div>
+          <input type="text" className={getControlClass(Boolean(errors?.url?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm font-mono')} placeholder="jdbc:mysql://..." value={currentConnection.url} onChange={(event) => onChange({ ...currentConnection, url: event.target.value })} />
           <FieldMessages messages={errors?.url} />
         </div>
-        <div>
-          <input type="text" className={getControlClass(Boolean(errors?.username?.length), 'input input-bordered input-sm w-full')} placeholder="Username" value={currentConnection.username} onChange={(event) => onChange({ ...currentConnection, username: event.target.value })} />
+        <div className="bg-base-100 p-3 flex flex-col justify-center">
+          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">Username</div>
+          <input type="text" className={getControlClass(Boolean(errors?.username?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm')} placeholder="root" value={currentConnection.username} onChange={(event) => onChange({ ...currentConnection, username: event.target.value })} />
           <FieldMessages messages={errors?.username} />
         </div>
-        <div>
-          <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-bordered input-sm w-full')} placeholder="Password" value={currentConnection.password} onChange={(event) => onChange({ ...currentConnection, password: event.target.value })} />
+        <div className="bg-base-100 p-3 flex flex-col justify-center">
+          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">Password</div>
+          <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm')} placeholder="••••••••" value={currentConnection.password} onChange={(event) => onChange({ ...currentConnection, password: event.target.value })} />
           <FieldMessages messages={errors?.password} />
         </div>
       </div>

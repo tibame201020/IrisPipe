@@ -5,7 +5,7 @@ import { LoadingState } from '../components/LoadingState'
 import { getApiErrorMessage, getPipelineConfig, getPipelineTree } from '../lib/api'
 import { findFolderPath } from '../lib/tree'
 import type { ConfigPipelineInfo, FolderTreeNodeInfo, PipelineTreeInfo } from '../types/irispipe'
-import { Waypoints } from 'lucide-react'
+import { Layers3, PlayCircle, Waypoints } from 'lucide-react'
 
 export type PipelineWorkspaceContext = {
   pipeline: ConfigPipelineInfo
@@ -33,7 +33,6 @@ export function PipelineWorkspaceLayout() {
       setLoading(false)
       return
     }
-
     setLoading(true)
     setError(null)
     try {
@@ -41,7 +40,6 @@ export function PipelineWorkspaceLayout() {
         getPipelineConfig(numericPipelineId),
         getPipelineTree(),
       ])
-
       setPipeline(pipelineResponse)
       setTree(treeResponse)
     } catch (loadError) {
@@ -57,9 +55,7 @@ export function PipelineWorkspaceLayout() {
       setLoading(false)
       return
     }
-
     let active = true
-
     void (async () => {
       setLoading(true)
       setError(null)
@@ -68,7 +64,6 @@ export function PipelineWorkspaceLayout() {
           getPipelineConfig(numericPipelineId),
           getPipelineTree(),
         ])
-
         if (!active) return
         setPipeline(pipelineResponse)
         setTree(treeResponse)
@@ -79,10 +74,7 @@ export function PipelineWorkspaceLayout() {
         if (active) setLoading(false)
       }
     })()
-
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [numericPipelineId])
 
   const folderPathNodes = useMemo(() => {
@@ -108,35 +100,72 @@ export function PipelineWorkspaceLayout() {
   }
 
   const runsActive = location.pathname.includes(`/pipeline/items/${pipeline.id}/runs`)
+  const totalJobs = pipeline.jobs.length
+  const totalStages = pipeline.stages.length
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <header className="z-30 flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
-        <div className="breadcrumbs text-[13px] text-base-content/50">
-          <ul>
-            <li><Link to="/pipeline">Root</Link></li>
-            {folderPathNodes.map((folder) => (
-              <li key={folder.id}>
-                <Link to={`/pipeline/folders/${folder.id}`}>{folder.folderName}</Link>
-              </li>
-            ))}
-            <li className="font-bold opacity-100">{pipeline.pipelineName}</li>
-          </ul>
+      {/* ── Premium Pipeline Header ── */}
+      <header className="z-30 shrink-0 border-b border-base-300 bg-base-100">
+        {/* Top row: Pipeline identity */}
+        <div className="flex items-center justify-between gap-4 px-6 pt-4 pb-3">
+          {/* Left: breadcrumb + name */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-base-content/35 font-medium mb-1">
+              <Link to="/pipeline" className="hover:text-primary transition-colors">Root</Link>
+              {folderPathNodes.map((folder) => (
+                <span key={folder.id} className="flex items-center gap-1.5">
+                  <span>/</span>
+                  <Link to={`/pipeline/folders/${folder.id}`} className="hover:text-primary transition-colors">
+                    {folder.folderName}
+                  </Link>
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold tracking-tight truncate">{pipeline.pipelineName}</h1>
+              {/* Stage / Job summary chips */}
+              <div className="hidden md:flex items-center gap-2">
+                <span className="flex items-center gap-1 rounded-full bg-primary/8 px-3 py-1 text-[11px] font-bold text-primary/80">
+                  <Layers3 size={11} />
+                  {totalStages} stages
+                </span>
+                <span className="flex items-center gap-1 rounded-full bg-base-200 px-3 py-1 text-[11px] font-bold text-base-content/50">
+                  <PlayCircle size={11} />
+                  {totalJobs} jobs
+                </span>
+                {pipeline.folderId && pipeline.folderPath && (
+                  <span className="truncate max-w-[160px] rounded-full bg-base-200 px-3 py-1 text-[10px] font-medium text-base-content/35">
+                    {pipeline.folderPath}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div role="tablist" className="tabs tabs-boxed tabs-sm bg-base-200/60 p-1">
-            <Link
-              to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className={`tab h-8 px-4 ${runsActive ? 'opacity-60' : 'tab-active font-bold'}`}
-            >
-              Config
-            </Link>
-            <Link
-              to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className={`tab h-8 px-4 ${runsActive ? 'tab-active font-bold' : 'opacity-60'}`}
-            >
-              Runs
-            </Link>
+        {/* Bottom row: Config / Runs underline tabs */}
+        <div className="flex items-center gap-0 border-t border-base-300/50 px-6 bg-base-200/20">
+          <Link
+            to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all duration-150 border-b-2 -mb-px ${
+              !runsActive
+                ? 'border-primary text-primary'
+                : 'border-transparent text-base-content/45 hover:text-base-content hover:border-base-300'
+            }`}
+          >
+            Config
+          </Link>
+          <Link
+            to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all duration-150 border-b-2 -mb-px ${
+              runsActive
+                ? 'border-primary text-primary'
+                : 'border-transparent text-base-content/45 hover:text-base-content hover:border-base-300'
+            }`}
+          >
+            Runs
+          </Link>
         </div>
       </header>
 
@@ -146,9 +175,7 @@ export function PipelineWorkspaceLayout() {
           tree,
           folderPathNodes,
           refreshWorkspace: loadWorkspace,
-          applyPipeline: (nextPipeline: ConfigPipelineInfo) => {
-            setPipeline(nextPipeline)
-          },
+          applyPipeline: (nextPipeline: ConfigPipelineInfo) => { setPipeline(nextPipeline) },
         } satisfies PipelineWorkspaceContext}
       />
     </div>

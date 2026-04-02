@@ -1,26 +1,11 @@
-import { FolderTree, Home, PanelLeftClose, PanelLeftOpen, Settings2, Workflow } from 'lucide-react'
+import { Activity, FolderTree, Home, PanelLeftClose, PanelLeftOpen, Settings2 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useLayout } from '../state/layout'
 
 const navItems = [
-  {
-    to: '/overview',
-    icon: Home,
-    label: 'Overview',
-    description: 'Engine landing',
-  },
-  {
-    to: '/pipeline',
-    icon: FolderTree,
-    label: 'Pipeline',
-    description: 'Explorer and runs',
-  },
-  {
-    to: '/settings',
-    icon: Settings2,
-    label: 'Settings',
-    description: 'Theme and appearance',
-  },
+  { to: '/overview', icon: Home, label: 'Overview', description: 'Engine landing' },
+  { to: '/pipeline', icon: FolderTree, label: 'Pipeline', description: 'Explorer & runs' },
+  { to: '/settings', icon: Settings2, label: 'Settings', description: 'Appearance' },
 ]
 
 export function ConsoleSidebar() {
@@ -28,46 +13,65 @@ export function ConsoleSidebar() {
 
   return (
     <aside
-      className={`flex h-full flex-col border-r border-base-300 bg-base-100 transition-[width] duration-300 ${
-        sidebarCollapsed ? 'w-24' : 'w-72'
+      className={`flex h-full flex-col border-r border-base-300 bg-base-100 transition-[width] duration-300 ease-in-out shrink-0 ${
+        sidebarCollapsed ? 'w-[64px]' : 'w-[240px]'
       }`}
     >
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-box bg-primary text-primary-content">
-          <Workflow size={22} />
+      {/* ── Logo ── */}
+      <div className={`flex items-center gap-3 border-b border-base-300 ${sidebarCollapsed ? 'justify-center px-0 py-4' : 'px-5 py-4'}`}>
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-content shadow-sm">
+          <Activity size={18} strokeWidth={2.5} />
         </div>
-        {!sidebarCollapsed ? (
-          <div className="overflow-hidden">
-            <div className="truncate text-lg font-semibold tracking-tight">IrisPipe</div>
-            <div className="truncate text-sm text-base-content/55">Operator Console</div>
+        {!sidebarCollapsed && (
+          <div className="min-w-0 overflow-hidden">
+            <div className="truncate text-[15px] font-bold tracking-tight leading-tight">IrisPipe</div>
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.15em] text-base-content/35">
+              Operator Console
+            </div>
           </div>
-        ) : null}
+        )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-2">
+      {/* ── Nav ── */}
+      <nav className="flex-1 overflow-y-auto py-3">
+        {!sidebarCollapsed && (
+          <div className="px-4 pb-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/25">Navigation</div>
+        )}
+        <ul className="space-y-0.5 px-2">
           {navItems.map((item) => (
             <li key={item.to}>
               <NavLink to={item.to}>
                 {({ isActive }) => (
                   <div
-                    className={`flex w-full items-center rounded-box py-3 transition-colors ${
-                      sidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'
+                    className={`iris-nav-active flex w-full items-center rounded-lg py-2.5 transition-all duration-150 ${
+                      sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'
                     } ${
                       isActive
-                        ? 'border border-primary/20 bg-primary/10 text-primary'
-                        : 'border border-transparent text-base-content/65 hover:bg-base-200 hover:text-base-content'
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-base-content/55 hover:bg-base-200/70 hover:text-base-content'
                     }`}
+                    style={isActive && !sidebarCollapsed ? undefined : undefined}
                   >
-                    <item.icon size={20} className={`shrink-0 ${sidebarCollapsed ? 'mx-auto' : ''}`} />
-                    {!sidebarCollapsed ? (
+                    {/* Active left bar */}
+                    {isActive && (
+                      <span
+                        className="absolute left-0 top-1/4 bottom-1/4 w-[3px] rounded-r-sm bg-primary"
+                        style={{ position: 'absolute' }}
+                      />
+                    )}
+                    <item.icon
+                      size={18}
+                      strokeWidth={isActive ? 2.5 : 2}
+                      className={`shrink-0 ${sidebarCollapsed ? 'mx-auto' : ''}`}
+                    />
+                    {!sidebarCollapsed && (
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{item.label}</div>
-                        <div className={`truncate text-xs ${isActive ? 'text-primary/70' : 'text-base-content/45'}`}>
+                        <div className="truncate text-sm leading-tight">{item.label}</div>
+                        <div className={`truncate text-[10px] leading-none mt-0.5 ${isActive ? 'text-primary/60' : 'text-base-content/35'}`}>
                           {item.description}
                         </div>
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 )}
               </NavLink>
@@ -76,17 +80,20 @@ export function ConsoleSidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-base-300 p-3">
+      {/* ── Collapse Toggle ── */}
+      <div className="border-t border-base-300 p-2">
         <button
           type="button"
           onClick={toggleSidebar}
-          className={`btn btn-ghost w-full rounded-box normal-case text-base-content/60 hover:bg-base-200 hover:text-base-content ${
-            sidebarCollapsed ? 'justify-center px-0' : 'justify-start px-4'
+          className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-semibold text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content/70 ${
+            sidebarCollapsed ? 'justify-center' : ''
           }`}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          {!sidebarCollapsed ? <span>Collapse sidebar</span> : null}
+          {sidebarCollapsed
+            ? <PanelLeftOpen size={16} />
+            : <><PanelLeftClose size={16} /><span>Collapse</span></>
+          }
         </button>
       </div>
     </aside>

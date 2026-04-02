@@ -1,5 +1,7 @@
 import axios from 'axios'
 import type {
+  ActuatorMetricResponse,
+  ActuatorMetricsListResponse,
   ConfigPipelineInfo,
   ConfigPipelineUpsertRequest,
   FolderDeletePreviewInfo,
@@ -22,6 +24,16 @@ const http = axios.create({
 
 export async function getHealth() {
   const response = await http.get<HealthResponse>('/actuator/health')
+  return response.data
+}
+
+export async function getActuatorMetricsList() {
+  const response = await http.get<ActuatorMetricsListResponse>('/actuator/metrics')
+  return response.data
+}
+
+export async function getActuatorMetric(name: string) {
+  const response = await http.get<ActuatorMetricResponse>(`/actuator/metrics/${name}`)
   return response.data
 }
 
