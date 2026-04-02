@@ -1662,39 +1662,50 @@ function ConnectionPanel({
   const hasErrors = Boolean(errors?.driver?.length || errors?.url?.length || errors?.username?.length || errors?.password?.length)
 
   return (
-    <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/40 border-base-300'}`}>
-        <div className="flex items-center gap-2.5">
-          <div className="opacity-60">
-            <Icon size={15} />
-          </div>
-          <div className="text-sm font-bold tracking-wide">{title}</div>
+    <div className={`rounded-lg border shadow-sm overflow-hidden transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
+      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/40 border-base-300'}`}>
+        <div className="flex items-center gap-2">
+          <Icon size={14} className="opacity-60" />
+          <div className="text-[13px] font-bold tracking-wide">{title}</div>
         </div>
-        <span className={`badge badge-sm font-semibold tracking-wider ${hasErrors ? 'badge-warning' : configured ? 'badge-success' : 'badge-ghost'}`}>
+        <span className={`badge badge-xs font-semibold tracking-wider ${hasErrors ? 'badge-warning' : configured ? 'badge-success' : 'badge-ghost'}`}>
           {hasErrors ? 'Needs config' : configured ? 'Ready' : 'Optional'}
         </span>
       </div>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-px bg-base-300 p-px ${hasErrors ? 'bg-warning/20' : ''}`}>
-        <div className="bg-base-100 p-3 flex flex-col justify-center">
-          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">Driver</div>
-          <input type="text" className={getControlClass(Boolean(errors?.driver?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm font-mono')} placeholder="com.mysql.cj.jdbc.Driver" value={currentConnection.driver} onChange={(event) => onChange({ ...currentConnection, driver: event.target.value })} />
-          <FieldMessages messages={errors?.driver} />
+      <div className={`flex flex-col divide-y divide-base-300 bg-base-100 ${hasErrors ? 'bg-warning/5' : ''}`}>
+        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-base-300">
+          <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">Driver</div>
+            <div className="flex-1 min-w-0">
+              <input type="text" className={getControlClass(Boolean(errors?.driver?.length), 'input input-ghost input-sm h-7 w-full text-sm font-mono px-1')} placeholder="com.mysql.jdbc.Driver" value={currentConnection.driver} onChange={(event) => onChange({ ...currentConnection, driver: event.target.value })} />
+              <FieldMessages messages={errors?.driver} />
+            </div>
+          </div>
+          <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">URL</div>
+            <div className="flex-1 min-w-0">
+              <input type="text" className={getControlClass(Boolean(errors?.url?.length), 'input input-ghost input-sm h-7 w-full text-sm font-mono px-1')} placeholder="jdbc:mysql://..." value={currentConnection.url} onChange={(event) => onChange({ ...currentConnection, url: event.target.value })} />
+              <FieldMessages messages={errors?.url} />
+            </div>
+          </div>
         </div>
-        <div className="bg-base-100 p-3 flex flex-col justify-center">
-          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">URL</div>
-          <input type="text" className={getControlClass(Boolean(errors?.url?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm font-mono')} placeholder="jdbc:mysql://..." value={currentConnection.url} onChange={(event) => onChange({ ...currentConnection, url: event.target.value })} />
-          <FieldMessages messages={errors?.url} />
-        </div>
-        <div className="bg-base-100 p-3 flex flex-col justify-center">
-          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">Username</div>
-          <input type="text" className={getControlClass(Boolean(errors?.username?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm')} placeholder="root" value={currentConnection.username} onChange={(event) => onChange({ ...currentConnection, username: event.target.value })} />
-          <FieldMessages messages={errors?.username} />
-        </div>
-        <div className="bg-base-100 p-3 flex flex-col justify-center">
-          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35 mb-1.5">Password</div>
-          <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm px-1.5 h-7 w-full text-sm')} placeholder="••••••••" value={currentConnection.password} onChange={(event) => onChange({ ...currentConnection, password: event.target.value })} />
-          <FieldMessages messages={errors?.password} />
+
+        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-base-300">
+          <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">User</div>
+            <div className="flex-1 min-w-0">
+              <input type="text" className={getControlClass(Boolean(errors?.username?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="root" value={currentConnection.username} onChange={(event) => onChange({ ...currentConnection, username: event.target.value })} />
+              <FieldMessages messages={errors?.username} />
+            </div>
+          </div>
+          <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">Pass</div>
+            <div className="flex-1 min-w-0">
+              <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="••••••••" value={currentConnection.password} onChange={(event) => onChange({ ...currentConnection, password: event.target.value })} />
+              <FieldMessages messages={errors?.password} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

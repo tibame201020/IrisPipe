@@ -167,31 +167,31 @@ export function PipelineRunsPage() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* ── Stats Bar ── */}
         {stats && runs.length > 0 && (
-          <div className="border-b border-base-300 bg-base-100">
-            <div className="grid grid-cols-2 divide-x divide-base-300 md:grid-cols-4">
+          <div className="border-b border-base-300 bg-base-100/50">
+            <div className="grid grid-cols-2 divide-x divide-y md:divide-y-0 divide-base-300 md:grid-cols-4">
               <StatCell
-                icon={<TrendingUp size={16} className="text-primary" />}
+                icon={<TrendingUp size={14} className="text-primary hidden sm:block" />}
                 label="Success Rate"
                 value={`${stats.successRate}%`}
                 barPct={stats.successRate}
                 barColor="bg-primary"
               />
               <StatCell
-                icon={<CheckCircle2 size={16} className="text-success" />}
+                icon={<CheckCircle2 size={14} className="text-success hidden sm:block" />}
                 label="Completed"
                 value={String(stats.completed)}
                 barPct={runs.length > 0 ? (stats.completed / runs.length) * 100 : 0}
                 barColor="bg-success"
               />
               <StatCell
-                icon={<XCircle size={16} className="text-error" />}
+                icon={<XCircle size={14} className="text-error hidden sm:block" />}
                 label="Failed"
                 value={String(stats.failed)}
                 barPct={runs.length > 0 ? (stats.failed / runs.length) * 100 : 0}
                 barColor="bg-error"
               />
               <StatCell
-                icon={<Clock size={16} className="text-base-content/40" />}
+                icon={<Clock size={14} className="text-base-content/40 hidden sm:block" />}
                 label="Avg Duration"
                 value={stats.avgDurationLabel}
                 barPct={0}
@@ -248,22 +248,24 @@ export function PipelineRunsPage() {
             {/* History */}
             <section>
               {activeRuns.length > 0 && (
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/40">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
                     History ({inactiveRuns.length})
                   </span>
                 </div>
               )}
-              <div className="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm divide-y divide-base-300">
-                {inactiveRuns.map((run) => (
-                  <RunCard
-                    key={run.id}
-                    run={run}
-                    latest={runs.indexOf(run) === 0}
-                    to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                    rowMode
-                  />
-                ))}
+              <div className="border-y border-base-300 bg-base-100">
+                <div className="flex flex-col divide-y divide-base-300/60">
+                  {inactiveRuns.map((run) => (
+                    <RunCard
+                      key={run.id}
+                      run={run}
+                      latest={runs.indexOf(run) === 0}
+                      to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+                      rowMode
+                    />
+                  ))}
+                </div>
               </div>
             </section>
 
@@ -306,18 +308,18 @@ function StatCell({
   noBar?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-2 px-5 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col justify-between px-6 py-5 hover:bg-base-200/20 transition-colors">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 opacity-80">
           {icon}
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/35">{label}</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-base-content/50">{label}</span>
         </div>
-        <span className="text-xl font-bold font-mono">{value}</span>
+        <div className="text-3xl sm:text-4xl font-light tracking-tight">{value}</div>
       </div>
       {!noBar && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-base-300/50">
+        <div className="mt-4 h-[3px] w-full overflow-hidden rounded bg-base-300/40">
           <div
-            className={`h-full rounded-full iris-bar-fill ${barColor}`}
+            className={`h-full rounded iris-bar-fill ${barColor}`}
             style={{ '--bar-target-width': `${barPct}%` } as React.CSSProperties}
           />
         </div>
@@ -355,27 +357,28 @@ function RunCard({
     return (
       <Link
         to={to}
-        className={`group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-base-200/35 ${accentClass}`}
+        className={`group relative flex items-center justify-between gap-4 px-6 py-2 transition-colors hover:bg-base-200/40 ${accentClass}`}
       >
-        {/* Status dot + run info */}
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <div className={`size-2.5 shrink-0 rounded-full ${
-            isFailed ? 'bg-error' : isActive ? 'bg-info animate-pulse' : isCompleted ? 'bg-success' : 'bg-base-content/30'
+          <div className={`w-1.5 h-1.5 rounded-full ${
+            isFailed ? 'bg-error' : isActive ? 'bg-info animate-pulse' : isCompleted ? 'bg-success' : 'bg-base-content/20'
           }`} />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-bold text-sm">Run #{run.id}</span>
-              {latest && <span className="badge badge-primary badge-xs">Latest</span>}
+          <div className="grid grid-cols-[100px_minmax(0,1fr)_120px_100px] gap-6 items-center flex-1 min-w-0">
+            <div className="font-semibold text-[13px]">#{run.id}</div>
+            <div className="flex items-center gap-2">
               <StatusBadge status={run.status} subtle />
+              {latest && <span className="badge badge-primary badge-xs">Latest</span>}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-base-content/30">
-              <span>{formatDateTime(run.createdAt)}</span>
-              <span>{formatDuration(run.startTime ?? run.createdAt, run.endTime)}</span>
+            <div className="text-[11px] font-mono tabular-nums text-base-content/50 truncate">
+              {formatDateTime(run.createdAt)}
+            </div>
+            <div className="text-[11px] font-mono tabular-nums text-base-content/50 text-right">
+              {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <ArrowRight size={15} className="text-base-content/25 group-hover:text-primary transition-colors" />
+        <div className="opacity-0 transition-opacity group-hover:opacity-100 w-4 text-right">
+          <ArrowRight size={14} className="text-base-content/40" />
         </div>
       </Link>
     )
@@ -385,24 +388,22 @@ function RunCard({
   return (
     <Link
       to={to}
-      className={`group block rounded-2xl border border-base-300 bg-base-100 px-5 py-4 transition-all hover:border-primary/30 hover:shadow-md ${accentClass}`}
+      className={`group block rounded-xl border border-base-300 bg-base-100 px-5 py-4 transition-all hover:border-primary/30 hover:shadow-sm ${accentClass}`}
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-base">Run #{run.id}</span>
+            <span className="font-bold text-sm">Run #{run.id}</span>
             {latest && <span className="badge badge-primary badge-sm">Latest</span>}
             <StatusBadge status={run.status} subtle />
             {isActive && <span className="text-[10px] font-black uppercase tracking-widest text-info/70 animate-pulse">● Live</span>}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-base-content/30">
-            <span>Started {formatDateTime(run.startTime ?? run.createdAt)}</span>
+          <div className="mt-2 text-[11px] font-mono tabular-nums text-base-content/50 flex items-center gap-3">
+            <span>{formatDateTime(run.startTime ?? run.createdAt)}</span>
             <span>{formatDuration(run.startTime ?? run.createdAt, run.endTime)}</span>
           </div>
         </div>
-        <div className="shrink-0 rounded-xl border border-base-300 p-2.5 transition-all group-hover:border-primary group-hover:bg-primary group-hover:text-primary-content">
-          <ArrowRight size={16} />
-        </div>
+        <ArrowRight size={15} className="text-base-content/25 shrink-0 group-hover:text-primary transition-colors" />
       </div>
     </Link>
   )

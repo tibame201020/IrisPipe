@@ -331,10 +331,10 @@ export function PipelineExplorerPage() {
               {/* Folders */}
               {folders.length > 0 && (
                 <div>
-                  <div className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-base-content/30">
+                  <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
                     Directories ({folders.length})
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="flex flex-col border border-base-300 rounded-lg overflow-hidden divide-y divide-base-300 bg-base-100">
                     {folders.map((folder) => (
                       <FolderCard
                         key={folder.id}
@@ -350,10 +350,10 @@ export function PipelineExplorerPage() {
               {/* Pipelines */}
               {pipelines.length > 0 && (
                 <div>
-                  <div className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-base-content/30">
-                    Pipeline Definitions ({pipelines.length})
+                  <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
+                    Pipelines ({pipelines.length})
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="flex flex-col border border-base-300 rounded-lg overflow-hidden divide-y divide-base-300 bg-base-100">
                     {pipelines.map((pipeline) => (
                       <PipelineCard
                         key={pipeline.id}
@@ -519,24 +519,24 @@ function FolderCard({
   onDelete: () => void
 }) {
   return (
-    <div className="iris-card iris-pipeline-card iris-folder-card group flex flex-col gap-3 bg-base-100 p-4 hover:shadow-sm transition-shadow">
-      <Link to={buildExplorerLocation(folder.id)} className="flex items-start gap-3 min-w-0 flex-1">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-warning/10 text-warning transition-transform group-hover:scale-105">
-          <Folder size={18} fill="currentColor" fillOpacity={0.15} />
+    <div className="group flex items-center justify-between px-4 py-2 hover:bg-base-200/40 transition-colors">
+      <Link to={buildExplorerLocation(folder.id)} className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded bg-warning/10 text-warning group-hover:bg-warning/20 transition-colors">
+          <Folder size={14} fill="currentColor" fillOpacity={0.2} />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-bold text-base-content">{folder.folderName}</div>
-          <div className="mt-1 text-[11px] text-base-content/40">
-            {folder.folders.length > 0 && <span>{folder.folders.length} folders · </span>}
-            {folder.pipelines.length} pipeline{folder.pipelines.length !== 1 ? 's' : ''}
+        <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_120px] items-center gap-4">
+          <div className="truncate font-medium text-[13px] text-base-content">{folder.folderName}</div>
+          <div className="text-[11px] font-mono tabular-nums text-base-content/40 justify-self-end text-right">
+            {folder.folders.length > 0 && <span>{folder.folders.length} dir </span>}
+            {folder.pipelines.length} pl
           </div>
         </div>
       </Link>
-      <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <button type="button" className="btn btn-ghost btn-xs btn-square" onClick={onRename} title="Rename">
+      <div className="flex items-center justify-end gap-1 ml-4 opacity-0 transition-opacity group-hover:opacity-100 w-[60px]">
+        <button type="button" className="btn btn-ghost btn-xs px-1.5" onClick={onRename} title="Rename">
           <PencilLine size={13} />
         </button>
-        <button type="button" className="btn btn-ghost btn-xs btn-square text-error" onClick={onDelete} title="Delete">
+        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error" onClick={onDelete} title="Delete">
           <Trash2 size={13} />
         </button>
       </div>
@@ -554,43 +554,38 @@ function PipelineCard({
   onDelete: () => void
 }) {
   return (
-    <div className="iris-card iris-pipeline-card group flex flex-col gap-3 bg-base-100 p-4 hover:shadow-sm transition-shadow">
+    <div className="group flex items-center justify-between px-4 py-2 hover:bg-base-200/40 transition-colors">
       <Link
         to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-        className="flex items-start gap-3 min-w-0 flex-1"
+        className="flex items-center gap-3 min-w-0 flex-1"
       >
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
-          <FileJson2 size={18} />
+        <div className="flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+          <FileJson2 size={14} />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-bold text-base-content">{pipeline.pipelineName}</div>
-          <div className="mt-1 text-[11px] text-base-content/40 truncate">
+        <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_160px] items-center gap-4">
+          <div className="truncate font-medium text-[13px] text-base-content">{pipeline.pipelineName}</div>
+          <div className="text-[11px] font-mono text-base-content/40 truncate justify-self-end">
             {pipeline.folderPath || 'Root'}
           </div>
         </div>
       </Link>
 
-      {/* Quick action row - visible on hover */}
-      <div className="flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-        <div className="flex items-center gap-1">
-          <Link
-            to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-            className="btn btn-ghost btn-xs gap-1"
-            title="Open Config"
-          >
-            <Settings2 size={12} />
-            Config
-          </Link>
-          <Link
-            to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-            className="btn btn-ghost btn-xs gap-1"
-            title="View Runs"
-          >
-            <PlayCircle size={12} />
-            Runs
-          </Link>
-        </div>
-        <button type="button" className="btn btn-ghost btn-xs btn-square text-error" onClick={onDelete} title="Delete">
+      <div className="flex items-center gap-2 ml-4 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
+        <Link
+          to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+          className="btn btn-ghost btn-xs font-normal gap-1 px-2"
+        >
+          <Settings2 size={12} />
+          Config
+        </Link>
+        <Link
+          to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+          className="btn btn-ghost btn-xs font-normal gap-1 px-2"
+        >
+          <PlayCircle size={12} />
+          Runs
+        </Link>
+        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error ml-1" onClick={onDelete} title="Delete">
           <Trash2 size={13} />
         </button>
       </div>
