@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_ecc_github__get_file_contents",
+      "Bash(python3 -m json.tool)",
+      "Read(//c/Users/jeffh/.claude/**)",
+      "Bash(wc -l \"C:/Users/jeffh/Downloads/develop/codes/IrisPipe/backend/src/main/java/irispipe/\"**/*.java)"
+    ]
+  }
+}
