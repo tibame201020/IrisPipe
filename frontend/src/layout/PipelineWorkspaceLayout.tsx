@@ -2,10 +2,12 @@ import { Outlet, Link, useParams, useSearchParams, Navigate, useLocation } from 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
-import { getApiErrorMessage, getPipelineConfig, getPipelineTree } from '../lib/api'
+import { getApiErrorMessage, getPipelineConfig, getPipelineTree, getRecentRuns } from '../lib/api'
 import { findFolderPath } from '../lib/tree'
-import type { ConfigPipelineInfo, FolderTreeNodeInfo, PipelineTreeInfo } from '../types/irispipe'
+import type { ConfigPipelineInfo, FolderTreeNodeInfo, PipelineRunSummaryInfo, PipelineTreeInfo } from '../types/irispipe'
 import { Layers3, PlayCircle, Waypoints } from 'lucide-react'
+import { formatDuration } from '../lib/date'
+import { StatusBadge } from '../components/StatusBadge'
 
 export type PipelineWorkspaceContext = {
   pipeline: ConfigPipelineInfo
@@ -13,6 +15,8 @@ export type PipelineWorkspaceContext = {
   folderPathNodes: FolderTreeNodeInfo[]
   refreshWorkspace: () => Promise<void>
   applyPipeline: (nextPipeline: ConfigPipelineInfo) => void
+  setDirty: (dirty: boolean) => void
+  lastRun?: PipelineRunSummaryInfo
 }
 
 export function PipelineWorkspaceLayout() {
@@ -23,6 +27,8 @@ export function PipelineWorkspaceLayout() {
   const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dirty, setDirty] = useState(false)
+  const [lastRun, setLastRun] = useState<PipelineRunSummaryInfo | undefined>()
 
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
@@ -77,6 +83,15 @@ export function PipelineWorkspaceLayout() {
     return () => { active = false }
   }, [numericPipelineId])
 
+  // Load last run for the pipeline (used in tab bar)
+  useEffect(() => {
+    if (!Number.isFinite(numericPipelineId)) return
+    getRecentRuns(1).then((runs) => {
+      const match = runs.find((r) => r.pipelineId === numericPipelineId)
+      if (match) setLastRun(match)
+    }).catch(() => {})
+  }, [numericPipelineId])
+
   const folderPathNodes = useMemo(() => {
     if (!tree || !pipeline?.folderId) return []
     return findFolderPath(tree, pipeline.folderId)
@@ -103,69 +118,88 @@ export function PipelineWorkspaceLayout() {
   const totalJobs = pipeline.jobs.length
   const totalStages = pipeline.stages.length
 
+  const runsHref = `/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`
+  const configHref = `/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      {/* ── Premium Pipeline Header ── */}
       <header className="z-30 shrink-0 border-b border-base-300 bg-base-100">
-        {/* Top row: Pipeline identity */}
-        <div className="flex items-center justify-between gap-4 px-6 pt-4 pb-3">
-          {/* Left: breadcrumb + name */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-base-content/35 font-medium mb-1">
-              <Link to="/pipeline" className="hover:text-primary transition-colors">Root</Link>
-              {folderPathNodes.map((folder) => (
-                <span key={folder.id} className="flex items-center gap-1.5">
-                  <span>/</span>
-                  <Link to={`/pipeline/folders/${folder.id}`} className="hover:text-primary transition-colors">
-                    {folder.folderName}
-                  </Link>
-                </span>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold tracking-tight truncate">{pipeline.pipelineName}</h1>
-              {/* Stage / Job summary chips */}
-              <div className="hidden md:flex items-center gap-2">
-                <span className="flex items-center gap-1 rounded-full bg-primary/8 px-3 py-1 text-[11px] font-bold text-primary/80">
-                  <Layers3 size={11} />
-                  {totalStages} stages
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-base-200 px-3 py-1 text-[11px] font-bold text-base-content/50">
-                  <PlayCircle size={11} />
-                  {totalJobs} jobs
-                </span>
-                {pipeline.folderId && pipeline.folderPath && (
-                  <span className="truncate max-w-[160px] rounded-full bg-base-200 px-3 py-1 text-[10px] font-medium text-base-content/35">
-                    {pipeline.folderPath}
-                  </span>
-                )}
-              </div>
-            </div>
+        {/* Single compact row: breadcrumb / title / chips */}
+        <div className="flex items-center gap-3 px-5 py-2.5">
+          {/* Breadcrumb + title */}
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+            <Link to="/pipeline" className="shrink-0 text-[11px] text-base-content/35 transition-colors hover:text-primary">
+              Root
+            </Link>
+            {folderPathNodes.map((folder) => (
+              <span key={folder.id} className="flex shrink-0 items-center gap-1.5">
+                <span className="text-[11px] text-base-content/25">/</span>
+                <Link to={`/pipeline/folders/${folder.id}`} className="text-[11px] text-base-content/35 transition-colors hover:text-primary">
+                  {folder.folderName}
+                </Link>
+              </span>
+            ))}
+            <span className="text-[11px] text-base-content/25">/</span>
+            <h1 className="min-w-0 truncate text-[14px] font-bold tracking-tight" title={pipeline.pipelineName}>
+              {pipeline.pipelineName}
+            </h1>
+            {dirty ? (
+              <span className="shrink-0 text-[10px] text-warning" title="Unsaved changes">●</span>
+            ) : null}
+          </div>
+
+          {/* Summary chips */}
+          <div className="hidden shrink-0 items-center gap-1.5 md:flex">
+            <span className="flex items-center gap-1 rounded-full bg-primary/8 px-2.5 py-0.5 text-[10px] font-bold text-primary/70">
+              <Layers3 size={10} />
+              {totalStages}
+            </span>
+            <span className="flex items-center gap-1 rounded-full bg-base-200 px-2.5 py-0.5 text-[10px] font-bold text-base-content/45">
+              <PlayCircle size={10} />
+              {totalJobs}
+            </span>
           </div>
         </div>
 
-        {/* Bottom row: Config / Runs underline tabs */}
-        <div className="flex items-center gap-0 border-t border-base-300/50 px-6 bg-base-200/20">
-          <Link
-            to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all duration-150 border-b-2 -mb-px ${
-              !runsActive
-                ? 'border-primary text-primary'
-                : 'border-transparent text-base-content/45 hover:text-base-content hover:border-base-300'
-            }`}
-          >
-            Config
-          </Link>
-          <Link
-            to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all duration-150 border-b-2 -mb-px ${
-              runsActive
-                ? 'border-primary text-primary'
-                : 'border-transparent text-base-content/45 hover:text-base-content hover:border-base-300'
-            }`}
-          >
-            Runs
-          </Link>
+        {/* Tab row */}
+        <div className="flex items-center justify-between gap-0 border-t border-base-300/40 bg-base-200/15 px-5">
+          <div className="flex items-center">
+            <Link
+              to={configHref}
+              className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all duration-150 -mb-px ${
+                !runsActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+              }`}
+            >
+              Config
+            </Link>
+            <Link
+              to={runsHref}
+              className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all duration-150 -mb-px ${
+                runsActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+              }`}
+            >
+              Runs
+            </Link>
+          </div>
+
+          {/* Last run chip */}
+          {lastRun ? (
+            <Link
+              to={`${runsHref.split('?')[0]}/${lastRun.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
+              title={`Last run: #${lastRun.id}`}
+            >
+              <span className="text-base-content/40">last run</span>
+              <StatusBadge status={lastRun.status} subtle mode="text" />
+              <span className="font-mono text-base-content/30">
+                {formatDuration(lastRun.startTime ?? lastRun.createdAt, lastRun.endTime)}
+              </span>
+            </Link>
+          ) : null}
         </div>
       </header>
 
@@ -176,6 +210,8 @@ export function PipelineWorkspaceLayout() {
           folderPathNodes,
           refreshWorkspace: loadWorkspace,
           applyPipeline: (nextPipeline: ConfigPipelineInfo) => { setPipeline(nextPipeline) },
+          setDirty,
+          lastRun,
         } satisfies PipelineWorkspaceContext}
       />
     </div>

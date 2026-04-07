@@ -1,0 +1,162 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e9]:
+        - generic [ref=e10]: IrisPipe
+        - generic [ref=e11]: Operator Console
+    - navigation [ref=e12]:
+      - generic [ref=e13]: Navigation
+      - list [ref=e14]:
+        - listitem [ref=e15]:
+          - link "Overview Engine landing" [ref=e16] [cursor=pointer]:
+            - /url: /overview
+            - generic [ref=e17]:
+              - img [ref=e18]
+              - generic [ref=e21]:
+                - generic [ref=e22]: Overview
+                - generic [ref=e23]: Engine landing
+        - listitem [ref=e24]:
+          - link "Pipeline Explorer & runs" [ref=e25] [cursor=pointer]:
+            - /url: /pipeline
+            - generic [ref=e26]:
+              - img [ref=e28]
+              - generic [ref=e33]:
+                - generic [ref=e34]: Pipeline
+                - generic [ref=e35]: Explorer & runs
+        - listitem [ref=e36]:
+          - link "Settings Appearance" [ref=e37] [cursor=pointer]:
+            - /url: /settings
+            - generic [ref=e38]:
+              - img [ref=e39]
+              - generic [ref=e42]:
+                - generic [ref=e43]: Settings
+                - generic [ref=e44]: Appearance
+    - button "Collapse sidebar" [ref=e46] [cursor=pointer]:
+      - img [ref=e47]
+      - generic [ref=e50]: Collapse
+  - generic [ref=e51]:
+    - banner [ref=e52]:
+      - generic [ref=e54]:
+        - generic [ref=e56]: Pipeline
+        - generic [ref=e57]:
+          - generic [ref=e58]: /
+          - generic [ref=e59]: New Pipeline
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - img [ref=e62]
+          - generic [ref=e66]: Connected
+        - generic [ref=e68] [cursor=pointer]:
+          - img [ref=e69]
+          - generic [ref=e75]: corporate
+    - main [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - list [ref=e80]:
+            - listitem [ref=e81]:
+              - link "Root" [ref=e82] [cursor=pointer]:
+                - /url: /pipeline
+            - listitem [ref=e83]: New Pipeline
+          - generic [ref=e84]: Draft
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - generic [ref=e87]: 1 stages
+            - generic [ref=e88]: 0 jobs
+            - generic [ref=e89]: 2 issues
+            - generic [ref=e90]: Jobs in the same stage run in parallel. Drag cards to reorganize, double-click a job to edit.
+          - generic [ref=e91]:
+            - button "Import File" [ref=e92] [cursor=pointer]:
+              - img [ref=e93]
+              - text: Import File
+            - button "Add Stage" [ref=e97] [cursor=pointer]:
+              - img [ref=e98]
+              - text: Add Stage
+            - button "Create Pipeline" [ref=e99] [cursor=pointer]:
+              - img [ref=e100]
+              - text: Create Pipeline
+        - generic [ref=e104]:
+          - main [ref=e105]:
+            - region "Stage stage1" [ref=e110]:
+              - button "S1 stage1 1 0j 1 validation issues" [ref=e112] [cursor=pointer]:
+                - generic [ref=e113]:
+                  - generic [ref=e114]: S1
+                  - button "stage1" [ref=e115]:
+                    - generic "stage1" [ref=e116]
+                  - generic [ref=e117]:
+                    - generic [ref=e118]: "1"
+                    - generic [ref=e119]: 0j
+                - generic [ref=e120]:
+                  - button "Add stage to the right" [ref=e121]:
+                    - img [ref=e122]
+                  - button "Add job" [ref=e123]:
+                    - img [ref=e124]
+                  - button "Delete stage" [ref=e125]:
+                    - img [ref=e126]
+                - generic [ref=e129]: 1 validation issues
+              - generic [ref=e131]: No jobs — add one above
+            - status [ref=e132]
+          - complementary [ref=e133]:
+            - generic [ref=e134]:
+              - generic [ref=e135]: Pipeline Summary
+              - generic [ref=e137]:
+                - generic [ref=e138]: Pipeline Name
+                - textbox "Pipeline Name Pipeline name is required." [ref=e139]:
+                  - /placeholder: pipeline_name
+                - generic [ref=e141]: Pipeline name is required.
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - generic [ref=e144]:
+                  - generic [ref=e145]: Stages
+                  - generic [ref=e146]: "1"
+                - generic [ref=e147]:
+                  - generic [ref=e148]: Jobs
+                  - generic [ref=e149]: "0"
+                - generic [ref=e150]:
+                  - generic [ref=e151]: Steps
+                  - generic [ref=e152]: "0"
+                - generic [ref=e153]:
+                  - generic [ref=e154]: Issues
+                  - generic [ref=e155]: "2"
+              - generic [ref=e156]:
+                - generic [ref=e157]: Validation Issues
+                - generic [ref=e158]: Badges on stage lanes and job cards show where fixes are needed.
+                - list [ref=e159]:
+                  - listitem [ref=e160]: Pipeline name is required.
+                  - listitem [ref=e161]: "Stage 1: at least one job is required."
+          - complementary [ref=e162]:
+            - generic [ref=e163]:
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - generic [ref=e168]: Stage 1
+                    - generic [ref=e169]: 1 issues
+                  - generic [ref=e170]: stage1
+                  - generic [ref=e171]: Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow.
+                - button "Close stage editor" [ref=e172] [cursor=pointer]:
+                  - img [ref=e173]
+              - generic [ref=e177]:
+                - generic [ref=e178]:
+                  - generic [ref=e179]: Stage Settings
+                  - generic [ref=e180]:
+                    - generic [ref=e181]: Stage Name
+                    - textbox "Stage Name" [ref=e182]:
+                      - /placeholder: stage1
+                      - text: stage1
+                  - generic [ref=e183]:
+                    - button "Move Left" [disabled]:
+                      - img
+                      - text: Move Left
+                    - button "Move Right" [disabled]:
+                      - text: Move Right
+                      - img
+                    - button "Add Job" [ref=e184] [cursor=pointer]:
+                      - img [ref=e185]
+                      - text: Add Job
+                    - generic [ref=e186]: Single stage pipeline
+                  - generic [ref=e188]: "Stage 1: at least one job is required."
+                - generic [ref=e189]:
+                  - generic [ref=e190]: Stage Actions
+                  - generic [ref=e191]: Removing a stage also removes the jobs defined inside it.
+                  - button "Delete Stage" [ref=e193] [cursor=pointer]:
+                    - img [ref=e194]
+                    - text: Delete Stage

@@ -1,21 +1,25 @@
 import { ArrowDown, ArrowUp, FileUp, Link2, Plus, Save, Server, Trash2, Waypoints } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { sortableKeyboardCoordinates, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+
 import { ArrowLeft, ArrowRight, Pencil, X } from 'lucide-react'
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
+import { SqlEditor } from '../components/SqlEditor'
 import { PipelineImportDialog } from '../components/PipelineImportDialog'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import {
   createPipelineConfig,
   getApiErrorMessage,
+  getDriverPresets,
   getPipelineConfig,
   importIntoPipelineConfig,
   importPipelineConfig,
+  listConnections,
+  testConnection,
   updatePipelineConfig,
+  type ConnectionDTO,
+  type DriverPreset,
 } from '../lib/api'
 import {
   countDraftJobs,
@@ -44,6 +48,20 @@ type SelectedItem =
   | { kind: 'job'; stageEditorId: string; jobEditorId: string }
 
 type EditingJobTarget = { stageEditorId: string; jobEditorId: string }
+
+function buildConnectionSummary(database: { source: { driver?: string } | null; dest: { driver?: string } | null }): string {
+  const src = database.source?.driver ?? '—'
+  const dst = database.dest?.driver ?? '—'
+  if (src === '—' && dst === '—') return 'No connections configured'
+  return `${src} → ${dst}`
+}
+
+function buildStepSummary(job: { executions: Array<{ type?: string; name?: string | null }> }): string {
+  const count = job.executions.length
+  if (count === 0) return 'No steps'
+  const types = [...new Set(job.executions.map((s) => s.type ?? 'EXECUTE'))].slice(0, 3).join(' · ')
+  return `${count} step${count === 1 ? '' : 's'} · ${types}`
+}
 
 export function PipelineConfigPage() {
   const { pipelineId } = useParams()
@@ -163,6 +181,18 @@ export function PipelineConfigPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedItem])
 
+  // Ctrl+S / Cmd+S → save
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault()
+        void handleSave()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [draft, saving])
+
   const stageLanes = useMemo<StageLaneData[]>(() => {
     if (!draft) return []
     return draft.stages.map((stage, stageIndex) => ({
@@ -221,18 +251,21 @@ export function PipelineConfigPage() {
           </button>
         </>
       ),
-      jobs: stage.jobs.map((job) => ({
+      jobs: stage.jobs.map((job) => {
+        const jobIssues = validationSummary.jobIssues.get(job.editorId) ?? 0
+        const validationStatus: 'ok' | 'warning' | 'error' =
+          jobIssues > 0 ? 'error' : (job.database.source && job.database.dest) ? 'ok' : 'warning'
+        return ({
         id: job.editorId,
         title: job.jobName || 'Untitled job',
         selected: selectedJob?.editorId === job.editorId,
         onClick: () => setSelectedItem({ kind: 'job', stageEditorId: stage.editorId, jobEditorId: job.editorId }),
         onDoubleClick: () => openJobEditor(stage.editorId, job.editorId),
-        issuesCount: validationSummary.jobIssues.get(job.editorId) ?? 0,
-        badges: [
-          `${job.executions.length} steps`,
-          `${job.setting.atomicLevel ?? 'JOB'} atomic`,
-          job.database.source && job.database.dest ? 'connections ready' : 'connection setup',
-        ],
+        issuesCount: jobIssues,
+        validationStatus,
+        subtitle: buildConnectionSummary(job.database),
+        stepSummary: buildStepSummary(job),
+        badges: [`${job.setting.atomicLevel ?? 'JOB'}`],
         toolbar: (
           <>
             <button
@@ -261,7 +294,7 @@ export function PipelineConfigPage() {
             </button>
           </>
         ),
-      })),
+      })}),
     }))
   }, [
     draft,
@@ -276,6 +309,7 @@ export function PipelineConfigPage() {
 
   function updateDraft(recipe: (current: PipelineDraft) => PipelineDraft) {
     setDraft((current) => (current ? recipe(current) : current))
+    workspace?.setDirty(true)
   }
 
   function insertStageAfter(stageEditorId?: string) {
@@ -505,19 +539,6 @@ export function PipelineConfigPage() {
     })
   }
 
-  function reorderStepInJob(stageEditorId: string, jobEditorId: string, draggedStepId: string, targetStepId?: string) {
-    updateJob(stageEditorId, jobEditorId, (job) => {
-      const currentIndex = job.executions.findIndex((step) => step.editorId === draggedStepId)
-      if (currentIndex < 0) return job
-      const targetIndex =
-        targetStepId == null ? job.executions.length - 1 : job.executions.findIndex((step) => step.editorId === targetStepId)
-      if (targetIndex < 0 || currentIndex === targetIndex) return job
-      return {
-        ...job,
-        executions: moveArrayItem(job.executions, currentIndex, targetIndex),
-      }
-    })
-  }
 
   function addParameterToStep(stageEditorId: string, jobEditorId: string, stepEditorId: string) {
     updateStep(stageEditorId, jobEditorId, stepEditorId, (step) => ({
@@ -562,6 +583,7 @@ export function PipelineConfigPage() {
       }
 
       setDraft(pipelineToDraft(saved))
+      workspace?.setDirty(false)
     } catch (saveError) {
       setError(getApiErrorMessage(saveError, 'Failed to save pipeline config'))
     } finally {
@@ -726,9 +748,10 @@ export function PipelineConfigPage() {
                     'input input-bordered w-full',
                   )}
                   value={draft.pipelineName}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setDraft((current) => (current ? { ...current, pipelineName: event.target.value } : current))
-                  }
+                    workspace?.setDirty(true)
+                  }}
                   placeholder="pipeline_name"
                 />
                 <FieldMessages messages={getPipelineFieldMessages(validationSummary, 'pipelineName')} />
@@ -814,7 +837,6 @@ export function PipelineConfigPage() {
           onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
           onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
           onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
-          onReorderStep={(draggedStepId, targetStepId) => reorderStepInJob(editingStage.editorId, editingJob.editorId, draggedStepId, targetStepId)}
           onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
           onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
             updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
@@ -934,8 +956,8 @@ function StageEditorPanel({
             <FieldMessages messages={stageJobErrors} className="mt-3" />
           </div>
 
-          <div className="rounded-2xl border border-error/20 bg-error/5 p-4">
-            <div className="iris-header text-error">Danger Zone</div>
+          <div className="rounded-2xl border border-base-300 bg-base-100 p-4">
+            <div className="iris-header">Stage Actions</div>
             <div className="mt-2 text-sm text-base-content/55">
               Removing a stage also removes the jobs defined inside it.
             </div>
@@ -1004,7 +1026,6 @@ type JobEditorPanelProps = {
   onUpdateStep: (stepEditorId: string, recipe: (step: EditableStep) => EditableStep) => void
   onRemoveStep: (stepEditorId: string) => void
   onMoveStep: (stepEditorId: string, direction: -1 | 1) => void
-  onReorderStep: (draggedStepId: string, targetStepId?: string) => void
   onAddParameter: (stepEditorId: string) => void
   onUpdateParameter: (
     stepEditorId: string,
@@ -1027,7 +1048,6 @@ function JobEditorPanel({
   onUpdateStep,
   onRemoveStep,
   onMoveStep,
-  onReorderStep,
   onAddParameter,
   onUpdateParameter,
   onRemoveParameter,
@@ -1039,10 +1059,7 @@ function JobEditorPanel({
   const previousStage = currentStageIndex > 0 ? stageOptions[currentStageIndex - 1] : null
   const nextStage = currentStageIndex >= 0 && currentStageIndex < stageOptions.length - 1 ? stageOptions[currentStageIndex + 1] : null
   const [selectedStepEditorId, setSelectedStepEditorId] = useState<string | null>(job.executions[0]?.editorId ?? null)
-  const stepSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
+  const [stepFilter, setStepFilter] = useState('')
 
   useEffect(() => {
     if (job.executions.length === 0) {
@@ -1074,12 +1091,6 @@ function JobEditorPanel({
     password: getFieldMessages(validation.jobFieldMessages, job.editorId, 'destPassword'),
   }
 
-  function handleStepDragEnd(event: DragEndEvent) {
-    if (!event.over || event.active.id === event.over.id) return
-    onReorderStep(String(event.active.id), String(event.over.id))
-    setSelectedStepEditorId(String(event.active.id))
-  }
-
   function handleAddStep() {
     const nextStepEditorId = onAddStep()
     if (nextStepEditorId) {
@@ -1103,196 +1114,182 @@ function JobEditorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <div className="flex items-start justify-between gap-4 border-b border-base-300 bg-base-200/50 px-6 py-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="badge badge-primary badge-sm truncate font-semibold">{stage.stageName}</span>
-            <span className="badge badge-ghost badge-sm font-medium">{job.executions.length} steps</span>
-            <span className="badge badge-ghost badge-sm font-medium">{job.setting.atomicLevel ?? 'JOB'} atomic</span>
-          </div>
-          <div className="mt-2 truncate text-2xl font-bold tracking-tight">{job.jobName || 'Untitled job'}</div>
-          <div className="mt-1 text-[13px] text-base-content/50">Edit job settings, reorder steps, and configure SQL operations without leaving the stage board context.</div>
-        </div>
-        <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0 hover:bg-base-300" aria-label="Close editor" onClick={onDismiss}>
-          <X size={18} />
+      {/* Compact header — job name + stage + atomic level + close */}
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-base-300 bg-base-200/40 px-4 py-3">
+        <span className="shrink-0 badge badge-primary badge-sm font-semibold" title={stage.stageName}>{stage.stageName}</span>
+        <input
+          type="text"
+          className={getControlClass(jobNameErrors.length > 0, 'input input-sm flex-1 min-w-0 font-semibold')}
+          value={job.jobName}
+          onChange={(event) => onChange((current) => ({ ...current, jobName: event.target.value }))}
+          placeholder="job_name"
+        />
+        <select
+          className={getControlClass(atomicLevelErrors.length > 0, 'select select-sm select-bordered w-[110px] shrink-0')}
+          value={job.setting.atomicLevel ?? 'JOB'}
+          onChange={(event) => onChange((current) => ({ ...current, setting: { ...current.setting, atomicLevel: event.target.value as EditableJob['setting']['atomicLevel'] } }))}
+        >
+          <option value="JOB">JOB</option>
+          <option value="CHUNK">CHUNK</option>
+        </select>
+        <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" aria-label="Close editor" onClick={onDismiss}>
+          <X size={16} />
         </button>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-0 xl:grid-cols-[minmax(320px,0.85fr)_minmax(320px,0.75fr)_minmax(480px,1.4fr)] divide-y xl:divide-y-0 xl:divide-x divide-base-300">
-        <section className="flex min-h-0 flex-col overflow-hidden bg-base-100">
-          <div className="border-b border-base-300 bg-base-200/30 px-5 py-4">
-            <div className="iris-header">Job Settings</div>
-            <div className="mt-1 text-xs text-base-content/50">Define runtime behavior and data connections.</div>
+      {/* 2-column body */}
+      <div className="flex min-h-0 flex-1 divide-x divide-base-300 overflow-hidden">
+
+        {/* LEFT — Connections + Settings */}
+        <div className="w-[300px] shrink-0 overflow-y-auto divide-y divide-base-300">
+          {/* Source connection */}
+          <div className="p-4">
+            <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-base-content/35 flex items-center gap-2">
+              <Server size={11} />Source Node
+            </div>
+            <ConnectionPanel
+              title="Source Node"
+              icon={Server}
+              configured={sourceConfigured}
+              connection={job.database.source}
+              errors={sourceErrors}
+              onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, source: connection } }))}
+            />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <div className="space-y-6">
-              <div className="rounded-xl border border-base-300 bg-base-100 shadow-sm p-4">
-                <label className="form-control">
-                  <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Job Name</span>
-                  <input
-                    type="text"
-                    className={getControlClass(jobNameErrors.length > 0, 'input input-bordered w-full')}
-                    value={job.jobName}
-                    onChange={(event) => onChange((current) => ({ ...current, jobName: event.target.value }))}
-                    placeholder="job_name"
-                  />
-                  <FieldMessages messages={jobNameErrors} />
-                </label>
+          {/* Dest connection */}
+          <div className="p-4">
+            <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-base-content/35 flex items-center gap-2">
+              <Link2 size={11} />Destination Node
+            </div>
+            <ConnectionPanel
+              title="Destination Node"
+              icon={Link2}
+              configured={destConfigured}
+              connection={job.database.dest}
+              errors={destErrors}
+              onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, dest: connection } }))}
+            />
+          </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-4">
-                  <label className="form-control">
-                    <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage</span>
-                    <select className="select select-bordered focus:border-primary" value={stage.editorId} onChange={(event) => onMoveToStage(event.target.value)}>
-                      {stageOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="form-control">
-                    <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Atomic Level</span>
-                    <select
-                      className={getControlClass(atomicLevelErrors.length > 0, 'select select-bordered focus:border-primary')}
-                      value={job.setting.atomicLevel ?? 'JOB'}
-                      onChange={(event) =>
-                        onChange((current) => ({
-                          ...current,
-                          setting: {
-                            ...current.setting,
-                            atomicLevel: event.target.value as EditableJob['setting']['atomicLevel'],
-                          },
-                        }))
-                      }
-                    >
-                      <option value="JOB">JOB</option>
-                      <option value="CHUNK">CHUNK</option>
-                    </select>
-                    <FieldMessages messages={atomicLevelErrors} />
-                  </label>
-
-                  <NumberField
-                    label="Fetch Size"
-                    value={job.setting.fetchSize}
-                    errors={fetchSizeErrors}
-                    onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, fetchSize: value } }))}
-                  />
-                  <NumberField
-                    label="Batch Size"
-                    value={job.setting.batchSize}
-                    errors={batchSizeErrors}
-                    onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, batchSize: value } }))}
-                  />
-                  <NumberField
-                    label="Delete Threshold"
-                    value={job.setting.deleteThreshold}
-                    onChange={(value) =>
-                      onChange((current) => ({ ...current, setting: { ...current.setting, deleteThreshold: value } }))
-                    }
-                  />
-                </div>
-
-                <div className="mt-5 pt-5 border-t border-base-300">
-                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage Movement</div>
-                  <div className="mt-1 text-xs text-base-content/50">
-                    Jobs inside the same stage execute in parallel. Reordering within a stage only changes presentation order.
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-outline border-base-300 btn-sm hover:bg-base-200 hover:border-base-300"
-                      disabled={!previousStage}
-                      onClick={() => previousStage && onMoveToStage(previousStage.value)}
-                    >
-                      <ArrowLeft size={14} />
-                      Prev Stage
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline border-base-300 btn-sm hover:bg-base-200 hover:border-base-300"
-                      disabled={!nextStage}
-                      onClick={() => nextStage && onMoveToStage(nextStage.value)}
-                    >
-                      Next Stage
-                      <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-5">
-                <ConnectionPanel
-                  title="Source Node"
-                  icon={Server}
-                  configured={sourceConfigured}
-                  connection={job.database.source}
-                  errors={sourceErrors}
-                  onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, source: connection } }))}
-                />
-                <ConnectionPanel
-                  title="Destination Node"
-                  icon={Link2}
-                  configured={destConfigured}
-                  connection={job.database.dest}
-                  errors={destErrors}
-                  onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, dest: connection } }))}
-                />
-              </div>
-
-              <div className="pt-2">
-                <FieldMessages messages={executionsErrors} className="mb-3" />
-                <button type="button" className="btn btn-ghost btn-sm text-error bg-error/5 hover:bg-error/10 w-full" onClick={onRemoveJob}>
-                  <Trash2 size={14} />
-                  Delete Job
-                </button>
-              </div>
+          {/* Settings */}
+          <div className="p-4 space-y-3">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35">Batch Settings</div>
+            <div className="grid grid-cols-2 gap-2">
+              <NumberField
+                label="Fetch Size"
+                value={job.setting.fetchSize}
+                errors={fetchSizeErrors}
+                onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, fetchSize: value } }))}
+              />
+              <NumberField
+                label="Batch Size"
+                value={job.setting.batchSize}
+                errors={batchSizeErrors}
+                onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, batchSize: value } }))}
+              />
+              <NumberField
+                label="Delete Threshold"
+                value={job.setting.deleteThreshold}
+                onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, deleteThreshold: value } }))}
+              />
             </div>
           </div>
-        </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden bg-base-100">
-          <div className="border-b border-base-300 bg-base-200/30 px-5 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="iris-header">Execution Steps</div>
-                <div className="mt-1 text-xs text-base-content/50">Navigator. Select a step to edit details.</div>
-              </div>
-              <button type="button" className="btn btn-primary btn-sm gap-2" onClick={handleAddStep}>
-                <Plus size={14} />
-                Add Step
+          {/* Stage movement */}
+          <div className="p-4 space-y-2">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35">Stage</div>
+            <select
+              className="select select-bordered select-sm w-full"
+              value={stage.editorId}
+              onChange={(event) => onMoveToStage(event.target.value)}
+            >
+              {stageOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-outline btn-xs border-base-300 flex-1"
+                disabled={!previousStage}
+                onClick={() => previousStage && onMoveToStage(previousStage.value)}
+              >
+                <ArrowLeft size={12} />Prev
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-xs border-base-300 flex-1"
+                disabled={!nextStage}
+                onClick={() => nextStage && onMoveToStage(nextStage.value)}
+              >
+                Next<ArrowRight size={12} />
               </button>
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            <DndContext sensors={stepSensors} collisionDetection={closestCenter} onDragEnd={handleStepDragEnd}>
-              <SortableContext items={job.executions.map((step) => step.editorId)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {job.executions.map((step, index) => (
-                    <ExecutionStepListItem
-                      key={step.editorId}
-                      step={step}
-                      stepIndex={index}
-                      issueCount={validation.stepIssues.get(step.editorId) ?? 0}
-                      selected={selectedStep?.editorId === step.editorId}
-                      onSelect={() => setSelectedStepEditorId(step.editorId)}
-                      onRemove={() => handleRemoveStep(step.editorId)}
-                      onMove={(direction) => onMoveStep(step.editorId, direction)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+          {/* Delete */}
+          <div className="p-4">
+            <FieldMessages messages={executionsErrors} className="mb-2" />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm w-full text-error hover:bg-error/10"
+              onClick={onRemoveJob}
+            >
+              <Trash2 size={13} />Delete Job
+            </button>
           </div>
-        </section>
+        </div>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100">
+        {/* RIGHT — Step pills + inline editor */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* Step pills bar */}
+          <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-base-300 bg-base-100 px-4 py-2.5">
+            {job.executions.map((step, i) => {
+              const stepIssues = validation.stepIssues.get(step.editorId) ?? 0
+              const isSelected = selectedStep?.editorId === step.editorId
+              const hidden = stepFilter.trim() !== '' && !(step.name ?? '').toLowerCase().includes(stepFilter.toLowerCase())
+              return (
+                <button
+                  key={step.editorId}
+                  type="button"
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${hidden ? 'opacity-30' : ''} ${
+                    isSelected
+                      ? 'border-primary bg-primary text-primary-content'
+                      : stepIssues > 0
+                        ? 'border-warning/50 bg-warning/10 text-warning hover:bg-warning/20'
+                        : 'border-base-300 bg-base-100 text-base-content/55 hover:border-primary/30 hover:text-base-content'
+                  }`}
+                  onClick={() => setSelectedStepEditorId(step.editorId)}
+                >
+                  {stepIssues > 0 ? <span className="size-1.5 rounded-full bg-warning shrink-0" /> : null}
+                  {step.name?.trim() || `Step ${i + 1}`}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-base-300 px-3 py-1 text-[11px] text-base-content/40 transition-colors hover:border-primary/30 hover:text-primary/70"
+              onClick={handleAddStep}
+            >
+              <Plus size={11} />Add
+            </button>
+            <div className="ml-auto shrink-0">
+              <input
+                type="text"
+                placeholder="Filter steps..."
+                className="input input-xs input-bordered w-28"
+                value={stepFilter}
+                onChange={(e) => setStepFilter(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Inline step editor */}
           {selectedStep ? (
-            <ExecutionStepEditorPanel
+            <InlineStepEditor
               step={selectedStep}
-              stepIndex={job.executions.findIndex((candidate) => candidate.editorId === selectedStep.editorId)}
+              stepIndex={job.executions.findIndex((c) => c.editorId === selectedStep.editorId)}
               stepCount={job.executions.length}
               issueCount={validation.stepIssues.get(selectedStep.editorId) ?? 0}
               validation={validation}
@@ -1300,108 +1297,22 @@ function JobEditorPanel({
               onRemove={() => handleRemoveStep(selectedStep.editorId)}
               onMove={(direction) => onMoveStep(selectedStep.editorId, direction)}
               onAddParameter={() => onAddParameter(selectedStep.editorId)}
-              onUpdateParameter={(parameterEditorId, recipe) => onUpdateParameter(selectedStep.editorId, parameterEditorId, recipe)}
-              onRemoveParameter={(parameterEditorId) => onRemoveParameter(selectedStep.editorId, parameterEditorId)}
+              onUpdateParameter={(paramId, recipe) => onUpdateParameter(selectedStep.editorId, paramId, recipe)}
+              onRemoveParameter={(paramId) => onRemoveParameter(selectedStep.editorId, paramId)}
             />
           ) : (
-            <div className="flex h-full min-h-[320px] items-center justify-center px-6 text-center text-sm text-base-content/45">
-              Select a step to edit its SQL, destination table, watermark, and parameters.
+            <div className="flex h-full items-center justify-center text-sm text-base-content/35">
+              No steps — add one above
             </div>
           )}
-        </section>
-      </div>
-    </div>
-  )
-}
-
-function ExecutionStepListItem({
-  step,
-  stepIndex,
-  issueCount,
-  selected,
-  onSelect,
-  onRemove,
-  onMove,
-}: {
-  step: EditableStep
-  stepIndex: number
-  issueCount: number
-  selected: boolean
-  onSelect: () => void
-  onRemove: () => void
-  onMove: (direction: -1 | 1) => void
-}) {
-  const { setNodeRef, transform, transition, isDragging, isOver, attributes, listeners } = useSortable({
-    id: step.editorId,
-  })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`group/step rounded-xl border px-4 py-4 transition-all duration-150 ${
-        selected
-          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
-          : issueCount > 0
-            ? 'border-warning/50 bg-warning/5 hover:border-warning/70'
-            : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/30'
-      } ${isOver ? 'border-primary/60 bg-primary/6 ring-2 ring-primary/20 shadow-md' : ''} cursor-grab active:cursor-grabbing`}
-      title="Drag to reorder steps"
-    >
-      {isOver ? <div className="mb-3 h-[3px] rounded-full bg-primary shadow-[0_0_0_1px_hsl(var(--p)/0.2)]" /> : null}
-      <div className="flex items-start justify-between gap-3">
-        <div
-          className="min-w-0 flex-1 cursor-pointer text-left"
-          onClick={onSelect}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              onSelect()
-            }
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">
-            <span>Step {stepIndex + 1}</span>
-            {issueCount > 0 ? <span className="badge badge-warning badge-xs">{issueCount}</span> : null}
-          </div>
-          <div className="mt-1 truncate text-sm font-semibold">{step.name?.trim() || 'Untitled step'}</div>
-          <div className="mt-2 flex items-center gap-2 text-xs text-base-content/45">
-            <span className="badge badge-ghost badge-sm">{step.type}</span>
-            {step.destTable ? <span className="truncate">{step.destTable}</span> : null}
-          </div>
-        </div>
-
-        <div
-          className="flex translate-y-0.5 items-center gap-1 opacity-0 transition-all duration-150 group-hover/step:translate-y-0 group-hover/step:opacity-100 group-focus-within/step:translate-y-0 group-focus-within/step:opacity-100"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button type="button" className="btn btn-ghost btn-xs" onClick={() => onMove(-1)}>
-            <ArrowUp size={12} />
-          </button>
-          <button type="button" className="btn btn-ghost btn-xs" onClick={() => onMove(1)}>
-            <ArrowDown size={12} />
-          </button>
-          <button type="button" className="btn btn-ghost btn-xs text-error" onClick={onRemove}>
-            <Trash2 size={12} />
-          </button>
         </div>
       </div>
     </div>
   )
 }
 
-function ExecutionStepEditorPanel({
+
+function InlineStepEditor({
   step,
   stepIndex,
   stepCount,
@@ -1426,217 +1337,129 @@ function ExecutionStepEditorPanel({
   onUpdateParameter: (parameterEditorId: string, recipe: (parameter: EditableParameter) => EditableParameter) => void
   onRemoveParameter: (parameterEditorId: string) => void
 }) {
-  const [activeTab, setActiveTab] = useState<'sql' | 'target' | 'parameters'>('sql')
   const sqlErrors = getFieldMessages(validation.stepFieldMessages, step.editorId, 'sql')
   const destTableErrors = getFieldMessages(validation.stepFieldMessages, step.editorId, 'destTable')
-  const sqlIssueCount = sqlErrors.length
-  const targetIssueCount = destTableErrors.length
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-base-300 bg-base-200/30 px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="iris-header">Step {stepIndex + 1}</div>
-            <div className="mt-1 text-xs text-base-content/50">Edit SQL statement and target mappings.</div>
-          </div>
-          <div className="flex items-center gap-1">
-            {issueCount > 0 ? <span className="badge badge-warning badge-sm mr-1">{issueCount} issues</span> : null}
-            <button type="button" className="btn btn-ghost btn-xs" disabled={stepIndex === 0} onClick={() => onMove(-1)}>
-              <ArrowUp size={12} />
-            </button>
-            <button type="button" className="btn btn-ghost btn-xs" disabled={stepIndex >= stepCount - 1} onClick={() => onMove(1)}>
-              <ArrowDown size={12} />
-            </button>
-            <button type="button" className="btn btn-ghost btn-xs text-error" onClick={onRemove}>
-              <Trash2 size={12} />
-            </button>
-          </div>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Step meta row */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-base-300 bg-base-200/20 px-4 py-2">
+        <select
+          className="select select-xs select-bordered w-[110px] shrink-0"
+          value={step.type}
+          onChange={(event) => onChange((current) => ({ ...current, type: event.target.value as ExecutionType }))}
+        >
+          <option value="EXECUTE">EXECUTE</option>
+          <option value="INSERT">INSERT</option>
+          <option value="UPDATE">UPDATE</option>
+          <option value="UPSERT">UPSERT</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+        <input
+          type="text"
+          className="input input-xs input-bordered min-w-0 flex-1"
+          value={step.name ?? ''}
+          placeholder="step name"
+          onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
+        />
+        <span className="shrink-0 font-mono text-[10px] text-base-content/30">{step.sql.length}c</span>
+        {issueCount > 0 ? <span className="badge badge-warning badge-xs shrink-0">{issueCount}</span> : null}
+        <button type="button" className="btn btn-ghost btn-xs shrink-0" disabled={stepIndex === 0} onClick={() => onMove(-1)}><ArrowUp size={11} /></button>
+        <button type="button" className="btn btn-ghost btn-xs shrink-0" disabled={stepIndex >= stepCount - 1} onClick={() => onMove(1)}><ArrowDown size={11} /></button>
+        <button type="button" className="btn btn-ghost btn-xs shrink-0 text-error" onClick={onRemove}><Trash2 size={11} /></button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
-          <div className="rounded-xl border border-base-300 bg-base-200/20 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <div className="iris-header">Identity</div>
-                <div className="mt-1 text-xs text-base-content/45">Define the execution type and stable step name first.</div>
-              </div>
-              <span className="badge badge-ghost badge-sm">{step.type}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="form-control">
-                <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Type</span>
-                <select
-                  className="select select-bordered"
-                  value={step.type}
-                  onChange={(event) => onChange((current) => ({ ...current, type: event.target.value as ExecutionType }))}
-                >
-                  <option value="EXECUTE">EXECUTE</option>
-                  <option value="INSERT">INSERT</option>
-                  <option value="UPDATE">UPDATE</option>
-                  <option value="UPSERT">UPSERT</option>
-                  <option value="DELETE">DELETE</option>
-                </select>
-              </label>
-
-              <label className="form-control">
-                <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Name</span>
-                <input
-                  type="text"
-                  className="input input-bordered w-full"
-                  value={step.name ?? ''}
-                  onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
-                />
-              </label>
-            </div>
+      {/* Scrollable body */}
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+        {/* SQL Editor */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-base-content/35">SQL</span>
+            {sqlErrors.length > 0 ? <FieldMessages messages={sqlErrors} /> : null}
           </div>
+          <SqlEditor
+            value={step.sql}
+            onChange={(value) => onChange((current) => ({ ...current, sql: value }))}
+            minHeight="260px"
+          />
+        </div>
 
-          <div className="rounded-xl border border-base-300 bg-base-200/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="iris-header">Step Detail</div>
-                <div className="mt-1 text-xs text-base-content/45">Switch between SQL, target mapping, and parameters without leaving the selected step.</div>
-              </div>
-              <div className="tabs tabs-boxed bg-base-100 p-1">
-                <button
-                  type="button"
-                  className={`tab tab-sm ${activeTab === 'sql' ? 'tab-active' : ''}`}
-                  onClick={() => setActiveTab('sql')}
-                >
-                  SQL
-                  {sqlIssueCount > 0 ? <span className="ml-1 badge badge-warning badge-xs">{sqlIssueCount}</span> : null}
-                </button>
-                <button
-                  type="button"
-                  className={`tab tab-sm ${activeTab === 'target' ? 'tab-active' : ''}`}
-                  onClick={() => setActiveTab('target')}
-                >
-                  Target
-                  {targetIssueCount > 0 ? <span className="ml-1 badge badge-warning badge-xs">{targetIssueCount}</span> : null}
-                </button>
-                <button
-                  type="button"
-                  className={`tab tab-sm ${activeTab === 'parameters' ? 'tab-active' : ''}`}
-                  onClick={() => setActiveTab('parameters')}
-                >
-                  Parameters
-                  {step.parameters.length > 0 ? <span className="ml-1 badge badge-ghost badge-xs">{step.parameters.length}</span> : null}
-                </button>
-              </div>
+        {/* Target + Watermark */}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/35">Dest Table</span>
+            <input
+              type="text"
+              className={getControlClass(destTableErrors.length > 0, 'input input-bordered input-sm')}
+              value={step.destTable ?? ''}
+              placeholder="dest_table"
+              onChange={(event) => onChange((current) => ({ ...current, destTable: event.target.value || null }))}
+            />
+            <FieldMessages messages={destTableErrors} />
+          </label>
+          <label className="form-control">
+            <span className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/35">Watermark Column</span>
+            <input
+              type="text"
+              className="input input-bordered input-sm"
+              value={step.watermarkColumn ?? ''}
+              placeholder="updated_at"
+              onChange={(event) => onChange((current) => ({ ...current, watermarkColumn: event.target.value || null }))}
+            />
+          </label>
+        </div>
+
+        {/* Parameters */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-base-content/35">
+              Parameters{step.parameters.length > 0 ? ` (${step.parameters.length})` : ''}
+            </span>
+            <button type="button" className="btn btn-ghost btn-xs gap-1" onClick={onAddParameter}>
+              <Plus size={11} />Add
+            </button>
+          </div>
+          {step.parameters.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-base-300 px-4 py-4 text-center text-[11px] text-base-content/35">
+              No parameters
             </div>
-
-            {activeTab === 'sql' ? (
-              <div className="mt-4 flex flex-col h-[600px] max-h-max">
-                <label className="form-control flex-1 flex flex-col min-h-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">SQL Statement</span>
-                    <span className="text-[10px] text-base-content/30 font-mono">{step.sql.length} chars</span>
-                  </div>
-                  <textarea
-                    className={getControlClass(sqlErrors.length > 0, 'iris-code-area flex-1 w-full p-4 resize-none focus:outline-primary/50')}
-                    value={step.sql}
-                    onChange={(event) => onChange((current) => ({ ...current, sql: event.target.value }))}
-                    placeholder="SELECT * FROM source_table"
-                    spellCheck={false}
-                  />
-                  <FieldMessages messages={sqlErrors} />
-                </label>
-              </div>
-            ) : null}
-
-            {activeTab === 'target' ? (
-              <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                <label className="form-control">
-                  <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Destination Table</span>
+          ) : (
+            <div className="space-y-2">
+              {step.parameters.map((parameter) => (
+                <div
+                  key={parameter.editorId}
+                  className="grid gap-2 rounded-lg border border-base-300 bg-base-100 p-2.5"
+                  style={{ gridTemplateColumns: '1fr 1fr 100px auto' }}
+                >
                   <input
                     type="text"
-                    className={getControlClass(destTableErrors.length > 0, 'input input-bordered w-full')}
-                    value={step.destTable ?? ''}
-                    onChange={(event) => onChange((current) => ({ ...current, destTable: event.target.value || null }))}
+                    className="input input-bordered input-xs"
+                    placeholder="name"
+                    value={parameter.param}
+                    onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, param: event.target.value }))}
                   />
-                  <FieldMessages messages={destTableErrors} />
-                </label>
-
-                <label className="form-control">
-                  <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Watermark Column</span>
                   <input
                     type="text"
-                    className="input input-bordered w-full"
-                    value={step.watermarkColumn ?? ''}
-                    onChange={(event) => onChange((current) => ({ ...current, watermarkColumn: event.target.value || null }))}
+                    className="input input-bordered input-xs"
+                    placeholder="value"
+                    value={String(parameter.value ?? '')}
+                    onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, value: event.target.value }))}
                   />
-                </label>
-              </div>
-            ) : null}
-
-            {activeTab === 'parameters' ? (
-              <div className="mt-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-base-content/45">Maintain named parameters for this step in one place.</div>
-                  <button type="button" className="btn btn-ghost btn-xs gap-1" onClick={onAddParameter}>
-                    <Plus size={12} />
-                    Add
+                  <select
+                    className="select select-bordered select-xs"
+                    value={parameter.type ?? 'general'}
+                    onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, type: event.target.value as EditableParameter['type'] }))}
+                  >
+                    <option value="general">general</option>
+                    <option value="timestamp">timestamp</option>
+                  </select>
+                  <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => onRemoveParameter(parameter.editorId)}>
+                    <Trash2 size={11} />
                   </button>
                 </div>
-
-                <div className="mt-3 space-y-3">
-                  {step.parameters.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-base-300 bg-base-100 px-4 py-5 text-center text-xs text-base-content/45">
-                      No parameters
-                    </div>
-                  ) : (
-                    step.parameters.map((parameter) => (
-                      <div
-                        key={parameter.editorId}
-                        className="grid grid-cols-1 gap-2 rounded-lg border border-base-300 bg-base-100 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_auto]"
-                      >
-                        <input
-                          type="text"
-                          className="input input-bordered input-sm"
-                          placeholder="name"
-                          value={parameter.param}
-                          onChange={(event) =>
-                            onUpdateParameter(parameter.editorId, (current) => ({ ...current, param: event.target.value }))
-                          }
-                        />
-                        <input
-                          type="text"
-                          className="input input-bordered input-sm"
-                          placeholder="value"
-                          value={String(parameter.value ?? '')}
-                          onChange={(event) =>
-                            onUpdateParameter(parameter.editorId, (current) => ({ ...current, value: event.target.value }))
-                          }
-                        />
-                        <select
-                          className="select select-bordered select-sm"
-                          value={parameter.type ?? 'general'}
-                          onChange={(event) =>
-                            onUpdateParameter(parameter.editorId, (current) => ({
-                              ...current,
-                              type: event.target.value as EditableParameter['type'],
-                            }))
-                          }
-                        >
-                          <option value="general">general</option>
-                          <option value="timestamp">timestamp</option>
-                        </select>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm text-error md:justify-self-end"
-                          onClick={() => onRemoveParameter(parameter.editorId)}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1661,51 +1484,202 @@ function ConnectionPanel({
   const currentConnection = connection ?? createBlankConnection()
   const hasErrors = Boolean(errors?.driver?.length || errors?.url?.length || errors?.username?.length || errors?.password?.length)
 
+  const [presets, setPresets] = useState<DriverPreset[]>([])
+  const [savedConns, setSavedConns] = useState<ConnectionDTO[]>([])
+  const [urlPlaceholders, setUrlPlaceholders] = useState<Record<string, string>>({})
+  const [testState, setTestState] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle')
+  const [testMsg, setTestMsg] = useState('')
+
+  useEffect(() => {
+    getDriverPresets().then(setPresets).catch(() => {})
+    listConnections().then(setSavedConns).catch(() => {})
+  }, [])
+
+  // When driver changes, auto-select matching preset and reset placeholders
+  const selectedPreset = presets.find((p) => p.driverClass === currentConnection.driver) ?? null
+
+  function applyPreset(preset: DriverPreset) {
+    const newPlaceholders: Record<string, string> = {}
+    preset.urlPlaceholders.forEach((ph) => {
+      newPlaceholders[ph.key] = ph.example
+    })
+    setUrlPlaceholders(newPlaceholders)
+    const url = buildUrl(preset.urlTemplate, newPlaceholders)
+    onChange({ ...currentConnection, driver: preset.driverClass, url })
+  }
+
+  function buildUrl(template: string, values: Record<string, string>) {
+    return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '')
+  }
+
+  function handlePlaceholderChange(key: string, value: string) {
+    const next = { ...urlPlaceholders, [key]: value }
+    setUrlPlaceholders(next)
+    if (selectedPreset) {
+      onChange({ ...currentConnection, url: buildUrl(selectedPreset.urlTemplate, next) })
+    }
+  }
+
+  function loadFromLibrary(conn: ConnectionDTO) {
+    onChange({ ...currentConnection, driver: conn.driver, url: conn.url, username: conn.username, password: '' })
+    setUrlPlaceholders({})
+  }
+
+  async function handleTest() {
+    setTestState('loading')
+    setTestMsg('')
+    try {
+      const result = await testConnection({
+        driver: currentConnection.driver,
+        url: currentConnection.url,
+        username: currentConnection.username,
+        password: currentConnection.password,
+      })
+      setTestState(result.success ? 'ok' : 'fail')
+      setTestMsg(result.message + (result.serverInfo ? ` — ${result.serverInfo}` : '') + (result.latencyMs != null ? ` (${result.latencyMs}ms)` : ''))
+    } catch {
+      setTestState('fail')
+      setTestMsg('Request failed')
+    }
+  }
+
   return (
     <div className={`rounded-lg border shadow-sm overflow-hidden transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
+      {/* Header */}
       <div className={`flex items-center justify-between px-4 py-2.5 border-b ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/40 border-base-300'}`}>
         <div className="flex items-center gap-2">
           <Icon size={14} className="opacity-60" />
           <div className="text-[13px] font-bold tracking-wide">{title}</div>
         </div>
-        <span className={`badge badge-xs font-semibold tracking-wider ${hasErrors ? 'badge-warning' : configured ? 'badge-success' : 'badge-ghost'}`}>
-          {hasErrors ? 'Needs config' : configured ? 'Ready' : 'Optional'}
-        </span>
+        <div className="flex items-center gap-2">
+          {savedConns.length > 0 && (
+            <div className="dropdown dropdown-end">
+              <button type="button" tabIndex={0} className="btn btn-xs btn-ghost gap-1 font-semibold">
+                <Link2 size={11} /> Load
+              </button>
+              <ul tabIndex={0} className="dropdown-content z-10 menu menu-xs p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300">
+                {savedConns.map((c) => (
+                  <li key={c.id}>
+                    <button type="button" className="text-xs" onClick={() => loadFromLibrary(c)}>
+                      <span className="font-semibold truncate">{c.name}</span>
+                      <span className="text-base-content/40 font-mono text-[10px]">{c.driver.split('.').pop()}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <span className={`badge badge-xs font-semibold tracking-wider ${hasErrors ? 'badge-warning' : configured ? 'badge-success' : 'badge-ghost'}`}>
+            {hasErrors ? 'Needs config' : configured ? 'Ready' : 'Optional'}
+          </span>
+        </div>
       </div>
 
       <div className={`flex flex-col divide-y divide-base-300 bg-base-100 ${hasErrors ? 'bg-warning/5' : ''}`}>
-        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-base-300">
-          <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
-            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">Driver</div>
-            <div className="flex-1 min-w-0">
-              <input type="text" className={getControlClass(Boolean(errors?.driver?.length), 'input input-ghost input-sm h-7 w-full text-sm font-mono px-1')} placeholder="com.mysql.jdbc.Driver" value={currentConnection.driver} onChange={(event) => onChange({ ...currentConnection, driver: event.target.value })} />
-              <FieldMessages messages={errors?.driver} />
-            </div>
+        {/* Driver selector */}
+        <div className="px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
+          <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">Driver</div>
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            {presets.length > 0 ? (
+              <select
+                className="select select-ghost select-sm h-7 text-sm font-mono flex-1 min-w-0 px-1"
+                value={selectedPreset?.driverClass ?? '__custom__'}
+                onChange={(e) => {
+                  const preset = presets.find((p) => p.driverClass === e.target.value)
+                  if (preset) applyPreset(preset)
+                  else onChange({ ...currentConnection, driver: '', url: '' })
+                }}
+              >
+                <option value="__custom__">Custom…</option>
+                {presets.filter((p) => p.driverClass).map((p) => (
+                  <option key={p.driverClass} value={p.driverClass}>{p.name}</option>
+                ))}
+              </select>
+            ) : null}
+            {(!selectedPreset || selectedPreset.name === 'Custom') && (
+              <input
+                type="text"
+                className={getControlClass(Boolean(errors?.driver?.length), 'input input-ghost input-sm h-7 flex-1 text-sm font-mono px-1')}
+                placeholder="com.mysql.cj.jdbc.Driver"
+                value={currentConnection.driver}
+                onChange={(e) => onChange({ ...currentConnection, driver: e.target.value })}
+              />
+            )}
           </div>
-          <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
+          <FieldMessages messages={errors?.driver} />
+        </div>
+
+        {/* URL builder — placeholders if preset selected, else manual input */}
+        {selectedPreset && selectedPreset.name !== 'Custom' ? (
+          <div className="px-4 py-2 flex flex-col gap-2 hover:bg-base-200/20 transition-colors">
+            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40">Connection</div>
+            <div className="flex flex-wrap gap-2">
+              {selectedPreset.urlPlaceholders.map((ph) => (
+                <div key={ph.key} className="flex items-center gap-1 flex-1 min-w-[120px]">
+                  <span className="text-[10px] font-semibold text-base-content/50 w-14 shrink-0">{ph.label}</span>
+                  <input
+                    type="text"
+                    className="input input-ghost input-sm h-7 flex-1 text-sm font-mono px-1"
+                    placeholder={ph.example}
+                    value={urlPlaceholders[ph.key] ?? ''}
+                    onChange={(e) => handlePlaceholderChange(ph.key, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="text-[10px] font-mono text-base-content/40 truncate" title={currentConnection.url}>
+              {currentConnection.url || <span className="italic">URL will appear here</span>}
+            </div>
+            <FieldMessages messages={errors?.url} />
+          </div>
+        ) : (
+          <div className="px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
             <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">URL</div>
             <div className="flex-1 min-w-0">
-              <input type="text" className={getControlClass(Boolean(errors?.url?.length), 'input input-ghost input-sm h-7 w-full text-sm font-mono px-1')} placeholder="jdbc:mysql://..." value={currentConnection.url} onChange={(event) => onChange({ ...currentConnection, url: event.target.value })} />
+              <input
+                type="text"
+                className={getControlClass(Boolean(errors?.url?.length), 'input input-ghost input-sm h-7 w-full text-sm font-mono px-1')}
+                placeholder="jdbc:mysql://localhost:3306/mydb"
+                value={currentConnection.url}
+                onChange={(e) => onChange({ ...currentConnection, url: e.target.value })}
+              />
               <FieldMessages messages={errors?.url} />
             </div>
           </div>
-        </div>
+        )}
 
+        {/* User / Pass */}
         <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-base-300">
           <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
             <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">User</div>
             <div className="flex-1 min-w-0">
-              <input type="text" className={getControlClass(Boolean(errors?.username?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="root" value={currentConnection.username} onChange={(event) => onChange({ ...currentConnection, username: event.target.value })} />
+              <input type="text" className={getControlClass(Boolean(errors?.username?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="root" value={currentConnection.username} onChange={(e) => onChange({ ...currentConnection, username: e.target.value })} />
               <FieldMessages messages={errors?.username} />
             </div>
           </div>
           <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
             <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">Pass</div>
             <div className="flex-1 min-w-0">
-              <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="••••••••" value={currentConnection.password} onChange={(event) => onChange({ ...currentConnection, password: event.target.value })} />
+              <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="••••••••" value={currentConnection.password} onChange={(e) => onChange({ ...currentConnection, password: e.target.value })} />
               <FieldMessages messages={errors?.password} />
             </div>
           </div>
+        </div>
+
+        {/* Test Connection */}
+        <div className="px-4 py-2 flex items-center gap-3">
+          <button
+            type="button"
+            className="btn btn-xs btn-outline gap-1"
+            disabled={testState === 'loading' || !currentConnection.driver || !currentConnection.url}
+            onClick={handleTest}
+          >
+            {testState === 'loading' ? <span className="loading loading-spinner loading-xs" /> : <Waypoints size={11} />}
+            Test Connection
+          </button>
+          {testMsg && (
+            <span className={`text-[11px] font-mono ${testState === 'ok' ? 'text-success' : 'text-error'}`}>{testMsg}</span>
+          )}
         </div>
       </div>
     </div>

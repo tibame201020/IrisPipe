@@ -28,6 +28,8 @@ import irispipe.infrastructure.service.workspace.WorkspaceContextService;
 import irispipe.model.PipelineRunExecutionKind;
 import irispipe.model.SyncJobDefinition;
 import irispipe.model.dto.SyncPipelineDTO;
+import irispipe.infrastructure.sse.SseEventBroadcaster;
+import irispipe.infrastructure.sse.SseEvents;
 import irispipe.observability.event.PipelineRunTriggeredObservationEvent;
 
 /**
@@ -49,6 +51,7 @@ public class PipelineExecutionService {
     private final PipelineRunCommandService pipelineRunCommandService;
     private final PipelineRunControlPolicy pipelineRunControlPolicy;
     private final PipelineRunLaunchService pipelineRunLaunchService;
+    private final SseEventBroadcaster sseEventBroadcaster;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -82,7 +85,8 @@ public class PipelineExecutionService {
             ApplicationEventPublisher applicationEventPublisher,
             PipelineRunCommandService pipelineRunCommandService,
             PipelineRunControlPolicy pipelineRunControlPolicy,
-            PipelineRunLaunchService pipelineRunLaunchService) {
+            PipelineRunLaunchService pipelineRunLaunchService,
+            SseEventBroadcaster sseEventBroadcaster) {
         this.pipelineDefinitionRepo = pipelineDefinitionRepo;
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
@@ -96,6 +100,7 @@ public class PipelineExecutionService {
         this.pipelineRunCommandService = pipelineRunCommandService;
         this.pipelineRunControlPolicy = pipelineRunControlPolicy;
         this.pipelineRunLaunchService = pipelineRunLaunchService;
+        this.sseEventBroadcaster = sseEventBroadcaster;
     }
 
     /**
@@ -251,6 +256,10 @@ public class PipelineExecutionService {
                         pipelineRunExecution.getId(),
                         pipelineRunJobs);
         applicationEventPublisher.publishEvent(new PipelineRunTriggeredObservationEvent(requestedAsync));
+
+        sseEventBroadcaster.broadcast(pipelineRun.getId(), "run_started", new SseEvents.RunStartedEvent(
+                pipelineRun.getId(), pipelineDefinition.getId(), pipelineDefinition.getPipelineName(),
+                java.time.LocalDateTime.now()));
 
         pipelineRunLaunchService.launch(
                 new PipelineRunLaunchRequest(

@@ -131,6 +131,16 @@ export async function deleteFolder(folderId: number, recursive = false) {
   })
 }
 
+export async function getOverviewSummary() {
+  const response = await http.get<{
+    engine: { status: string; uptimeSeconds: number; jvmMemoryMb: number; jvmMemoryTotalMb: number; jvmMemoryPercent: number; activeBatchJobs: number }
+    catalog: { totalFolders: number; totalPipelines: number }
+    runs: { activeCount: number; last10Total: number; last10Completed: number; last10Failed: number; last10Stopped: number; last10InFlight: number; successRate: number; avgDurationSeconds: number | null }
+    recentRuns: PipelineRunSummaryInfo[]
+  }>('/api/v1/overview/summary')
+  return response.data
+}
+
 export async function getRecentRuns(limit = 6, beforeRunId?: number) {
   const response = await http.get<PipelineRunSummaryInfo[]>('/api/v1/sync-pipeline/recent', {
     params: {
@@ -179,6 +189,89 @@ export async function rerunRun(runId: number, payload: PipelineRerunRequest = { 
 
 export async function deleteRun(runId: number) {
   await http.delete(`/api/v1/sync-pipeline/${runId}`)
+}
+
+export type RunLogEntry = {
+  level: 'INFO' | 'ERROR'
+  timestamp: string | null
+  message: string
+}
+
+export async function getRunLogs(runId: number) {
+  const response = await http.get<RunLogEntry[]>(`/api/v1/sync-pipeline/${runId}/logs`)
+  return response.data
+}
+
+// ─── Connection Library ──────────────────────────────────────────────────────
+
+export type ConnectionDTO = {
+  id: number
+  name: string
+  driver: string
+  url: string
+  username: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ConnectionUpsertRequest = {
+  name: string
+  driver: string
+  url: string
+  username: string
+  password: string
+}
+
+export type ConnectionTestRequest = {
+  driver: string
+  url: string
+  username: string
+  password: string
+}
+
+export type ConnectionTestResult = {
+  success: boolean
+  message: string
+  serverInfo: string | null
+  latencyMs: number | null
+}
+
+export type DriverPreset = {
+  name: string
+  driverClass: string
+  urlTemplate: string
+  urlPlaceholders: { key: string; label: string; example: string }[]
+  defaultPort: number | null
+  testable: boolean
+}
+
+export async function listConnections() {
+  const response = await http.get<ConnectionDTO[]>('/api/v1/connections')
+  return response.data
+}
+
+export async function createConnection(payload: ConnectionUpsertRequest) {
+  const response = await http.post<ConnectionDTO>('/api/v1/connections', payload)
+  return response.data
+}
+
+export async function updateConnection(id: number, payload: ConnectionUpsertRequest) {
+  const response = await http.put<ConnectionDTO>(`/api/v1/connections/${id}`, payload)
+  return response.data
+}
+
+export async function deleteConnection(id: number) {
+  await http.delete(`/api/v1/connections/${id}`)
+}
+
+export async function testConnection(payload: ConnectionTestRequest) {
+  const response = await http.post<ConnectionTestResult>('/api/v1/connections/test', payload)
+  return response.data
+}
+
+export async function getDriverPresets() {
+  const response = await http.get<DriverPreset[]>('/api/v1/connections/drivers')
+  return response.data
 }
 
 export function getApiErrorMessage(error: unknown, fallback = 'Request failed') {

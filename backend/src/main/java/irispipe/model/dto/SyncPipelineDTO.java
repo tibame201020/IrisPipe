@@ -380,4 +380,14 @@ public interface SyncPipelineDTO {
                     stepExecution.getExitStatus().getExitDescription());
         }
     }
+
+    /**
+     * One chronological log entry synthesized from run execution and Batch metadata.
+     *
+     * @param level log level: INFO or ERROR
+     * @param timestamp event time
+     * @param message human-readable event description
+     */
+    record RunLogEntry(String level, LocalDateTime timestamp, String message) {
+    }
 }

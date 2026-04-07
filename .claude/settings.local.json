@@ -6,5 +6,9 @@
       "Read(//c/Users/jeffh/.claude/**)",
       "Bash(wc -l \"C:/Users/jeffh/Downloads/develop/codes/IrisPipe/backend/src/main/java/irispipe/\"**/*.java)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "playwright"
+  ],
+  "enableAllProjectMcpServers": true
 }

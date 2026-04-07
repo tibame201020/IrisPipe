@@ -26,6 +26,14 @@ export interface StageLaneJobCard {
   id: string
   title: string
   status?: string
+  // Semantic fields (all optional, backward-compatible)
+  subtitle?: string           // e.g. "MySQL → PostgreSQL"
+  stepSummary?: string        // e.g. "3 steps · SELECT / INSERT"
+  duration?: string           // e.g. "1.2s" (run mode)
+  waitTime?: string           // e.g. "0.3s wait" (run mode)
+  errorLine?: string          // first line of exitDescription (run mode)
+  validationStatus?: 'ok' | 'warning' | 'error'  // config mode
+  // Existing fields
   meta?: string
   badges?: string[]
   issuesCount?: number
@@ -79,10 +87,7 @@ export function StageLaneBoard({
         stages.flatMap((stage) =>
           stage.jobs.map((job) => [
             job.id,
-            {
-              stageId: stage.id,
-              job,
-            },
+            { stageId: stage.id, job },
           ]),
         ),
       ),
@@ -90,26 +95,18 @@ export function StageLaneBoard({
   )
 
   const activeJob = activeDrag?.type === 'job' ? jobMap.get(activeDrag.jobId)?.job ?? null : null
-  const activeStage = activeDrag?.type === 'stage' ? stages.find((stage) => stage.id === activeDrag.stageId) ?? null : null
+  const activeStage = activeDrag?.type === 'stage' ? stages.find((s) => s.id === activeDrag.stageId) ?? null : null
   const jobsDnDEnabled = Boolean(onMoveJob)
 
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as AnyDragItem | undefined
-    if (!data) return
-    setActiveDrag(data)
+    if (data) setActiveDrag(data)
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    if (!activeDrag || !event.over) {
-      setActiveDrag(null)
-      return
-    }
-
+    if (!activeDrag || !event.over) { setActiveDrag(null); return }
     const overData = event.over.data.current as { type?: string; stageId?: string; jobId?: string } | undefined
-    if (!overData) {
-      setActiveDrag(null)
-      return
-    }
+    if (!overData) { setActiveDrag(null); return }
 
     if (activeDrag.type === 'stage') {
       if ((overData.type === 'stage' || overData.type === 'stage-header') && overData.stageId && onMoveStage) {
@@ -125,23 +122,27 @@ export function StageLaneBoard({
         setActiveDrag(null)
         return
       }
-
       if ((overData.type === 'stage' || overData.type === 'stage-body') && overData.stageId) {
         onMoveJob(activeDrag.jobId, activeDrag.stageId, overData.stageId)
         setActiveDrag(null)
         return
       }
     }
-
     setActiveDrag(null)
   }
 
   if (stages.length === 0) {
     return (
-      <div className="h-full overflow-x-auto overflow-y-hidden px-6 py-6">
-        <div className="flex h-full min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-base-300 bg-base-100 text-center">
-          <div className="text-lg font-semibold">{emptyTitle}</div>
-          <div className="mt-2 max-w-md text-sm text-base-content/45">{emptyDescription}</div>
+      <div
+        className="h-full overflow-x-auto overflow-y-hidden px-6 py-6"
+        style={{
+          backgroundImage: 'radial-gradient(circle, hsl(var(--bc)/0.05) 1px, transparent 1px)',
+          backgroundSize: '20px 20px',
+        }}
+      >
+        <div className="flex h-full min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-base-300 bg-base-100/80 text-center">
+          <div className="text-base font-semibold text-base-content/60">{emptyTitle}</div>
+          <div className="mt-1.5 max-w-md text-sm text-base-content/35">{emptyDescription}</div>
         </div>
       </div>
     )
@@ -155,21 +156,30 @@ export function StageLaneBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveDrag(null)}
     >
-      <div className="h-full overflow-x-auto overflow-y-hidden px-6 py-6">
-        <SortableContext items={stages.map((stage) => stage.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex h-full min-w-max items-start gap-5 pb-2">
-            {stages.map((stage, index) => (
-              <StageLane
-                key={stage.id}
-                stage={stage}
-                showConnector={index < stages.length - 1}
-                stageDnDEnabled={Boolean(onMoveStage)}
-                jobsDnDEnabled={jobsDnDEnabled}
-                activeDragType={activeDrag?.type ?? null}
-              />
-            ))}
-          </div>
-        </SortableContext>
+      <div
+        className="h-full overflow-x-auto overflow-y-hidden"
+        style={{
+          backgroundImage: 'radial-gradient(circle, hsl(var(--bc)/0.05) 1px, transparent 1px)',
+          backgroundSize: '20px 20px',
+        }}
+      >
+        <div className="px-6 py-5 h-full">
+          <SortableContext items={stages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
+            <div className="flex h-full min-w-max items-start gap-0 pb-2">
+              {stages.map((stage, index) => (
+                <StageLane
+                  key={stage.id}
+                  stage={stage}
+                  stageIndex={index}
+                  showConnector={index < stages.length - 1}
+                  stageDnDEnabled={Boolean(onMoveStage)}
+                  jobsDnDEnabled={jobsDnDEnabled}
+                  activeDragType={activeDrag?.type ?? null}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </div>
       </div>
 
       <DragOverlay dropAnimation={null}>
@@ -182,12 +192,14 @@ export function StageLaneBoard({
 
 function StageLane({
   stage,
+  stageIndex,
   showConnector,
   stageDnDEnabled,
   jobsDnDEnabled,
   activeDragType,
 }: {
   stage: StageLaneData
+  stageIndex: number
   showConnector: boolean
   stageDnDEnabled: boolean
   jobsDnDEnabled: boolean
@@ -213,10 +225,18 @@ function StageLane({
     data: { type: 'stage-body', stageId: stage.id },
   })
 
+  // Top accent: error if issues, primary if selected, else base
+  const hasIssues = typeof stage.issuesCount === 'number' && stage.issuesCount > 0
+  const accentClass = hasIssues
+    ? 'bg-error/70'
+    : stage.selected
+      ? 'bg-primary'
+      : 'bg-base-300/60'
+
   return (
     <div
       ref={setStageRef}
-      className="flex items-stretch gap-5"
+      className="flex items-stretch"
       style={{
         transform: CSS.Transform.toString(stageTransform),
         transition: stageTransition,
@@ -224,86 +244,112 @@ function StageLane({
         pointerEvents: stageDragging ? 'none' : undefined,
       }}
     >
+      {/* ── Stage Column ── */}
       <section
         ref={setBodyRef}
-        className={`group/stage relative w-[320px] shrink-0 rounded-2xl border bg-base-100 shadow-sm transition-all duration-150 ${
-          stage.selected ? 'border-primary/60 shadow-md' : 'border-base-300'
-        } ${stageBodyIsOver || stageDropTarget ? 'ring-2 ring-primary/30 shadow-lg' : ''}`}
+        className={`group/stage relative flex w-[256px] shrink-0 flex-col overflow-hidden rounded-xl border bg-base-100 shadow-sm transition-all duration-150 ${
+          stage.selected
+            ? 'border-primary/40 shadow-md'
+            : 'border-base-300/80'
+        } ${stageBodyIsOver || stageDropTarget ? 'ring-2 ring-primary/25 shadow-lg border-primary/30' : ''}`}
         aria-label={`Stage ${stage.title}`}
       >
-      <div
-        className={`rounded-t-2xl border-b px-4 py-4 ${stage.selected ? 'bg-primary/5' : 'bg-base-200/35'} border-base-300`}
-        ref={setActivatorNodeRef}
-        {...stageAttributes}
-        {...stageListeners}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div
-            className={`min-w-0 flex-1 ${stage.onClick ? 'cursor-pointer' : ''}`}
-            onClick={stage.onClick}
-            onKeyDown={(event) => triggerButtonLikeAction(event, stage.onClick)}
-            role={stage.onClick ? 'button' : undefined}
-            tabIndex={stage.onClick ? 0 : -1}
-          >
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">
-              <span>Stage</span>
+        {/* Top accent bar */}
+        <div className={`h-[3px] w-full shrink-0 ${accentClass} transition-colors`} />
+
+        {/* Stage Header */}
+        <div
+          className={`shrink-0 border-b px-3 py-2.5 ${stage.selected ? 'bg-primary/5 border-primary/20' : 'bg-base-200/50 border-base-200'}`}
+          ref={setActivatorNodeRef}
+          {...stageAttributes}
+          {...stageListeners}
+        >
+          <div className="flex items-center gap-2">
+            {/* Stage index badge */}
+            <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black tabular-nums ${
+              stage.selected ? 'bg-primary/15 text-primary' : 'bg-base-300/70 text-base-content/45'
+            }`}>
+              S{stageIndex + 1}
+            </span>
+
+            {/* Stage title */}
+            <div
+              className={`min-w-0 flex-1 ${stage.onClick ? 'cursor-pointer' : ''}`}
+              onClick={stage.onClick}
+              onKeyDown={(e) => triggerButtonLikeAction(e, stage.onClick)}
+              role={stage.onClick ? 'button' : undefined}
+              tabIndex={stage.onClick ? 0 : -1}
+            >
+              <span className="block truncate text-[13px] font-bold tracking-tight" title={stage.title}>
+                {stage.title}
+              </span>
             </div>
-            <div className="mt-1 truncate text-base font-bold">{stage.title}</div>
+
+            {/* Jobs count + issues */}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {hasIssues ? (
+                <span className="badge badge-error badge-xs">{stage.issuesCount}</span>
+              ) : null}
+              {stage.status ? <StatusBadge status={stage.status} subtle /> : null}
+              <span className="text-[10px] text-base-content/30 tabular-nums">
+                {stage.jobs.length}j
+              </span>
+            </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {typeof stage.issuesCount === 'number' && stage.issuesCount > 0 ? (
-              <span className="badge badge-warning badge-sm">{stage.issuesCount} issues</span>
-            ) : null}
-            {stage.status ? <StatusBadge status={stage.status} subtle /> : null}
-          </div>
+          {/* Stage toolbar */}
+          {stage.toolbar ? (
+            <div
+              className="mt-2 flex items-center gap-1 opacity-0 transition-opacity duration-100 group-hover/stage:opacity-100 group-focus-within/stage:opacity-100"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {stage.toolbar}
+            </div>
+          ) : null}
+
+          {stage.summary ? (
+            <div className="mt-1 text-[10px] text-base-content/35">{stage.summary}</div>
+          ) : null}
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="min-h-[16px] text-[11px] font-medium text-base-content/35">
-            {stage.summary ? stage.summary : null}
-          </div>
-          <div
-            className="flex shrink-0 translate-y-0.5 items-center gap-1 opacity-0 transition-all duration-150 group-hover/stage:translate-y-0 group-hover/stage:opacity-100 group-focus-within/stage:translate-y-0 group-focus-within/stage:opacity-100"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {stage.toolbar}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={`space-y-3 rounded-b-2xl p-4 transition-colors ${stageBodyIsOver ? 'bg-primary/5 ring-2 ring-inset ring-primary/20' : ''}`}
-      >
-        {stageBodyIsOver ? (
-          <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary shadow-sm">
-            Drop job into this stage
-          </div>
-        ) : null}
-        <SortableContext items={stage.jobs.map((job) => job.id)} strategy={rectSortingStrategy}>
-          {stage.jobs.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-base-300 bg-base-200/20 px-4 py-6 text-center text-sm text-base-content/45">
-              Drop a job here or add the first job.
+        {/* Stage Body */}
+        <div
+          className={`flex-1 space-y-1.5 overflow-y-auto p-2 transition-colors ${stageBodyIsOver ? 'bg-primary/5' : ''}`}
+        >
+          {stageBodyIsOver ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+              Drop here
             </div>
-          ) : (
-            stage.jobs.map((job) => (
-              <StageLaneJob
-                key={job.id}
-                job={job}
-                stageId={stage.id}
-                dragDisabled={!jobsDnDEnabled || activeDragType === 'stage'}
-              />
-            ))
-          )}
-        </SortableContext>
-      </div>
+          ) : null}
+          <SortableContext items={stage.jobs.map((j) => j.id)} strategy={rectSortingStrategy}>
+            {stage.jobs.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/30">
+                No jobs — add one above
+              </div>
+            ) : (
+              stage.jobs.map((job) => (
+                <StageLaneJob
+                  key={job.id}
+                  job={job}
+                  stageId={stage.id}
+                  dragDisabled={!jobsDnDEnabled || activeDragType === 'stage'}
+                />
+              ))
+            )}
+          </SortableContext>
+        </div>
       </section>
+
+      {/* ── Stage Connector ── */}
       {showConnector ? (
-        <div className="flex h-full min-h-[260px] w-24 items-center justify-center">
+        <div className="flex w-[52px] shrink-0 flex-col items-center justify-start pt-10 gap-1">
+          <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/20">then</span>
           <div className="flex items-center">
-            <div className="h-[3px] w-16 rounded-full bg-primary/80 shadow-sm" />
-            <div className="h-0 w-0 border-y-[8px] border-y-transparent border-l-[14px] border-l-primary" />
+            <div className="h-[1.5px] w-7 bg-base-300" />
+            <svg width="7" height="10" viewBox="0 0 7 10" fill="none" className="shrink-0">
+              <path d="M1 1L6 5L1 9" stroke="hsl(var(--bc)/0.2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
         </div>
       ) : null}
@@ -329,8 +375,45 @@ function StageLaneJob({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.55 : 1,
+    opacity: isDragging ? 0.4 : 1,
   }
+
+  // Left bar color — priority: run status > validation status
+  const barClass =
+    job.status === 'COMPLETED'
+      ? 'bg-success'
+      : job.status === 'FAILED' || job.status === 'ABANDONED'
+        ? 'bg-error'
+        : job.status === 'STARTED' || job.status === 'STARTING'
+          ? 'bg-info'
+          : job.status === 'STOPPING' || job.status === 'STOPPED'
+            ? 'bg-warning'
+            : job.status === 'NOT_RUN'
+              ? 'bg-base-300'
+              : job.validationStatus === 'error'
+                ? 'bg-error'
+                : job.validationStatus === 'warning'
+                  ? 'bg-warning'
+                  : job.validationStatus === 'ok'
+                    ? 'bg-success'
+                    : 'bg-base-300/50'
+
+  // Pulse for in-progress
+  const barPulse = job.status === 'STARTED' || job.status === 'STARTING' ? 'animate-pulse' : ''
+
+  // Status dot for title row (only for run mode)
+  const statusDot =
+    job.status === 'COMPLETED'
+      ? 'bg-success'
+      : job.status === 'FAILED' || job.status === 'ABANDONED'
+        ? 'bg-error'
+        : job.status === 'STARTED' || job.status === 'STARTING'
+          ? 'bg-info animate-pulse'
+          : job.status === 'STOPPING' || job.status === 'STOPPED'
+            ? 'bg-warning'
+            : job.status === 'NOT_RUN'
+              ? 'bg-base-300'
+              : null
 
   return (
     <article
@@ -338,72 +421,98 @@ function StageLaneJob({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group/job relative rounded-xl border px-4 py-4 transition-all duration-150 ${
+      className={`group/job relative flex overflow-hidden rounded-lg border transition-all duration-150 ${
         job.selected
-          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
-          : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/35'
-      } ${isOver ? 'border-primary/60 bg-primary/6 ring-2 ring-primary/20 shadow-md' : ''} ${
+          ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/15'
+          : 'border-base-200 bg-base-100 hover:border-base-300 hover:shadow-sm'
+      } ${isOver ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/15' : ''} ${
         dragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
       }`}
       aria-label={`Job ${job.title}`}
-      title={dragDisabled ? undefined : 'Drag to reorder or move across stages'}
     >
+      {/* Drop indicator */}
       {isOver ? (
-        <>
-          <div className="absolute inset-x-3 -top-[3px] h-[3px] rounded-full bg-primary shadow-[0_0_0_1px_hsl(var(--p)/0.2)]" />
-          <div className="absolute inset-x-3 -bottom-[3px] h-[3px] rounded-full bg-primary/55" />
-        </>
+        <div className="absolute inset-x-2 -top-[1.5px] h-[2px] rounded-full bg-primary" />
       ) : null}
 
-      <div
-        className="absolute right-3 top-3 z-10 flex translate-y-0.5 items-center gap-1 opacity-0 transition-all duration-150 group-hover/job:translate-y-0 group-hover/job:opacity-100 group-focus-within/job:translate-y-0 group-focus-within/job:opacity-100"
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {job.toolbar}
-      </div>
+      {/* Left colored bar */}
+      <div className={`w-[3px] shrink-0 self-stretch ${barClass} ${barPulse}`} />
 
+      {/* Card content */}
       <div
-        className={`min-w-0 cursor-pointer pr-16`}
+        className="min-w-0 flex-1 cursor-pointer px-2.5 py-2.5 pr-9"
         onClick={job.onClick}
         onDoubleClick={job.onDoubleClick}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            job.onDoubleClick?.()
-            return
-          }
-          if (event.key === ' ') {
-            event.preventDefault()
-            job.onClick?.()
-          }
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); job.onDoubleClick?.(); return }
+          if (e.key === ' ') { e.preventDefault(); job.onClick?.() }
         }}
         role={job.onClick ? 'button' : undefined}
         tabIndex={job.onClick ? 0 : -1}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-semibold">{job.title}</div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
-              <span className="badge badge-warning badge-sm">{job.issuesCount}</span>
-            ) : null}
-            {job.status ? <StatusBadge status={job.status} subtle /> : null}
-          </div>
+        {/* Title row */}
+        <div className="flex items-start gap-1.5">
+          {statusDot ? (
+            <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${statusDot}`} />
+          ) : null}
+          <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-tight" title={job.title}>
+            {job.title}
+          </span>
+          {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
+            <span className="badge badge-error badge-xs shrink-0 mt-0.5">{job.issuesCount}</span>
+          ) : null}
         </div>
 
-        {job.meta ? <div className="mt-2 truncate text-xs font-medium text-base-content/45">{job.meta}</div> : null}
-
-        {job.badges && job.badges.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {job.badges.map((badge) => (
-              <span key={badge} className="badge badge-ghost badge-sm truncate">
-                {badge}
-              </span>
-            ))}
+        {/* Subtitle — connection summary */}
+        {job.subtitle ? (
+          <div className="mt-1.5 truncate text-[10.5px] text-base-content/45" title={job.subtitle}>
+            {job.subtitle}
           </div>
         ) : null}
+
+        {/* Step summary */}
+        {job.stepSummary ? (
+          <div className="mt-0.5 truncate text-[10px] text-base-content/30">
+            {job.stepSummary}
+          </div>
+        ) : null}
+
+        {/* Duration + wait time (run mode) */}
+        {(job.duration || job.waitTime) ? (
+          <div className="mt-2 flex items-center gap-2">
+            {job.duration ? (
+              <span className="font-mono text-[10px] font-medium text-base-content/50">{job.duration}</span>
+            ) : null}
+            {job.waitTime ? (
+              <span className="font-mono text-[10px] text-base-content/25">{job.waitTime} wait</span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Error line (run mode) */}
+        {job.errorLine ? (
+          <div className="mt-1.5 truncate text-[10px] font-mono text-error/70" title={job.errorLine}>
+            {job.errorLine}
+          </div>
+        ) : null}
+
+        {/* Atomic badge */}
+        {job.badges && job.badges.length > 0 ? (
+          <div className="mt-2">
+            <span className="rounded bg-base-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/35">
+              {job.badges[0]}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Hover toolbar */}
+      <div
+        className="absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/job:opacity-100 group-focus-within/job:opacity-100"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {job.toolbar}
       </div>
     </article>
   )
@@ -411,53 +520,36 @@ function StageLaneJob({
 
 function JobOverlay({ job }: { job: StageLaneJobCard }) {
   return (
-    <div className="w-[320px] rounded-xl border border-primary/30 bg-base-100/95 px-4 py-4 shadow-2xl backdrop-blur-sm">
-      <div className="truncate text-base font-semibold">{job.title}</div>
-      {job.meta ? <div className="mt-2 truncate text-xs font-medium text-base-content/45">{job.meta}</div> : null}
-      {job.badges && job.badges.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {job.badges.map((badge) => (
-            <span key={badge} className="badge badge-ghost badge-sm">
-              {badge}
-            </span>
-          ))}
-        </div>
-      ) : null}
+    <div className="flex w-[256px] overflow-hidden rounded-lg border border-primary/40 bg-base-100/95 shadow-2xl backdrop-blur-sm">
+      <div className="w-[3px] shrink-0 bg-primary" />
+      <div className="px-2.5 py-2.5">
+        <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>
+        {job.subtitle ? <div className="mt-1.5 truncate text-[10.5px] text-base-content/45">{job.subtitle}</div> : null}
+        {job.stepSummary ? <div className="mt-0.5 truncate text-[10px] text-base-content/30">{job.stepSummary}</div> : null}
+      </div>
     </div>
   )
 }
 
 function StageOverlay({ stage }: { stage: StageLaneData }) {
   return (
-    <div className="flex items-stretch gap-5">
-      <section className="w-[320px] shrink-0 rounded-2xl border border-primary/30 bg-base-100/95 shadow-2xl backdrop-blur-sm">
-        <div className="rounded-t-2xl border-b border-base-300 bg-primary/5 px-4 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage</div>
-              <div className="mt-1 truncate text-base font-bold">{stage.title}</div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {typeof stage.issuesCount === 'number' && stage.issuesCount > 0 ? (
-                <span className="badge badge-warning badge-sm">{stage.issuesCount} issues</span>
-              ) : null}
-              {stage.status ? <StatusBadge status={stage.status} subtle /> : null}
-            </div>
+    <div className="flex items-stretch">
+      <section className="flex w-[256px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary/30 bg-base-100/95 shadow-2xl backdrop-blur-sm">
+        <div className="h-[3px] w-full bg-primary" />
+        <div className="border-b border-base-200 bg-base-200/50 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-black text-primary">S</span>
+            <span className="truncate text-[13px] font-bold">{stage.title}</span>
           </div>
         </div>
-        <div className="space-y-3 rounded-b-2xl p-4">
+        <div className="space-y-1.5 p-2">
           {stage.jobs.slice(0, 3).map((job) => (
-            <div key={job.id} className="rounded-xl border border-base-300 bg-base-100 px-4 py-4">
-              <div className="truncate text-base font-semibold">{job.title}</div>
-              {job.badges && job.badges.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {job.badges.map((badge) => (
-                    <span key={badge} className="badge badge-ghost badge-sm">
-                      {badge}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+            <div key={job.id} className="flex overflow-hidden rounded-lg border border-base-200 bg-base-100">
+              <div className="w-[3px] shrink-0 bg-base-300" />
+              <div className="px-2.5 py-2">
+                <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>
+                {job.subtitle ? <div className="mt-1 truncate text-[10.5px] text-base-content/40">{job.subtitle}</div> : null}
+              </div>
             </div>
           ))}
         </div>

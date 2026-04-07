@@ -348,6 +348,87 @@ public class PipelineRunQueryService {
     }
 
     /**
+     * Builds a chronological log of all step-level events for one pipeline run.
+     * Entries are synthesized from IrisPipe execution-job rows and Spring Batch
+     * step execution metadata.
+     *
+     * @param pipelineRunId pipeline run id in the current workspace
+     * @return ordered log entries
+     */
+    @Transactional(readOnly = true)
+    public List<SyncPipelineDTO.RunLogEntry> getRunLogs(Long pipelineRunId) {
+        PipelineRun pipelineRun = getPipelineRun(pipelineRunId);
+        List<PipelineRunExecution> executions = pipelineRunExecutionRepo
+                .findByPipelineRunIdOrderByExecutionNoAsc(pipelineRun.getId());
+        List<PipelineRunJob> runJobs = pipelineRunJobRepo
+                .findByPipelineRunIdOrderByStageSequenceOrderAscJobSequenceOrderAsc(pipelineRun.getId());
+        Map<Long, PipelineRunJob> runJobById = runJobs.stream()
+                .collect(Collectors.toMap(PipelineRunJob::getId, j -> j));
+
+        List<SyncPipelineDTO.RunLogEntry> entries = new java.util.ArrayList<>();
+
+        // run started
+        entries.add(new SyncPipelineDTO.RunLogEntry("INFO", pipelineRun.getCreatedAt(),
+                "Run #" + pipelineRun.getId() + " created — pipeline: " + pipelineRun.getPipelineId()));
+        if (pipelineRun.getStartTime() != null) {
+            entries.add(new SyncPipelineDTO.RunLogEntry("INFO", pipelineRun.getStartTime(), "Run started"));
+        }
+
+        List<PipelineRunExecutionJob> allExecJobs = executions.isEmpty() ? List.of()
+                : pipelineRunExecutionJobRepo.findByPipelineRunExecutionIdIn(
+                        executions.stream().map(PipelineRunExecution::getId).toList());
+
+        Map<Long, JobExecution> jeCache = new HashMap<>();
+        for (PipelineRunExecutionJob ej : allExecJobs) {
+            PipelineRunJob job = runJobById.get(ej.getPipelineRunJobId());
+            String jobLabel = job != null ? job.getJobName() : "job-" + ej.getPipelineRunJobId();
+
+            if (ej.getStartTime() != null) {
+                entries.add(new SyncPipelineDTO.RunLogEntry("INFO", ej.getStartTime(), "[" + jobLabel + "] started"));
+            }
+
+            // step-level entries from Spring Batch
+            if (ej.getLastJobExecutionId() != null) {
+                JobExecution je = getJobExecution(ej.getLastJobExecutionId(), jeCache);
+                if (je != null) {
+                    for (org.springframework.batch.core.StepExecution se : je.getStepExecutions()) {
+                        if (se.getStartTime() != null) {
+                            entries.add(new SyncPipelineDTO.RunLogEntry("INFO",
+                                    se.getStartTime(),
+                                    "[" + jobLabel + "] step '" + se.getStepName() + "' started"));
+                        }
+                        if (se.getEndTime() != null) {
+                            String lvl = se.getStatus().isUnsuccessful() ? "ERROR" : "INFO";
+                            String msg = "[" + jobLabel + "] step '" + se.getStepName() + "' "
+                                    + se.getStatus().name().toLowerCase(java.util.Locale.ROOT);
+                            if (se.getExitStatus() != null && !se.getExitStatus().getExitDescription().isBlank()) {
+                                msg += " — " + se.getExitStatus().getExitDescription().lines().findFirst().orElse("");
+                            }
+                            entries.add(new SyncPipelineDTO.RunLogEntry(lvl, se.getEndTime(), msg));
+                        }
+                    }
+                }
+            }
+
+            if (ej.getEndTime() != null) {
+                String lvl = "FAILED".equals(String.valueOf(ej.getStatus())) ? "ERROR" : "INFO";
+                entries.add(new SyncPipelineDTO.RunLogEntry(lvl, ej.getEndTime(),
+                        "[" + jobLabel + "] finished — " + ej.getStatus()));
+            }
+        }
+
+        if (pipelineRun.getEndTime() != null) {
+            String lvl = pipelineRun.getStatus() != null && pipelineRun.getStatus().name().contains("FAIL") ? "ERROR" : "INFO";
+            entries.add(new SyncPipelineDTO.RunLogEntry(lvl, pipelineRun.getEndTime(),
+                    "Run ended — " + pipelineRun.getStatus()));
+        }
+
+        entries.sort(java.util.Comparator.comparing(SyncPipelineDTO.RunLogEntry::timestamp,
+                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())));
+        return entries;
+    }
+
+    /**
      * Normalizes the page size used by history and recent queries.
      *
      * @param limit requested page size

@@ -173,6 +173,13 @@ public class SyncPipelineAPI {
         return pipelineRunQueryService.getPipelineRunDetail(pipelineRunId);
     }
 
+    @GetMapping("/{pipelineRunId}/logs")
+    @Operation(summary = "Get pipeline run logs", description = "Returns a chronological log synthesized from run execution and Spring Batch step metadata.")
+    public List<SyncPipelineDTO.RunLogEntry> getRunLogs(
+            @PathVariable("pipelineRunId") @Positive(message = "pipelineRunId must be positive") Long pipelineRunId) {
+        return pipelineRunQueryService.getRunLogs(pipelineRunId);
+    }
+
     @DeleteMapping("/{pipelineRunId}")
     @Operation(summary = "Delete pipeline run", description = "Deletes a terminal pipeline run and its runtime rows.")
     /**

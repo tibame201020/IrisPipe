@@ -1,0 +1,261 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e9]:
+        - generic [ref=e10]: IrisPipe
+        - generic [ref=e11]: Operator Console
+    - navigation [ref=e12]:
+      - generic [ref=e13]: Navigation
+      - list [ref=e14]:
+        - listitem [ref=e15]:
+          - link "Overview Engine landing" [ref=e16] [cursor=pointer]:
+            - /url: /overview
+            - generic [ref=e17]:
+              - img [ref=e18]
+              - generic [ref=e21]:
+                - generic [ref=e22]: Overview
+                - generic [ref=e23]: Engine landing
+        - listitem [ref=e24]:
+          - link "Pipeline Explorer & runs" [ref=e25] [cursor=pointer]:
+            - /url: /pipeline
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - generic [ref=e32]:
+                - generic [ref=e33]: Pipeline
+                - generic [ref=e34]: Explorer & runs
+        - listitem [ref=e35]:
+          - link "Settings Appearance" [ref=e36] [cursor=pointer]:
+            - /url: /settings
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e41]:
+                - generic [ref=e42]: Settings
+                - generic [ref=e43]: Appearance
+    - button "Collapse sidebar" [ref=e45] [cursor=pointer]:
+      - img [ref=e46]
+      - generic [ref=e49]: Collapse
+  - generic [ref=e50]:
+    - banner [ref=e51]:
+      - generic [ref=e53]:
+        - generic [ref=e55]: Pipeline
+        - generic [ref=e288]:
+          - generic [ref=e289]: /
+          - generic [ref=e290]: Config Editor
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - img [ref=e71]
+          - generic [ref=e59]: Connected
+        - generic [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+          - generic [ref=e68]: corporate
+    - main [ref=e69]:
+      - generic [ref=e414]:
+        - generic [ref=e415]:
+          - generic [ref=e416]:
+            - generic [ref=e417]:
+              - link "Root" [ref=e418] [cursor=pointer]:
+                - /url: /pipeline
+              - generic [ref=e419]: /
+              - heading "manual_demo_prepare_data" [level=1] [ref=e420]
+            - generic [ref=e421]:
+              - generic [ref=e422]:
+                - img [ref=e423]
+                - text: "4"
+              - generic [ref=e427]:
+                - img [ref=e428]
+                - text: "4"
+          - generic [ref=e432]:
+            - link "Config" [ref=e433] [cursor=pointer]:
+              - /url: /pipeline/items/75/config
+            - link "Runs" [ref=e434] [cursor=pointer]:
+              - /url: /pipeline/items/75/runs
+        - generic [ref=e435]:
+          - generic [ref=e436]:
+            - generic [ref=e437]:
+              - generic [ref=e438]: 4 stages
+              - generic [ref=e439]: 4 jobs
+              - generic [ref=e440]: Jobs in the same stage run in parallel. Drag cards to reorganize, double-click a job to edit.
+            - generic [ref=e441]:
+              - button "Import File" [ref=e442] [cursor=pointer]:
+                - img [ref=e443]
+                - text: Import File
+              - button "Add Stage" [ref=e447] [cursor=pointer]:
+                - img [ref=e448]
+                - text: Add Stage
+              - button "Save Pipeline" [ref=e449] [cursor=pointer]:
+                - img [ref=e450]
+                - text: Save Pipeline
+          - generic [ref=e454]:
+            - main [ref=e455]:
+              - generic [ref=e458]:
+                - generic [ref=e459]:
+                  - region "Stage bootstrap" [ref=e460]:
+                    - button "S1 bootstrap 1j" [ref=e462] [cursor=pointer]:
+                      - generic [ref=e463]:
+                        - generic [ref=e464]: S1
+                        - button "bootstrap" [ref=e465]:
+                          - generic "bootstrap" [ref=e466]
+                        - generic [ref=e468]: 1j
+                      - generic [ref=e469]:
+                        - button "Add stage to the right" [ref=e470]:
+                          - img [ref=e471]
+                        - button "Add job" [ref=e472]:
+                          - img [ref=e473]
+                        - button "Delete stage" [ref=e474]:
+                          - img [ref=e475]
+                    - button "Job manual_demo_prepare_schema" [ref=e479]:
+                      - button "manual_demo_prepare_schema org.h2.Driver → org.h2.Driver 41 steps · EXECUTE JOB" [ref=e481] [cursor=pointer]:
+                        - generic "manual_demo_prepare_schema" [ref=e483]
+                        - generic "org.h2.Driver → org.h2.Driver" [ref=e484]
+                        - generic [ref=e485]: 41 steps · EXECUTE
+                        - generic [ref=e486]: JOB
+                      - generic [ref=e487]:
+                        - button "Edit job" [ref=e488] [cursor=pointer]:
+                          - img [ref=e489]
+                        - button "Delete job" [ref=e492] [cursor=pointer]:
+                          - img [ref=e493]
+                  - generic [ref=e496]:
+                    - generic [ref=e497]: then
+                    - img [ref=e500]
+                - generic [ref=e502]:
+                  - region "Stage success-fixtures" [ref=e503]:
+                    - button "S2 success-fixtures 1j" [ref=e505] [cursor=pointer]:
+                      - generic [ref=e506]:
+                        - generic [ref=e507]: S2
+                        - button "success-fixtures" [ref=e508]:
+                          - generic "success-fixtures" [ref=e509]
+                        - generic [ref=e511]: 1j
+                      - generic [ref=e512]:
+                        - button "Add stage to the right" [ref=e513]:
+                          - img [ref=e514]
+                        - button "Add job" [ref=e515]:
+                          - img [ref=e516]
+                        - button "Delete stage" [ref=e517]:
+                          - img [ref=e518]
+                    - button "Job manual_demo_seed_success_sources" [ref=e522]:
+                      - button "manual_demo_seed_success_sources org.h2.Driver → org.h2.Driver 2 steps · EXECUTE JOB" [ref=e524] [cursor=pointer]:
+                        - generic "manual_demo_seed_success_sources" [ref=e526]
+                        - generic "org.h2.Driver → org.h2.Driver" [ref=e527]
+                        - generic [ref=e528]: 2 steps · EXECUTE
+                        - generic [ref=e529]: JOB
+                      - generic [ref=e530]:
+                        - button "Edit job" [ref=e531] [cursor=pointer]:
+                          - img [ref=e532]
+                        - button "Delete job" [ref=e535] [cursor=pointer]:
+                          - img [ref=e536]
+                  - generic [ref=e539]:
+                    - generic [ref=e540]: then
+                    - img [ref=e543]
+                - generic [ref=e545]:
+                  - region "Stage stop-fixtures" [ref=e546]:
+                    - button "S3 stop-fixtures 1j" [ref=e548] [cursor=pointer]:
+                      - generic [ref=e549]:
+                        - generic [ref=e550]: S3
+                        - button "stop-fixtures" [ref=e551]:
+                          - generic "stop-fixtures" [ref=e552]
+                        - generic [ref=e554]: 1j
+                      - generic [ref=e555]:
+                        - button "Add stage to the right" [ref=e556]:
+                          - img [ref=e557]
+                        - button "Add job" [ref=e558]:
+                          - img [ref=e559]
+                        - button "Delete stage" [ref=e560]:
+                          - img [ref=e561]
+                    - button "Job manual_demo_seed_stop_sources" [ref=e565]:
+                      - button "manual_demo_seed_stop_sources org.h2.Driver → org.h2.Driver 2 steps · EXECUTE JOB" [ref=e567] [cursor=pointer]:
+                        - generic "manual_demo_seed_stop_sources" [ref=e569]
+                        - generic "org.h2.Driver → org.h2.Driver" [ref=e570]
+                        - generic [ref=e571]: 2 steps · EXECUTE
+                        - generic [ref=e572]: JOB
+                      - generic [ref=e573]:
+                        - button "Edit job" [ref=e574] [cursor=pointer]:
+                          - img [ref=e575]
+                        - button "Delete job" [ref=e578] [cursor=pointer]:
+                          - img [ref=e579]
+                  - generic [ref=e582]:
+                    - generic [ref=e583]: then
+                    - img [ref=e586]
+                - region "Stage fail-fixtures" [ref=e589]:
+                  - button "S4 fail-fixtures 1j" [ref=e591] [cursor=pointer]:
+                    - generic [ref=e592]:
+                      - generic [ref=e593]: S4
+                      - button "fail-fixtures" [ref=e594]:
+                        - generic "fail-fixtures" [ref=e595]
+                      - generic [ref=e597]: 1j
+                    - generic [ref=e598]:
+                      - button "Add stage to the right" [ref=e599]:
+                        - img [ref=e600]
+                      - button "Add job" [ref=e601]:
+                        - img [ref=e602]
+                      - button "Delete stage" [ref=e603]:
+                        - img [ref=e604]
+                  - button "Job manual_demo_seed_fail_sources" [ref=e608]:
+                    - button "manual_demo_seed_fail_sources org.h2.Driver → org.h2.Driver 2 steps · EXECUTE JOB" [ref=e610] [cursor=pointer]:
+                      - generic "manual_demo_seed_fail_sources" [ref=e612]
+                      - generic "org.h2.Driver → org.h2.Driver" [ref=e613]
+                      - generic [ref=e614]: 2 steps · EXECUTE
+                      - generic [ref=e615]: JOB
+                    - generic [ref=e616]:
+                      - button "Edit job" [ref=e617] [cursor=pointer]:
+                        - img [ref=e618]
+                      - button "Delete job" [ref=e621] [cursor=pointer]:
+                        - img [ref=e622]
+              - status [ref=e625]
+            - complementary [ref=e626]:
+              - generic [ref=e627]:
+                - generic [ref=e628]: Pipeline Summary
+                - generic [ref=e630]:
+                  - generic [ref=e631]: Pipeline Name
+                  - textbox "Pipeline Name" [ref=e632]:
+                    - /placeholder: pipeline_name
+                    - text: manual_demo_prepare_data
+              - generic [ref=e633]:
+                - generic [ref=e634]:
+                  - generic [ref=e635]:
+                    - generic [ref=e636]: Stages
+                    - generic [ref=e637]: "4"
+                  - generic [ref=e638]:
+                    - generic [ref=e639]: Jobs
+                    - generic [ref=e640]: "4"
+                  - generic [ref=e641]:
+                    - generic [ref=e642]: Steps
+                    - generic [ref=e643]: "47"
+                  - generic [ref=e644]:
+                    - generic [ref=e645]: Issues
+                    - generic [ref=e646]: "0"
+                - generic [ref=e647]: No validation issues
+            - complementary [ref=e648]:
+              - generic [ref=e649]:
+                - generic [ref=e651]:
+                  - generic [ref=e652]:
+                    - generic [ref=e654]: Stage 1
+                    - generic [ref=e655]: bootstrap
+                    - generic [ref=e656]: Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow.
+                  - button "Close stage editor" [ref=e657] [cursor=pointer]:
+                    - img [ref=e658]
+                - generic [ref=e662]:
+                  - generic [ref=e663]:
+                    - generic [ref=e664]: Stage Settings
+                    - generic [ref=e665]:
+                      - generic [ref=e666]: Stage Name
+                      - textbox "Stage Name" [ref=e667]:
+                        - /placeholder: stage1
+                        - text: bootstrap
+                    - generic [ref=e668]:
+                      - button "Move Left" [disabled]:
+                        - img
+                        - text: Move Left
+                      - button "Move Right" [ref=e669] [cursor=pointer]:
+                        - text: Move Right
+                        - img [ref=e670]
+                      - button "Add Job" [ref=e672] [cursor=pointer]:
+                        - img [ref=e673]
+                        - text: Add Job
+                      - generic [ref=e674]: Lane 1 of 4
+                  - generic [ref=e675]:
+                    - generic [ref=e676]: Stage Actions
+                    - generic [ref=e677]: Removing a stage also removes the jobs defined inside it.
+                    - button "Delete Stage" [ref=e679] [cursor=pointer]:
+                      - img [ref=e680]
+                      - text: Delete Stage

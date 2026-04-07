@@ -1,12 +1,13 @@
-import { AlertCircle, Clock, Filter, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react'
+import { AlertCircle, Filter, List, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { StatusBadge } from '../components/StatusBadge'
-import { deleteRun, getApiErrorMessage, getRunDetail, rerunRun, resumeRun, stopRun } from '../lib/api'
+import { deleteRun, getApiErrorMessage, getRunDetail, getRunLogs, rerunRun, resumeRun, stopRun, type RunLogEntry } from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
+import { usePipelineEvents } from '../lib/usePipelineEvents'
 import type {
   AtomicLevel,
   PipelineRunDetailInfo,
@@ -29,6 +30,9 @@ export function RunDetailPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [selectedAttemptId, setSelectedAttemptId] = useState<number | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
+  const [mainTab, setMainTab] = useState<'board' | 'logs'>('board')
+  const [logs, setLogs] = useState<RunLogEntry[] | null>(null)
+  const [logsLoading, setLogsLoading] = useState(false)
 
   const numericPipelineId = Number(pipelineId)
   const numericRunId = Number(runId)
@@ -59,11 +63,21 @@ export function RunDetailPage() {
     void loadDetail()
   }, [numericPipelineId, numericRunId])
 
+  // SSE: instant reload on job/run events for this specific run
+  usePipelineEvents({
+    onJobStarted: () => void loadDetail(),
+    onJobFinished: () => void loadDetail(),
+    onRunCompleted: () => void loadDetail(),
+    onRunFailed: () => void loadDetail(),
+    onRunStopped: () => void loadDetail(),
+  }, Number.isFinite(numericRunId) ? numericRunId : undefined)
+
+  // Fallback polling: 5 s while run is in-flight (SSE handles instant updates)
   useEffect(() => {
     if (!detail) return
     const isRunning = ['STARTING', 'STARTED'].includes(detail.status)
     if (!isRunning) return
-    const timer = setInterval(() => { void loadDetail() }, 3000)
+    const timer = setInterval(() => { void loadDetail() }, 5000)
     return () => clearInterval(timer)
   }, [detail?.status])
 
@@ -78,11 +92,6 @@ export function RunDetailPage() {
   }, [detail, latestAttempt, selectedAttemptId])
 
   useEffect(() => { setSelectedJobId(null) }, [selectedAttemptId])
-
-  const currentAttemptStepCount = useMemo(() => {
-    if (!currentAttempt) return 0
-    return currentAttempt.jobs.reduce((total, job) => total + job.stepExecutionInfos.length, 0)
-  }, [currentAttempt])
 
   // Aggregate throughput across all jobs in current attempt
   const attemptTotals = useMemo(() => {
@@ -133,6 +142,14 @@ export function RunDetailPage() {
           }),
           { read: 0, write: 0 },
         )
+        // Build error line from first failed step's exitDescription
+        const failedStep = job.stepExecutionInfos.find(
+          (s) => s.exitDescription && s.exitDescription.trim().length > 0 && s.exitCode !== 'COMPLETED',
+        )
+        const errorLine = failedStep?.exitDescription
+          ? failedStep.exitDescription.split('\n')[0].slice(0, 80)
+          : undefined
+
         return {
           id: String(job.id),
           title: job.jobName,
@@ -140,12 +157,14 @@ export function RunDetailPage() {
           selected: job.id === selectedJobId,
           onClick: () => setSelectedJobId(job.id),
           onDoubleClick: () => setSelectedJobId(job.id),
-          badges: [
-            `↓ ${jobTotals.read.toLocaleString()}`,
-            `↑ ${jobTotals.write.toLocaleString()}`,
-            `${job.stepExecutionInfos.length} steps`,
-            job.atomicLevel === 'CHUNK' ? 'CHUNK' : 'JOB',
-          ],
+          subtitle: (jobTotals.read > 0 || jobTotals.write > 0)
+            ? `↓ ${jobTotals.read.toLocaleString()}  ↑ ${jobTotals.write.toLocaleString()}`
+            : undefined,
+          stepSummary: `${job.stepExecutionInfos.length} step${job.stepExecutionInfos.length !== 1 ? 's' : ''} · ${job.atomicLevel}`,
+          duration: formatDuration(job.startTime, job.endTime),
+          waitTime: job.createdAt && job.startTime ? formatDuration(job.createdAt, job.startTime) : undefined,
+          errorLine,
+          badges: [job.atomicLevel],
         }
       }),
     }))
@@ -196,189 +215,170 @@ export function RunDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      {/* ── Toolbar ── */}
-      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
-          <span className="badge badge-ghost badge-sm">Run #{detail.id}</span>
+      {/* ── Header row 1: Run ID + status + attempt pills + throughput + actions ── */}
+      <div className="flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-100 px-5 py-2.5">
+        {/* Left: run ID + status */}
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-[13px] font-bold tabular-nums">#{detail.id}</span>
           <StatusBadge status={currentAttempt?.status ?? detail.status} subtle />
-          <span className="badge badge-ghost badge-sm">{currentAttempt?.executionKind ?? '-'}</span>
-          <span className="badge badge-ghost badge-sm">{currentAttempt?.stages.length ?? 0} stages</span>
-          <span className="badge badge-ghost badge-sm">{currentAttempt?.jobs.length ?? 0} jobs</span>
-          <span className="badge badge-ghost badge-sm">{currentAttemptStepCount} steps</span>
-          <span className="badge badge-ghost badge-sm">
-            {currentAttempt?.requestedAsync == null ? '-' : currentAttempt.requestedAsync ? 'Async' : 'Sync'}
-          </span>
-          {/* Attempt-level throughput summary */}
-          {(attemptTotals.read > 0 || attemptTotals.write > 0) && (
-            <>
-              <span className="badge badge-ghost badge-sm font-mono text-success/80">↓ {attemptTotals.read.toLocaleString()} read</span>
-              <span className="badge badge-ghost badge-sm font-mono text-primary/80">↑ {attemptTotals.write.toLocaleString()} write</span>
-              {attemptTotals.commit > 0 && (
-                <span className="badge badge-ghost badge-sm font-mono text-secondary/80">{attemptTotals.commit.toLocaleString()} commits</span>
-              )}
-              {attemptTotals.rollback > 0 && (
-                <span className="badge badge-error badge-sm font-mono">{attemptTotals.rollback} rollbacks</span>
-              )}
-              {attemptTotals.skip > 0 && (
-                <span className="badge badge-warning badge-sm font-mono">{attemptTotals.skip} skipped</span>
-              )}
-            </>
-          )}
-          <span className="text-[10px] font-medium text-base-content/30">
-            Same-stage jobs run in parallel. Future stages stay blocked until the current stage converges.
-          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-lg bg-base-200/50 p-1">
-            <button
-              type="button"
-              disabled={!canStop || !!pendingAction}
-              className="btn btn-ghost btn-sm h-9 text-error"
-              onClick={() => void runAction('stop', () => stopRun(detail.id))}
-            >
-              <Square size={14} />
-              Stop
-            </button>
-            <button
-              type="button"
-              disabled={!canResume || !!pendingAction}
-              className="btn btn-ghost btn-sm h-9"
-              onClick={() => void runAction('resume', () => resumeRun(detail.id))}
-            >
-              <PlayCircle size={14} />
-              Resume
-            </button>
-            <button
-              type="button"
-              disabled={!canRerun || !!pendingAction}
-              className="btn btn-ghost btn-sm h-9"
-              onClick={() => void runAction('rerun', () => rerunRun(detail.id))}
-            >
-              <RotateCcw size={14} />
-              Rerun
-            </button>
-            <button
-              type="button"
-              disabled={!!pendingAction}
-              className="btn btn-ghost btn-sm h-9 text-error"
-              onClick={() => setDeleteConfirmOpen(true)}
-            >
-              <Trash2 size={14} />
-              Delete
-            </button>
+        <div className="h-4 w-px shrink-0 bg-base-300" />
+
+        {/* Attempt pills */}
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {detail.attempts.map((attempt) => {
+            const isSelected = attempt.executionId === currentAttempt?.executionId
+            const isLatest = attempt.executionId === latestAttempt?.executionId
+            return (
+              <button
+                key={attempt.executionId}
+                type="button"
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                  isSelected
+                    ? 'border-primary bg-primary text-primary-content'
+                    : 'border-base-300 bg-base-100 text-base-content/45 hover:border-primary/30 hover:text-base-content'
+                }`}
+                onClick={() => setSelectedAttemptId(attempt.executionId)}
+              >
+                {isLatest && <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />}
+                #{attempt.executionNo} {attempt.executionKind}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="h-4 w-px shrink-0 bg-base-300" />
+
+        {/* Throughput summary */}
+        {(attemptTotals.read > 0 || attemptTotals.write > 0) && (
+          <div className="hidden shrink-0 items-center gap-2 lg:flex">
+            <span className="font-mono text-[11px] text-success/70">↓ {attemptTotals.read.toLocaleString()}</span>
+            <span className="font-mono text-[11px] text-primary/70">↑ {attemptTotals.write.toLocaleString()}</span>
+            {attemptTotals.rollback > 0 && (
+              <span className="font-mono text-[11px] text-error/70">{attemptTotals.rollback} rb</span>
+            )}
           </div>
-          <button type="button" onClick={() => void loadDetail()} className="btn btn-ghost btn-sm btn-square">
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+        )}
+
+        {/* Duration + created (compact) */}
+        <div className="hidden shrink-0 items-center gap-2 text-[10px] text-base-content/30 xl:flex">
+          <span className="font-mono">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
+          <span>·</span>
+          <span>{formatDateTimeLong(detail.createdAt)}</span>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            disabled={!canStop || !!pendingAction}
+            className="btn btn-ghost btn-xs text-error"
+            onClick={() => void runAction('stop', () => stopRun(detail.id))}
+          >
+            <Square size={12} />Stop
+          </button>
+          <button
+            type="button"
+            disabled={!canResume || !!pendingAction}
+            className="btn btn-ghost btn-xs"
+            onClick={() => void runAction('resume', () => resumeRun(detail.id))}
+          >
+            <PlayCircle size={12} />Resume
+          </button>
+          <button
+            type="button"
+            disabled={!canRerun || !!pendingAction}
+            className="btn btn-ghost btn-xs"
+            onClick={() => void runAction('rerun', () => rerunRun(detail.id))}
+          >
+            <RotateCcw size={12} />Rerun
+          </button>
+          <button
+            type="button"
+            disabled={!!pendingAction}
+            className="btn btn-ghost btn-xs text-error"
+            onClick={() => setDeleteConfirmOpen(true)}
+          >
+            <Trash2 size={12} />
+          </button>
+          <button type="button" onClick={() => void loadDetail()} className="btn btn-ghost btn-xs btn-square">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
-
-      <div className="flex min-h-0 flex-1">
-        {/* ── Attempt Sidebar ── */}
-        <aside className="flex w-[300px] shrink-0 flex-col border-r border-base-300 bg-base-100">
-          <div className="border-b border-base-300 px-5 py-4">
-            <div className="iris-header">Attempt History</div>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <SummaryTile label="Status" value={detail.status} />
-              <SummaryTile label="Attempts" value={detail.attempts.length} />
-              <SummaryTile label="Duration" value={formatDuration(detail.startTime || detail.createdAt, detail.endTime)} mono />
-              <SummaryTile label="Created" value={formatDateTimeLong(detail.createdAt)} />
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-3 overflow-y-auto p-3">
-            {detail.attempts
-              .slice()
-              .reverse()
-              .map((attempt) => {
-                const isLatest = attempt.executionId === latestAttempt?.executionId
-                const isSelected = attempt.executionId === currentAttempt?.executionId
-                const stepCount = attempt.jobs.reduce((count, job) => count + job.stepExecutionInfos.length, 0)
-                const totalRead = attempt.jobs.reduce((s, j) => s + j.stepExecutionInfos.reduce((a, st) => a + st.readCount, 0), 0)
-                const totalWrite = attempt.jobs.reduce((s, j) => s + j.stepExecutionInfos.reduce((a, st) => a + st.writeCount, 0), 0)
-
-                return (
-                  <button
-                    key={attempt.executionId}
-                    type="button"
-                    className={`w-full rounded-xl border p-4 text-left transition-all ${
-                      isSelected
-                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
-                        : 'border-base-300 bg-base-100 hover:border-primary/30 hover:bg-base-200/30'
-                    }`}
-                    onClick={() => setSelectedAttemptId(attempt.executionId)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="badge badge-ghost badge-sm">Attempt #{attempt.executionNo}</span>
-                          {isLatest ? <span className="badge badge-primary badge-sm">Latest</span> : null}
-                        </div>
-                        <div className="mt-2 text-sm font-bold">{attempt.executionKind}</div>
-                      </div>
-                      <StatusBadge status={attempt.status} subtle />
-                    </div>
-
-                    <div className="mt-2 flex items-center gap-2 text-[10px] text-base-content/40">
-                      <Clock size={10} />
-                      <span>{formatDateTimeLong(attempt.startTime)}</span>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-base-content/30">
-                      <span>{attempt.stages.length} stages</span>
-                      <span>{attempt.jobs.length} jobs</span>
-                      <span>{stepCount} steps</span>
-                      <span>{formatDuration(attempt.startTime, attempt.endTime)}</span>
-                    </div>
-
-                    {/* Attempt throughput mini-bar */}
-                    {(totalRead > 0 || totalWrite > 0) && (
-                      <div className="mt-3 flex gap-3 text-[10px] font-mono">
-                        <span className="text-success/70">↓ {totalRead.toLocaleString()}</span>
-                        <span className="text-primary/70">↑ {totalWrite.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-          </div>
-        </aside>
-
-        {/* ── Stage Board Main ── */}
-        <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/40">
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-base-300 bg-base-100 px-5 py-4">
-              <div>
-                <div className="iris-header">Runtime Stage Board</div>
-                <div className="mt-1 text-sm text-base-content/45">
-                  Inspect stage convergence, parallel jobs, and the current attempt runtime state.
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="badge badge-ghost badge-sm">{currentAttempt?.executionKind ?? '-'}</span>
-                <span className="badge badge-ghost badge-sm">{currentAttempt?.stages.length ?? 0} stages</span>
-                <span className="badge badge-ghost badge-sm">{currentAttempt?.jobs.length ?? 0} jobs</span>
-                <span className="badge badge-ghost badge-sm">{currentAttemptStepCount} steps</span>
-              </div>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <StageLaneBoard
-                stages={stageLanes}
-                emptyTitle="No attempt stages"
-                emptyDescription="This attempt did not materialize any runtime stage projection."
-              />
-            </div>
-          </div>
-
-          {selectedJob ? (
-            <JobRuntimeDrawer job={selectedJob} onClose={() => setSelectedJobId(null)} />
-          ) : null}
-        </main>
+      {/* ── Header row 2: Board / Logs tab ── */}
+      <div className="flex shrink-0 items-center gap-0 border-b border-base-300 bg-base-200/15 px-5">
+        <button
+          type="button"
+          className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
+            mainTab === 'board'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+          }`}
+          onClick={() => setMainTab('board')}
+        >
+          <Filter size={12} />Stage Board
+        </button>
+        <button
+          type="button"
+          className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
+            mainTab === 'logs'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+          }`}
+          onClick={() => {
+            setMainTab('logs')
+            if (logs === null && !logsLoading) {
+              setLogsLoading(true)
+              getRunLogs(numericRunId).then(setLogs).catch(() => setLogs([])).finally(() => setLogsLoading(false))
+            }
+          }}
+        >
+          <List size={12} />Logs
+        </button>
       </div>
+
+      {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
+
+      {/* ── Main content ── */}
+      <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/30">
+        {mainTab === 'board' ? (
+          <StageLaneBoard
+            stages={stageLanes}
+            emptyTitle="No attempt stages"
+            emptyDescription="This attempt did not materialize any runtime stage projection."
+          />
+        ) : (
+          <div className="h-full overflow-y-auto px-5 py-4 font-mono text-xs">
+            {logsLoading ? (
+              <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
+            ) : !logs || logs.length === 0 ? (
+              <div className="py-10 text-center text-base-content/30">No log entries available</div>
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                {logs.map((entry, idx) => (
+                  <div key={idx} className={`flex items-start gap-3 rounded px-2 py-0.5 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
+                    <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/30'}`}>{entry.level}</span>
+                    <span className="shrink-0 tabular-nums text-base-content/30">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
+                    </span>
+                    <span className="flex-1 break-all">{entry.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {mainTab === 'board' && selectedJob ? (
+          <JobRuntimeDrawer job={selectedJob} onClose={() => setSelectedJobId(null)} />
+        ) : null}
+      </main>
 
       {/* ── Delete Confirm Modal ── */}
       {deleteConfirmOpen ? (

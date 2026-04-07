@@ -1,5 +1,6 @@
 package irispipe.infrastructure.service.workspace;
 
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import irispipe.infrastructure.entity.workspace.Workspace;
 import irispipe.infrastructure.error.exception.ResourceNotFoundException;
 import irispipe.infrastructure.repo.workspace.WorkspaceRepo;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Resolves the current workspace from request context with a default fallback.
@@ -28,6 +30,18 @@ public class WorkspaceContextService {
      */
     public WorkspaceContextService(WorkspaceRepo workspaceRepo) {
         this.workspaceRepo = workspaceRepo;
+    }
+
+    /**
+     * Ensures the default workspace exists on startup.
+     */
+    @PostConstruct
+    @Transactional
+    public void ensureDefaultWorkspace() {
+        if (!workspaceRepo.existsByWorkspaceKey(DEFAULT_WORKSPACE_KEY)) {
+            LocalDateTime now = LocalDateTime.now();
+            workspaceRepo.save(new Workspace(null, DEFAULT_WORKSPACE_KEY, "Default", true, now, now));
+        }
     }
 
     /**

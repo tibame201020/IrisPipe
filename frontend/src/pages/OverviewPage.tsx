@@ -1,8 +1,6 @@
 import {
   Activity,
   ArrowRight,
-  CheckCircle2,
-  Database,
   FolderTree,
   Layers3,
   PlayCircle,
@@ -10,7 +8,6 @@ import {
   Server,
   ShieldCheck,
   TrendingUp,
-  XCircle,
   Zap,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -19,36 +16,17 @@ import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
 import {
-  getActuatorMetric,
   getApiErrorMessage,
-  getHealth,
-  getPipelineTree,
-  getRecentRuns,
+  getOverviewSummary,
 } from '../lib/api'
 import { formatDateTime } from '../lib/date'
-import { countTreeStats } from '../lib/tree'
-import type {
-  ActuatorMetricResponse,
-  HealthResponse,
-  PipelineRunSummaryInfo,
-  PipelineTreeInfo,
-} from '../types/irispipe'
+import { usePipelineEvents } from '../lib/usePipelineEvents'
+import type { PipelineRunSummaryInfo } from '../types/irispipe'
 
-// ─── Engine Metric Names to Fetch ───────────────────────────────────────────
-const ENGINE_METRICS = [
-  { name: 'jvm.memory.used', label: 'JVM Memory Used', unit: 'MB', divisor: 1_048_576 },
-  { name: 'jvm.memory.max', label: 'JVM Memory Max', unit: 'MB', divisor: 1_048_576 },
-  { name: 'process.uptime', label: 'Uptime', unit: 's', divisor: 1 },
-  { name: 'spring.batch.job.active', label: 'Active Batch Jobs', unit: '', divisor: 1 },
-] as const
-
-type MetricKey = typeof ENGINE_METRICS[number]['name']
+type OverviewData = Awaited<ReturnType<typeof import('../lib/api').getOverviewSummary>>
 
 export function OverviewPage() {
-  const [tree, setTree] = useState<PipelineTreeInfo | null>(null)
-  const [recentRuns, setRecentRuns] = useState<PipelineRunSummaryInfo[]>([])
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [engineMetrics, setEngineMetrics] = useState<Partial<Record<MetricKey, ActuatorMetricResponse>>>({})
+  const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,26 +34,8 @@ export function OverviewPage() {
     setLoading(true)
     setError(null)
     try {
-      const [treeResponse, recentResponse, healthResponse] = await Promise.all([
-        getPipelineTree(),
-        getRecentRuns(10),
-        getHealth(),
-      ])
-      setTree(treeResponse)
-      setRecentRuns(recentResponse)
-      setHealth(healthResponse)
-
-      // Graceful degrade: fetch engine metrics individually, never fail the page
-      const metricResults = await Promise.allSettled(
-        ENGINE_METRICS.map((m) => getActuatorMetric(m.name).then((data) => ({ key: m.name, data }))),
-      )
-      const collected: Partial<Record<MetricKey, ActuatorMetricResponse>> = {}
-      for (const result of metricResults) {
-        if (result.status === 'fulfilled') {
-          collected[result.value.key] = result.value.data
-        }
-      }
-      setEngineMetrics(collected)
+      const summary = await getOverviewSummary()
+      setData(summary)
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, 'Failed to load overview'))
     } finally {
@@ -83,17 +43,24 @@ export function OverviewPage() {
     }
   }
 
+  // SSE: instantly reload on any run event
+  usePipelineEvents({
+    onRunStarted: () => void load(),
+    onRunCompleted: () => void load(),
+    onRunFailed: () => void load(),
+    onRunStopped: () => void load(),
+  })
+
   useEffect(() => {
     void load()
-    const timer = setInterval(() => {
-      void load()
-    }, 15000)
+    // Fallback polling at 30 s (SSE handles instant updates for run events)
+    const timer = setInterval(() => { void load() }, 30000)
     return () => clearInterval(timer)
   }, [])
 
-  if (loading && !tree) return <div className="p-12"><LoadingState /></div>
+  if (loading && !data) return <div className="p-12"><LoadingState /></div>
 
-  if (error || !tree || !health) {
+  if (error || !data) {
     return (
       <EmptyState
         icon={ShieldCheck}
@@ -104,24 +71,12 @@ export function OverviewPage() {
     )
   }
 
-  const stats = countTreeStats(tree)
+  const { engine, catalog, runs, recentRuns } = data
   const activeRuns = recentRuns.filter((run) => ['STARTING', 'STARTED'].includes(run.status))
-  const completedRuns = recentRuns.filter((run) => run.status === 'COMPLETED')
-  const failedRuns = recentRuns.filter((run) => run.status === 'FAILED')
-  const successRate = recentRuns.length > 0
-    ? Math.round((completedRuns.length / recentRuns.length) * 100)
-    : 0
-
-  const jvmUsed = engineMetrics['jvm.memory.used']?.measurements.find(m => m.statistic === 'VALUE')?.value ?? null
-  const jvmMax = engineMetrics['jvm.memory.max']?.measurements.find(m => m.statistic === 'VALUE')?.value ?? null
-  const uptime = engineMetrics['process.uptime']?.measurements.find(m => m.statistic === 'VALUE')?.value ?? null
-  const activeBatchJobs = engineMetrics['spring.batch.job.active']?.measurements.find(m => m.statistic === 'VALUE')?.value ?? null
-
-  const jvmPercent = jvmUsed != null && jvmMax != null && jvmMax > 0
-    ? Math.round((jvmUsed / jvmMax) * 100)
-    : null
-
-  const healthIsUp = health.status === 'UP'
+  const healthIsUp = engine.status === 'UP'
+  const jvmPercent = engine.jvmMemoryPercent >= 0 ? engine.jvmMemoryPercent : null
+  const uptime = engine.uptimeSeconds >= 0 ? engine.uptimeSeconds : null
+  const activeBatchJobs = engine.activeBatchJobs
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-base-200/50">
@@ -135,7 +90,7 @@ export function OverviewPage() {
           <div className={`iris-card flex items-center gap-3 px-4 py-2 border ${healthIsUp ? 'bg-success/5 border-success/25' : 'bg-error/5 border-error/25'}`}>
             <div className={`size-2 rounded-full ${healthIsUp ? 'bg-success animate-pulse' : 'bg-error'}`} />
             <span className={`text-xs font-bold uppercase tracking-widest ${healthIsUp ? 'text-success' : 'text-error'}`}>
-              Backend {health.status}
+              Backend {engine.status}
             </span>
           </div>
           <Link to="/pipeline" className="btn btn-primary btn-sm px-5 gap-2">
@@ -151,14 +106,14 @@ export function OverviewPage() {
           <MetricCard
             icon={FolderTree}
             label="Folders"
-            value={stats.folderCount}
+            value={catalog.totalFolders}
             subValue="Explorer tree"
             accent="warning"
           />
           <MetricCard
             icon={Layers3}
             label="Pipelines"
-            value={stats.pipelineCount}
+            value={catalog.totalPipelines}
             subValue="Configured definitions"
             accent="primary"
           />
@@ -170,7 +125,7 @@ export function OverviewPage() {
             accent="success"
             pulse={activeRuns.length > 0}
           />
-          <SuccessRateCard successRate={successRate} total={recentRuns.length} failed={failedRuns.length} />
+          <SuccessRateCard successRate={runs.successRate} total={runs.last10Total} failed={runs.last10Failed} />
         </div>
 
         {/* ── Engine Vitals Row ── */}
@@ -186,8 +141,8 @@ export function OverviewPage() {
                 {jvmPercent != null && (
                   <VitalCell
                     label="JVM Memory"
-                    value={`${Math.round((jvmUsed ?? 0) / 1_048_576)} MB`}
-                    sub={`${jvmPercent}% of ${Math.round((jvmMax ?? 0) / 1_048_576)} MB`}
+                    value={`${engine.jvmMemoryMb} MB`}
+                    sub={`${jvmPercent}% of ${engine.jvmMemoryTotalMb} MB`}
                     bar={jvmPercent}
                     barColor={jvmPercent > 85 ? 'error' : jvmPercent > 65 ? 'warning' : 'success'}
                   />
@@ -199,35 +154,17 @@ export function OverviewPage() {
                     sub="Since last restart"
                   />
                 )}
-                {activeBatchJobs != null && (
-                  <VitalCell
-                    label="Active Batch Jobs"
-                    value={String(activeBatchJobs)}
-                    sub="Spring Batch scheduler"
-                    pulse={activeBatchJobs > 0}
-                  />
-                )}
-                {/* Health Components */}
-                {health.components && Object.entries(health.components).slice(0, 4 - (jvmPercent != null ? 1 : 0) - (uptime != null ? 1 : 0) - (activeBatchJobs != null ? 1 : 0)).map(([key, comp]) => (
-                  <VitalCell
-                    key={key}
-                    label={key.charAt(0).toUpperCase() + key.slice(1)}
-                    value={comp.status}
-                    sub="Actuator component"
-                    statusColor={comp.status === 'UP' ? 'success' : 'error'}
-                  />
-                ))}
+                <VitalCell
+                  label="Active Batch Jobs"
+                  value={String(activeBatchJobs)}
+                  sub="Spring Batch scheduler"
+                  pulse={activeBatchJobs > 0}
+                />
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Health Components (when no metrics available) ── */}
-        {!jvmPercent && health.components && Object.keys(health.components).length > 0 && (
-          <div className="mb-6">
-            <HealthComponentsPanel components={health.components} />
-          </div>
-        )}
 
         {/* ── Main Content Row ── */}
         <div className="grid gap-6 xl:grid-cols-3">
@@ -441,34 +378,6 @@ function VitalCell({
   )
 }
 
-function HealthComponentsPanel({ components }: { components: Record<string, { status: string; details?: Record<string, unknown> }> }) {
-  return (
-    <div className="iris-card p-0 overflow-hidden bg-base-100">
-      <div className="flex items-center gap-2 border-b border-base-300 px-5 py-3">
-        <Database size={15} className="text-secondary" />
-        <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Health Components</h2>
-        <span className="ml-auto badge badge-ghost badge-sm">/actuator/health</span>
-      </div>
-      <div className="grid grid-cols-2 gap-px bg-base-300/30 sm:grid-cols-3 lg:grid-cols-4">
-        {Object.entries(components).map(([key, comp]) => (
-          <div key={key} className="bg-base-100 p-4 flex items-center gap-3">
-            {comp.status === 'UP' ? (
-              <CheckCircle2 size={16} className="text-success shrink-0" />
-            ) : (
-              <XCircle size={16} className="text-error shrink-0" />
-            )}
-            <div>
-              <div className="text-sm font-semibold capitalize">{key}</div>
-              <div className={`text-[10px] font-bold uppercase tracking-wider ${comp.status === 'UP' ? 'text-success' : 'text-error'}`}>
-                {comp.status}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function RunThroughputPanel({ runs }: { runs: PipelineRunSummaryInfo[] }) {
   const completed = runs.filter(r => r.status === 'COMPLETED').length

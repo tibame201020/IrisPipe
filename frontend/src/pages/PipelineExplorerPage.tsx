@@ -563,7 +563,7 @@ function PipelineCard({
           <FileJson2 size={14} />
         </div>
         <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_160px] items-center gap-4">
-          <div className="truncate font-medium text-[13px] text-base-content">{pipeline.pipelineName}</div>
+          <div className="truncate font-medium text-[13px] text-base-content" title={pipeline.pipelineName}>{pipeline.pipelineName}</div>
           <div className="text-[11px] font-mono text-base-content/40 truncate justify-self-end">
             {pipeline.folderPath || 'Root'}
           </div>

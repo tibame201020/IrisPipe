@@ -1,0 +1,46 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e9]:
+        - generic [ref=e10]: IrisPipe
+        - generic [ref=e11]: Operator Console
+    - navigation [ref=e12]:
+      - generic [ref=e13]: Navigation
+      - list [ref=e14]:
+        - listitem [ref=e15]:
+          - link "Overview Engine landing" [ref=e16] [cursor=pointer]:
+            - /url: /overview
+            - generic [ref=e17]:
+              - img [ref=e18]
+              - generic [ref=e21]:
+                - generic [ref=e22]: Overview
+                - generic [ref=e23]: Engine landing
+        - listitem [ref=e24]:
+          - link "Pipeline Explorer & runs" [ref=e25] [cursor=pointer]:
+            - /url: /pipeline
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - generic [ref=e32]:
+                - generic [ref=e33]: Pipeline
+                - generic [ref=e34]: Explorer & runs
+        - listitem [ref=e35]:
+          - link "Settings Appearance" [ref=e36] [cursor=pointer]:
+            - /url: /settings
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - generic [ref=e41]:
+                - generic [ref=e42]: Settings
+                - generic [ref=e43]: Appearance
+    - button "Collapse sidebar" [ref=e45] [cursor=pointer]:
+      - img [ref=e46]
+      - generic [ref=e49]: Collapse
+  - generic [ref=e50]:
+    - banner [ref=e51]:
+      - generic [ref=e55]: Overview
+      - generic [ref=e56]:
+        - generic [ref=e59]: Connecting
+        - generic [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+          - generic [ref=e68]: corporate
+    - main [ref=e69]

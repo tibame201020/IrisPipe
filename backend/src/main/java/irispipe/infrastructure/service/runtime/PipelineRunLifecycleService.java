@@ -19,6 +19,8 @@ import irispipe.infrastructure.repo.runtime.PipelineRunExecutionJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunExecutionRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunJobRepo;
 import irispipe.infrastructure.repo.runtime.PipelineRunRepo;
+import irispipe.infrastructure.sse.SseEventBroadcaster;
+import irispipe.infrastructure.sse.SseEvents;
 import irispipe.model.PipelineRunStatus;
 
 /**
@@ -33,6 +35,7 @@ public class PipelineRunLifecycleService {
     private final PipelineRunStatusPolicy pipelineRunStatusPolicy;
     private final PipelineRunProjectionService pipelineRunProjectionService;
     private final PipelineRunObservationService pipelineRunObservationService;
+    private final SseEventBroadcaster sseEventBroadcaster;
 
     /**
      * Creates the lifecycle service with runtime repositories, status policy,
@@ -52,7 +55,8 @@ public class PipelineRunLifecycleService {
             PipelineRunJobRepo pipelineRunJobRepo,
             PipelineRunStatusPolicy pipelineRunStatusPolicy,
             PipelineRunProjectionService pipelineRunProjectionService,
-            PipelineRunObservationService pipelineRunObservationService) {
+            PipelineRunObservationService pipelineRunObservationService,
+            SseEventBroadcaster sseEventBroadcaster) {
         this.pipelineRunRepo = pipelineRunRepo;
         this.pipelineRunExecutionRepo = pipelineRunExecutionRepo;
         this.pipelineRunExecutionJobRepo = pipelineRunExecutionJobRepo;
@@ -60,6 +64,7 @@ public class PipelineRunLifecycleService {
         this.pipelineRunStatusPolicy = pipelineRunStatusPolicy;
         this.pipelineRunProjectionService = pipelineRunProjectionService;
         this.pipelineRunObservationService = pipelineRunObservationService;
+        this.sseEventBroadcaster = sseEventBroadcaster;
     }
 
     /**
@@ -107,6 +112,9 @@ public class PipelineRunLifecycleService {
 
         pipelineRunProjectionService.syncLatestRunJobProjection(pipelineRunJob, pipelineRunExecutionJob, now);
         pipelineRunJobRepo.save(pipelineRunJob);
+
+        sseEventBroadcaster.broadcast(pipelineRunId, "job_started", new SseEvents.JobStartedEvent(
+                pipelineRunId, pipelineRunJob.getJobName(), pipelineRunJob.getStageName(), startTime));
     }
 
     /**
@@ -172,6 +180,10 @@ public class PipelineRunLifecycleService {
         pipelineRunJobRepo.save(pipelineRunJob);
         pipelineRunObservationService.publishJobObservation(pipelineRunJob, pipelineRunExecutionJob);
 
+        sseEventBroadcaster.broadcast(pipelineRunId, "job_finished", new SseEvents.JobFinishedEvent(
+                pipelineRunId, pipelineRunJob.getJobName(), pipelineRunJob.getStageName(),
+                jobStatus.name(), pipelineRunExecutionJob.getEndTime()));
+
         PipelineRunExecution latestPipelineRunExecution = getPipelineRunExecutionForUpdate(pipelineRunExecutionId);
         if (pipelineRunStatusPolicy.isTerminalFailure(latestPipelineRunExecution.getStatus())) {
             pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, latestPipelineRunExecution, now);
@@ -189,6 +201,8 @@ public class PipelineRunLifecycleService {
             pipelineRunRepo.save(pipelineRun);
             if (PipelineRunStatus.FAILED.equals(jobStatus)) {
                 pipelineRunObservationService.publishExecutionObservation(latestPipelineRunExecution);
+                sseEventBroadcaster.broadcast(pipelineRunId, "run_failed", new SseEvents.RunFailedEvent(
+                        pipelineRunId, latestPipelineRunExecution.getEndTime()));
             }
             return;
         }
@@ -227,6 +241,13 @@ public class PipelineRunLifecycleService {
         if (PipelineRunStatus.COMPLETED.equals(latestPipelineRunExecution.getStatus())
                 || PipelineRunStatus.FAILED.equals(latestPipelineRunExecution.getStatus())) {
             pipelineRunObservationService.publishExecutionObservation(latestPipelineRunExecution);
+            if (PipelineRunStatus.COMPLETED.equals(latestPipelineRunExecution.getStatus())) {
+                sseEventBroadcaster.broadcast(pipelineRunId, "run_completed", new SseEvents.RunCompletedEvent(
+                        pipelineRunId, "COMPLETED", latestPipelineRunExecution.getEndTime()));
+            } else {
+                sseEventBroadcaster.broadcast(pipelineRunId, "run_failed", new SseEvents.RunFailedEvent(
+                        pipelineRunId, latestPipelineRunExecution.getEndTime()));
+            }
         }
     }
 
@@ -272,6 +293,9 @@ public class PipelineRunLifecycleService {
         pipelineRunProjectionService.syncLatestRunProjection(pipelineRun, pipelineRunExecution, now);
         pipelineRunRepo.save(pipelineRun);
         pipelineRunObservationService.publishExecutionObservation(pipelineRunExecution);
+
+        sseEventBroadcaster.broadcast(pipelineRunId, "run_failed", new SseEvents.RunFailedEvent(
+                pipelineRunId, pipelineRunExecution.getEndTime()));
     }
 
     /**
@@ -325,6 +349,8 @@ public class PipelineRunLifecycleService {
         pipelineRunRepo.save(pipelineRun);
         if (!alreadyStopped) {
             pipelineRunObservationService.publishExecutionObservation(pipelineRunExecution);
+            sseEventBroadcaster.broadcast(pipelineRunId, "run_stopped", new SseEvents.RunStoppedEvent(
+                    pipelineRunId, pipelineRunExecution.getEndTime()));
         }
     }
 
