@@ -19,6 +19,9 @@ import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { PipelineImportDialog } from '../components/PipelineImportDialog'
 import { StatusBadge } from '../components/StatusBadge'
+import { ActionButton, ActionLink } from '../components/ui/Action'
+import { DialogShell, } from '../components/ui/DialogShell'
+import { PanelHeader, SummaryTile } from '../components/ui/Surface'
 import {
   createFolder,
   deleteFolder,
@@ -328,14 +331,15 @@ export function PipelineExplorerPage() {
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/72 overflow-hidden backdrop-blur-md">
         <div className="iris-shell-bar iris-glass flex items-center justify-between px-4 py-3">
           <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Workspace</span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs btn-square"
+          <ActionButton
+            size="xs"
+            tone="icon"
+            square
             onClick={() => void loadTree({ initial: false })}
             aria-label="Refresh"
           >
             <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-          </button>
+          </ActionButton>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2">
@@ -368,21 +372,26 @@ export function PipelineExplorerPage() {
 
         {/* Sidebar actions */}
         <div className="shrink-0 border-t border-base-300 p-3 space-y-1">
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs w-full justify-start gap-2 text-base-content/55"
+          <ActionButton
+            size="xs"
+            tone="ghost"
+            block
+            className="justify-start text-base-content/55"
             onClick={() => { setCreateFolderOpen(true); setFolderNameDraft(''); setActionError(null) }}
           >
             <FolderPlus size={13} />
             New Folder
-          </button>
-          <Link
+          </ActionButton>
+          <ActionLink
             to={`/pipeline/new/config${numericFolderId ? `?folderId=${numericFolderId}` : ''}`}
-            className="btn btn-ghost btn-xs w-full justify-start gap-2 text-base-content/55"
+            size="xs"
+            tone="ghost"
+            block
+            className="justify-start text-base-content/55"
           >
             <FileJson2 size={13} />
             New Pipeline
-          </Link>
+          </ActionLink>
         </div>
       </aside>
 
@@ -417,21 +426,21 @@ export function PipelineExplorerPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm gap-2 border-base-300"
+            <ActionButton
+              tone="toolbar"
               onClick={() => { setImportDialogOpen(true); setImportError(null); setActionError(null) }}
             >
               <FileUp size={14} />
               Import
-            </button>
-            <Link
+            </ActionButton>
+            <ActionLink
               to={`/pipeline/new/config${numericFolderId ? `?folderId=${numericFolderId}` : ''}`}
-              className="btn btn-primary btn-sm gap-2 px-4"
+              tone="primary"
+              className="px-4"
             >
               <FileJson2 size={14} />
               New Pipeline
-            </Link>
+            </ActionLink>
           </div>
         </div>
 
@@ -492,10 +501,11 @@ export function PipelineExplorerPage() {
               {/* Folders */}
               {folders.length > 0 && (
                 <section className="iris-list-panel overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-base-300/60 px-4 py-3">
-                    <div className="iris-kicker">Directories</div>
-                    <span className="iris-mono-meta">{folders.length} visible</span>
-                  </div>
+                  <PanelHeader
+                    kicker="Directories"
+                    aside={<span className="iris-mono-meta">{folders.length} visible</span>}
+                    className="px-4 py-3"
+                  />
                   <div className="flex flex-col bg-base-100/74">
                     {folders.map((folder) => (
                       <FolderCard
@@ -512,10 +522,11 @@ export function PipelineExplorerPage() {
               {/* Pipelines */}
               {pipelines.length > 0 && (
                 <section className="iris-list-panel overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-base-300/60 px-4 py-3">
-                    <div className="iris-kicker">Pipelines</div>
-                    <span className="iris-mono-meta">{pipelines.length} definitions</span>
-                  </div>
+                  <PanelHeader
+                    kicker="Pipelines"
+                    aside={<span className="iris-mono-meta">{pipelines.length} definitions</span>}
+                    className="px-4 py-3"
+                  />
                   <div className="flex flex-col bg-base-100/74">
                     {pipelines.map((pipeline) => (
                       <PipelineCard
@@ -687,23 +698,14 @@ function ExplorerSummaryCard({
   tone: 'neutral' | 'success' | 'warning' | 'info'
   pulse?: boolean
 }) {
-  const toneClass = tone === 'success'
-    ? 'border-success/18 bg-success/6'
-    : tone === 'warning'
-      ? 'border-warning/18 bg-warning/6'
-      : tone === 'info'
-        ? 'border-info/18 bg-info/6'
-        : 'border-base-300/80 bg-base-100/88'
-
   return (
-    <div className={`iris-glass-soft px-4 py-3.5 ${toneClass}`}>
-      <div className="flex items-center justify-between">
-        <div className="iris-kicker">{label}</div>
-        {pulse ? <span className="size-2 rounded-full bg-info animate-pulse" /> : null}
-      </div>
-      <div className="mt-2 text-lg font-bold tracking-tight">{value}</div>
-      <div className="mt-1 text-[11px] iris-copy">{detail}</div>
-    </div>
+    <SummaryTile
+      kicker={label}
+      value={value}
+      detail={detail}
+      tone={tone}
+      pulse={pulse}
+    />
   )
 }
 
@@ -731,12 +733,12 @@ function FolderCard({
         </div>
       </Link>
       <div className="ml-4 flex w-[60px] items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <button type="button" className="btn btn-ghost btn-xs px-1.5" onClick={onRename} title="Rename">
+        <ActionButton size="xs" tone="ghost" className="px-1.5" onClick={onRename} title="Rename">
           <PencilLine size={13} />
-        </button>
-        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error" onClick={onDelete} title="Delete">
+        </ActionButton>
+        <ActionButton size="xs" tone="dangerGhost" className="px-1.5" onClick={onDelete} title="Delete">
           <Trash2 size={13} />
-        </button>
+        </ActionButton>
       </div>
     </div>
   )
@@ -827,23 +829,27 @@ function PipelineCard({
         </div>
 
         <div className="flex items-center gap-2 xl:justify-end xl:opacity-0 xl:transition-opacity xl:group-hover:opacity-100">
-        <Link
+        <ActionLink
           to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-          className="btn btn-ghost btn-xs gap-1 px-2"
+          size="xs"
+          tone="ghost"
+          className="gap-1 px-2"
         >
           <Settings2 size={12} />
           Config
-        </Link>
-        <Link
+        </ActionLink>
+        <ActionLink
           to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-          className="btn btn-ghost btn-xs gap-1 px-2"
+          size="xs"
+          tone="ghost"
+          className="gap-1 px-2"
         >
           <PlayCircle size={12} />
           Runs
-        </Link>
-        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error ml-1" onClick={onDelete} title="Delete">
+        </ActionLink>
+        <ActionButton size="xs" tone="dangerGhost" className="px-1.5 ml-1" onClick={onDelete} title="Delete">
           <Trash2 size={13} />
-        </button>
+        </ActionButton>
       </div>
       </div>
     </div>
@@ -873,38 +879,35 @@ function NameDialog({
 }) {
   if (!open) return null
   return (
-    <dialog open className="modal modal-open">
-      <div className="modal-box iris-glass p-0 overflow-hidden border shadow-2xl max-w-sm">
-        <div className="iris-glass border-b border-base-300 px-6 py-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest opacity-50">{title}</h3>
-        </div>
-        <div className="p-6 space-y-4">
-          <div className="form-control">
-            <label className="label py-0 mb-2" htmlFor="entity-name-input">
-              <span className="label-text font-semibold text-base-content/60">{label}</span>
-            </label>
-            <input
-              id="entity-name-input"
-              type="text"
-              className="input input-bordered w-full focus:border-primary"
-              value={value}
-              autoFocus
-              onChange={(e) => onChange(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void onSubmit() }}
-            />
-          </div>
-          <div className="modal-action mt-6">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="button" className="btn btn-primary px-8" onClick={() => void onSubmit()} disabled={submitting}>
-              {submitLabel}
-            </button>
-          </div>
-        </div>
+    <DialogShell
+      open={open}
+      title={title}
+      maxWidthClassName="max-w-sm"
+      onClose={onClose}
+      footer={(
+        <>
+          <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
+          <ActionButton tone="primary" className="px-8" onClick={() => void onSubmit()} disabled={submitting}>
+            {submitLabel}
+          </ActionButton>
+        </>
+      )}
+    >
+      <div className="form-control">
+        <label className="label py-0 mb-2" htmlFor="entity-name-input">
+          <span className="label-text font-semibold text-base-content/60">{label}</span>
+        </label>
+        <input
+          id="entity-name-input"
+          type="text"
+          className="input input-bordered w-full focus:border-primary"
+          value={value}
+          autoFocus
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void onSubmit() }}
+        />
       </div>
-      <form method="dialog" className="modal-backdrop bg-base-300/55 backdrop-blur-md">
-        <button type="button" onClick={onClose}>close</button>
-      </form>
-    </dialog>
+    </DialogShell>
   )
 }
 
@@ -916,25 +919,23 @@ function ConfirmDialog({
 }) {
   if (!open) return null
   return (
-    <dialog open className="modal modal-open">
-      <div className="modal-box iris-glass p-0 overflow-hidden border shadow-2xl max-w-sm">
-        <div className="iris-glass border-b border-error/20 bg-error/8 px-6 py-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-error">{title}</h3>
-        </div>
-        <div className="p-6">
-          <p className="text-base font-medium leading-relaxed text-base-content/80">{description}</p>
-          {warning && <div className="alert alert-warning mt-4 p-3 text-sm font-bold">{warning}</div>}
-          <div className="modal-action mt-6">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="button" className="btn btn-error px-8" onClick={() => void onConfirm()} disabled={confirmDisabled}>
-              {confirmLabel}
-            </button>
-          </div>
-        </div>
-      </div>
-      <form method="dialog" className="modal-backdrop bg-base-300/55 backdrop-blur-md">
-        <button type="button" onClick={onClose}>close</button>
-      </form>
-    </dialog>
+    <DialogShell
+      open={open}
+      title={title}
+      tone="danger"
+      maxWidthClassName="max-w-sm"
+      onClose={onClose}
+      footer={(
+        <>
+          <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
+          <ActionButton tone="danger" className="px-8" onClick={() => void onConfirm()} disabled={confirmDisabled}>
+            {confirmLabel}
+          </ActionButton>
+        </>
+      )}
+    >
+      <p className="text-base font-medium leading-relaxed text-base-content/80">{description}</p>
+      {warning ? <div className="alert alert-warning p-3 text-sm font-bold">{warning}</div> : null}
+    </DialogShell>
   )
 }

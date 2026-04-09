@@ -16,6 +16,8 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
+import { ActionLink } from '../components/ui/Action'
+import { PanelHeader, SummaryTile, SurfaceBox } from '../components/ui/Surface'
 import {
   getApiErrorMessage,
   getOverviewSummary,
@@ -108,10 +110,10 @@ export function OverviewPage() {
               Backend {engine.status}
             </span>
           </div>
-          <Link to="/pipeline" className="btn btn-primary btn-sm px-5 gap-2">
+          <ActionLink to="/pipeline" tone="primary" className="px-5">
             Open Explorer
             <ArrowRight size={14} />
-          </Link>
+          </ActionLink>
         </div>
       </div>
 
@@ -147,11 +149,12 @@ export function OverviewPage() {
         {(jvmPercent != null || uptime != null || activeBatchJobs != null) && (
           <div className="mb-5">
             <div className="iris-list-panel overflow-hidden p-0 iris-scan-container">
-              <div className="flex items-center gap-2 border-b border-base-300 px-5 py-3">
-                <Server size={15} className="text-secondary" />
-                <h2 className="iris-kicker">Engine Vitals</h2>
-                <span className="ml-auto badge badge-ghost badge-sm">Live via /actuator</span>
-              </div>
+              <PanelHeader
+                icon={<Server size={15} className="text-secondary" />}
+                kicker="Engine Vitals"
+                aside={<span className="badge badge-ghost badge-sm">Live via /actuator</span>}
+                className="px-5 py-3"
+              />
               <div className="grid grid-cols-2 gap-0 divide-x divide-base-300 sm:grid-cols-2 lg:grid-cols-4">
                 {jvmPercent != null && (
                   <VitalCell
@@ -184,15 +187,16 @@ export function OverviewPage() {
         {/* ?�?� Main Content Row ?�?� */}
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
           <section className="iris-list-panel flex flex-col overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
-              <div className="flex items-center gap-2">
-                <Radar size={16} className="text-primary" />
-                <h2 className="iris-kicker">Active Runs</h2>
-              </div>
-              <span className={`badge badge-sm border-0 font-bold ${activeRuns.length > 0 ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/40'}`}>
-                {activeRuns.length} Active
-              </span>
-            </div>
+            <PanelHeader
+              icon={<Radar size={16} className="text-primary" />}
+              kicker="Active Runs"
+              aside={(
+                <span className={`badge badge-sm border-0 font-bold ${activeRuns.length > 0 ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/40'}`}>
+                  {activeRuns.length} Active
+                </span>
+              )}
+              className="px-5 py-4"
+            />
             <div className="p-4">
               {activeRuns.length === 0 ? (
                 <div className="iris-empty-panel flex min-h-[240px] flex-col items-center justify-center py-8 text-center">
@@ -216,15 +220,16 @@ export function OverviewPage() {
 
           <div className="space-y-5">
             <section className="iris-list-panel overflow-hidden p-0">
-              <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} className="text-warning" />
-                  <h2 className="iris-kicker">Operational Attention</h2>
-                </div>
-                <span className={`badge badge-sm border-0 font-bold ${attentionRuns.length > 0 ? 'bg-warning/10 text-warning' : 'bg-base-200 text-base-content/40'}`}>
-                  {attentionRuns.length} flagged
-                </span>
-              </div>
+              <PanelHeader
+                icon={<AlertTriangle size={16} className="text-warning" />}
+                kicker="Operational Attention"
+                aside={(
+                  <span className={`badge badge-sm border-0 font-bold ${attentionRuns.length > 0 ? 'bg-warning/10 text-warning' : 'bg-base-200 text-base-content/40'}`}>
+                    {attentionRuns.length} flagged
+                  </span>
+                )}
+                className="px-5 py-4"
+              />
               <div className="divide-y divide-base-300/60">
                 <AttentionSummaryRow label="Resumable Runs" value={resumableRuns.length} detail="Stopped or failed runs that can create a resume attempt" tone="warning" />
                 <AttentionSummaryRow label="Recent Failures" value={recentStats?.failed ?? 0} detail="Failed or abandoned logical runs in the current overview window" tone="error" />
@@ -244,10 +249,11 @@ export function OverviewPage() {
             </section>
 
             <section className="iris-list-panel flex flex-col overflow-hidden p-0">
-              <div className="flex items-center gap-2 border-b border-base-300 px-5 py-4">
-                <HistoryIcon size={16} className="text-secondary" />
-                <h2 className="iris-kicker">Recent Runs</h2>
-              </div>
+              <PanelHeader
+                icon={<HistoryIcon size={16} className="text-secondary" />}
+                kicker="Recent Runs"
+                className="px-5 py-4"
+              />
               <div className="flex-1 divide-y divide-base-300/60 overflow-y-auto">
                 {recentRuns.slice(0, 10).map((run) => (
                   <RecentRunRow key={run.id} run={run} />
@@ -257,10 +263,10 @@ export function OverviewPage() {
                 )}
               </div>
               <div className="border-t border-base-300 bg-base-200/30 p-4">
-                <Link to="/pipeline" className="btn btn-ghost btn-sm w-full gap-2">
+                <ActionLink to="/pipeline" tone="ghost" block>
                   Open Explorer
                   <ChevronRightIcon size={14} />
-                </Link>
+                </ActionLink>
               </div>
             </section>
           </div>
@@ -294,33 +300,24 @@ function MetricCard({
   accent: 'primary' | 'success' | 'warning' | 'error' | 'secondary'
   pulse?: boolean
 }) {
-  const accentMap = {
-    primary: 'bg-primary/8 text-primary border-primary/15',
-    success: 'bg-success/8 text-success border-success/15',
-    warning: 'bg-warning/8 text-warning border-warning/15',
-    error: 'bg-error/8 text-error border-error/15',
-    secondary: 'bg-secondary/8 text-secondary border-secondary/15',
-  }
-  const iconColor = {
-    primary: 'text-primary',
-    success: 'text-success',
-    warning: 'text-warning',
-    error: 'text-error',
-    secondary: 'text-secondary',
-  }
-
+  const toneMap = {
+    primary: 'primary',
+    success: 'success',
+    warning: 'warning',
+    error: 'error',
+    secondary: 'info',
+  } as const
   return (
-    <div className={`iris-glass-soft px-4 py-4 ${accentMap[accent]}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className={`rounded-sm border border-current/10 bg-base-100/60 p-2 ${iconColor[accent]}`}>
-          <Icon size={18} />
-        </div>
-        {pulse && <div className={`size-2 rounded-full ${iconColor[accent].replace('text-', 'bg-')} animate-pulse`} />}
-      </div>
-      <div className="text-3xl font-bold tracking-tight">{value}</div>
-      <div className="mt-1 iris-kicker">{label}</div>
-      <div className="mt-2 text-[11px] iris-copy">{subValue}</div>
-    </div>
+    <SummaryTile
+      kicker={label}
+      value={value}
+      detail={subValue}
+      tone={toneMap[accent]}
+      pulse={pulse}
+      icon={<Icon size={16} className={accent === 'secondary' ? 'text-secondary' : ''} />}
+      valueClassName="text-3xl"
+      className="px-4 py-4"
+    />
   )
 }
 
@@ -337,7 +334,7 @@ function SuccessRateCard({ successRate, total, failed }: { successRate: number; 
   const c = colorMap[color]
 
   return (
-    <div className={`iris-glass-soft px-4 py-4 ${c.border} ${c.bg} flex flex-col gap-3`}>
+    <SurfaceBox variant="glassSoft" className={`px-4 py-4 ${c.border} ${c.bg} flex flex-col gap-3`}>
       <div className="flex items-center justify-between">
         <div className={`rounded-sm border border-current/10 bg-base-100/60 p-2 ${c.text}`}>
           <TrendingUp size={18} />
@@ -365,7 +362,7 @@ function SuccessRateCard({ successRate, total, failed }: { successRate: number; 
           )}
         </div>
       )}
-    </div>
+    </SurfaceBox>
   )
 }
 

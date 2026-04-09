@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ActionButton } from './ui/Action'
+import { DialogShell } from './ui/DialogShell'
 
 type ImportFormatValue = '' | 'json' | 'yaml' | 'yml'
 
@@ -73,85 +75,72 @@ export function PipelineImportDialog({
   if (!open) return null
 
   return (
-    <dialog open className="modal modal-open">
-      <div className="modal-box iris-glass max-w-xl p-0 overflow-hidden border shadow-2xl">
-        <div className="iris-glass border-b border-base-300 px-6 py-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest opacity-50">{title}</h3>
-        </div>
+    <DialogShell
+      open={open}
+      title={title}
+      description={description}
+      maxWidthClassName="max-w-xl"
+      onClose={onClose}
+      footer={(
+        <>
+          <ActionButton tone="ghost" onClick={onClose}>Cancel</ActionButton>
+          <ActionButton tone="primary" className="px-8" disabled={submitting} onClick={() => void handleSubmit()}>
+            {submitting ? 'Importing...' : submitLabel}
+          </ActionButton>
+        </>
+      )}
+    >
+      <label className="form-control">
+        <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
+          Pipeline Name
+        </span>
+        <input
+          type="text"
+          className="input input-bordered w-full"
+          value={pipelineName}
+          onChange={(event) => setPipelineName(event.target.value)}
+          autoFocus
+        />
+      </label>
 
-        <div className="p-6">
-          <p className="text-sm leading-relaxed text-base-content/65">{description}</p>
+      <label className="form-control">
+        <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
+          Config File
+        </span>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="file-input file-input-bordered w-full"
+          accept=".json,.yaml,.yml,application/json,application/x-yaml,text/yaml,text/x-yaml"
+          onChange={(event) => {
+            const nextFile = event.target.files?.[0] ?? null
+            setFile(nextFile)
+            setLocalError(null)
+            if (nextFile && !pipelineName.trim()) {
+              setPipelineName(inferPipelineName(nextFile))
+            }
+          }}
+        />
+        <span className="mt-2 text-xs text-base-content/45">{selectedFileLabel}</span>
+      </label>
 
-          <div className="mt-5 space-y-4">
-            <label className="form-control">
-              <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
-                Pipeline Name
-              </span>
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                value={pipelineName}
-                onChange={(event) => setPipelineName(event.target.value)}
-                autoFocus
-              />
-            </label>
+      <label className="form-control">
+        <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
+          Format
+        </span>
+        <select
+          className="select select-bordered w-full"
+          value={format}
+          onChange={(event) => setFormat(event.target.value as ImportFormatValue)}
+        >
+          <option value="">Auto detect</option>
+          <option value="json">JSON</option>
+          <option value="yaml">YAML</option>
+          <option value="yml">YML</option>
+        </select>
+      </label>
 
-            <label className="form-control">
-              <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
-                Config File
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="file-input file-input-bordered w-full"
-                accept=".json,.yaml,.yml,application/json,application/x-yaml,text/yaml,text/x-yaml"
-                onChange={(event) => {
-                  const nextFile = event.target.files?.[0] ?? null
-                  setFile(nextFile)
-                  setLocalError(null)
-                  if (nextFile && !pipelineName.trim()) {
-                    setPipelineName(inferPipelineName(nextFile))
-                  }
-                }}
-              />
-              <span className="mt-2 text-xs text-base-content/45">{selectedFileLabel}</span>
-            </label>
-
-            <label className="form-control">
-              <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
-                Format
-              </span>
-              <select
-                className="select select-bordered w-full"
-                value={format}
-                onChange={(event) => setFormat(event.target.value as ImportFormatValue)}
-              >
-                <option value="">Auto detect</option>
-                <option value="json">JSON</option>
-                <option value="yaml">YAML</option>
-                <option value="yml">YML</option>
-              </select>
-            </label>
-          </div>
-
-          {resolvedError ? <div className="alert alert-error mt-5 shadow-sm">{resolvedError}</div> : null}
-
-          <div className="modal-action mt-8">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn-primary px-8" disabled={submitting} onClick={() => void handleSubmit()}>
-              {submitting ? 'Importing...' : submitLabel}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <form method="dialog" className="modal-backdrop bg-base-300/55 backdrop-blur-md">
-        <button type="button" onClick={onClose}>
-          close
-        </button>
-      </form>
-    </dialog>
+      {resolvedError ? <div className="alert alert-error shadow-sm">{resolvedError}</div> : null}
+    </DialogShell>
   )
 }

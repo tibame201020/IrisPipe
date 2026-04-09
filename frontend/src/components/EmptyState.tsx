@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import { SurfaceBox } from './ui/Surface'
 
 interface EmptyStateProps {
   icon: LucideIcon
@@ -10,10 +11,10 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="hero min-h-72 border-b border-base-300 bg-base-100">
-      <div className="hero-content text-center">
+    <SurfaceBox variant="section" className="mx-auto flex min-h-72 max-w-4xl items-center justify-center border px-6 py-10">
+      <div className="text-center">
         <div className="max-w-xl space-y-4">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-box bg-primary/10 text-primary">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-sm bg-primary/10 text-primary">
             <Icon size={24} />
           </div>
           <div className="space-y-2">
@@ -23,6 +24,6 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
           {action}
         </div>
       </div>
-    </div>
+    </SurfaceBox>
   )
 }

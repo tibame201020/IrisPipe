@@ -1,10 +1,13 @@
 ﻿import { AlertCircle, Filter, List, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { StatusBadge } from '../components/StatusBadge'
+import { ActionButton, ActionLink } from '../components/ui/Action'
+import { DialogShell } from '../components/ui/DialogShell'
+import { SummaryTile as SemanticSummaryTile } from '../components/ui/Surface'
 import { deleteRun, getApiErrorMessage, getRunDetail, getRunLogs, rerunRun, resumeRun, stopRun, type RunLogEntry } from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
 import {
@@ -182,12 +185,12 @@ export function RunDetailPage() {
         title="Run detail unavailable"
         description={error ?? 'The run could not be found.'}
         action={
-          <Link
+          <ActionLink
             to={`/pipeline/items/${numericPipelineId}/runs${folderId ? `?folderId=${folderId}` : ''}`}
-            className="btn btn-primary"
+            tone="primary"
           >
             Back to runs
-          </Link>
+          </ActionLink>
         }
       />
     )
@@ -231,16 +234,13 @@ export function RunDetailPage() {
         </div>
 
         <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
-          <button
-            type="button"
-            className={`btn btn-ghost btn-xs gap-1 ${mainTab === 'board' ? 'text-primary' : ''}`}
-            onClick={() => setMainTab('board')}
-          >
+          <ActionButton size="xs" tone="ghost" className={mainTab === 'board' ? 'text-primary' : ''} onClick={() => setMainTab('board')}>
             <Filter size={12} />Board
-          </button>
-          <button
-            type="button"
-            className={`btn btn-ghost btn-xs gap-1 ${mainTab === 'logs' ? 'text-primary' : ''}`}
+          </ActionButton>
+          <ActionButton
+            size="xs"
+            tone="ghost"
+            className={mainTab === 'logs' ? 'text-primary' : ''}
             onClick={() => {
               setMainTab('logs')
               if (logs === null && !logsLoading) {
@@ -250,7 +250,7 @@ export function RunDetailPage() {
             }}
           >
             <List size={12} />Logs
-          </button>
+          </ActionButton>
         </div>
 
         {(attemptTotals.read > 0 || attemptTotals.write > 0) ? (
@@ -270,45 +270,45 @@ export function RunDetailPage() {
         </div>
 
         <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
-          <button
-            type="button"
+          <ActionButton
+            size="xs"
+            tone="dangerGhost"
             disabled={!actionDescriptors.stop.enabled || !!pendingAction}
-            className="btn btn-ghost btn-xs text-error"
             title={actionDescriptors.stop.enabled ? actionDescriptors.stop.detail : actionDescriptors.stop.disabledReason}
             onClick={() => setConfirmAction('stop')}
           >
             <Square size={12} />Stop
-          </button>
-          <button
-            type="button"
+          </ActionButton>
+          <ActionButton
+            size="xs"
+            tone="ghost"
             disabled={!actionDescriptors.resume.enabled || !!pendingAction}
-            className="btn btn-ghost btn-xs"
             title={actionDescriptors.resume.enabled ? actionDescriptors.resume.detail : actionDescriptors.resume.disabledReason}
             onClick={() => setConfirmAction('resume')}
           >
             <PlayCircle size={12} />Resume
-          </button>
-          <button
-            type="button"
+          </ActionButton>
+          <ActionButton
+            size="xs"
+            tone="ghost"
             disabled={!actionDescriptors.rerun.enabled || !!pendingAction}
-            className="btn btn-ghost btn-xs"
             title={actionDescriptors.rerun.detail}
             onClick={() => setConfirmAction('rerun')}
           >
             <RotateCcw size={12} />Rerun
-          </button>
-          <button
-            type="button"
+          </ActionButton>
+          <ActionButton
+            size="xs"
+            tone="dangerGhost"
             disabled={!actionDescriptors.delete.enabled || !!pendingAction}
-            className="btn btn-ghost btn-xs text-error"
             title={actionDescriptors.delete.enabled ? actionDescriptors.delete.detail : actionDescriptors.delete.disabledReason}
             onClick={() => setConfirmAction('delete')}
           >
             <Trash2 size={12} />
-          </button>
-          <button type="button" onClick={() => void loadDetail()} className="btn btn-ghost btn-xs btn-square">
+          </ActionButton>
+          <ActionButton size="xs" tone="icon" square onClick={() => void loadDetail()}>
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          </button>
+          </ActionButton>
         </div>
       </div>
 
@@ -363,18 +363,18 @@ export function RunDetailPage() {
       </main>
 
       {confirmAction ? (
-        <dialog open className="modal modal-open">
-          <div className="modal-box max-w-md border border-base-300">
-            <h3 className="text-lg font-bold">{actionDescriptors[confirmAction].confirmTitle}</h3>
-            <p className="mt-3 text-sm text-base-content/65">{actionDescriptors[confirmAction].detail}</p>
-            {error ? <div className="alert alert-error mt-4 text-sm">{error}</div> : null}
-            <div className="modal-action">
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirmAction(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={`btn ${confirmAction === 'delete' || confirmAction === 'stop' ? 'btn-error' : 'btn-primary'}`}
+        <DialogShell
+          open={Boolean(confirmAction)}
+          title={actionDescriptors[confirmAction].confirmTitle}
+          description={actionDescriptors[confirmAction].detail}
+          tone={confirmAction === 'delete' || confirmAction === 'stop' ? 'danger' : 'default'}
+          maxWidthClassName="max-w-md"
+          onClose={() => setConfirmAction(null)}
+          footer={(
+            <>
+              <ActionButton tone="ghost" onClick={() => setConfirmAction(null)}>Cancel</ActionButton>
+              <ActionButton
+                tone={confirmAction === 'delete' || confirmAction === 'stop' ? 'danger' : 'primary'}
                 disabled={pendingAction === confirmAction}
                 onClick={async () => {
                   if (confirmAction === 'stop') {
@@ -390,13 +390,12 @@ export function RunDetailPage() {
                 }}
               >
                 {pendingAction === confirmAction ? 'Working...' : actionDescriptors[confirmAction].label}
-              </button>
-            </div>
-          </div>
-          <form method="dialog" className="modal-backdrop">
-            <button type="button" onClick={() => setConfirmAction(null)}>close</button>
-          </form>
-        </dialog>
+              </ActionButton>
+            </>
+          )}
+        >
+          {error ? <div className="alert alert-error text-sm">{error}</div> : null}
+        </DialogShell>
       ) : null}
     </div>
   )
@@ -414,21 +413,24 @@ function SemanticCard({
   tone?: 'success' | 'error' | 'warning' | 'info' | 'neutral'
 }) {
   const toneClass = tone === 'success'
-    ? 'border-success/20 bg-success/5'
+    ? 'success'
     : tone === 'error'
-      ? 'border-error/20 bg-error/5'
+      ? 'error'
       : tone === 'warning'
-        ? 'border-warning/20 bg-warning/5'
+        ? 'warning'
         : tone === 'info'
-          ? 'border-info/20 bg-info/5'
-          : 'border-base-300 bg-base-100'
+          ? 'info'
+          : 'neutral'
 
   return (
-    <div className={`iris-section-panel px-4 py-3.5 ${toneClass}`}>
-      <div className="iris-kicker">{label}</div>
-      <div className="mt-2 text-base font-bold tracking-tight text-base-content/82">{value}</div>
-      <div className="mt-1 text-[11px] iris-copy">{detail}</div>
-    </div>
+    <SemanticSummaryTile
+      kicker={label}
+      value={value}
+      detail={detail}
+      tone={toneClass}
+      className="px-4 py-3.5"
+      valueClassName="text-base text-base-content/82"
+    />
   )
 }
 

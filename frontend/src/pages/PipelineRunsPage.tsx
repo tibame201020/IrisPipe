@@ -4,6 +4,8 @@ import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
+import { ActionButton, ActionLink } from '../components/ui/Action'
+import { SurfaceBox } from '../components/ui/Surface'
 import { executePipeline, getApiErrorMessage, getPipelineRuns } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
 import {
@@ -123,7 +125,7 @@ export function PipelineRunsPage() {
         icon={TimerReset}
         title="Run history unavailable"
         description={error}
-        action={<Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary">Back to Explorer</Link>}
+        action={<ActionLink to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} tone="primary">Back to Explorer</ActionLink>}
       />
     )
   }
@@ -160,20 +162,20 @@ export function PipelineRunsPage() {
             </div>
           ) : null}
 
-          <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-xs btn-square" aria-label="Refresh run history">
+          <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          </button>
+          </ActionButton>
 
-          <button
-            type="button"
+          <ActionButton
+            tone="primary"
             onClick={() => void handleExecute()}
-            className={`btn btn-primary btn-sm gap-1.5 ${executing ? 'iris-execute-ring' : ''}`}
+            className={executing ? 'iris-execute-ring' : ''}
             disabled={executing}
             title="Start a fresh logical run from the current saved pipeline definition."
           >
             <Zap size={13} className={executing ? 'animate-pulse' : ''} />
             {executing ? 'Launching...' : 'Execute'}
-          </button>
+          </ActionButton>
         </div>
       </div>
 
@@ -225,20 +227,20 @@ export function PipelineRunsPage() {
             <p className="mt-1.5 max-w-xs text-sm text-base-content/50">
               Execute this pipeline to create the first runtime record and stage projection.
             </p>
-            <button
-              type="button"
+            <ActionButton
+              tone="primary"
               onClick={() => void handleExecute()}
               disabled={executing}
-              className={`btn btn-primary btn-sm mt-5 gap-2 ${executing ? 'iris-execute-ring' : ''}`}
+              className={`mt-5 ${executing ? 'iris-execute-ring' : ''}`}
             >
               <Zap size={14} />
               {executing ? 'Launching...' : 'Execute Now'}
-            </button>
+            </ActionButton>
           </div>
         ) : filteredRuns.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <p className="text-sm text-base-content/45">No runs match this semantic filter.</p>
-            <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={() => setFilter('all')}>Show all</button>
+            <ActionButton size="xs" tone="ghost" className="mt-3" onClick={() => setFilter('all')}>Show all</ActionButton>
           </div>
         ) : (
           <div>
@@ -267,15 +269,16 @@ export function PipelineRunsPage() {
 
             {beforeRunId ? (
               <div className="flex justify-center px-5 py-4">
-                <button
-                  type="button"
+                <ActionButton
+                  size="xs"
+                  tone="ghost"
                   onClick={() => void loadRuns(false)}
-                    className="btn btn-ghost btn-xs gap-1.5 text-base-content/50"
-                    disabled={loadingMore}
-                  >
+                  className="text-base-content/50"
+                  disabled={loadingMore}
+                >
                   {loadingMore ? <RefreshCw className="animate-spin" size={12} /> : <History size={12} />}
                   Load older runs
-                </button>
+                </ActionButton>
               </div>
             ) : null}
           </div>
@@ -304,11 +307,11 @@ function CompactHistoryMetric({
   }
 
   return (
-    <div className={`iris-inset-panel flex items-center gap-2 px-3 py-2 ${toneMap[tone]}`}>
+    <SurfaceBox variant="inset" className={`flex items-center gap-2 px-3 py-2 ${toneMap[tone]}`}>
       {pulse ? <span className="size-1.5 rounded-full bg-current animate-pulse opacity-70" /> : null}
       <span className="iris-kicker">{label}</span>
       <span className="font-mono text-[12px] font-semibold">{value}</span>
-    </div>
+    </SurfaceBox>
   )
 }
 
