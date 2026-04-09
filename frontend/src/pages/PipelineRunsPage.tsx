@@ -130,48 +130,54 @@ export function PipelineRunsPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <section className="iris-toolbar-band shrink-0 px-5 py-3.5">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
-          <div className="iris-section-panel bg-base-100/88 px-4 py-3.5">
-            <div className="iris-kicker">Runtime Signal</div>
-            <div className="mt-2 flex items-center gap-2">
-              {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
-              {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
-            </div>
-            <div className="mt-2 text-sm font-semibold text-base-content/80">
-              {latestStatusMeta ? latestStatusMeta.description : 'This pipeline has not created any run history yet.'}
-            </div>
-            <div className="mt-1 text-[11px] iris-copy">
-              {latestRun
-                ? `Started ${formatDateTime(latestRun.startTime ?? latestRun.createdAt)}`
-                : 'Execute this pipeline to materialize runtime attempts and stage progress.'}
-            </div>
-          </div>
-
-          <HistoryOverviewCard label="History" value={stats?.total ?? 0} detail="Recorded logical runs" accent="neutral" />
-          <HistoryOverviewCard
-            label="In Flight"
-            value={stats?.active ?? 0}
-            detail="Attempts actively executing"
-            accent="info"
-            pulse={(stats?.active ?? 0) > 0}
-          />
-          <HistoryOverviewCard
-            label="Resumable"
-            value={stats?.resumable ?? 0}
-            detail="Stopped or failed runs"
-            accent="warning"
-          />
-          <HistoryOverviewCard
-            label="Avg Runtime"
-            value={stats?.avgLabel ?? '--'}
-            detail={`${stats?.successRate ?? 0}% recent success`}
-            accent="success"
-          />
-        </div>
-      </section>
-
       <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="iris-inset-panel flex min-w-[280px] items-center gap-2 px-3 py-2">
+            {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
+            {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
+            <span className="truncate text-[11px] iris-copy">
+              {latestStatusMeta ? latestStatusMeta.description : 'This pipeline has not created any run history yet.'}
+            </span>
+          </div>
+          <div className="hidden items-center gap-2 lg:flex">
+            <CompactHistoryMetric label="History" value={stats?.total ?? 0} />
+            <CompactHistoryMetric label="In Flight" value={stats?.active ?? 0} tone="info" pulse={(stats?.active ?? 0) > 0} />
+            <CompactHistoryMetric label="Resumable" value={stats?.resumable ?? 0} tone="warning" />
+            <CompactHistoryMetric label="Avg Runtime" value={stats?.avgLabel ?? '--'} tone="success" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {stats ? (
+            <div className="hidden items-center gap-3 md:flex">
+              <span className="text-[10px] tabular-nums iris-copy-soft">
+                <span className="font-semibold text-base-content/70">{stats.successRate}%</span> success
+              </span>
+              <span className="text-[10px] iris-copy-faint">|</span>
+              <span className="text-[10px] tabular-nums iris-copy-soft">
+                avg <span className="font-semibold font-mono text-base-content/70">{stats.avgLabel}</span>
+              </span>
+            </div>
+          ) : null}
+
+          <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-xs btn-square" aria-label="Refresh run history">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleExecute()}
+            className={`btn btn-primary btn-sm gap-1.5 ${executing ? 'iris-execute-ring' : ''}`}
+            disabled={executing}
+            title="Start a fresh logical run from the current saved pipeline definition."
+          >
+            <Zap size={13} className={executing ? 'animate-pulse' : ''} />
+            {executing ? 'Launching...' : 'Execute'}
+          </button>
+        </div>
+      </div>
+
+      <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
         <div className="iris-inset-panel flex items-center gap-1.5 px-2 py-1">
           <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
           {(stats?.active ?? 0) > 0 && (
@@ -202,33 +208,8 @@ export function PipelineRunsPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          {stats ? (
-            <div className="hidden items-center gap-3 md:flex">
-              <span className="text-[10px] tabular-nums iris-copy-soft">
-                <span className="font-semibold text-base-content/70">{stats.successRate}%</span> success
-              </span>
-              <span className="text-[10px] iris-copy-faint">|</span>
-              <span className="text-[10px] tabular-nums iris-copy-soft">
-                avg <span className="font-semibold font-mono text-base-content/70">{stats.avgLabel}</span>
-              </span>
-            </div>
-          ) : null}
-
-          <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-xs btn-square" aria-label="Refresh run history">
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void handleExecute()}
-            className={`btn btn-primary btn-sm gap-1.5 ${executing ? 'iris-execute-ring' : ''}`}
-            disabled={executing}
-            title="Start a fresh logical run from the current saved pipeline definition."
-          >
-            <Zap size={13} className={executing ? 'animate-pulse' : ''} />
-            {executing ? 'Launching...' : 'Execute'}
-          </button>
+        <div className="text-[10px] iris-copy-soft">
+          {filteredRuns.length} visible run{filteredRuns.length === 1 ? '' : 's'}
         </div>
       </div>
 
@@ -263,7 +244,7 @@ export function PipelineRunsPage() {
           <div>
             <div
               className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/96 px-5 py-2 backdrop-blur-sm"
-              style={{ gridTemplateColumns: '32px minmax(0,1.8fr) 150px 96px 112px 56px' }}
+              style={{ gridTemplateColumns: '28px minmax(0,1.9fr) 150px 88px 116px 56px' }}
             >
               <span />
               <span className="iris-kicker">Run</span>
@@ -304,20 +285,18 @@ export function PipelineRunsPage() {
   )
 }
 
-function HistoryOverviewCard({
+function CompactHistoryMetric({
   label,
   value,
-  detail,
-  accent,
+  tone = 'neutral',
   pulse = false,
 }: {
   label: string
   value: string | number
-  detail: string
-  accent: 'neutral' | 'info' | 'warning' | 'success'
+  tone?: 'neutral' | 'info' | 'warning' | 'success'
   pulse?: boolean
 }) {
-  const accentMap = {
+  const toneMap = {
     neutral: 'border-base-300 bg-base-100 text-base-content',
     info: 'border-info/20 bg-info/5 text-info',
     warning: 'border-warning/20 bg-warning/5 text-warning',
@@ -325,13 +304,10 @@ function HistoryOverviewCard({
   }
 
   return (
-    <div className={`iris-section-panel px-4 py-3.5 ${accentMap[accent]}`}>
-      <div className="flex items-center justify-between">
-        <div className="iris-kicker">{label}</div>
-        {pulse ? <span className="size-2 rounded-full bg-current animate-pulse opacity-70" /> : null}
-      </div>
-      <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
-      <div className="mt-1 text-[11px] iris-copy">{detail}</div>
+    <div className={`iris-inset-panel flex items-center gap-2 px-3 py-2 ${toneMap[tone]}`}>
+      {pulse ? <span className="size-1.5 rounded-full bg-current animate-pulse opacity-70" /> : null}
+      <span className="iris-kicker">{label}</span>
+      <span className="font-mono text-[12px] font-semibold">{value}</span>
     </div>
   )
 }
@@ -402,8 +378,8 @@ function RunRow({
   return (
     <Link
       to={to}
-      className={`iris-list-row group grid items-center gap-4 px-5 py-3.5 transition-colors ${rowBg} ${isLatest ? 'bg-primary/4' : ''}`}
-      style={{ gridTemplateColumns: '32px minmax(0,1.8fr) 150px 96px 112px 56px' }}
+      className={`iris-list-row group grid items-center gap-4 px-5 py-2.5 transition-colors ${rowBg} ${isLatest ? 'bg-primary/4' : ''}`}
+      style={{ gridTemplateColumns: '28px minmax(0,1.9fr) 150px 88px 116px 56px' }}
     >
       <div className="flex justify-center">
         <span className={`size-1.5 rounded-full ${statusMeta.dotClass} ${isActive ? 'animate-pulse' : ''}`} />
@@ -430,7 +406,7 @@ function RunRow({
             </span>
           ) : null}
         </div>
-        <div className="mt-1 truncate text-[11px] iris-copy" title={statusMeta.description}>
+        <div className="mt-0.5 truncate text-[11px] iris-copy" title={statusMeta.description}>
           {statusMeta.description}
         </div>
       </div>

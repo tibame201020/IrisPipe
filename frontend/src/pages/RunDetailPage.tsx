@@ -201,15 +201,14 @@ export function RunDetailPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="iris-shell-bar flex shrink-0 items-center gap-3 px-5 py-2.5">
+      <div className="iris-shell-bar flex shrink-0 flex-wrap items-center gap-3 px-5 py-2.5">
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[13px] font-bold tabular-nums">#{detail.id}</span>
           <StatusBadge status={effectiveStatus} subtle />
+          <span className="text-[10px] iris-copy-soft">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
         </div>
 
-        <div className="h-4 w-px shrink-0 bg-base-300" />
-
-        <div className="iris-inset-panel flex items-center gap-1 overflow-x-auto px-1 py-1">
+        <div className="iris-inset-panel flex min-w-0 items-center gap-1 overflow-x-auto px-1 py-1">
           {detail.attempts.map((attempt) => {
             const isSelected = attempt.executionId === currentAttempt?.executionId
             const isLatest = attempt.executionId === latestAttempt?.executionId
@@ -224,32 +223,51 @@ export function RunDetailPage() {
                 }`}
                 onClick={() => setSelectedAttemptId(attempt.executionId)}
               >
-                {isLatest && <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />}
+                {isLatest ? <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" /> : null}
                 #{attempt.executionNo} {attempt.executionKind}
               </button>
             )
           })}
         </div>
 
-        <div className="h-4 w-px shrink-0 bg-base-300" />
+        <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
+          <button
+            type="button"
+            className={`btn btn-ghost btn-xs gap-1 ${mainTab === 'board' ? 'text-primary' : ''}`}
+            onClick={() => setMainTab('board')}
+          >
+            <Filter size={12} />Board
+          </button>
+          <button
+            type="button"
+            className={`btn btn-ghost btn-xs gap-1 ${mainTab === 'logs' ? 'text-primary' : ''}`}
+            onClick={() => {
+              setMainTab('logs')
+              if (logs === null && !logsLoading) {
+                setLogsLoading(true)
+                getRunLogs(numericRunId).then(setLogs).catch(() => setLogs([])).finally(() => setLogsLoading(false))
+              }
+            }}
+          >
+            <List size={12} />Logs
+          </button>
+        </div>
 
-        {(attemptTotals.read > 0 || attemptTotals.write > 0) && (
+        {(attemptTotals.read > 0 || attemptTotals.write > 0) ? (
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <span className="font-mono text-[11px] text-success/70">R {attemptTotals.read.toLocaleString()}</span>
             <span className="font-mono text-[11px] text-primary/70">W {attemptTotals.write.toLocaleString()}</span>
-            {attemptTotals.rollback > 0 && (
+            {attemptTotals.rollback > 0 ? (
               <span className="font-mono text-[11px] text-error/70">{attemptTotals.rollback} rb</span>
-            )}
+            ) : null}
           </div>
-        )}
-
-        <div className="hidden shrink-0 items-center gap-2 text-[10px] iris-copy-soft xl:flex">
-          <span className="font-mono">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
-          <span>|</span>
-          <span>{formatDateTimeLong(detail.createdAt)}</span>
-        </div>
+        ) : null}
 
         <div className="flex-1" />
+
+        <div className="hidden shrink-0 items-center gap-2 text-[10px] iris-copy-soft xl:flex">
+          <span>{formatDateTimeLong(detail.createdAt)}</span>
+        </div>
 
         <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
           <button
@@ -294,110 +312,54 @@ export function RunDetailPage() {
         </div>
       </div>
 
-      <div className="iris-toolbar-band flex shrink-0 items-center gap-0 px-5">
-        <button
-          type="button"
-          className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
-            mainTab === 'board'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-300'
-          }`}
-          onClick={() => setMainTab('board')}
-        >
-          <Filter size={12} />Stage Board
-        </button>
-        <button
-          type="button"
-          className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
-            mainTab === 'logs'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-300'
-          }`}
-          onClick={() => {
-            setMainTab('logs')
-            if (logs === null && !logsLoading) {
-              setLogsLoading(true)
-              getRunLogs(numericRunId).then(setLogs).catch(() => setLogs([])).finally(() => setLogsLoading(false))
-            }
-          }}
-        >
-          <List size={12} />Logs
-        </button>
-      </div>
-
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      <section className="iris-toolbar-band grid shrink-0 gap-3 px-5 py-3 md:grid-cols-2 xl:grid-cols-4">
-        <SemanticCard
-          label="Attempt"
-          value={currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
-          detail={attemptSummary?.detail ?? 'This run has not materialized any execution attempt yet.'}
-        />
-        <SemanticCard
-          label="Runtime"
-          value={effectiveStatusMeta.label}
-          detail={effectiveStatusMeta.description}
-          tone={effectiveStatusMeta.tone}
-        />
-        <SemanticCard
-          label="Stage Progress"
-          value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
-          detail={attemptSummary?.headline ?? 'No stage projection'}
-        />
-        <SemanticCard
-          label="Resume Path"
-          value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
-          detail={resumeTargetStage
-            ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as Skipped.'
-            : 'No resumable stage is pending right now.'}
-        />
-      </section>
-
-      <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/30">
-        {mainTab === 'board' ? (
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="iris-shell-bar shrink-0 px-5 py-2">
-              <div className="flex flex-wrap items-center gap-2 text-[10px] iris-copy-soft">
-                <span className="iris-kicker">Stage Semantics</span>
-                <span className="badge badge-ghost badge-xs">Parallel inside a stage</span>
-                <span className="badge badge-ghost badge-xs">Barrier between stages</span>
-                <span className="badge badge-ghost badge-xs">Skipped means reused on resume</span>
-                <span className="badge badge-ghost badge-xs">Not Run means blocked downstream</span>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1">
+      <main className="relative flex min-h-0 flex-1 overflow-hidden bg-base-200/30">
+        <section className="min-w-0 flex-1 overflow-hidden">
+          {mainTab === 'board' ? (
+            <div className="h-full">
               <StageLaneBoard
                 stages={stageLanes}
                 emptyTitle="No attempt stages"
                 emptyDescription="This attempt did not materialize any runtime stage projection."
               />
             </div>
-          </div>
-        ) : (
-          <div className="h-full overflow-y-auto px-5 py-4 font-mono text-xs">
-            {logsLoading ? (
-              <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
-            ) : !logs || logs.length === 0 ? (
-              <div className="py-10 text-center text-base-content/40">No log entries available</div>
-            ) : (
-              <div className="flex flex-col gap-0.5">
-                {logs.map((entry, idx) => (
-                  <div key={idx} className={`flex items-start gap-3 rounded px-2 py-0.5 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
-                    <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>{entry.level}</span>
-                    <span className="shrink-0 tabular-nums text-base-content/40">
-                      {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
-                    </span>
-                    <span className="flex-1 break-all">{entry.message}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          ) : (
+            <div className="h-full overflow-y-auto px-5 py-4 font-mono text-xs">
+              {logsLoading ? (
+                <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
+              ) : !logs || logs.length === 0 ? (
+                <div className="py-10 text-center text-base-content/40">No log entries available</div>
+              ) : (
+                <div className="iris-list-panel">
+                  {logs.map((entry, idx) => (
+                    <div key={idx} className={`iris-list-row flex items-start gap-3 px-3 py-2 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
+                      <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>{entry.level}</span>
+                      <span className="shrink-0 tabular-nums text-base-content/40">
+                        {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
+                      </span>
+                      <span className="flex-1 break-all">{entry.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
-        {mainTab === 'board' && selectedJob ? (
-          <JobRuntimeDrawer job={selectedJob} onClose={() => setSelectedJobId(null)} />
-        ) : null}
+        <aside className="flex w-[352px] shrink-0 flex-col border-l border-base-300 bg-base-100">
+          {mainTab === 'board' && selectedJob ? (
+            <JobRuntimeInspector job={selectedJob} onClose={() => setSelectedJobId(null)} />
+          ) : (
+            <RunOverviewInspector
+              detail={detail}
+              currentAttempt={currentAttempt}
+              effectiveStatusMeta={effectiveStatusMeta}
+              attemptSummary={attemptSummary}
+              resumeTargetStage={resumeTargetStage}
+            />
+          )}
+        </aside>
       </main>
 
       {confirmAction ? (
@@ -470,9 +432,74 @@ function SemanticCard({
   )
 }
 
-// Job runtime drawer
+function RunOverviewInspector({
+  detail,
+  currentAttempt,
+  effectiveStatusMeta,
+  attemptSummary,
+  resumeTargetStage,
+}: {
+  detail: PipelineRunDetailInfo
+  currentAttempt: PipelineRunDetailInfo['attempts'][number] | null
+  effectiveStatusMeta: ReturnType<typeof getPipelineStatusMeta>
+  attemptSummary: ReturnType<typeof summarizeAttemptProgress> | null
+  resumeTargetStage: ReturnType<typeof findResumeTargetStage>
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="iris-shell-bar border-b-0 px-5 py-4">
+        <div className="iris-header">Run Overview</div>
+        <div className="mt-2 text-sm font-semibold text-base-content/82">
+          {currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
+        </div>
+        <div className="mt-1 text-[11px] iris-copy">
+          {effectiveStatusMeta.description}
+        </div>
+      </div>
 
-function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: () => void }) {
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <div className="space-y-3">
+          <SemanticCard
+            label="Runtime"
+            value={effectiveStatusMeta.label}
+            detail={currentAttempt?.endTime
+              ? `Ended ${formatDateTimeLong(currentAttempt.endTime)}`
+              : currentAttempt?.startTime
+                ? `Started ${formatDateTimeLong(currentAttempt.startTime)}`
+                : `Created ${formatDateTimeLong(detail.createdAt)}`}
+            tone={effectiveStatusMeta.tone}
+          />
+          <SemanticCard
+            label="Stage Progress"
+            value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
+            detail={attemptSummary?.headline ?? 'No stage projection'}
+          />
+          <SemanticCard
+            label="Resume Path"
+            value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
+            detail={resumeTargetStage
+              ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as Skipped.'
+              : 'No resumable stage is pending right now.'}
+          />
+        </div>
+
+        <div className="iris-section-panel mt-4 p-4">
+          <div className="iris-header">Stage Semantics</div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+            <span className="badge badge-ghost badge-sm">Parallel inside a stage</span>
+            <span className="badge badge-ghost badge-sm">Barrier between stages</span>
+            <span className="badge badge-ghost badge-sm">Skipped means reused on resume</span>
+            <span className="badge badge-ghost badge-sm">Not Run means blocked downstream</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Job runtime inspector
+
+function JobRuntimeInspector({ job, onClose }: { job: PipelineRunJobInfo; onClose: () => void }) {
   const totals = job.stepExecutionInfos.reduce(
     (acc, step) => ({
       read: acc.read + step.readCount,
@@ -491,9 +518,8 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
   const maxTxn = Math.max(totals.commit, totals.rollback, 1)
 
   return (
-    <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex justify-end animate-iris-slide-in-right">
-      <aside className="pointer-events-auto flex h-full w-[460px] max-w-[92vw] flex-col border-l border-base-300 bg-base-100/96 shadow-2xl backdrop-blur-sm">
-        <div className="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-4 shrink-0">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-4 shrink-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="badge badge-ghost badge-sm">Job #{job.sequenceOrder + 1}</span>
@@ -511,10 +537,10 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
           <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" onClick={onClose} aria-label="Close job details">
             <X size={16} />
           </button>
-        </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">
-          <div className="mb-5">
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="mb-5">
             <SectionLabel>I/O Throughput</SectionLabel>
             <div className="mt-2 space-y-3">
               <ThroughputBar label="Read" value={totals.read} max={maxIO} color="success" icon="R" />
@@ -548,16 +574,15 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             </div>
           )}
 
-          <div>
+        <div>
             <SectionLabel>{job.stepExecutionInfos.length} Step{job.stepExecutionInfos.length !== 1 ? 's' : ''}</SectionLabel>
             <div className="mt-2 space-y-3">
               {job.stepExecutionInfos.map((step, idx) => (
                 <StepDetailCard key={step.id} step={step} index={idx} />
               ))}
             </div>
-          </div>
         </div>
-      </aside>
+      </div>
     </div>
   )
 }

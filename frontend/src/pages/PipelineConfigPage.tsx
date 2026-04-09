@@ -94,7 +94,7 @@ export function PipelineConfigPage() {
 
         if (!active) return
         setDraft(nextDraft)
-        setSelectedItem({ kind: 'stage', stageEditorId: nextDraft.stages[0].editorId })
+        setSelectedItem(null)
         setError(null)
         setLoading(false)
         return
@@ -113,9 +113,7 @@ export function PipelineConfigPage() {
 
         const nextDraft = pipelineToDraft(pipelineResponse)
         setDraft(nextDraft)
-
-        const firstStage = nextDraft.stages[0]
-        setSelectedItem(firstStage ? { kind: 'stage', stageEditorId: firstStage.editorId } : null)
+        setSelectedItem(null)
       } catch (loadError) {
         if (!active) return
         setError(getApiErrorMessage(loadError, 'Failed to load pipeline config'))
@@ -659,6 +657,7 @@ export function PipelineConfigPage() {
     label: stage.stageName || 'Untitled stage',
     value: stage.editorId,
   }))
+  const jobWorkspaceActive = Boolean(editingStage && editingJob)
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
@@ -726,155 +725,97 @@ export function PipelineConfigPage() {
       {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <main className="iris-page-canvas min-w-0 flex-1 overflow-hidden">
-          <StageLaneBoard
-            stages={stageLanes}
-            emptyTitle="No stages"
-            emptyDescription="Add the first stage to begin defining this pipeline."
-            onMoveStage={moveStageById}
-            onMoveJob={moveJobById}
+        {jobWorkspaceActive && editingStage && editingJob ? (
+          <JobWorkspacePanel
+            stage={editingStage}
+            job={editingJob}
+            stageOptions={stageOptions}
+            validation={validationSummary}
+            onDismiss={() => setEditingJobTarget(null)}
+            onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
+            onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
+            onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
+            onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
+            onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
+            onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
+            onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
+            onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
+            onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
+              updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
+            }
+            onRemoveParameter={(stepEditorId, parameterEditorId) =>
+              removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
+            }
           />
-        </main>
+        ) : (
+          <>
+            <main className="iris-page-canvas min-w-0 flex-1 overflow-hidden">
+              <StageLaneBoard
+                stages={stageLanes}
+                emptyTitle="No stages"
+                emptyDescription="Add the first stage to begin defining this pipeline."
+                onMoveStage={moveStageById}
+                onMoveJob={moveJobById}
+              />
+            </main>
 
-        <aside className="flex w-[288px] shrink-0 flex-col border-l border-base-300 bg-base-100/92 backdrop-blur-sm">
-          <div className="iris-shell-bar border-b-0 px-5 py-4">
-            <div className="iris-header">Pipeline Summary</div>
-            <div className="mt-2">
-              <label className="form-control">
-                <span className="mb-2 iris-kicker">
-                  Pipeline Name
-                </span>
-                <input
-                  type="text"
-                  className={getControlClass(
-                    hasPipelineFieldIssue(validationSummary, 'pipelineName'),
-                    'input input-bordered w-full',
-                  )}
-                  value={draft.pipelineName}
-                  onChange={(event) => {
-                    setDraft((current) => (current ? { ...current, pipelineName: event.target.value } : current))
+            <aside className="flex w-[336px] shrink-0 flex-col border-l border-base-300 bg-base-100">
+              {selectedStage && selectedItem?.kind === 'stage' ? (
+                <StageEditorPanel
+                  stage={selectedStage}
+                  stageIndex={draft.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)}
+                  stageCount={draft.stages.length}
+                  issueCount={validationSummary.stageIssues.get(selectedStage.editorId) ?? 0}
+                  validation={validationSummary}
+                  onDismiss={() => setSelectedItem(null)}
+                  onChange={(recipe) => updateStage(selectedStage.editorId, recipe)}
+                  onMoveStage={(direction) =>
+                    updateDraft((current) => {
+                      const currentIndex = current.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)
+                      const targetIndex = currentIndex + direction
+                      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.stages.length) return current
+                      return {
+                        ...current,
+                        stages: moveArrayItem(current.stages, currentIndex, targetIndex),
+                      }
+                    })
+                  }
+                  onRemoveStage={() => removeStageById(selectedStage.editorId)}
+                  onAddJob={() =>
+                    updateStage(selectedStage.editorId, (stage) => {
+                      const nextJob = createBlankJob(stage.jobs.length)
+                      openJobEditor(selectedStage.editorId, nextJob.editorId)
+                      return {
+                        ...stage,
+                        jobs: [...stage.jobs, nextJob],
+                      }
+                    })
+                  }
+                />
+              ) : selectedStage && selectedJob && selectedItem?.kind === 'job' ? (
+                <JobInspectorPanel
+                  stage={selectedStage}
+                  job={selectedJob}
+                  validation={validationSummary}
+                  onOpenEditor={() => openJobEditor(selectedStage.editorId, selectedJob.editorId)}
+                  onDismiss={() => setSelectedItem(null)}
+                />
+              ) : (
+                <PipelineOverviewInspector
+                  draft={draft}
+                  draftReadiness={draftReadiness}
+                  validation={validationSummary}
+                  issues={issues}
+                  onPipelineNameChange={(value) => {
+                    setDraft((current) => (current ? { ...current, pipelineName: value } : current))
                     workspace?.setDirty(true)
                   }}
-                  placeholder="pipeline_name"
                 />
-                <FieldMessages messages={getPipelineFieldMessages(validationSummary, 'pipelineName')} />
-              </label>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-            <div className="grid grid-cols-2 gap-2.5">
-              <SummaryTile label="Stages" value={draftReadiness.stageCount} />
-              <SummaryTile label="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} />
-              <SummaryTile label="Steps" value={draftReadiness.stepCount} />
-              <SummaryTile label="Issues" value={draftReadiness.issueCount} />
-              <SummaryTile label="Source Conn" value={draftReadiness.sourceConfiguredJobs} />
-              <SummaryTile label="Dest Conn" value={draftReadiness.destConfiguredJobs} />
-            </div>
-
-            <div className={`iris-section-panel mt-4 p-4 ${
-              draftReadiness.issueCount === 0
-                ? 'border-success/20 bg-success/5'
-                : draftReadiness.issueCount <= 3
-                  ? 'border-warning/20 bg-warning/5'
-                  : 'border-error/20 bg-error/5'
-            }`}>
-              <div className={`iris-header ${
-                draftReadiness.issueCount === 0
-                  ? 'text-success'
-                  : draftReadiness.issueCount <= 3
-                    ? 'text-warning'
-                    : 'text-error'
-              }`}>
-                {draftReadiness.headline}
-              </div>
-              <div className="mt-2 text-[11px] iris-copy">{draftReadiness.guidance}</div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
-                <span className="badge badge-ghost badge-sm">{draftReadiness.stageCount} stage lanes</span>
-                <span className="badge badge-ghost badge-sm">{draftReadiness.jobCount} runtime jobs</span>
-                <span className="badge badge-ghost badge-sm">{draftReadiness.warningJobs} jobs still need review</span>
-              </div>
-            </div>
-
-            {issues.length > 0 ? (
-              <div className="iris-section-panel mt-4 border-warning/30 bg-warning/8 p-4">
-                <div className="iris-header text-warning">Validation Issues</div>
-                <div className="mt-2 text-[11px] text-warning/80">
-                  Badges on stage lanes and job cards show where fixes are needed.
-                </div>
-                <ul className="mt-3 space-y-2 text-[13px]">
-                  {issues.slice(0, 6).map((issue) => (
-                    <li key={issue} className="leading-relaxed text-warning">{issue}</li>
-                  ))}
-                </ul>
-                {issues.length > 6 ? <div className="mt-3 text-xs font-medium text-warning/80">+ {issues.length - 6} more issues</div> : null}
-              </div>
-            ) : (
-              <div className="iris-section-panel mt-4 border-success/20 bg-success/5 p-4 text-sm text-success">
-                No validation issues
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {selectedStage && selectedItem?.kind === 'stage' ? (
-          <StageEditorDrawer
-            stage={selectedStage}
-            stageIndex={draft.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)}
-            stageCount={draft.stages.length}
-            issueCount={validationSummary.stageIssues.get(selectedStage.editorId) ?? 0}
-            validation={validationSummary}
-            onDismiss={() => setSelectedItem(null)}
-            onChange={(recipe) => updateStage(selectedStage.editorId, recipe)}
-            onMoveStage={(direction) =>
-              updateDraft((current) => {
-                const currentIndex = current.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)
-                const targetIndex = currentIndex + direction
-                if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.stages.length) return current
-                return {
-                  ...current,
-                  stages: moveArrayItem(current.stages, currentIndex, targetIndex),
-                }
-              })
-            }
-            onRemoveStage={() => removeStageById(selectedStage.editorId)}
-            onAddJob={() =>
-              updateStage(selectedStage.editorId, (stage) => {
-                const nextJob = createBlankJob(stage.jobs.length)
-                openJobEditor(selectedStage.editorId, nextJob.editorId)
-                return {
-                  ...stage,
-                  jobs: [...stage.jobs, nextJob],
-                }
-              })
-            }
-          />
-        ) : null}
+              )}
+            </aside>
+          </>
+        )}
       </div>
-
-      {editingStage && editingJob ? (
-        <JobEditorModal
-          stage={editingStage}
-          job={editingJob}
-          stageOptions={stageOptions}
-          validation={validationSummary}
-          onClose={() => setEditingJobTarget(null)}
-          onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
-          onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
-          onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
-          onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
-          onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
-          onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
-          onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
-          onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
-          onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
-            updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
-          }
-          onRemoveParameter={(stepEditorId, parameterEditorId) =>
-            removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
-          }
-        />
-      ) : null}
 
       <PipelineImportDialog
         open={importDialogOpen}
@@ -1003,47 +944,179 @@ function StageEditorPanel({
   )
 }
 
-function StageEditorDrawer(props: Omit<Parameters<typeof StageEditorPanel>[0], 'onDismiss'> & { onDismiss: () => void }) {
-  return (
-    <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex justify-end">
-      <aside className="pointer-events-auto animate-iris-slide-in-right relative h-full w-[420px] max-w-[92vw] border-l border-base-300 bg-base-100/96 shadow-2xl backdrop-blur-sm">
-        <StageEditorPanel {...props} />
-      </aside>
-    </div>
-  )
-}
-
-function JobEditorModal({
-  onClose,
-  ...props
-}: Omit<JobEditorPanelProps, 'onDismiss' | 'dismissLabel'> & {
-  onClose: () => void
+function PipelineOverviewInspector({
+  draft,
+  draftReadiness,
+  validation,
+  issues,
+  onPipelineNameChange,
+}: {
+  draft: PipelineDraft
+  draftReadiness: NonNullable<ReturnType<typeof buildConfigReadinessSummary>>
+  validation: DraftValidationSummary
+  issues: string[]
+  onPipelineNameChange: (value: string) => void
 }) {
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
   return (
-    <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center transition-all" onClick={onClose}>
-      <div
-        className="h-[94vh] max-h-[1400px] w-[98vw] max-w-none overflow-hidden border border-base-300 bg-base-100 p-0 shadow-2xl ring-1 ring-base-content/5"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <JobEditorPanel {...props} onDismiss={onClose} />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="iris-shell-bar border-b-0 px-5 py-4">
+        <div className="iris-header">Pipeline Overview</div>
+        <div className="mt-2">
+          <label className="form-control">
+            <span className="mb-2 iris-kicker">Pipeline Name</span>
+            <input
+              type="text"
+              className={getControlClass(hasPipelineFieldIssue(validation, 'pipelineName'), 'input input-bordered w-full')}
+              value={draft.pipelineName}
+              onChange={(event) => onPipelineNameChange(event.target.value)}
+              placeholder="pipeline_name"
+            />
+            <FieldMessages messages={getPipelineFieldMessages(validation, 'pipelineName')} />
+          </label>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <div className="grid grid-cols-2 gap-2.5">
+          <SummaryTile label="Stages" value={draftReadiness.stageCount} />
+          <SummaryTile label="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} />
+          <SummaryTile label="Steps" value={draftReadiness.stepCount} />
+          <SummaryTile label="Issues" value={draftReadiness.issueCount} />
+          <SummaryTile label="Source Conn" value={draftReadiness.sourceConfiguredJobs} />
+          <SummaryTile label="Dest Conn" value={draftReadiness.destConfiguredJobs} />
+        </div>
+
+        <div
+          className={`iris-section-panel mt-4 p-4 ${
+            draftReadiness.issueCount === 0
+              ? 'border-success/20 bg-success/5'
+              : draftReadiness.issueCount <= 3
+                ? 'border-warning/20 bg-warning/5'
+                : 'border-error/20 bg-error/5'
+          }`}
+        >
+          <div
+            className={`iris-header ${
+              draftReadiness.issueCount === 0
+                ? 'text-success'
+                : draftReadiness.issueCount <= 3
+                  ? 'text-warning'
+                  : 'text-error'
+            }`}
+          >
+            {draftReadiness.headline}
+          </div>
+          <div className="mt-2 text-[11px] iris-copy">{draftReadiness.guidance}</div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+            <span className="badge badge-ghost badge-sm">{draftReadiness.stageCount} stage lanes</span>
+            <span className="badge badge-ghost badge-sm">{draftReadiness.jobCount} runtime jobs</span>
+            <span className="badge badge-ghost badge-sm">{draftReadiness.warningJobs} jobs still need review</span>
+          </div>
+        </div>
+
+        {issues.length > 0 ? (
+          <div className="iris-section-panel mt-4 border-warning/30 bg-warning/8 p-4">
+            <div className="iris-header text-warning">Validation Issues</div>
+            <div className="mt-2 text-[11px] text-warning/80">
+              Badges on stage lanes and job cards show where fixes are needed.
+            </div>
+            <ul className="mt-3 space-y-2 text-[13px]">
+              {issues.slice(0, 6).map((issue) => (
+                <li key={issue} className="leading-relaxed text-warning">
+                  {issue}
+                </li>
+              ))}
+            </ul>
+            {issues.length > 6 ? (
+              <div className="mt-3 text-xs font-medium text-warning/80">+ {issues.length - 6} more issues</div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="iris-section-panel mt-4 border-success/20 bg-success/5 p-4 text-sm text-success">
+            No validation issues
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-type JobEditorPanelProps = {
+function JobInspectorPanel({
+  stage,
+  job,
+  validation,
+  onOpenEditor,
+  onDismiss,
+}: {
+  stage: EditableStage
+  job: EditableJob
+  validation: DraftValidationSummary
+  onOpenEditor: () => void
+  onDismiss: () => void
+}) {
+  const semantic = getConfigJobSemanticSummary(job, validation)
+  const jobMessages = validation.jobMessages.get(job.editorId) ?? []
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="iris-shell-bar border-b-0 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="badge badge-primary badge-sm">{stage.stageName || 'Stage'}</span>
+              <span className={`badge badge-sm ${semantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+                {semantic.issueCount > 0 ? `${semantic.issueCount} issues` : 'Ready to edit'}
+              </span>
+            </div>
+            <div className="mt-3 truncate text-lg font-bold">{job.jobName || 'Untitled job'}</div>
+            <div className="mt-1 text-sm text-base-content/50">{semantic.guidance}</div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" aria-label="Close inspector" onClick={onDismiss}>
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <div className="grid grid-cols-2 gap-2.5">
+          <SummaryTile label="Atomic" value={job.setting.atomicLevel ?? 'JOB'} />
+          <SummaryTile label="Steps" value={job.executions.length} />
+          <SummaryTile label="State" value={semantic.state} />
+          <SummaryTile label="Connections" value={semantic.connectionSummary} />
+        </div>
+
+        <div className="iris-section-panel mt-4 p-4">
+          <div className="iris-header">Selected Job</div>
+          <div className="mt-3 space-y-2 text-sm text-base-content/60">
+            <div>{semantic.connectionSummary}</div>
+            <div>{semantic.stepSummary}</div>
+          </div>
+          <div className="mt-4">
+            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={onOpenEditor}>
+              <Pencil size={14} />
+              Open Job Workspace
+            </button>
+          </div>
+        </div>
+
+        {jobMessages.length > 0 ? (
+          <div className="iris-section-panel mt-4 border-warning/30 bg-warning/8 p-4">
+            <div className="iris-header text-warning">Job Issues</div>
+            <ul className="mt-3 space-y-2 text-[13px]">
+              {jobMessages.slice(0, 5).map((message) => (
+                <li key={message} className="leading-relaxed text-warning">
+                  {message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+type JobWorkspacePanelProps = {
   stage: EditableStage
   job: EditableJob
   stageOptions: { label: string; value: string }[]
@@ -1065,7 +1138,7 @@ type JobEditorPanelProps = {
   onDismiss: () => void
 }
 
-function JobEditorPanel({
+function JobWorkspacePanel({
   stage,
   job,
   stageOptions,
@@ -1081,7 +1154,7 @@ function JobEditorPanel({
   onUpdateParameter,
   onRemoveParameter,
   onDismiss,
-}: JobEditorPanelProps) {
+}: JobWorkspacePanelProps) {
   const sourceConfigured = Boolean(job.database.source)
   const destConfigured = Boolean(job.database.dest)
   const currentStageIndex = stageOptions.findIndex((option) => option.value === stage.editorId)
@@ -1102,6 +1175,12 @@ function JobEditorPanel({
   }, [job.executions, selectedStepEditorId])
 
   const selectedStep = job.executions.find((step) => step.editorId === selectedStepEditorId) ?? job.executions[0] ?? null
+  const filteredSteps = job.executions.filter((step) =>
+    stepFilter.trim() === ''
+      ? true
+      : (step.name ?? '').toLowerCase().includes(stepFilter.trim().toLowerCase()),
+  )
+  const jobSemantic = getConfigJobSemanticSummary(job, validation)
   const jobNameErrors = getFieldMessages(validation.jobFieldMessages, job.editorId, 'jobName')
   const atomicLevelErrors = getFieldMessages(validation.jobFieldMessages, job.editorId, 'atomicLevel')
   const fetchSizeErrors = getFieldMessages(validation.jobFieldMessages, job.editorId, 'fetchSize')
@@ -1141,41 +1220,70 @@ function JobEditorPanel({
     }
   }
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onDismiss()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onDismiss])
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      {/* Compact header ??job name + stage + atomic level + close */}
-      <div className="iris-toolbar-band flex shrink-0 items-center gap-2.5 px-4 py-3">
-        <span className="shrink-0 badge badge-primary badge-sm font-semibold" title={stage.stageName}>{stage.stageName}</span>
-        <input
-          type="text"
-          className={getControlClass(jobNameErrors.length > 0, 'input input-sm flex-1 min-w-0 font-semibold')}
-          value={job.jobName}
-          onChange={(event) => onChange((current) => ({ ...current, jobName: event.target.value }))}
-          placeholder="job_name"
-        />
-        <select
-          className={getControlClass(atomicLevelErrors.length > 0, 'select select-sm select-bordered w-[110px] shrink-0')}
-          value={job.setting.atomicLevel ?? 'JOB'}
-          onChange={(event) => onChange((current) => ({ ...current, setting: { ...current.setting, atomicLevel: event.target.value as EditableJob['setting']['atomicLevel'] } }))}
-        >
-          <option value="JOB">JOB</option>
-          <option value="CHUNK">CHUNK</option>
-        </select>
-        <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" aria-label="Close editor" onClick={onDismiss}>
-          <X size={16} />
+      <div className="iris-shell-bar flex shrink-0 items-center gap-3 px-4 py-3">
+        <button type="button" className="btn btn-ghost btn-sm gap-2" onClick={onDismiss}>
+          <ArrowLeft size={14} />
+          Back to topology
         </button>
+        <span className="badge badge-primary badge-sm font-semibold">{stage.stageName || 'Stage'}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-bold">{job.jobName || 'Untitled job'}</div>
+          <div className="truncate text-[11px] text-base-content/48">{jobSemantic.connectionSummary}</div>
+        </div>
+        <span className={`badge badge-sm ${jobSemantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+          {jobSemantic.issueCount > 0 ? `${jobSemantic.issueCount} issues` : 'Job workspace'}
+        </span>
       </div>
 
-      {/* 2-column body */}
-      <div className="flex min-h-0 flex-1 divide-x divide-base-300 overflow-hidden">
-
-        {/* LEFT ??Connections + Settings */}
-        <div className="w-[300px] shrink-0 overflow-y-auto divide-y divide-base-300">
-          {/* Source connection */}
-          <div className="p-4">
-            <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-base-content/35 flex items-center gap-2">
-              <Server size={11} />Source Node
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="w-[336px] shrink-0 overflow-y-auto border-r border-base-300 bg-base-100">
+          <div className="space-y-4 px-4 py-4">
+            <div className="iris-section-panel p-4">
+              <div className="iris-header">Job Identity</div>
+              <label className="form-control mt-4">
+                <span className="mb-2 iris-kicker">Job Name</span>
+                <input
+                  type="text"
+                  className={getControlClass(jobNameErrors.length > 0, 'input input-bordered w-full')}
+                  value={job.jobName}
+                  onChange={(event) => onChange((current) => ({ ...current, jobName: event.target.value }))}
+                  placeholder="job_name"
+                />
+                <FieldMessages messages={jobNameErrors} />
+              </label>
+              <label className="form-control mt-4">
+                <span className="mb-2 iris-kicker">Atomic Level</span>
+                <select
+                  className={getControlClass(atomicLevelErrors.length > 0, 'select select-bordered w-full')}
+                  value={job.setting.atomicLevel ?? 'JOB'}
+                  onChange={(event) =>
+                    onChange((current) => ({
+                      ...current,
+                      setting: { ...current.setting, atomicLevel: event.target.value as EditableJob['setting']['atomicLevel'] },
+                    }))
+                  }
+                >
+                  <option value="JOB">JOB</option>
+                  <option value="CHUNK">CHUNK</option>
+                </select>
+                <FieldMessages messages={atomicLevelErrors} />
+              </label>
             </div>
+
             <ConnectionPanel
               title="Source Node"
               icon={Server}
@@ -1184,13 +1292,7 @@ function JobEditorPanel({
               errors={sourceErrors}
               onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, source: connection } }))}
             />
-          </div>
 
-          {/* Dest connection */}
-          <div className="p-4">
-            <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-base-content/35 flex items-center gap-2">
-              <Link2 size={11} />Destination Node
-            </div>
             <ConnectionPanel
               title="Destination Node"
               icon={Link2}
@@ -1199,126 +1301,156 @@ function JobEditorPanel({
               errors={destErrors}
               onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, dest: connection } }))}
             />
-          </div>
 
-          {/* Settings */}
-          <div className="p-4 space-y-3">
-            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35">Batch Settings</div>
-            <div className="grid grid-cols-2 gap-2">
-              <NumberField
-                label="Fetch Size"
-                value={job.setting.fetchSize}
-                errors={fetchSizeErrors}
-                onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, fetchSize: value } }))}
-              />
-              <NumberField
-                label="Batch Size"
-                value={job.setting.batchSize}
-                errors={batchSizeErrors}
-                onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, batchSize: value } }))}
-              />
-              <NumberField
-                label="Delete Threshold"
-                value={job.setting.deleteThreshold}
-                onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, deleteThreshold: value } }))}
-              />
+            <div className="iris-section-panel p-4">
+              <div className="iris-header">Batch Settings</div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <NumberField
+                  label="Fetch Size"
+                  value={job.setting.fetchSize}
+                  errors={fetchSizeErrors}
+                  onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, fetchSize: value } }))}
+                />
+                <NumberField
+                  label="Batch Size"
+                  value={job.setting.batchSize}
+                  errors={batchSizeErrors}
+                  onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, batchSize: value } }))}
+                />
+                <NumberField
+                  label="Delete Threshold"
+                  value={job.setting.deleteThreshold}
+                  onChange={(value) => onChange((current) => ({ ...current, setting: { ...current.setting, deleteThreshold: value } }))}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Stage movement */}
-          <div className="p-4 space-y-2">
-            <div className="text-[10px] font-black uppercase tracking-widest text-base-content/35">Stage</div>
-            <select
-              className="select select-bordered select-sm w-full"
-              value={stage.editorId}
-              onChange={(event) => onMoveToStage(event.target.value)}
-            >
-              {stageOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn btn-outline btn-xs border-base-300 flex-1"
-                disabled={!previousStage}
-                onClick={() => previousStage && onMoveToStage(previousStage.value)}
-              >
-                <ArrowLeft size={12} />Prev
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-xs border-base-300 flex-1"
-                disabled={!nextStage}
-                onClick={() => nextStage && onMoveToStage(nextStage.value)}
-              >
-                Next<ArrowRight size={12} />
-              </button>
-            </div>
-          </div>
-
-          {/* Delete */}
-          <div className="p-4">
-            <FieldMessages messages={executionsErrors} className="mb-2" />
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm w-full text-error hover:bg-error/10"
-              onClick={onRemoveJob}
-            >
-              <Trash2 size={13} />Delete Job
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT ??Step pills + inline editor */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* Step pills bar */}
-          <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-base-300 bg-base-100 px-4 py-2.5">
-            {job.executions.map((step, i) => {
-              const stepIssues = validation.stepIssues.get(step.editorId) ?? 0
-              const isSelected = selectedStep?.editorId === step.editorId
-              const hidden = stepFilter.trim() !== '' && !(step.name ?? '').toLowerCase().includes(stepFilter.toLowerCase())
-              return (
-                <button
-                  key={step.editorId}
-                  type="button"
-                  className={`flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1 text-[11px] font-semibold transition-all ${hidden ? 'opacity-40' : ''} ${
-                    isSelected
-                      ? 'border-primary bg-primary text-primary-content'
-                      : stepIssues > 0
-                        ? 'border-warning/50 bg-warning/10 text-warning hover:bg-warning/20'
-                        : 'border-base-300 bg-base-100 text-base-content/55 hover:border-primary/30 hover:text-base-content'
-                  }`}
-                  onClick={() => setSelectedStepEditorId(step.editorId)}
+            <div className="iris-section-panel p-4">
+              <div className="iris-header">Stage Placement</div>
+              <div className="mt-4 space-y-2">
+                <select
+                  className="select select-bordered w-full"
+                  value={stage.editorId}
+                  onChange={(event) => onMoveToStage(event.target.value)}
                 >
-                  {stepIssues > 0 ? <span className="size-1.5 rounded-full bg-warning shrink-0" /> : null}
-                  {step.name?.trim() || `Step ${i + 1}`}
-                </button>
-              )
-            })}
-            <button
-              type="button"
-              className="flex shrink-0 items-center gap-1 rounded-md border border-dashed border-base-300 px-3 py-1 text-[11px] text-base-content/50 transition-colors hover:border-primary/30 hover:text-primary"
-              onClick={handleAddStep}
-            >
-              <Plus size={11} />Add
-            </button>
-            <div className="ml-auto shrink-0">
-              <input
-                type="text"
-                placeholder="Filter steps..."
-                className="input input-xs input-bordered w-28"
-                value={stepFilter}
-                onChange={(e) => setStepFilter(e.target.value)}
-              />
+                  {stageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm flex-1"
+                    disabled={!previousStage}
+                    onClick={() => previousStage && onMoveToStage(previousStage.value)}
+                  >
+                    <ArrowLeft size={12} />
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm flex-1"
+                    disabled={!nextStage}
+                    onClick={() => nextStage && onMoveToStage(nextStage.value)}
+                  >
+                    Next
+                    <ArrowRight size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="iris-section-panel border-error/20 bg-error/5 p-4">
+              <div className="iris-header text-error">Job Actions</div>
+              <FieldMessages messages={executionsErrors} className="mt-3" />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm mt-3 w-full justify-start text-error hover:bg-error/10"
+                onClick={onRemoveJob}
+              >
+                <Trash2 size={13} />
+                Delete Job
+              </button>
             </div>
           </div>
+        </aside>
 
-          {/* Inline step editor */}
+        <aside className="flex w-[272px] shrink-0 flex-col border-r border-base-300 bg-base-200/24">
+          <div className="iris-toolbar-band px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="iris-header">Steps</div>
+                <div className="mt-1 text-xs text-base-content/48">
+                  {job.executions.length} total · {jobSemantic.stepSummary}
+                </div>
+              </div>
+              <button type="button" className="btn btn-primary btn-xs gap-1" onClick={handleAddStep}>
+                <Plus size={11} />
+                Add
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="Filter steps..."
+              className="input input-sm input-bordered mt-3 w-full"
+              value={stepFilter}
+              onChange={(event) => setStepFilter(event.target.value)}
+            />
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+            {filteredSteps.length === 0 ? (
+              <div className="iris-empty-panel px-4 py-4 text-center text-[11px] text-base-content/45">
+                No steps match this filter.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredSteps.map((step, index) => {
+                  const stepIssues = validation.stepIssues.get(step.editorId) ?? 0
+                  const isSelected = selectedStep?.editorId === step.editorId
+                  const originalIndex = job.executions.findIndex((candidate) => candidate.editorId === step.editorId)
+                  return (
+                    <button
+                      key={step.editorId}
+                      type="button"
+                      className={`iris-inset-panel w-full px-3 py-3 text-left transition-all ${
+                        isSelected
+                          ? 'border-primary/35 bg-primary/6 shadow-sm'
+                          : stepIssues > 0
+                            ? 'border-warning/35 bg-warning/8'
+                            : 'hover:border-primary/20 hover:bg-base-100'
+                      }`}
+                      onClick={() => setSelectedStepEditorId(step.editorId)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-[12px] font-semibold text-base-content/80">
+                            {step.name?.trim() || `Step ${originalIndex + 1}`}
+                          </div>
+                          <div className="mt-1 text-[11px] text-base-content/45">
+                            {step.type} · {step.sql.length} chars
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {stepIssues > 0 ? <span className="badge badge-warning badge-xs">{stepIssues}</span> : null}
+                          <span className="iris-mono-meta">#{index + 1}</span>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <section className="min-w-0 flex-1 overflow-hidden bg-base-100">
           {selectedStep ? (
             <InlineStepEditor
               step={selectedStep}
-              stepIndex={job.executions.findIndex((c) => c.editorId === selectedStep.editorId)}
+              stepIndex={job.executions.findIndex((candidate) => candidate.editorId === selectedStep.editorId)}
               stepCount={job.executions.length}
               issueCount={validation.stepIssues.get(selectedStep.editorId) ?? 0}
               validation={validation}
@@ -1330,11 +1462,11 @@ function JobEditorPanel({
               onRemoveParameter={(paramId) => onRemoveParameter(selectedStep.editorId, paramId)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-base-content/45">
-              No steps. Add one above.
+            <div className="flex h-full items-center justify-center px-6 text-sm text-base-content/45">
+              No steps yet. Add a step to start defining this job.
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )
