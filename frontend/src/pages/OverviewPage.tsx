@@ -211,7 +211,7 @@ export function OverviewPage() {
                 <RecentRunRow key={run.id} run={run} />
               ))}
               {recentRuns.length === 0 && (
-                <div className="py-10 text-center text-sm text-base-content/35">No recent runs</div>
+                <div className="py-10 text-center text-sm text-base-content/45">No recent runs</div>
               )}
             </div>
             <div className="p-4 border-t border-base-300 bg-base-200/30">
@@ -276,7 +276,7 @@ function MetricCard({
       </div>
       <div className="text-3xl font-bold tracking-tight mb-0.5">{value}</div>
       <div className="text-[10px] font-semibold uppercase tracking-widest opacity-40">{subValue}</div>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-20 mt-1">{label}</div>
+      <div className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/35">{label}</div>
     </div>
   )
 }
@@ -300,7 +300,7 @@ function SuccessRateCard({ successRate, total, failed }: { successRate: number; 
           <TrendingUp size={18} />
         </div>
         {total > 0 && (
-          <span className="text-[10px] font-semibold text-base-content/30 uppercase tracking-wider">
+          <span className="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider">
             {total} recent
           </span>
         )}
@@ -355,7 +355,7 @@ function VitalCell({
 
   return (
     <div className="p-5 flex flex-col gap-2">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">{label}</div>
       <div className="flex items-center gap-2">
         {statusColor && (
           <div className={`size-2 rounded-full ${statusDotMap[statusColor]} ${statusColor === 'success' ? 'animate-pulse' : ''}`} />
@@ -365,7 +365,7 @@ function VitalCell({
         )}
         <div className="text-lg font-bold tracking-tight">{value}</div>
       </div>
-      <div className="text-[10px] text-base-content/35">{sub}</div>
+      <div className="text-[10px] text-base-content/45">{sub}</div>
       {bar != null && barColor && (
         <div className="h-1 w-full rounded-full bg-base-300/50 overflow-hidden mt-1">
           <div
@@ -389,8 +389,8 @@ function RunThroughputPanel({ runs }: { runs: PipelineRunSummaryInfo[] }) {
     <div className="iris-card p-0 overflow-hidden bg-base-100">
       <div className="flex items-center gap-2 border-b border-base-300 px-5 py-3">
         <Activity size={15} className="text-primary" />
-        <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Run Breakdown</h2>
-        <span className="ml-auto text-[10px] text-base-content/30 font-semibold uppercase tracking-wider">Last {runs.length} runs</span>
+        <h2 className="text-[11px] font-black uppercase tracking-widest text-base-content/55">Run Breakdown</h2>
+        <span className="ml-auto text-[10px] text-base-content/40 font-semibold uppercase tracking-wider">Last {runs.length} runs</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-base-300/50">
         <ThroughputCell label="Completed" value={completed} total={runs.length} color="success" />
@@ -422,11 +422,11 @@ function ThroughputCell({
   return (
     <div className="p-5">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">{label}</div>
         {pulse && <div className="size-1.5 rounded-full bg-primary animate-pulse" />}
       </div>
       <div className={`text-2xl font-bold ${textMap[color]}`}>{value}</div>
-      <div className="text-[10px] text-base-content/30 mb-2">{pct}% of total</div>
+      <div className="text-[10px] text-base-content/40 mb-2">{pct}% of total</div>
       <div className="h-1 w-full rounded-full bg-base-300/50 overflow-hidden">
         <div
           className={`h-full rounded-full iris-bar-fill ${barMap[color]}`}
@@ -449,14 +449,14 @@ function ActiveRunCard({ run }: { run: PipelineRunSummaryInfo }) {
         </div>
         <div>
           <div className="font-bold text-sm">{run.pipelineName}</div>
-          <div className="text-[10px] font-semibold opacity-35 uppercase tracking-widest mt-0.5">
+          <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-base-content/45">
             Run #{run.id}{run.folderPath ? ` · ${run.folderPath}` : ''}
           </div>
         </div>
       </div>
       <div className="flex flex-col items-end gap-1">
         <StatusBadge status={run.status} />
-        <span className="text-[10px] font-mono opacity-35">{formatDateTime(run.startTime ?? run.createdAt)}</span>
+        <span className="text-[10px] font-mono text-base-content/45">{formatDateTime(run.startTime ?? run.createdAt)}</span>
       </div>
     </Link>
   )
@@ -477,7 +477,7 @@ function RecentRunRow({ run }: { run: PipelineRunSummaryInfo }) {
       }`} />
       <div className="flex-1 min-w-0">
         <div className="truncate text-sm font-semibold">{run.pipelineName}</div>
-        <div className="text-[10px] opacity-35 font-mono">{formatDateTime(run.startTime ?? run.createdAt)}</div>
+        <div className="text-[10px] font-mono text-base-content/45">{formatDateTime(run.startTime ?? run.createdAt)}</div>
       </div>
       <StatusBadge status={run.status} subtle />
     </Link>

@@ -25,7 +25,7 @@ export function AuditEdge({
       markerEnd={markerEnd}
       style={{
         ...style,
-        stroke: '#6f7cff',
+        stroke: 'hsl(var(--p))',
         strokeWidth: 1.5,
         opacity: 0.88,
         strokeLinecap: 'round',

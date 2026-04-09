@@ -1,4 +1,4 @@
-import { History, RefreshCw, TimerReset, Zap } from 'lucide-react'
+﻿import { History, RefreshCw, TimerReset, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
@@ -100,7 +100,7 @@ export function PipelineRunsPage() {
       : null
     const avgLabel = avgDurationMs !== null
       ? avgDurationMs < 60000 ? `${Math.round(avgDurationMs / 1000)}s` : `${Math.round(avgDurationMs / 60000)}m`
-      : '—'
+      : '--'
     return { completed, failed, active, successRate, avgLabel }
   }, [runs])
 
@@ -156,12 +156,12 @@ export function PipelineRunsPage() {
         <div className="flex items-center gap-3">
           {stats && (
             <div className="hidden items-center gap-3 md:flex">
-              <span className="text-[10px] text-base-content/35 tabular-nums">
-                <span className="font-semibold text-base-content/55">{stats.successRate}%</span> success
+              <span className="text-[10px] text-base-content/45 tabular-nums">
+                <span className="font-semibold text-base-content/65">{stats.successRate}%</span> success
               </span>
-              <span className="text-[10px] text-base-content/25">·</span>
-              <span className="text-[10px] text-base-content/35 tabular-nums">
-                avg <span className="font-semibold font-mono text-base-content/55">{stats.avgLabel}</span>
+              <span className="text-[10px] text-base-content/25">|</span>
+              <span className="text-[10px] text-base-content/45 tabular-nums">
+                avg <span className="font-semibold font-mono text-base-content/65">{stats.avgLabel}</span>
               </span>
             </div>
           )}
@@ -175,7 +175,7 @@ export function PipelineRunsPage() {
             disabled={executing}
           >
             <Zap size={13} className={executing ? 'animate-pulse' : ''} />
-            {executing ? 'Launching…' : 'Execute'}
+            {executing ? 'Launching...' : 'Execute'}
           </button>
         </div>
       </div>
@@ -187,10 +187,10 @@ export function PipelineRunsPage() {
         {runs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="mb-5 rounded-xl border border-base-300 bg-base-200/40 p-7">
-              <TimerReset size={36} className="text-base-content/15" />
+              <TimerReset size={36} className="text-base-content/30" />
             </div>
             <h3 className="text-lg font-bold">No runs yet</h3>
-            <p className="mt-1.5 max-w-xs text-sm text-base-content/40">Execute this pipeline to create the first run record.</p>
+            <p className="mt-1.5 max-w-xs text-sm text-base-content/50">Execute this pipeline to create the first run record.</p>
             <button
               type="button"
               onClick={() => void handleExecute()}
@@ -198,7 +198,7 @@ export function PipelineRunsPage() {
               className={`btn btn-primary btn-sm mt-5 gap-2 ${executing ? 'iris-execute-ring' : ''}`}
             >
               <Zap size={14} />
-              {executing ? 'Launching…' : 'Execute Now'}
+              {executing ? 'Launching...' : 'Execute Now'}
             </button>
           </div>
         ) : filteredRuns.length === 0 ? (
@@ -212,10 +212,10 @@ export function PipelineRunsPage() {
             <div className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/95 px-5 py-1.5 backdrop-blur-sm"
               style={{ gridTemplateColumns: '28px 1fr 140px 90px 80px 28px' }}>
               <span />
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/25">Run</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/25">Started</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/25">Duration</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/25">Status</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Run</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Started</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Duration</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Status</span>
               <span />
             </div>
 
@@ -309,13 +309,13 @@ function RunRow({
       ? 'bg-error'
       : isCompleted
         ? 'bg-success'
-        : 'bg-base-content/20'
+        : 'bg-base-content/30'
 
   const rowBg = isFailed
     ? 'hover:bg-error/5'
     : isActive
       ? 'hover:bg-info/5'
-      : 'hover:bg-base-200/30'
+      : 'hover:bg-base-200/40'
 
   return (
     <Link
@@ -346,12 +346,12 @@ function RunRow({
       </div>
 
       {/* Timestamp */}
-      <span className="truncate font-mono text-[11px] tabular-nums text-base-content/40">
+      <span className="truncate font-mono text-[11px] tabular-nums text-base-content/50">
         {formatDateTime(run.startTime ?? run.createdAt)}
       </span>
 
       {/* Duration */}
-      <span className="font-mono text-[11px] tabular-nums text-base-content/50">
+      <span className="font-mono text-[11px] tabular-nums text-base-content/60">
         {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
       </span>
 
@@ -362,8 +362,9 @@ function RunRow({
 
       {/* Arrow */}
       <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
-        <span className="text-[10px] text-base-content/30">›</span>
+        <span className="text-[10px] text-base-content/45">View</span>
       </div>
     </Link>
   )
 }
+

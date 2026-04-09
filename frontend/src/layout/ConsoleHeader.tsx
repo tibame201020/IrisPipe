@@ -73,7 +73,7 @@ export function ConsoleHeader() {
             tabIndex={0}
             className="dropdown-content z-[100] mt-2 w-56 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-2xl"
           >
-            <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/30">
+            <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/40">
               Theme
             </div>
             <ul className="max-h-72 space-y-0.5 overflow-y-auto p-1">
@@ -117,12 +117,12 @@ function PageLabel({ pathname }: { pathname: string }) {
     <div className="flex items-center gap-1.5 text-sm min-w-0">
       {segments.map((seg, i) => (
         <span key={i} className="flex items-center gap-1.5 min-w-0">
-          {i > 0 && <span className="text-base-content/20 shrink-0">/</span>}
+          {i > 0 && <span className="text-base-content/35 shrink-0">/</span>}
           <span
             className={`truncate ${
               i === segments.length - 1
                 ? 'font-semibold text-base-content'
-                : 'text-base-content/40 font-medium'
+                : 'text-base-content/50 font-medium'
             }`}
           >
             {seg}

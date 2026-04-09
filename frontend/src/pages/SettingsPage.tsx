@@ -1,4 +1,4 @@
-import { Check, Database, Palette, Pencil, Plus, Trash2, Waypoints } from 'lucide-react'
+﻿import { Check, Database, Palette, Pencil, Plus, Trash2, Waypoints, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../state/theme'
 import { availableThemes } from '../state/theme.constants'
@@ -15,7 +15,7 @@ import {
   type DriverPreset,
 } from '../lib/api'
 
-// ─── Connections Tab ──────────────────────────────────────────────────────────
+// Connections tab
 
 function ConnectionsTab() {
   const [connections, setConnections] = useState<ConnectionDTO[]>([])
@@ -159,7 +159,7 @@ function ConnectionFormModal({
     try {
       const result = await testConnection({ driver: form.driver, url: form.url, username: form.username, password: form.password })
       setTestState(result.success ? 'ok' : 'fail')
-      setTestMsg(result.message + (result.serverInfo ? ` — ${result.serverInfo}` : '') + (result.latencyMs != null ? ` (${result.latencyMs}ms)` : ''))
+      setTestMsg(result.message + (result.serverInfo ? ` | ${result.serverInfo}` : '') + (result.latencyMs != null ? ` (${result.latencyMs}ms)` : ''))
     } catch {
       setTestState('fail')
       setTestMsg('Request failed')
@@ -167,11 +167,11 @@ function ConnectionFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center">
       <div className="bg-base-100 rounded-xl border border-base-300 shadow-2xl w-full max-w-lg mx-4 flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
           <div className="font-bold text-base">{id === 'new' ? 'New Connection' : 'Edit Connection'}</div>
-          <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={onClose}>✕</button>
+          <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={onClose} aria-label="Close dialog"><X size={12} /></button>
         </div>
         <div className="flex flex-col gap-4 p-5 overflow-y-auto">
           {/* Name */}
@@ -193,7 +193,7 @@ function ConnectionFormModal({
                   else setForm((f) => ({ ...f, driver: '', url: '' }))
                 }}
               >
-                <option value="__custom__">Custom…</option>
+                <option value="__custom__">Custom</option>
                 {presets.filter((p) => p.driverClass).map((p) => (
                   <option key={p.driverClass} value={p.driverClass}>{p.name}</option>
                 ))}
@@ -247,7 +247,13 @@ function ConnectionFormModal({
             </div>
             <div className="form-control gap-1 flex-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-base-content/40">Password</label>
-              <input type="password" className="input input-bordered input-sm w-full" placeholder="••••••••" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
+              <input
+                type="password"
+                className="input input-bordered input-sm w-full"
+                placeholder="Enter password"
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+              />
             </div>
           </div>
 
@@ -279,7 +285,7 @@ function ConnectionFormModal({
   )
 }
 
-// ─── Settings Page ────────────────────────────────────────────────────────────
+// Settings page
 
 type SettingsTab = 'appearance' | 'connections'
 
@@ -371,3 +377,4 @@ export function SettingsPage() {
     </div>
   )
 }
+

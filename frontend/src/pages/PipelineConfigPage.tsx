@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, FileUp, Link2, Plus, Save, Server, Trash2, Waypoints } from 'lucide-react'
+﻿import { ArrowDown, ArrowUp, FileUp, Link2, Plus, Save, Server, Trash2, Waypoints } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { ArrowLeft, ArrowRight, Pencil, X } from 'lucide-react'
@@ -50,17 +50,17 @@ type SelectedItem =
 type EditingJobTarget = { stageEditorId: string; jobEditorId: string }
 
 function buildConnectionSummary(database: { source: { driver?: string } | null; dest: { driver?: string } | null }): string {
-  const src = database.source?.driver ?? '—'
-  const dst = database.dest?.driver ?? '—'
-  if (src === '—' && dst === '—') return 'No connections configured'
-  return `${src} → ${dst}`
+  const src = database.source?.driver ?? '--'
+  const dst = database.dest?.driver ?? '--'
+  if (src === '--' && dst === '--') return 'No connections configured'
+  return `${src} -> ${dst}`
 }
 
 function buildStepSummary(job: { executions: Array<{ type?: string; name?: string | null }> }): string {
   const count = job.executions.length
   if (count === 0) return 'No steps'
-  const types = [...new Set(job.executions.map((s) => s.type ?? 'EXECUTE'))].slice(0, 3).join(' · ')
-  return `${count} step${count === 1 ? '' : 's'} · ${types}`
+  const types = [...new Set(job.executions.map((s) => s.type ?? 'EXECUTE'))].slice(0, 3).join(' | ')
+  return `${count} step${count === 1 ? '' : 's'} | ${types}`
 }
 
 export function PipelineConfigPage() {
@@ -181,7 +181,7 @@ export function PipelineConfigPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedItem])
 
-  // Ctrl+S / Cmd+S → save
+  // Ctrl+S / Cmd+S ??save
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
@@ -1114,7 +1114,7 @@ function JobEditorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      {/* Compact header — job name + stage + atomic level + close */}
+      {/* Compact header ??job name + stage + atomic level + close */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-base-300 bg-base-200/40 px-4 py-3">
         <span className="shrink-0 badge badge-primary badge-sm font-semibold" title={stage.stageName}>{stage.stageName}</span>
         <input
@@ -1140,7 +1140,7 @@ function JobEditorPanel({
       {/* 2-column body */}
       <div className="flex min-h-0 flex-1 divide-x divide-base-300 overflow-hidden">
 
-        {/* LEFT — Connections + Settings */}
+        {/* LEFT ??Connections + Settings */}
         <div className="w-[300px] shrink-0 overflow-y-auto divide-y divide-base-300">
           {/* Source connection */}
           <div className="p-4">
@@ -1241,7 +1241,7 @@ function JobEditorPanel({
           </div>
         </div>
 
-        {/* RIGHT — Step pills + inline editor */}
+        {/* RIGHT ??Step pills + inline editor */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {/* Step pills bar */}
           <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-base-300 bg-base-100 px-4 py-2.5">
@@ -1253,7 +1253,7 @@ function JobEditorPanel({
                 <button
                   key={step.editorId}
                   type="button"
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${hidden ? 'opacity-30' : ''} ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${hidden ? 'opacity-40' : ''} ${
                     isSelected
                       ? 'border-primary bg-primary text-primary-content'
                       : stepIssues > 0
@@ -1269,7 +1269,7 @@ function JobEditorPanel({
             })}
             <button
               type="button"
-              className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-base-300 px-3 py-1 text-[11px] text-base-content/40 transition-colors hover:border-primary/30 hover:text-primary/70"
+              className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-base-300 px-3 py-1 text-[11px] text-base-content/50 transition-colors hover:border-primary/30 hover:text-primary"
               onClick={handleAddStep}
             >
               <Plus size={11} />Add
@@ -1301,8 +1301,8 @@ function JobEditorPanel({
               onRemoveParameter={(paramId) => onRemoveParameter(selectedStep.editorId, paramId)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-base-content/35">
-              No steps — add one above
+            <div className="flex h-full items-center justify-center text-sm text-base-content/45">
+              No steps. Add one above.
             </div>
           )}
         </div>
@@ -1362,7 +1362,7 @@ function InlineStepEditor({
           placeholder="step name"
           onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
         />
-        <span className="shrink-0 font-mono text-[10px] text-base-content/30">{step.sql.length}c</span>
+        <span className="shrink-0 font-mono text-[10px] text-base-content/40">{step.sql.length}c</span>
         {issueCount > 0 ? <span className="badge badge-warning badge-xs shrink-0">{issueCount}</span> : null}
         <button type="button" className="btn btn-ghost btn-xs shrink-0" disabled={stepIndex === 0} onClick={() => onMove(-1)}><ArrowUp size={11} /></button>
         <button type="button" className="btn btn-ghost btn-xs shrink-0" disabled={stepIndex >= stepCount - 1} onClick={() => onMove(1)}><ArrowDown size={11} /></button>
@@ -1374,7 +1374,7 @@ function InlineStepEditor({
         {/* SQL Editor */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest text-base-content/35">SQL</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-base-content/45">SQL</span>
             {sqlErrors.length > 0 ? <FieldMessages messages={sqlErrors} /> : null}
           </div>
           <SqlEditor
@@ -1420,7 +1420,7 @@ function InlineStepEditor({
             </button>
           </div>
           {step.parameters.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-base-300 px-4 py-4 text-center text-[11px] text-base-content/35">
+            <div className="rounded-lg border border-dashed border-base-300 px-4 py-4 text-center text-[11px] text-base-content/45">
               No parameters
             </div>
           ) : (
@@ -1536,7 +1536,7 @@ function ConnectionPanel({
         password: currentConnection.password,
       })
       setTestState(result.success ? 'ok' : 'fail')
-      setTestMsg(result.message + (result.serverInfo ? ` — ${result.serverInfo}` : '') + (result.latencyMs != null ? ` (${result.latencyMs}ms)` : ''))
+      setTestMsg(result.message + (result.serverInfo ? ` | ${result.serverInfo}` : '') + (result.latencyMs != null ? ` (${result.latencyMs}ms)` : ''))
     } catch {
       setTestState('fail')
       setTestMsg('Request failed')
@@ -1590,7 +1590,7 @@ function ConnectionPanel({
                   else onChange({ ...currentConnection, driver: '', url: '' })
                 }}
               >
-                <option value="__custom__">Custom…</option>
+                <option value="__custom__">Custom</option>
                 {presets.filter((p) => p.driverClass).map((p) => (
                   <option key={p.driverClass} value={p.driverClass}>{p.name}</option>
                 ))}
@@ -1609,7 +1609,7 @@ function ConnectionPanel({
           <FieldMessages messages={errors?.driver} />
         </div>
 
-        {/* URL builder — placeholders if preset selected, else manual input */}
+        {/* URL builder: placeholders if preset selected, else manual input */}
         {selectedPreset && selectedPreset.name !== 'Custom' ? (
           <div className="px-4 py-2 flex flex-col gap-2 hover:bg-base-200/20 transition-colors">
             <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40">Connection</div>
@@ -1660,7 +1660,13 @@ function ConnectionPanel({
           <div className="flex-1 px-4 py-2 flex items-center gap-4 hover:bg-base-200/20 transition-colors">
             <div className="text-[10px] font-black uppercase tracking-widest text-base-content/40 w-16 shrink-0">Pass</div>
             <div className="flex-1 min-w-0">
-              <input type="password" className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')} placeholder="••••••••" value={currentConnection.password} onChange={(e) => onChange({ ...currentConnection, password: e.target.value })} />
+              <input
+                type="password"
+                className={getControlClass(Boolean(errors?.password?.length), 'input input-ghost input-sm h-7 w-full text-sm px-1')}
+                placeholder="Enter password"
+                value={currentConnection.password}
+                onChange={(e) => onChange({ ...currentConnection, password: e.target.value })}
+              />
               <FieldMessages messages={errors?.password} />
             </div>
           </div>
@@ -1862,4 +1868,5 @@ function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number) {
   next.splice(toIndex, 0, item)
   return next
 }
+
 

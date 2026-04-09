@@ -201,7 +201,7 @@ export function PipelineExplorerPage() {
       {/* ── Left: Tree Sidebar ── */}
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-200/30 overflow-hidden">
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
-          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/35">Workspace</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Workspace</span>
           <button
             type="button"
             className="btn btn-ghost btn-xs btn-square"
@@ -222,7 +222,7 @@ export function PipelineExplorerPage() {
           >
             <FolderTree size={14} className="shrink-0" />
             <span className="truncate">Root</span>
-            <span className="ml-auto text-[10px] text-base-content/30">
+            <span className="ml-auto text-[10px] text-base-content/40">
               {tree.folders.length + tree.pipelines.length}
             </span>
           </Link>
@@ -271,7 +271,7 @@ export function PipelineExplorerPage() {
             </Link>
             {currentPath.map((folder) => (
               <span key={folder.id} className="flex items-center gap-1.5">
-                <span className="text-base-content/20">/</span>
+                <span className="text-base-content/35">/</span>
                 <Link
                   to={buildExplorerLocation(folder.id)}
                   className="text-base-content/40 hover:text-primary transition-colors font-medium truncate"
@@ -282,7 +282,7 @@ export function PipelineExplorerPage() {
             ))}
             {currentPath.length > 0 && (
               <span className="flex items-center gap-1.5">
-                <span className="text-base-content/20">/</span>
+                <span className="text-base-content/35">/</span>
                 <span className="font-semibold text-base-content truncate">
                   {currentPath[currentPath.length - 1]?.folderName}
                 </span>
@@ -489,7 +489,7 @@ function FolderTreeItem({
           {folder.folderName}
         </Link>
         {folder.pipelines.length > 0 && (
-          <span className="text-[10px] text-base-content/25 shrink-0">{folder.pipelines.length}</span>
+          <span className="text-[10px] text-base-content/40 shrink-0">{folder.pipelines.length}</span>
         )}
       </div>
 

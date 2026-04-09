@@ -128,18 +128,18 @@ export function PipelineWorkspaceLayout() {
         <div className="flex items-center gap-3 px-5 py-2.5">
           {/* Breadcrumb + title */}
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-            <Link to="/pipeline" className="shrink-0 text-[11px] text-base-content/35 transition-colors hover:text-primary">
+            <Link to="/pipeline" className="shrink-0 text-[11px] text-base-content/45 transition-colors hover:text-primary">
               Root
             </Link>
             {folderPathNodes.map((folder) => (
               <span key={folder.id} className="flex shrink-0 items-center gap-1.5">
-                <span className="text-[11px] text-base-content/25">/</span>
-                <Link to={`/pipeline/folders/${folder.id}`} className="text-[11px] text-base-content/35 transition-colors hover:text-primary">
+                <span className="text-[11px] text-base-content/35">/</span>
+                <Link to={`/pipeline/folders/${folder.id}`} className="text-[11px] text-base-content/45 transition-colors hover:text-primary">
                   {folder.folderName}
                 </Link>
               </span>
             ))}
-            <span className="text-[11px] text-base-content/25">/</span>
+            <span className="text-[11px] text-base-content/35">/</span>
             <h1 className="min-w-0 truncate text-[14px] font-bold tracking-tight" title={pipeline.pipelineName}>
               {pipeline.pipelineName}
             </h1>
@@ -195,7 +195,7 @@ export function PipelineWorkspaceLayout() {
             >
               <span className="text-base-content/40">last run</span>
               <StatusBadge status={lastRun.status} subtle mode="text" />
-              <span className="font-mono text-base-content/30">
+              <span className="font-mono text-base-content/40">
                 {formatDuration(lastRun.startTime ?? lastRun.createdAt, lastRun.endTime)}
               </span>
             </Link>

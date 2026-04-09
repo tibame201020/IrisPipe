@@ -1,4 +1,4 @@
-import { AlertCircle, Filter, List, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react'
+﻿import { AlertCircle, Filter, List, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
@@ -158,9 +158,9 @@ export function RunDetailPage() {
           onClick: () => setSelectedJobId(job.id),
           onDoubleClick: () => setSelectedJobId(job.id),
           subtitle: (jobTotals.read > 0 || jobTotals.write > 0)
-            ? `↓ ${jobTotals.read.toLocaleString()}  ↑ ${jobTotals.write.toLocaleString()}`
+            ? `Read ${jobTotals.read.toLocaleString()} | Write ${jobTotals.write.toLocaleString()}`
             : undefined,
-          stepSummary: `${job.stepExecutionInfos.length} step${job.stepExecutionInfos.length !== 1 ? 's' : ''} · ${job.atomicLevel}`,
+          stepSummary: `${job.stepExecutionInfos.length} step${job.stepExecutionInfos.length !== 1 ? 's' : ''} | ${job.atomicLevel}`,
           duration: formatDuration(job.startTime, job.endTime),
           waitTime: job.createdAt && job.startTime ? formatDuration(job.createdAt, job.startTime) : undefined,
           errorLine,
@@ -215,7 +215,7 @@ export function RunDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      {/* ── Header row 1: Run ID + status + attempt pills + throughput + actions ── */}
+      {/* Header row 1: run ID, status, attempts, throughput, actions */}
       <div className="flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-100 px-5 py-2.5">
         {/* Left: run ID + status */}
         <div className="flex shrink-0 items-center gap-2">
@@ -253,8 +253,8 @@ export function RunDetailPage() {
         {/* Throughput summary */}
         {(attemptTotals.read > 0 || attemptTotals.write > 0) && (
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
-            <span className="font-mono text-[11px] text-success/70">↓ {attemptTotals.read.toLocaleString()}</span>
-            <span className="font-mono text-[11px] text-primary/70">↑ {attemptTotals.write.toLocaleString()}</span>
+            <span className="font-mono text-[11px] text-success/70">R {attemptTotals.read.toLocaleString()}</span>
+            <span className="font-mono text-[11px] text-primary/70">W {attemptTotals.write.toLocaleString()}</span>
             {attemptTotals.rollback > 0 && (
               <span className="font-mono text-[11px] text-error/70">{attemptTotals.rollback} rb</span>
             )}
@@ -262,9 +262,9 @@ export function RunDetailPage() {
         )}
 
         {/* Duration + created (compact) */}
-        <div className="hidden shrink-0 items-center gap-2 text-[10px] text-base-content/30 xl:flex">
+        <div className="hidden shrink-0 items-center gap-2 text-[10px] text-base-content/40 xl:flex">
           <span className="font-mono">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
-          <span>·</span>
+          <span>|</span>
           <span>{formatDateTimeLong(detail.createdAt)}</span>
         </div>
 
@@ -311,14 +311,14 @@ export function RunDetailPage() {
         </div>
       </div>
 
-      {/* ── Header row 2: Board / Logs tab ── */}
+      {/* Header row 2: board and logs tabs */}
       <div className="flex shrink-0 items-center gap-0 border-b border-base-300 bg-base-200/15 px-5">
         <button
           type="button"
           className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
             mainTab === 'board'
               ? 'border-primary text-primary'
-              : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+              : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-300'
           }`}
           onClick={() => setMainTab('board')}
         >
@@ -329,7 +329,7 @@ export function RunDetailPage() {
           className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
             mainTab === 'logs'
               ? 'border-primary text-primary'
-              : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+              : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-300'
           }`}
           onClick={() => {
             setMainTab('logs')
@@ -345,7 +345,7 @@ export function RunDetailPage() {
 
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/30">
         {mainTab === 'board' ? (
           <StageLaneBoard
@@ -358,13 +358,13 @@ export function RunDetailPage() {
             {logsLoading ? (
               <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
             ) : !logs || logs.length === 0 ? (
-              <div className="py-10 text-center text-base-content/30">No log entries available</div>
+              <div className="py-10 text-center text-base-content/40">No log entries available</div>
             ) : (
               <div className="flex flex-col gap-0.5">
                 {logs.map((entry, idx) => (
                   <div key={idx} className={`flex items-start gap-3 rounded px-2 py-0.5 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
-                    <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/30'}`}>{entry.level}</span>
-                    <span className="shrink-0 tabular-nums text-base-content/30">
+                    <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>{entry.level}</span>
+                    <span className="shrink-0 tabular-nums text-base-content/40">
                       {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
                     </span>
                     <span className="flex-1 break-all">{entry.message}</span>
@@ -380,7 +380,7 @@ export function RunDetailPage() {
         ) : null}
       </main>
 
-      {/* ── Delete Confirm Modal ── */}
+      {/* Delete confirmation modal */}
       {deleteConfirmOpen ? (
         <dialog open className="modal modal-open">
           <div className="modal-box max-w-md border border-base-300">
@@ -415,7 +415,7 @@ export function RunDetailPage() {
   )
 }
 
-// ─── Job Runtime Drawer ───────────────────────────────────────────────────────
+// Job runtime drawer
 
 function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: () => void }) {
   const totals = job.stepExecutionInfos.reduce(
@@ -448,9 +448,9 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             </div>
             <div className="mt-2 truncate text-xl font-bold">{job.jobName}</div>
             {job.startTime && (
-              <div className="mt-1 text-xs text-base-content/40 font-mono">
+              <div className="mt-1 text-xs text-base-content/50 font-mono">
                 {formatDateTimeLong(job.startTime)}
-                {job.endTime && <span className="ml-2 text-base-content/30">· {formatDuration(job.startTime, job.endTime)}</span>}
+                {job.endTime && <span className="ml-2 text-base-content/30">| {formatDuration(job.startTime, job.endTime)}</span>}
               </div>
             )}
           </div>
@@ -460,16 +460,16 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
-          {/* ── I/O Throughput Section ── */}
+          {/* I/O throughput section */}
           <div className="mb-5">
             <SectionLabel>I/O Throughput</SectionLabel>
             <div className="mt-2 space-y-3">
-              <ThroughputBar label="Read" value={totals.read} max={maxIO} color="success" icon="↓" />
-              <ThroughputBar label="Write" value={totals.write} max={maxIO} color="primary" icon="↑" />
+              <ThroughputBar label="Read" value={totals.read} max={maxIO} color="success" icon="R" />
+              <ThroughputBar label="Write" value={totals.write} max={maxIO} color="primary" icon="W" />
             </div>
           </div>
 
-          {/* ── Transaction Section ── */}
+          {/* Transaction section */}
           <div className="mb-5">
             <SectionLabel>Transactions</SectionLabel>
             <div className="mt-2 grid grid-cols-2 gap-3">
@@ -484,7 +484,7 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             )}
           </div>
 
-          {/* ── Skip / Filter Section (only show if non-zero) ── */}
+          {/* Skip/filter section; only show when non-zero */}
           {(totals.filter > 0 || totalSkip > 0) && (
             <div className="mb-5">
               <SectionLabel>Skip & Filter</SectionLabel>
@@ -497,7 +497,7 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             </div>
           )}
 
-          {/* ── Step Details ── */}
+          {/* Step details */}
           <div>
             <SectionLabel>{job.stepExecutionInfos.length} Step{job.stepExecutionInfos.length !== 1 ? 's' : ''}</SectionLabel>
             <div className="mt-2 space-y-3">
@@ -512,7 +512,7 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
   )
 }
 
-// ─── Step Detail Card ─────────────────────────────────────────────────────────
+// Step detail card
 
 function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: number }) {
   const totalSkip = step.readSkipCount + step.writeSkipCount + step.processSkipCount
@@ -524,14 +524,14 @@ function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: numbe
       <div className={`px-4 py-3 flex items-center justify-between gap-3 ${hasIssues ? 'bg-warning/5' : 'bg-base-200/30'}`}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-base-content/30">Step {index + 1}</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-base-content/40">Step {index + 1}</span>
             {hasIssues && <span className="badge badge-warning badge-xs">Issues</span>}
           </div>
           <div className="truncate text-sm font-semibold mt-0.5">{step.stepName}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {step.startTime && step.endTime && (
-            <span className="text-[10px] font-mono text-base-content/30">{formatDuration(step.startTime, step.endTime)}</span>
+            <span className="text-[10px] font-mono text-base-content/40">{formatDuration(step.startTime, step.endTime)}</span>
           )}
           <StatusBadge status={step.status as PipelineRunStatus} subtle />
         </div>
@@ -569,7 +569,7 @@ function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: numbe
   )
 }
 
-// ─── Sub Components ───────────────────────────────────────────────────────────
+// Subcomponents
 
 function ThroughputBar({
   label,
@@ -593,7 +593,7 @@ function ThroughputBar({
   if (compact) {
     return (
       <div className="flex items-center gap-3 py-1">
-        <span className="text-[10px] uppercase tracking-widest text-base-content/35 w-14 shrink-0">{label}</span>
+        <span className="text-[10px] uppercase tracking-widest text-base-content/45 w-14 shrink-0">{label}</span>
         <div className="flex-1 h-1 rounded-full bg-base-300/50 overflow-hidden">
           <div
             className={`h-full rounded-full iris-bar-fill ${barMap[color]}`}
@@ -641,7 +641,7 @@ function MiniCounter({
   return (
     <div className="text-center">
       <div className={`text-base font-bold font-mono ${highlight ? colorMap[highlight] : ''}`}>{value.toLocaleString()}</div>
-      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-base-content/30">{label}</div>
+      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-base-content/40">{label}</div>
     </div>
   )
 }
@@ -660,11 +660,11 @@ function AtomicLevelBadge({ level }: { level: AtomicLevel }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/35">{children}</div>
+    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">{children}</div>
   )
 }
 
-// ─── Shared Tiles ─────────────────────────────────────────────────────────────
+// Shared tiles
 
 function SummaryTile({
   label,
@@ -680,13 +680,13 @@ function SummaryTile({
   const colorMap = { success: 'text-success', error: 'text-error', warning: 'text-warning' }
   return (
     <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">{label}</div>
       <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''} ${highlight ? colorMap[highlight] : ''}`}>{value}</div>
     </div>
   )
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Helpers
 
 function buildStageSummary(stage: PipelineRunStageInfo) {
   const completedJobs = stage.jobs.filter((job) => job.status === 'COMPLETED').length
@@ -697,3 +697,4 @@ function buildStageSummary(stage: PipelineRunStageInfo) {
   if (stoppedJobs > 0) return `${stoppedJobs} stopped, ${completedJobs} completed`
   return `${completedJobs}/${stage.jobs.length} completed`
 }
+

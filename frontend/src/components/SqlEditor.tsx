@@ -64,7 +64,7 @@ export function SqlEditor({ value, onChange, readOnly = false, minHeight = '120p
   return (
     <div
       ref={containerRef}
-      className="border border-base-300 rounded-lg overflow-hidden text-sm"
+      className="iris-code-area overflow-hidden text-sm"
     />
   )
 }

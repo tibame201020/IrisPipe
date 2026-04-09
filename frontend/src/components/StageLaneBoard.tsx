@@ -291,7 +291,7 @@ function StageLane({
                 <span className="badge badge-error badge-xs">{stage.issuesCount}</span>
               ) : null}
               {stage.status ? <StatusBadge status={stage.status} subtle /> : null}
-              <span className="text-[10px] text-base-content/30 tabular-nums">
+              <span className="text-[10px] text-base-content/40 tabular-nums">
                 {stage.jobs.length}j
               </span>
             </div>
@@ -309,7 +309,7 @@ function StageLane({
           ) : null}
 
           {stage.summary ? (
-            <div className="mt-1 text-[10px] text-base-content/35">{stage.summary}</div>
+            <div className="mt-1 text-[10px] text-base-content/45">{stage.summary}</div>
           ) : null}
         </div>
 
@@ -324,7 +324,7 @@ function StageLane({
           ) : null}
           <SortableContext items={stage.jobs.map((j) => j.id)} strategy={rectSortingStrategy}>
             {stage.jobs.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/30">
+              <div className="rounded-lg border border-dashed border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/40">
                 No jobs — add one above
               </div>
             ) : (
@@ -344,11 +344,11 @@ function StageLane({
       {/* ── Stage Connector ── */}
       {showConnector ? (
         <div className="flex w-[52px] shrink-0 flex-col items-center justify-start pt-10 gap-1">
-          <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/20">then</span>
+          <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/35">then</span>
           <div className="flex items-center">
             <div className="h-[1.5px] w-7 bg-base-300" />
             <svg width="7" height="10" viewBox="0 0 7 10" fill="none" className="shrink-0">
-              <path d="M1 1L6 5L1 9" stroke="hsl(var(--bc)/0.2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M1 1L6 5L1 9" stroke="hsl(var(--bc)/0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>
@@ -472,7 +472,7 @@ function StageLaneJob({
 
         {/* Step summary */}
         {job.stepSummary ? (
-          <div className="mt-0.5 truncate text-[10px] text-base-content/30">
+          <div className="mt-0.5 truncate text-[10px] text-base-content/40">
             {job.stepSummary}
           </div>
         ) : null}
@@ -484,7 +484,7 @@ function StageLaneJob({
               <span className="font-mono text-[10px] font-medium text-base-content/50">{job.duration}</span>
             ) : null}
             {job.waitTime ? (
-              <span className="font-mono text-[10px] text-base-content/25">{job.waitTime} wait</span>
+              <span className="font-mono text-[10px] text-base-content/35">{job.waitTime} wait</span>
             ) : null}
           </div>
         ) : null}
@@ -499,7 +499,7 @@ function StageLaneJob({
         {/* Atomic badge */}
         {job.badges && job.badges.length > 0 ? (
           <div className="mt-2">
-            <span className="rounded bg-base-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/35">
+            <span className="rounded bg-base-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/45">
               {job.badges[0]}
             </span>
           </div>
@@ -525,7 +525,7 @@ function JobOverlay({ job }: { job: StageLaneJobCard }) {
       <div className="px-2.5 py-2.5">
         <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>
         {job.subtitle ? <div className="mt-1.5 truncate text-[10.5px] text-base-content/45">{job.subtitle}</div> : null}
-        {job.stepSummary ? <div className="mt-0.5 truncate text-[10px] text-base-content/30">{job.stepSummary}</div> : null}
+        {job.stepSummary ? <div className="mt-0.5 truncate text-[10px] text-base-content/40">{job.stepSummary}</div> : null}
       </div>
     </div>
   )
@@ -548,7 +548,7 @@ function StageOverlay({ stage }: { stage: StageLaneData }) {
               <div className="w-[3px] shrink-0 bg-base-300" />
               <div className="px-2.5 py-2">
                 <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>
-                {job.subtitle ? <div className="mt-1 truncate text-[10.5px] text-base-content/40">{job.subtitle}</div> : null}
+                {job.subtitle ? <div className="mt-1 truncate text-[10.5px] text-base-content/50">{job.subtitle}</div> : null}
               </div>
             </div>
           ))}

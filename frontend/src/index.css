@@ -9,34 +9,23 @@
     color-scheme: light;
     --theme-font: 'Outfit', sans-serif;
     --theme-mono-font: 'JetBrains Mono', 'Share Tech Mono', monospace;
-    --theme-code-bg: hsl(220 20% 97%);
-    --theme-code-border: hsl(220 15% 88%);
+    --theme-code-bg: hsl(var(--b2));
+    --theme-code-border: hsl(var(--b3));
     --sidebar-width: 240px;
     --sidebar-collapsed-width: 64px;
     --header-height: 52px;
 
-    /* IrisPipe State Tokens - Light */
-    --status-pending: 215 16% 47%;
-    --status-running: 217 91% 60%;
-    --status-success: 142 71% 45%;
-    --status-failed: 0 84% 60%;
-    --status-stopped: 38 92% 50%;
-    --status-abandoned: 215 14% 34%;
+    --status-pending: var(--n);
+    --status-running: var(--in);
+    --status-success: var(--su);
+    --status-failed: var(--er);
+    --status-stopped: var(--wa);
+    --status-abandoned: var(--bc);
   }
 
-  [data-theme='business'] {
+  [data-theme='dark'],
+  [data-theme='dracula'] {
     color-scheme: dark;
-    --theme-font: 'Outfit', sans-serif;
-    --theme-code-bg: hsl(220 18% 10%);
-    --theme-code-border: hsl(220 15% 20%);
-
-    /* IrisPipe State Tokens - Dark */
-    --status-pending: 215 20% 45%;
-    --status-running: 217 91% 65%;
-    --status-success: 142 71% 55%;
-    --status-failed: 0 84% 65%;
-    --status-stopped: 38 92% 55%;
-    --status-abandoned: 215 14% 28%;
   }
 
   * {
@@ -93,7 +82,7 @@
 
 @layer components {
   .iris-glass {
-    @apply border border-white/10 bg-white/5 backdrop-blur-md;
+    @apply border border-base-content/10 bg-base-100/70 backdrop-blur-md;
   }
 
   .iris-card {
@@ -131,7 +120,7 @@
 
   /* Audit Edge Premium Styling */
   .react-flow__edge-path.audit-edge-path {
-    stroke: #6f7cff !important;
+    stroke: hsl(var(--p)) !important;
     stroke-width: 1.5px !important;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -179,6 +168,42 @@
     font-size: 0.8125rem;
     line-height: 1.6;
     letter-spacing: 0.01em;
+  }
+  .iris-code-area .cm-editor,
+  .iris-code-area .cm-scroller,
+  .iris-code-area .cm-content {
+    background: transparent;
+    color: hsl(var(--bc));
+  }
+  .iris-code-area .cm-editor.cm-focused {
+    outline: none;
+  }
+  .iris-code-area .cm-gutters {
+    background: hsl(var(--b2));
+    color: hsl(var(--bc) / 0.45);
+    border-right: 1px solid var(--theme-code-border);
+  }
+  .iris-code-area .cm-activeLine,
+  .iris-code-area .cm-activeLineGutter {
+    background: hsl(var(--b3) / 0.5);
+  }
+  .iris-code-area .cm-selectionBackground,
+  .iris-code-area.cm-focused .cm-selectionBackground,
+  .iris-code-area .cm-selectionLayer .cm-selectionBackground {
+    background: hsl(var(--p) / 0.18) !important;
+  }
+  .iris-code-area .cm-cursor,
+  .iris-code-area .cm-dropCursor {
+    border-left-color: hsl(var(--bc)) !important;
+  }
+  .iris-code-area .cm-panels {
+    background: hsl(var(--b1));
+    color: hsl(var(--bc));
+    border-color: var(--theme-code-border);
+  }
+
+  .iris-scrim {
+    @apply bg-base-content/20 backdrop-blur-sm;
   }
 
   /* Pipeline card with left accent */

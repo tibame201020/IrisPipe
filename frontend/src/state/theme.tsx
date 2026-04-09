@@ -12,7 +12,7 @@ const STORAGE_KEY = 'irispipe-console-theme'
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeName, setThemeNameState] = useState<ThemeName>(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    return availableThemes.includes(stored as ThemeName) ? (stored as ThemeName) : 'corporate'
+    return availableThemes.includes(stored as ThemeName) ? (stored as ThemeName) : 'light'
   })
 
   useEffect(() => {

@@ -59,7 +59,7 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
           </div>
           <div className="iris-header">JOB {data.index + 1}</div>
         </div>
-        <Grip size={16} className="text-base-content/20 group-hover:text-primary transition-colors cursor-grab active:cursor-grabbing" />
+        <Grip size={16} className="text-base-content/35 group-hover:text-primary transition-colors cursor-grab active:cursor-grabbing" />
       </div>
 
       <div className="mb-4 truncate text-lg font-bold tracking-tight" title={data.job.jobName}>
@@ -68,27 +68,27 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-base-300/50 bg-base-200/40 p-2">
-           <div className="mb-1 text-[9px] font-black uppercase tracking-widest opacity-30">Atomic</div>
+           <div className="mb-1 text-[9px] font-black uppercase tracking-widest text-base-content/40">Atomic</div>
            <div className="text-xs font-bold">{data.job.setting.atomicLevel || 'JOB'}</div>
         </div>
         <div className="rounded-xl border border-base-300/50 bg-base-200/40 p-2">
-           <div className="mb-1 text-[9px] font-black uppercase tracking-widest opacity-30">Executions</div>
+           <div className="mb-1 text-[9px] font-black uppercase tracking-widest text-base-content/40">Executions</div>
            <div className="text-xs font-bold">{data.job.executions.length}</div>
         </div>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="flex items-center gap-2 rounded-xl border border-base-300/50 bg-base-200/20 px-3 py-2">
-          <Server size={13} className={sourceConfigured ? 'text-success' : 'text-base-content/25'} />
+          <Server size={13} className={sourceConfigured ? 'text-success' : 'text-base-content/40'} />
           <div className="min-w-0">
-            <div className="text-[9px] font-black uppercase tracking-widest opacity-30">Source</div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-base-content/40">Source</div>
             <div className="truncate text-[11px] font-semibold">{sourceConfigured ? 'Configured' : 'Missing'}</div>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-base-300/50 bg-base-200/20 px-3 py-2">
-          <Link2 size={13} className={destConfigured ? 'text-success' : 'text-base-content/25'} />
+          <Link2 size={13} className={destConfigured ? 'text-success' : 'text-base-content/40'} />
           <div className="min-w-0">
-            <div className="text-[9px] font-black uppercase tracking-widest opacity-30">Dest</div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-base-content/40">Dest</div>
             <div className="truncate text-[11px] font-semibold">{destConfigured ? 'Configured' : 'Missing'}</div>
           </div>
         </div>
@@ -99,7 +99,7 @@ function PipelineJobNodeCard({ data, selected }: NodeProps<PipelineJobNode>) {
           <PlayCircle size={12} />
           <span>Click to edit</span>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-30">Definition</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-base-content/40">Definition</span>
       </div>
 
       <Handle
@@ -162,7 +162,7 @@ export function PipelineCanvas({
           type: 'audit',
           animated: false,
           style: {
-            stroke: '#6f7cff',
+            stroke: 'hsl(var(--p))',
             strokeWidth: 1.5,
             opacity: 0.9,
           },
@@ -170,7 +170,7 @@ export function PipelineCanvas({
             type: MarkerType.ArrowClosed,
             width: 14,
             height: 14,
-            color: '#6f7cff',
+            color: 'hsl(var(--p))',
           },
         }}
       >
@@ -184,7 +184,10 @@ export function PipelineCanvas({
       </ReactFlow>
       
       {/* Visual Overlay for Canvas Depth */}
-      <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_80px_rgba(0,0,0,0.05)]" />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ boxShadow: 'inset 0 0 80px hsl(var(--bc) / 0.06)' }}
+      />
     </div>
   )
 }
