@@ -8,6 +8,8 @@ import { SqlEditor } from '../components/SqlEditor'
 import { PipelineImportDialog } from '../components/PipelineImportDialog'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
+import { ActionButton, ActionLink } from '../components/ui/Action'
+import { PanelHeader, SummaryTile as SharedSummaryTile, SurfaceBox } from '../components/ui/Surface'
 import {
   createPipelineConfig,
   getApiErrorMessage,
@@ -201,9 +203,9 @@ export function PipelineConfigPage() {
         issuesCount: stageSemantic.issueCount,
         toolbar: (
         <>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
+          <ActionButton
+            size="xs"
+            tone="ghost"
             title="Add stage to the right"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -212,10 +214,10 @@ export function PipelineConfigPage() {
             }}
           >
             <Plus size={13} />
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
+          </ActionButton>
+          <ActionButton
+            size="xs"
+            tone="ghost"
             title="Add job"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -231,10 +233,10 @@ export function PipelineConfigPage() {
             }}
           >
             <Plus size={13} />
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs text-error"
+          </ActionButton>
+          <ActionButton
+            size="xs"
+            tone="dangerGhost"
             title="Delete stage"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -243,7 +245,7 @@ export function PipelineConfigPage() {
             }}
           >
             <Trash2 size={13} />
-          </button>
+          </ActionButton>
         </>
         ),
         jobs: stage.jobs.map((job) => {
@@ -264,9 +266,9 @@ export function PipelineConfigPage() {
           badges: [`${job.setting.atomicLevel ?? 'JOB'}`],
           toolbar: (
           <>
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs"
+            <ActionButton
+              size="xs"
+              tone="ghost"
               title="Edit job"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
@@ -275,10 +277,10 @@ export function PipelineConfigPage() {
               }}
             >
               <Pencil size={13} />
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs text-error"
+            </ActionButton>
+            <ActionButton
+              size="xs"
+              tone="dangerGhost"
               title="Delete job"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
@@ -287,7 +289,7 @@ export function PipelineConfigPage() {
               }}
             >
               <Trash2 size={13} />
-            </button>
+            </ActionButton>
           </>
           ),
         })}),
@@ -643,9 +645,9 @@ export function PipelineConfigPage() {
         title="Pipeline config unavailable"
         description={error}
         action={
-          <Link to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} className="btn btn-primary">
+          <ActionLink to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} tone="primary">
             Back to Explorer
-          </Link>
+          </ActionLink>
         }
       />
     )
@@ -693,9 +695,8 @@ export function PipelineConfigPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm gap-2"
+          <ActionButton
+            tone="toolbar"
             onClick={() => {
               setImportDialogOpen(true)
               setImportError(null)
@@ -704,21 +705,20 @@ export function PipelineConfigPage() {
           >
             <FileUp size={14} />
             Import File
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm gap-2"
+          </ActionButton>
+          <ActionButton
+            tone="ghost"
             onClick={() => {
               insertStageAfter()
             }}
           >
             <Plus size={14} />
             Add Stage
-          </button>
-          <button type="button" className="btn btn-primary btn-sm gap-2" disabled={saving} onClick={() => void handleSave()}>
+          </ActionButton>
+          <ActionButton tone="primary" disabled={saving} onClick={() => void handleSave()}>
             <Save size={14} />
             {saving ? 'Saving...' : createMode ? 'Create Pipeline' : 'Save Pipeline'}
-          </button>
+          </ActionButton>
         </div>
       </div>
 
@@ -867,27 +867,24 @@ function StageEditorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-base-300 px-5 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="badge badge-ghost badge-sm">Stage {stageIndex + 1}</span>
-              {issueCount > 0 ? <span className="badge badge-warning badge-sm">{issueCount} issues</span> : null}
-            </div>
-            <div className="mt-3 truncate text-xl font-bold">{stage.stageName || 'Untitled stage'}</div>
-            <div className="mt-1 text-sm text-base-content/50">
-              Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow.
-            </div>
+      <PanelHeader
+        kicker={`Stage ${stageIndex + 1}`}
+        title={stage.stageName || 'Untitled stage'}
+        detail="Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow."
+        aside={(
+          <div className="flex items-center gap-2">
+            {issueCount > 0 ? <span className="badge badge-warning badge-sm">{issueCount} issues</span> : null}
+            <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close stage editor" onClick={onDismiss}>
+              <X size={16} />
+            </ActionButton>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" aria-label="Close stage editor" onClick={onDismiss}>
-            <X size={16} />
-          </button>
-        </div>
-      </div>
+        )}
+        className="px-5 py-4"
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="space-y-5">
-          <div className="iris-section-panel p-4">
+          <SurfaceBox variant="section" className="p-4">
             <div className="iris-header">Stage Settings</div>
             <label className="form-control mt-4">
               <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage Name</span>
@@ -902,42 +899,41 @@ function StageEditorPanel({
             </label>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button type="button" className="btn btn-ghost btn-sm" disabled={stageIndex === 0} onClick={() => onMoveStage(-1)}>
+              <ActionButton tone="ghost" disabled={stageIndex === 0} onClick={() => onMoveStage(-1)}>
                 <ArrowLeft size={14} />
                 Move Left
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
+              </ActionButton>
+              <ActionButton
+                tone="ghost"
                 disabled={stageIndex >= stageCount - 1}
                 onClick={() => onMoveStage(1)}
               >
                 Move Right
                 <ArrowRight size={14} />
-              </button>
-              <button type="button" className="btn btn-primary btn-sm gap-2" onClick={onAddJob}>
+              </ActionButton>
+              <ActionButton tone="primary" onClick={onAddJob}>
                 <Plus size={14} />
                 Add Job
-              </button>
+              </ActionButton>
               <span className="text-xs text-base-content/40">
                 {stageCount > 1 ? `Lane ${stageIndex + 1} of ${stageCount}` : 'Single stage pipeline'}
               </span>
             </div>
             <FieldMessages messages={stageJobErrors} className="mt-3" />
-          </div>
+          </SurfaceBox>
 
-          <div className="iris-section-panel p-4">
+          <SurfaceBox variant="section" className="p-4">
             <div className="iris-header">Stage Actions</div>
             <div className="mt-2 text-sm text-base-content/55">
               Removing a stage also removes the jobs defined inside it.
             </div>
             <div className="mt-4">
-              <button type="button" className="btn btn-ghost btn-sm text-error" onClick={onRemoveStage}>
+              <ActionButton tone="dangerGhost" onClick={onRemoveStage}>
                 <Trash2 size={14} />
                 Delete Stage
-              </button>
+              </ActionButton>
             </div>
-          </div>
+          </SurfaceBox>
         </div>
       </div>
     </div>
@@ -959,10 +955,10 @@ function PipelineOverviewInspector({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="iris-shell-bar border-b-0 px-5 py-4">
-        <div className="iris-header">Pipeline Overview</div>
-        <div className="mt-2">
-          <label className="form-control">
+      <PanelHeader
+        kicker="Pipeline Overview"
+        title={(
+          <label className="form-control mt-1">
             <span className="mb-2 iris-kicker">Pipeline Name</span>
             <input
               type="text"
@@ -973,17 +969,18 @@ function PipelineOverviewInspector({
             />
             <FieldMessages messages={getPipelineFieldMessages(validation, 'pipelineName')} />
           </label>
-        </div>
-      </div>
+        )}
+        className="px-5 py-4"
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="grid grid-cols-2 gap-2.5">
-          <SummaryTile label="Stages" value={draftReadiness.stageCount} />
-          <SummaryTile label="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} />
-          <SummaryTile label="Steps" value={draftReadiness.stepCount} />
-          <SummaryTile label="Issues" value={draftReadiness.issueCount} />
-          <SummaryTile label="Source Conn" value={draftReadiness.sourceConfiguredJobs} />
-          <SummaryTile label="Dest Conn" value={draftReadiness.destConfiguredJobs} />
+          <SharedSummaryTile kicker="Stages" value={draftReadiness.stageCount} detail="Stage lanes" tone="neutral" className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} detail="Runnable jobs" tone="success" className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Steps" value={draftReadiness.stepCount} detail="Configured steps" tone="neutral" className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Issues" value={draftReadiness.issueCount} detail="Validation findings" tone={draftReadiness.issueCount > 0 ? 'warning' : 'success'} className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Source Conn" value={draftReadiness.sourceConfiguredJobs} detail="Source ready" tone="info" className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Dest Conn" value={draftReadiness.destConfiguredJobs} detail="Destination ready" tone="info" className="px-3 py-2.5" />
         </div>
 
         <div
@@ -1059,45 +1056,44 @@ function JobInspectorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="iris-shell-bar border-b-0 px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="badge badge-primary badge-sm">{stage.stageName || 'Stage'}</span>
-              <span className={`badge badge-sm ${semantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
-                {semantic.issueCount > 0 ? `${semantic.issueCount} issues` : 'Ready to edit'}
-              </span>
-            </div>
-            <div className="mt-3 truncate text-lg font-bold">{job.jobName || 'Untitled job'}</div>
-            <div className="mt-1 text-sm text-base-content/50">{semantic.guidance}</div>
+      <PanelHeader
+        kicker={stage.stageName || 'Stage'}
+        title={job.jobName || 'Untitled job'}
+        detail={semantic.guidance}
+        aside={(
+          <div className="flex items-center gap-2">
+            <span className={`badge badge-sm ${semantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+              {semantic.issueCount > 0 ? `${semantic.issueCount} issues` : 'Ready to edit'}
+            </span>
+            <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close inspector" onClick={onDismiss}>
+              <X size={16} />
+            </ActionButton>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" aria-label="Close inspector" onClick={onDismiss}>
-            <X size={16} />
-          </button>
-        </div>
-      </div>
+        )}
+        className="px-5 py-4"
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="grid grid-cols-2 gap-2.5">
-          <SummaryTile label="Atomic" value={job.setting.atomicLevel ?? 'JOB'} />
-          <SummaryTile label="Steps" value={job.executions.length} />
-          <SummaryTile label="State" value={semantic.state} />
-          <SummaryTile label="Connections" value={semantic.connectionSummary} />
+          <SharedSummaryTile kicker="Atomic" value={job.setting.atomicLevel ?? 'JOB'} detail="Execution level" tone="neutral" className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Steps" value={job.executions.length} detail="Job steps" tone="neutral" className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="State" value={semantic.state} detail="Semantic state" tone={semantic.state === 'error' ? 'error' : semantic.state === 'warning' ? 'warning' : 'success'} className="px-3 py-2.5" />
+          <SharedSummaryTile kicker="Connections" value={semantic.connectionSummary} detail="Connection wiring" tone="info" className="px-3 py-2.5" />
         </div>
 
-        <div className="iris-section-panel mt-4 p-4">
+        <SurfaceBox variant="section" className="mt-4 p-4">
           <div className="iris-header">Selected Job</div>
           <div className="mt-3 space-y-2 text-sm text-base-content/60">
             <div>{semantic.connectionSummary}</div>
             <div>{semantic.stepSummary}</div>
           </div>
           <div className="mt-4">
-            <button type="button" className="btn btn-primary btn-sm gap-2" onClick={onOpenEditor}>
+            <ActionButton tone="primary" onClick={onOpenEditor}>
               <Pencil size={14} />
               Open Job Workspace
-            </button>
+            </ActionButton>
           </div>
-        </div>
+        </SurfaceBox>
 
         {jobMessages.length > 0 ? (
           <div className="iris-section-panel mt-4 border-warning/30 bg-warning/8 p-4">
@@ -1901,21 +1897,6 @@ function FieldMessages({
           {message}
         </div>
       ))}
-    </div>
-  )
-}
-
-function SummaryTile({
-  label,
-  value,
-}: {
-  label: string
-  value: string | number | null
-}) {
-  return (
-    <div className="iris-glass-soft px-3 py-2.5">
-      <div className="iris-kicker">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold text-base-content/82">{value ?? '-'}</div>
     </div>
   )
 }

@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { StatusBadge } from './StatusBadge'
+import { SurfaceBox } from './ui/Surface'
 
 export interface StageLaneJobCard {
   id: string
@@ -140,10 +141,10 @@ export function StageLaneBoard({
           backgroundSize: '20px 20px',
         }}
       >
-        <div className="iris-empty-panel flex h-full min-h-[360px] flex-col items-center justify-center bg-base-100/80 text-center">
+        <SurfaceBox variant="empty" className="flex h-full min-h-[360px] flex-col items-center justify-center bg-base-100/80 text-center">
           <div className="text-base font-semibold text-base-content/60">{emptyTitle}</div>
           <div className="mt-1.5 max-w-md text-sm text-base-content/35">{emptyDescription}</div>
-        </div>
+        </SurfaceBox>
       </div>
     )
   }
