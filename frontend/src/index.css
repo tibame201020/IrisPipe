@@ -317,7 +317,49 @@
   }
 
   .btn {
+    border-color: var(--theme-border-default);
     border-radius: var(--iris-radius-inset);
+  }
+
+  .btn.btn-ghost {
+    border-color: var(--theme-border-default);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.76), hsl(var(--b2) / 0.24));
+    box-shadow: inset 0 1px 0 hsl(var(--b1) / 0.28);
+    color: var(--theme-copy-strong);
+  }
+
+  .btn.btn-ghost:hover,
+  .btn.btn-ghost:focus-visible {
+    border-color: var(--theme-border-strong);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.92), hsl(var(--b2) / 0.38));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--b1) / 0.36),
+      0 8px 18px hsl(var(--bc) / 0.035);
+  }
+
+  .btn.btn-ghost.btn-square {
+    border-color: var(--theme-border-soft);
+    background: hsl(var(--b1) / 0.56);
+    box-shadow: inset 0 1px 0 hsl(var(--b1) / 0.22);
+  }
+
+  .btn.btn-ghost.btn-square:hover,
+  .btn.btn-ghost.btn-square:focus-visible {
+    border-color: var(--theme-border-default);
+    background: hsl(var(--b2) / 0.48);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--b1) / 0.34),
+      0 6px 16px hsl(var(--bc) / 0.03);
+  }
+
+  .btn.btn-ghost:disabled,
+  .btn.btn-ghost[disabled] {
+    border-color: var(--theme-border-soft);
+    background: hsl(var(--b1) / 0.38);
+    box-shadow: none;
+    color: var(--theme-copy-faint);
   }
 
   .badge.badge-ghost {
