@@ -103,7 +103,7 @@ function ConnectionsTab() {
 
       {deleteTarget ? (
         <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center">
-          <div className="mx-4 w-full max-w-md border border-base-300 bg-base-100 shadow-2xl">
+          <div className="iris-glass mx-4 w-full max-w-md overflow-hidden border shadow-2xl">
             <div className="border-b border-error/20 bg-error/5 px-5 py-4">
               <div className="font-bold text-base text-error">Delete Connection</div>
             </div>
@@ -209,7 +209,7 @@ function ConnectionFormModal({
 
   return (
     <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center">
-      <div className="bg-base-100 border border-base-300 shadow-2xl w-full max-w-lg mx-4 flex flex-col">
+      <div className="iris-glass w-full max-w-lg mx-4 flex flex-col overflow-hidden border shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
           <div className="font-bold text-base">{id === 'new' ? 'New Connection' : 'Edit Connection'}</div>
           <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={onClose} aria-label="Close dialog"><X size={12} /></button>
@@ -275,7 +275,7 @@ function ConnectionFormModal({
                   </div>
                 ))}
               </div>
-              <div className="text-[10px] font-mono text-base-content/40 truncate bg-base-200/50 px-2 py-1 rounded" title={form.url}>
+              <div className="iris-glass-band text-[10px] font-mono text-base-content/40 truncate px-2 py-1" title={form.url}>
                 {form.url || <span className="italic">URL preview</span>}
               </div>
             </div>
@@ -310,7 +310,7 @@ function ConnectionFormModal({
           </div>
 
           {blankPasswordOverwrite ? (
-            <label className="iris-inset-panel flex items-start gap-3 border-warning/25 bg-warning/10 px-3 py-3 text-sm text-base-content/75">
+            <label className="iris-glass-soft flex items-start gap-3 border-warning/25 bg-warning/10 px-3 py-3 text-sm text-base-content/75">
               <input
                 type="checkbox"
                 className="checkbox checkbox-warning checkbox-sm mt-0.5"
@@ -360,8 +360,8 @@ export function SettingsPage() {
   return (
     <div className="iris-page-canvas h-full overflow-y-auto px-5 py-5">
       <div className="mx-auto flex max-w-[1240px] flex-col gap-5">
-        <div className="iris-section-panel overflow-hidden p-0">
-          <div className="iris-shell-bar border-b-0 px-5 py-4">
+        <div className="iris-list-panel overflow-hidden p-0">
+          <div className="iris-shell-bar iris-glass border-b-0 px-5 py-4">
             <div role="tablist" className="tabs tabs-bordered w-fit">
               <button
                 type="button"
@@ -385,7 +385,7 @@ export function SettingsPage() {
           <div className="p-5">
             {activeTab === 'appearance' && (
               <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.7fr)_minmax(0,1fr)]">
-                <section className="iris-section-panel flex flex-col gap-4 px-5 py-5">
+                <section className="iris-list-panel flex flex-col gap-4 px-5 py-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="iris-kicker">Active Theme</div>
@@ -404,7 +404,7 @@ export function SettingsPage() {
                     </span>
                   </div>
 
-                  <div className="iris-inset-panel px-4 py-4">
+                  <div className="iris-glass-soft px-4 py-4">
                     <div className="iris-kicker">Selection Rules</div>
                     <div className="mt-2 space-y-2 text-sm iris-copy">
                       <div>Only approved daisyUI presets are exposed.</div>
@@ -413,7 +413,7 @@ export function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="iris-inset-panel px-4 py-4">
+                  <div className="iris-glass-soft px-4 py-4">
                     <div className="iris-kicker">Surface Preview</div>
                     <div className="mt-3 flex items-center gap-2">
                       <div className="h-9 flex-1 rounded-sm border border-base-300 bg-base-100" />
@@ -429,7 +429,7 @@ export function SettingsPage() {
                   </div>
                 </section>
 
-                <section className="iris-section-panel overflow-hidden p-0">
+                <section className="iris-list-panel overflow-hidden p-0">
                   <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
                     <div>
                       <div className="iris-kicker">Approved Themes</div>
@@ -448,10 +448,10 @@ export function SettingsPage() {
                             type="button"
                             onClick={() => setThemeName(theme)}
                             data-theme={theme}
-                            className={`rounded-sm border px-4 py-4 text-left transition-all ${
+                            className={`iris-glass-soft px-4 py-4 text-left transition-all ${
                               selected
                                 ? 'border-primary bg-primary/6 text-primary shadow-sm'
-                                : 'border-base-300 bg-base-100 hover:border-base-content/20 hover:bg-base-200/55'
+                                : 'hover:border-base-content/20 hover:bg-base-200/55'
                             }`}
                           >
                             <div className="flex items-start gap-3">
@@ -484,7 +484,7 @@ export function SettingsPage() {
             )}
 
             {activeTab === 'connections' && (
-              <section className="iris-section-panel px-5 py-5">
+              <section className="iris-list-panel px-5 py-5">
                 <ConnectionsTab />
               </section>
             )}

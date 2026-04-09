@@ -325,8 +325,8 @@ export function PipelineExplorerPage() {
   return (
     <div className="iris-page-canvas flex h-full min-h-0 overflow-hidden">
       {/* ── Left: Tree Sidebar ── */}
-      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/82 overflow-hidden backdrop-blur-sm">
-        <div className="iris-shell-bar flex items-center justify-between px-4 py-3">
+      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/72 overflow-hidden backdrop-blur-md">
+        <div className="iris-shell-bar iris-glass flex items-center justify-between px-4 py-3">
           <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Workspace</span>
           <button
             type="button"
@@ -342,8 +342,8 @@ export function PipelineExplorerPage() {
           {/* Root */}
           <Link
             to="/pipeline"
-            className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-              !numericFolderId ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+            className={`mx-2 flex items-center gap-2 rounded-sm px-3 py-2 text-sm transition-colors ${
+              !numericFolderId ? 'iris-glass-band text-primary font-semibold' : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
             }`}
           >
             <FolderTree size={14} className="shrink-0" />
@@ -389,7 +389,7 @@ export function PipelineExplorerPage() {
       {/* ── Right: Main Content ── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Content Toolbar */}
-        <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+        <div className="iris-shell-bar iris-glass flex shrink-0 items-center justify-between gap-4 px-6 py-3">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm min-w-0">
             <Link to="/pipeline" className="text-base-content/40 hover:text-primary transition-colors font-medium">
@@ -491,7 +491,7 @@ export function PipelineExplorerPage() {
             <div className="space-y-5">
               {/* Folders */}
               {folders.length > 0 && (
-                <section className="iris-section-panel overflow-hidden">
+                <section className="iris-list-panel overflow-hidden">
                   <div className="flex items-center justify-between border-b border-base-300/60 px-4 py-3">
                     <div className="iris-kicker">Directories</div>
                     <span className="iris-mono-meta">{folders.length} visible</span>
@@ -511,7 +511,7 @@ export function PipelineExplorerPage() {
 
               {/* Pipelines */}
               {pipelines.length > 0 && (
-                <section className="iris-section-panel overflow-hidden">
+                <section className="iris-list-panel overflow-hidden">
                   <div className="flex items-center justify-between border-b border-base-300/60 px-4 py-3">
                     <div className="iris-kicker">Pipelines</div>
                     <span className="iris-mono-meta">{pipelines.length} definitions</span>
@@ -622,8 +622,8 @@ function FolderTreeItem({
   return (
     <div>
       <div
-        className={`group flex items-center gap-1.5 py-1.5 pr-3 text-sm transition-colors cursor-pointer ${
-          isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content/55 hover:bg-base-200 hover:text-base-content'
+        className={`group mx-2 flex items-center gap-1.5 rounded-sm py-1.5 pr-3 text-sm transition-colors cursor-pointer ${
+          isActive ? 'iris-glass-band text-primary font-semibold' : 'text-base-content/55 hover:bg-base-200 hover:text-base-content'
         }`}
         style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}
         onClick={() => {
@@ -696,7 +696,7 @@ function ExplorerSummaryCard({
         : 'border-base-300/80 bg-base-100/88'
 
   return (
-    <div className={`iris-section-panel px-4 py-3.5 ${toneClass}`}>
+    <div className={`iris-glass-soft px-4 py-3.5 ${toneClass}`}>
       <div className="flex items-center justify-between">
         <div className="iris-kicker">{label}</div>
         {pulse ? <span className="size-2 rounded-full bg-info animate-pulse" /> : null}
@@ -719,7 +719,7 @@ function FolderCard({
   return (
     <div className="iris-list-row group flex items-center justify-between px-4 py-2.5">
       <Link to={buildExplorerLocation(folder.id)} className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-warning/10 text-warning group-hover:bg-warning/20 transition-colors">
+        <div className="iris-glass-band flex size-7 shrink-0 items-center justify-center text-warning group-hover:border-warning/25 transition-colors">
           <Folder size={14} fill="currentColor" fillOpacity={0.2} />
         </div>
         <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_120px] items-center gap-4">
@@ -770,7 +770,7 @@ function PipelineCard({
       : 'badge-ghost'
 
   return (
-    <div className="iris-list-row group grid gap-4 px-4 py-3.5 xl:grid-cols-[minmax(0,1fr)_272px] xl:items-stretch">
+    <div className="iris-list-row group grid gap-4 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_260px] xl:items-stretch">
       <Link
         to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
         className="min-w-0 flex-1"
@@ -808,7 +808,7 @@ function PipelineCard({
       </Link>
 
       <div className="flex flex-col gap-2.5 xl:border-l xl:border-base-300/60 xl:pl-4">
-        <div className="iris-inset-panel px-3 py-2.5">
+        <div className="iris-glass-soft px-3 py-2.5">
           <div className="iris-kicker">Latest Run</div>
           {signal?.lastRun ? (
             <div className="mt-2 space-y-1.5">
@@ -874,8 +874,8 @@ function NameDialog({
   if (!open) return null
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box p-0 overflow-hidden border border-base-300 shadow-2xl max-w-sm">
-        <div className="border-b border-base-300 bg-base-200/50 px-6 py-4">
+      <div className="modal-box iris-glass p-0 overflow-hidden border shadow-2xl max-w-sm">
+        <div className="iris-glass border-b border-base-300 px-6 py-4">
           <h3 className="text-sm font-bold uppercase tracking-widest opacity-50">{title}</h3>
         </div>
         <div className="p-6 space-y-4">
@@ -901,7 +901,7 @@ function NameDialog({
           </div>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop bg-base-300/60 backdrop-blur-sm">
+      <form method="dialog" className="modal-backdrop bg-base-300/55 backdrop-blur-md">
         <button type="button" onClick={onClose}>close</button>
       </form>
     </dialog>
@@ -917,8 +917,8 @@ function ConfirmDialog({
   if (!open) return null
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box p-0 overflow-hidden border border-base-300 shadow-2xl max-w-sm">
-        <div className="border-b border-error/20 bg-error/8 px-6 py-4">
+      <div className="modal-box iris-glass p-0 overflow-hidden border shadow-2xl max-w-sm">
+        <div className="iris-glass border-b border-error/20 bg-error/8 px-6 py-4">
           <h3 className="text-sm font-bold uppercase tracking-widest text-error">{title}</h3>
         </div>
         <div className="p-6">
@@ -932,7 +932,7 @@ function ConfirmDialog({
           </div>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop bg-base-300/60 backdrop-blur-sm">
+      <form method="dialog" className="modal-backdrop bg-base-300/55 backdrop-blur-md">
         <button type="button" onClick={onClose}>close</button>
       </form>
     </dialog>

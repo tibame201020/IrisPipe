@@ -96,13 +96,13 @@ export function OverviewPage() {
   return (
     <div className="iris-page-canvas flex h-full flex-col overflow-hidden">
       {/* ?�?� Header ?�?� */}
-      <div className="iris-shell-bar flex shrink-0 items-center justify-between px-8 py-5">
+      <div className="iris-shell-bar iris-glass flex shrink-0 items-center justify-between px-8 py-5">
         <div>
           <div className="iris-header">IrisPipe Engine</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Pipeline Overview</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className={`iris-inset-panel flex items-center gap-3 px-4 py-2 ${healthIsUp ? 'bg-success/5 border-success/25' : 'bg-error/5 border-error/25'}`}>
+          <div className={`iris-glass-band flex items-center gap-3 px-4 py-2 ${healthIsUp ? 'bg-success/5 border-success/25' : 'bg-error/5 border-error/25'}`}>
             <div className={`size-2 rounded-full ${healthIsUp ? 'bg-success animate-pulse' : 'bg-error'}`} />
             <span className={`text-xs font-bold uppercase tracking-widest ${healthIsUp ? 'text-success' : 'text-error'}`}>
               Backend {engine.status}
@@ -146,7 +146,7 @@ export function OverviewPage() {
         {/* ?�?� Engine Vitals Row ?�?� */}
         {(jvmPercent != null || uptime != null || activeBatchJobs != null) && (
           <div className="mb-5">
-            <div className="iris-section-panel overflow-hidden p-0 iris-scan-container">
+            <div className="iris-list-panel overflow-hidden p-0 iris-scan-container">
               <div className="flex items-center gap-2 border-b border-base-300 px-5 py-3">
                 <Server size={15} className="text-secondary" />
                 <h2 className="iris-kicker">Engine Vitals</h2>
@@ -183,7 +183,7 @@ export function OverviewPage() {
 
         {/* ?�?� Main Content Row ?�?� */}
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
-          <section className="iris-section-panel flex flex-col overflow-hidden p-0">
+          <section className="iris-list-panel flex flex-col overflow-hidden p-0">
             <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
               <div className="flex items-center gap-2">
                 <Radar size={16} className="text-primary" />
@@ -215,7 +215,7 @@ export function OverviewPage() {
           </section>
 
           <div className="space-y-5">
-            <section className="iris-section-panel overflow-hidden p-0">
+            <section className="iris-list-panel overflow-hidden p-0">
               <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={16} className="text-warning" />
@@ -243,7 +243,7 @@ export function OverviewPage() {
               </div>
             </section>
 
-            <section className="iris-section-panel flex flex-col overflow-hidden p-0">
+            <section className="iris-list-panel flex flex-col overflow-hidden p-0">
               <div className="flex items-center gap-2 border-b border-base-300 px-5 py-4">
                 <HistoryIcon size={16} className="text-secondary" />
                 <h2 className="iris-kicker">Recent Runs</h2>
@@ -310,7 +310,7 @@ function MetricCard({
   }
 
   return (
-    <div className={`iris-section-panel border px-4 py-4 ${accentMap[accent]}`}>
+    <div className={`iris-glass-soft px-4 py-4 ${accentMap[accent]}`}>
       <div className="mb-3 flex items-center justify-between">
         <div className={`rounded-sm border border-current/10 bg-base-100/60 p-2 ${iconColor[accent]}`}>
           <Icon size={18} />
@@ -337,7 +337,7 @@ function SuccessRateCard({ successRate, total, failed }: { successRate: number; 
   const c = colorMap[color]
 
   return (
-    <div className={`iris-section-panel border px-4 py-4 ${c.border} ${c.bg} flex flex-col gap-3`}>
+    <div className={`iris-glass-soft px-4 py-4 ${c.border} ${c.bg} flex flex-col gap-3`}>
       <div className="flex items-center justify-between">
         <div className={`rounded-sm border border-current/10 bg-base-100/60 p-2 ${c.text}`}>
           <TrendingUp size={18} />
@@ -429,7 +429,7 @@ function RunThroughputPanel({ runs }: { runs: PipelineRunSummaryInfo[] }) {
   const inFlight = runs.filter(r => isPipelineStatusActive(r.status)).length
 
   return (
-    <div className="iris-section-panel overflow-hidden p-0">
+            <div className="iris-list-panel overflow-hidden p-0">
       <div className="flex items-center gap-2 border-b border-base-300 px-5 py-3">
         <Activity size={15} className="text-primary" />
         <h2 className="iris-kicker">Run Breakdown</h2>
@@ -515,7 +515,7 @@ function AttentionRunRow({ run }: { run: PipelineRunSummaryInfo }) {
   return (
     <Link
       to={`/pipeline/items/${run.pipelineId}/runs/${run.id}${run.folderId ? `?folderId=${run.folderId}` : ''}`}
-      className="iris-inset-panel flex items-start gap-3 bg-base-100 px-3 py-3 transition-colors hover:border-primary/20 hover:bg-base-100/88"
+      className="iris-glass-soft flex items-start gap-3 px-3 py-3 transition-colors hover:border-primary/20 hover:bg-base-100/88"
     >
       <span className={`mt-1 size-2 shrink-0 rounded-full ${statusMeta.dotClass} ${active ? 'animate-pulse' : ''}`} />
       <div className="min-w-0 flex-1">
@@ -537,7 +537,7 @@ function ActiveRunCard({ run }: { run: PipelineRunSummaryInfo }) {
   return (
     <Link
       to={`/pipeline/items/${run.pipelineId}/runs/${run.id}${run.folderId ? `?folderId=${run.folderId}` : ''}`}
-      className="iris-inset-panel group flex items-center justify-between gap-4 px-4 py-3 hover:border-success/25 hover:bg-base-100/84"
+      className="iris-glass-soft group flex items-center justify-between gap-4 px-4 py-3 hover:border-success/25 hover:bg-base-100/84"
     >
       <div className="flex items-center gap-4">
         <div className="animate-iris-pulse rounded-sm bg-success/10 p-2.5 text-success shrink-0">

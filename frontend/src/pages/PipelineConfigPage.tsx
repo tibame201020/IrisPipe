@@ -1913,7 +1913,7 @@ function SummaryTile({
   value: string | number | null
 }) {
   return (
-    <div className="iris-inset-panel px-3 py-2.5">
+    <div className="iris-glass-soft px-3 py-2.5">
       <div className="iris-kicker">{label}</div>
       <div className="mt-1 truncate text-sm font-semibold text-base-content/82">{value ?? '-'}</div>
     </div>

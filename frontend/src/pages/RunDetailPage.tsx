@@ -751,7 +751,7 @@ function SummaryTile({
 }) {
   const colorMap = { success: 'text-success', error: 'text-error', warning: 'text-warning' }
   return (
-    <div className="iris-section-panel px-4 py-3">
+    <div className="iris-glass-soft px-4 py-3">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">{label}</div>
       <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''} ${highlight ? colorMap[highlight] : ''}`}>{value}</div>
     </div>
