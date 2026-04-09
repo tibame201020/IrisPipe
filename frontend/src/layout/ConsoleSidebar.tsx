@@ -13,13 +13,12 @@ export function ConsoleSidebar() {
 
   return (
     <aside
-      className={`flex h-full flex-col border-r border-base-300 bg-base-100/80 backdrop-blur-sm transition-[width] duration-300 ease-in-out shrink-0 ${
+      className={`iris-shell-bar flex h-full flex-col border-r border-base-300 transition-[width] duration-300 ease-in-out shrink-0 ${
         sidebarCollapsed ? 'w-[64px]' : 'w-[240px]'
       }`}
     >
-      {/* ── Logo ── */}
       <div className={`flex items-center gap-3 border-b border-base-300 ${sidebarCollapsed ? 'justify-center px-0 py-4' : 'px-5 py-4'}`}>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-content shadow-sm">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-content shadow-sm">
           <Activity size={18} strokeWidth={2.5} />
         </div>
         {!sidebarCollapsed && (
@@ -32,7 +31,6 @@ export function ConsoleSidebar() {
         )}
       </div>
 
-      {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto py-3">
         {!sidebarCollapsed && (
           <div className="px-4 pb-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/25">Navigation</div>
@@ -43,22 +41,20 @@ export function ConsoleSidebar() {
               <NavLink to={item.to}>
                 {({ isActive }) => (
                   <div
-                    className={`iris-nav-active flex w-full items-center rounded-lg py-2.5 transition-all duration-150 ${
+                    className={`iris-nav-active flex w-full items-center rounded-md py-2.5 transition-all duration-150 ${
                       sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'
                     } ${
                       isActive
                         ? 'bg-primary/10 text-primary font-semibold'
                         : 'text-base-content/55 hover:bg-base-200/70 hover:text-base-content'
                     }`}
-                    style={isActive && !sidebarCollapsed ? undefined : undefined}
                   >
-                    {/* Active left bar */}
-                    {isActive && (
+                    {isActive ? (
                       <span
                         className="absolute left-0 top-1/4 bottom-1/4 w-[3px] rounded-r-sm bg-primary"
                         style={{ position: 'absolute' }}
                       />
-                    )}
+                    ) : null}
                     <item.icon
                       size={18}
                       strokeWidth={isActive ? 2.5 : 2}
@@ -67,7 +63,7 @@ export function ConsoleSidebar() {
                     {!sidebarCollapsed && (
                       <div className="min-w-0">
                         <div className="truncate text-sm leading-tight">{item.label}</div>
-                        <div className={`truncate text-[10px] leading-none mt-0.5 ${isActive ? 'text-primary/60' : 'text-base-content/35'}`}>
+                        <div className={`mt-0.5 truncate text-[10px] leading-none ${isActive ? 'text-primary/60' : 'text-base-content/35'}`}>
                           {item.description}
                         </div>
                       </div>
@@ -80,12 +76,11 @@ export function ConsoleSidebar() {
         </ul>
       </nav>
 
-      {/* ── Collapse Toggle ── */}
       <div className="border-t border-base-300 p-2">
         <button
           type="button"
           onClick={toggleSidebar}
-          className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-semibold text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content/70 ${
+          className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-[11px] font-semibold text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content/70 ${
             sidebarCollapsed ? 'justify-center' : ''
           }`}
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}

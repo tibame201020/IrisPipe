@@ -74,7 +74,7 @@ export function PipelineImportDialog({
 
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box max-w-xl p-0 overflow-hidden rounded-2xl border border-base-300 shadow-2xl">
+      <div className="modal-box max-w-xl p-0 overflow-hidden border border-base-300 shadow-2xl">
         <div className="bg-base-200 px-6 py-4 border-b border-base-300">
           <h3 className="text-sm font-bold uppercase tracking-widest opacity-50">{title}</h3>
         </div>

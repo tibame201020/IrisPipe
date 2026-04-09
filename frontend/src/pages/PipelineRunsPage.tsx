@@ -129,10 +129,10 @@ export function PipelineRunsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
-      <section className="shrink-0 border-b border-base-300 bg-base-100 px-5 py-4">
+    <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
+      <section className="iris-toolbar-band shrink-0 px-5 py-4">
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
-          <div className="rounded-2xl border border-base-300 bg-base-200/20 px-4 py-4">
+          <div className="iris-section-panel bg-base-200/20 px-4 py-4">
             <div className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Runtime Signal</div>
             <div className="mt-2 flex items-center gap-2">
               {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
@@ -171,7 +171,7 @@ export function PipelineRunsPage() {
         </div>
       </section>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-base-300 bg-base-100 px-5 py-2">
+      <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-3 px-5 py-2">
         <div className="flex items-center gap-1.5">
           <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
           {(stats?.active ?? 0) > 0 && (
@@ -237,7 +237,7 @@ export function PipelineRunsPage() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {runs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="mb-5 rounded-xl border border-base-300 bg-base-200/40 p-7">
+            <div className="iris-inset-panel mb-5 p-7">
               <TimerReset size={36} className="text-base-content/30" />
             </div>
             <h3 className="text-lg font-bold">No runs yet</h3>
@@ -273,7 +273,7 @@ export function PipelineRunsPage() {
               <span />
             </div>
 
-            <div className="divide-y divide-base-200/70">
+            <div className="iris-list-panel">
               {filteredRuns.map((run, index) => (
                 <RunRow
                   key={run.id}
@@ -325,7 +325,7 @@ function HistoryOverviewCard({
   }
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${accentMap[accent]}`}>
+    <div className={`iris-section-panel px-4 py-4 ${accentMap[accent]}`}>
       <div className="flex items-center justify-between">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
         {pulse ? <span className="size-2 rounded-full bg-current animate-pulse opacity-70" /> : null}
@@ -365,12 +365,12 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${baseClass}`}
+      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${baseClass}`}
     >
       {pulse ? <span className="size-1.5 rounded-full bg-info animate-pulse shrink-0" /> : null}
       {label}
       {count > 0 ? (
-        <span className={`rounded-full px-1 py-0 text-[9px] font-bold tabular-nums ${active ? 'bg-current/20' : 'bg-base-200 text-base-content/40'}`}>
+        <span className={`rounded-sm px-1 py-0 text-[9px] font-bold tabular-nums ${active ? 'bg-current/20' : 'bg-base-200 text-base-content/40'}`}>
           {count}
         </span>
       ) : null}
@@ -402,7 +402,7 @@ function RunRow({
   return (
     <Link
       to={to}
-      className={`group grid items-center gap-4 px-5 py-3 transition-colors ${rowBg}`}
+      className={`iris-list-row group grid items-center gap-4 px-5 py-3 transition-colors ${rowBg}`}
       style={{ gridTemplateColumns: '28px minmax(0,1.5fr) 160px 90px 80px 50px' }}
     >
       <div className="flex justify-center">

@@ -140,7 +140,7 @@ export function StageLaneBoard({
           backgroundSize: '20px 20px',
         }}
       >
-        <div className="flex h-full min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-base-300 bg-base-100/80 text-center">
+        <div className="iris-empty-panel flex h-full min-h-[360px] flex-col items-center justify-center bg-base-100/80 text-center">
           <div className="text-base font-semibold text-base-content/60">{emptyTitle}</div>
           <div className="mt-1.5 max-w-md text-sm text-base-content/35">{emptyDescription}</div>
         </div>
@@ -165,7 +165,7 @@ export function StageLaneBoard({
       >
         <div className="px-6 py-5 h-full">
           <SortableContext items={stages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
-            <div className="flex h-full min-w-max items-start gap-0 pb-2">
+            <div className="flex h-full min-w-max items-start gap-4 pb-2">
               {stages.map((stage, index) => (
                 <StageLane
                   key={stage.id}
@@ -247,7 +247,7 @@ function StageLane({
       {/* ?�?� Stage Column ?�?� */}
       <section
         ref={setBodyRef}
-        className={`group/stage relative flex w-[256px] shrink-0 flex-col overflow-hidden rounded-xl border bg-base-100 shadow-sm transition-all duration-150 ${
+        className={`group/stage iris-section-panel relative flex w-[256px] shrink-0 flex-col overflow-hidden bg-base-100 shadow-sm transition-all duration-150 ${
           stage.selected
             ? 'border-primary/40 shadow-md'
             : 'border-base-300/80'
@@ -266,7 +266,7 @@ function StageLane({
         >
           <div className="flex items-center gap-2">
             {/* Stage index badge */}
-            <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black tabular-nums ${
+            <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black tabular-nums ${
               stage.selected ? 'bg-primary/15 text-primary' : 'bg-base-300/70 text-base-content/45'
             }`}>
               S{stageIndex + 1}
@@ -318,13 +318,13 @@ function StageLane({
           className={`flex-1 space-y-1.5 overflow-y-auto p-2 transition-colors ${stageBodyIsOver ? 'bg-primary/5' : ''}`}
         >
           {stageBodyIsOver ? (
-            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+            <div className="iris-inset-panel border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
               Drop here
             </div>
           ) : null}
           <SortableContext items={stage.jobs.map((j) => j.id)} strategy={rectSortingStrategy}>
             {stage.jobs.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/40">
+              <div className="iris-empty-panel border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/40">
                 No jobs yet. Add one above.
               </div>
             ) : (
@@ -343,7 +343,7 @@ function StageLane({
 
       {/* ?�?� Stage Connector ?�?� */}
       {showConnector ? (
-        <div className="flex w-[52px] shrink-0 flex-col items-center justify-start pt-10 gap-1">
+        <div className="flex w-[44px] shrink-0 flex-col items-center justify-start gap-1 pt-10">
           <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/35">then</span>
           <div className="flex items-center">
             <div className="h-[1.5px] w-7 bg-base-300" />
@@ -421,7 +421,7 @@ function StageLaneJob({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group/job relative flex overflow-hidden rounded-lg border transition-all duration-150 ${
+      className={`group/job relative flex overflow-hidden rounded-md border transition-all duration-150 ${
         job.selected
           ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/15'
           : 'border-base-300 bg-base-100 hover:border-base-content/20 hover:bg-base-100/80 hover:shadow-sm'
@@ -499,7 +499,7 @@ function StageLaneJob({
         {/* Atomic badge */}
         {job.badges && job.badges.length > 0 ? (
           <div className="mt-2">
-            <span className="rounded bg-base-200/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/55">
+            <span className="rounded-sm bg-base-200/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/55">
               {job.badges[0]}
             </span>
           </div>
@@ -520,7 +520,7 @@ function StageLaneJob({
 
 function JobOverlay({ job }: { job: StageLaneJobCard }) {
   return (
-    <div className="flex w-[256px] overflow-hidden rounded-lg border border-primary/40 bg-base-100/95 shadow-2xl backdrop-blur-sm">
+    <div className="flex w-[256px] overflow-hidden rounded-md border border-primary/40 bg-base-100/95 shadow-2xl backdrop-blur-sm">
       <div className="w-[3px] shrink-0 bg-primary" />
       <div className="px-2.5 py-2.5">
         <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>
@@ -534,17 +534,17 @@ function JobOverlay({ job }: { job: StageLaneJobCard }) {
 function StageOverlay({ stage }: { stage: StageLaneData }) {
   return (
     <div className="flex items-stretch">
-      <section className="flex w-[256px] shrink-0 flex-col overflow-hidden rounded-xl border border-primary/30 bg-base-100/95 shadow-2xl backdrop-blur-sm">
+      <section className="flex w-[256px] shrink-0 flex-col overflow-hidden rounded-md border border-primary/30 bg-base-100/95 shadow-2xl backdrop-blur-sm">
         <div className="h-[3px] w-full bg-primary" />
         <div className="border-b border-base-200 bg-base-200/50 px-3 py-2.5">
           <div className="flex items-center gap-2">
-            <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-black text-primary">S</span>
+            <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 text-[9px] font-black text-primary">S</span>
             <span className="truncate text-[13px] font-bold">{stage.title}</span>
           </div>
         </div>
         <div className="space-y-1.5 p-2">
           {stage.jobs.slice(0, 3).map((job) => (
-            <div key={job.id} className="flex overflow-hidden rounded-lg border border-base-200 bg-base-100">
+            <div key={job.id} className="flex overflow-hidden rounded-md border border-base-200 bg-base-100">
               <div className="w-[3px] shrink-0 bg-base-300" />
               <div className="px-2.5 py-2">
                 <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>

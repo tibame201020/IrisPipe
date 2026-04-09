@@ -131,8 +131,8 @@ export function PipelineWorkspaceLayout() {
   const configHref = `/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
-      <header className="z-30 shrink-0 border-b border-base-300 bg-base-100">
+    <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
+      <header className="iris-shell-bar relative z-20 shrink-0">
         <div className="flex items-center gap-3 px-5 py-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <Link to="/pipeline" className="shrink-0 text-[11px] text-base-content/45 transition-colors hover:text-primary">
@@ -196,7 +196,7 @@ export function PipelineWorkspaceLayout() {
           {lastRun ? (
             <Link
               to={`${runsHref.split('?')[0]}/${lastRun.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
+              className="flex shrink-0 items-center gap-1.5 rounded-md border border-base-300 bg-base-100 px-2.5 py-0.5 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
               title={`Last run: #${lastRun.id}`}
             >
               <span className="text-base-content/40">last run</span>

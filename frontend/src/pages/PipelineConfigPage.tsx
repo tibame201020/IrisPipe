@@ -661,9 +661,9 @@ export function PipelineConfigPage() {
   }))
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
+    <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
       {createMode ? (
-        <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="iris-shell-bar flex shrink-0 items-center justify-between px-6 py-3">
           <div className="breadcrumbs text-[13px] text-base-content/50">
             <ul>
               <li>
@@ -681,7 +681,7 @@ export function PipelineConfigPage() {
         </div>
       ) : null}
 
-      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
+      <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-4 px-6 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
           <span className="badge badge-ghost badge-sm">{draft.stages.length} stages</span>
           <span className="badge badge-ghost badge-sm">{draftJobCount} jobs</span>
@@ -726,7 +726,7 @@ export function PipelineConfigPage() {
       {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <main className="min-w-0 flex-1 overflow-hidden bg-base-200/40">
+        <main className="iris-page-canvas min-w-0 flex-1 overflow-hidden">
           <StageLaneBoard
             stages={stageLanes}
             emptyTitle="No stages"
@@ -736,7 +736,7 @@ export function PipelineConfigPage() {
           />
         </main>
 
-        <aside className="flex w-[320px] shrink-0 flex-col border-l border-base-300 bg-base-100">
+        <aside className="flex w-[320px] shrink-0 flex-col border-l border-base-300 bg-base-100/88 backdrop-blur-sm">
           <div className="border-b border-base-300 px-5 py-4">
             <div className="iris-header">Pipeline Summary</div>
             <div className="mt-2">
@@ -772,7 +772,7 @@ export function PipelineConfigPage() {
               <SummaryTile label="Dest Conn" value={draftReadiness.destConfiguredJobs} />
             </div>
 
-            <div className={`mt-6 rounded-2xl border p-4 ${
+            <div className={`iris-section-panel mt-6 p-4 ${
               draftReadiness.issueCount === 0
                 ? 'border-success/20 bg-success/5'
                 : draftReadiness.issueCount <= 3
@@ -797,7 +797,7 @@ export function PipelineConfigPage() {
             </div>
 
             {issues.length > 0 ? (
-              <div className="mt-6 rounded-2xl border border-warning/30 bg-warning/8 p-4">
+              <div className="iris-section-panel mt-6 border-warning/30 bg-warning/8 p-4">
                 <div className="iris-header text-warning">Validation Issues</div>
                 <div className="mt-2 text-xs text-warning/80">
                   Badges on stage lanes and job cards show where fixes are needed.
@@ -810,7 +810,7 @@ export function PipelineConfigPage() {
                 {issues.length > 6 ? <div className="mt-3 text-xs font-medium text-warning/80">+ {issues.length - 6} more issues</div> : null}
               </div>
             ) : (
-              <div className="mt-6 rounded-2xl border border-success/20 bg-success/5 p-4 text-sm text-success">
+              <div className="iris-section-panel mt-6 border-success/20 bg-success/5 p-4 text-sm text-success">
                 No validation issues
               </div>
             )}
@@ -946,7 +946,7 @@ function StageEditorPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="space-y-5">
-          <div className="rounded-2xl border border-base-300 bg-base-200/20 p-4">
+          <div className="iris-section-panel p-4">
             <div className="iris-header">Stage Settings</div>
             <label className="form-control mt-4">
               <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Stage Name</span>
@@ -985,7 +985,7 @@ function StageEditorPanel({
             <FieldMessages messages={stageJobErrors} className="mt-3" />
           </div>
 
-          <div className="rounded-2xl border border-base-300 bg-base-100 p-4">
+          <div className="iris-section-panel p-4">
             <div className="iris-header">Stage Actions</div>
             <div className="mt-2 text-sm text-base-content/55">
               Removing a stage also removes the jobs defined inside it.
@@ -1005,8 +1005,8 @@ function StageEditorPanel({
 
 function StageEditorDrawer(props: Omit<Parameters<typeof StageEditorPanel>[0], 'onDismiss'> & { onDismiss: () => void }) {
   return (
-    <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex justify-end">
-      <aside className="pointer-events-auto animate-iris-slide-in-right relative h-full w-[420px] max-w-[92vw] border-l border-base-300 bg-base-100 shadow-2xl">
+    <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex justify-end">
+      <aside className="pointer-events-auto animate-iris-slide-in-right relative h-full w-[420px] max-w-[92vw] border-l border-base-300 bg-base-100/96 shadow-2xl backdrop-blur-sm">
         <StageEditorPanel {...props} />
       </aside>
     </div>
@@ -1032,9 +1032,9 @@ function JobEditorModal({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-base-300/60 backdrop-blur-[2px] transition-all" onClick={onClose}>
+    <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center transition-all" onClick={onClose}>
       <div
-        className="h-[94vh] max-h-[1400px] w-[98vw] max-w-none overflow-hidden rounded-2xl border border-base-300 bg-base-100 p-0 shadow-2xl ring-1 ring-base-content/5"
+        className="h-[94vh] max-h-[1400px] w-[98vw] max-w-none overflow-hidden border border-base-300 bg-base-100 p-0 shadow-2xl ring-1 ring-base-content/5"
         onClick={(event) => event.stopPropagation()}
       >
         <JobEditorPanel {...props} onDismiss={onClose} />
@@ -1144,7 +1144,7 @@ function JobEditorPanel({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
       {/* Compact header ??job name + stage + atomic level + close */}
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-base-300 bg-base-200/40 px-4 py-3">
+      <div className="iris-toolbar-band flex shrink-0 items-center gap-2.5 px-4 py-3">
         <span className="shrink-0 badge badge-primary badge-sm font-semibold" title={stage.stageName}>{stage.stageName}</span>
         <input
           type="text"
@@ -1282,7 +1282,7 @@ function JobEditorPanel({
                 <button
                   key={step.editorId}
                   type="button"
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${hidden ? 'opacity-40' : ''} ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1 text-[11px] font-semibold transition-all ${hidden ? 'opacity-40' : ''} ${
                     isSelected
                       ? 'border-primary bg-primary text-primary-content'
                       : stepIssues > 0
@@ -1298,7 +1298,7 @@ function JobEditorPanel({
             })}
             <button
               type="button"
-              className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-base-300 px-3 py-1 text-[11px] text-base-content/50 transition-colors hover:border-primary/30 hover:text-primary"
+              className="flex shrink-0 items-center gap-1 rounded-md border border-dashed border-base-300 px-3 py-1 text-[11px] text-base-content/50 transition-colors hover:border-primary/30 hover:text-primary"
               onClick={handleAddStep}
             >
               <Plus size={11} />Add
@@ -1449,7 +1449,7 @@ function InlineStepEditor({
             </button>
           </div>
           {step.parameters.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-base-300 px-4 py-4 text-center text-[11px] text-base-content/45">
+            <div className="iris-empty-panel px-4 py-4 text-center text-[11px] text-base-content/45">
               No parameters
             </div>
           ) : (
@@ -1457,7 +1457,7 @@ function InlineStepEditor({
               {step.parameters.map((parameter) => (
                 <div
                   key={parameter.editorId}
-                  className="grid gap-2 rounded-lg border border-base-300 bg-base-100 p-2.5"
+                  className="iris-section-panel grid gap-2 bg-base-100 p-2.5"
                   style={{ gridTemplateColumns: '1fr 1fr 100px auto' }}
                 >
                   <input
@@ -1573,7 +1573,7 @@ function ConnectionPanel({
   }
 
   return (
-    <div className={`rounded-lg border shadow-sm overflow-hidden transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
+    <div className={`iris-section-panel overflow-hidden shadow-sm transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-2.5 border-b ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/40 border-base-300'}`}>
         <div className="flex items-center gap-2">
@@ -1586,7 +1586,7 @@ function ConnectionPanel({
               <button type="button" tabIndex={0} className="btn btn-xs btn-ghost gap-1 font-semibold">
                 <Link2 size={11} /> Load
               </button>
-              <ul tabIndex={0} className="dropdown-content z-10 menu menu-xs p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300">
+              <ul tabIndex={0} className="dropdown-content z-10 menu menu-xs w-52 border border-base-300 bg-base-100 p-2 shadow-lg">
                 {savedConns.map((c) => (
                   <li key={c.id}>
                     <button type="button" className="text-xs" onClick={() => loadFromLibrary(c)}>
@@ -1781,7 +1781,7 @@ function SummaryTile({
   value: string | number | null
 }) {
   return (
-    <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+    <div className="iris-section-panel px-4 py-3">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</div>
       <div className="mt-1 truncate text-sm font-semibold">{value ?? '-'}</div>
     </div>

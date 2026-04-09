@@ -12,6 +12,7 @@ export function ConsoleHeader() {
 
   useEffect(() => {
     let active = true
+
     const loadHealth = async () => {
       try {
         const response = await getHealth()
@@ -23,35 +24,37 @@ export function ConsoleHeader() {
         getApiErrorMessage(error, '')
       }
     }
+
     void loadHealth()
     const timer = window.setInterval(() => void loadHealth(), 15000)
-    return () => { active = false; window.clearInterval(timer) }
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
   }, [])
 
   const isUp = healthStatus === 'UP'
   const isChecking = healthStatus === 'CHECKING'
 
   return (
-    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-base-300 bg-base-100/80 px-5 gap-4 backdrop-blur-sm">
-      {/* ── Left: Breadcrumb path label ── */}
+    <header className="iris-shell-bar relative z-[35] flex h-[52px] shrink-0 items-center justify-between gap-4 overflow-visible px-5">
       <div className="min-w-0 flex-1">
         <PageLabel pathname={location.pathname} />
       </div>
 
-      {/* ── Right: Controls ── */}
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Backend health indicator */}
+      <div className="relative z-[36] flex shrink-0 items-center gap-2">
         <div
-          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
+          className={`iris-inset-panel flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
             isChecking
-              ? 'bg-base-200 text-base-content/40'
+              ? 'text-base-content/40'
               : isUp
-              ? 'bg-success/10 text-success'
-              : 'bg-error/10 text-error'
+                ? 'bg-success/10 text-success'
+                : 'bg-error/10 text-error'
           }`}
         >
           {isChecking ? (
-            <span className="size-1.5 rounded-full bg-base-content/30 animate-pulse" />
+            <span className="size-1.5 animate-pulse rounded-full bg-base-content/30" />
           ) : isUp ? (
             <Wifi size={12} strokeWidth={2.5} />
           ) : (
@@ -60,18 +63,17 @@ export function ConsoleHeader() {
           <span className="hidden sm:inline">{isChecking ? 'Connecting' : isUp ? 'Connected' : 'Offline'}</span>
         </div>
 
-        {/* Theme picker */}
         <div className="dropdown dropdown-end">
           <label
             tabIndex={0}
-            className="btn btn-ghost btn-sm h-8 gap-1.5 rounded-full border border-base-300 bg-base-100 px-3 text-[11px] font-semibold uppercase tracking-wider hover:bg-base-200"
+            className="btn btn-ghost btn-sm h-8 gap-1.5 border-base-300 bg-base-100 px-3 text-[11px] font-semibold uppercase tracking-wider hover:bg-base-200"
           >
             <Palette size={13} />
-            <span className="capitalize hidden sm:inline">{themeName}</span>
+            <span className="hidden capitalize sm:inline">{themeName}</span>
           </label>
           <div
             tabIndex={0}
-            className="dropdown-content z-[100] mt-2 w-56 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-2xl"
+            className="dropdown-content z-10 mt-2 w-56 border border-base-300 bg-base-100 p-2 shadow-2xl"
           >
             <div className="px-3 py-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/40">
               Theme
@@ -82,7 +84,7 @@ export function ConsoleHeader() {
                   <button
                     type="button"
                     onClick={() => setThemeName(theme)}
-                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
+                    className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-xs font-semibold transition-colors ${
                       themeName === theme
                         ? 'bg-primary/10 text-primary'
                         : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
@@ -114,15 +116,15 @@ function PageLabel({ pathname }: { pathname: string }) {
   if (segments.length === 0) return null
 
   return (
-    <div className="flex items-center gap-1.5 text-sm min-w-0">
+    <div className="min-w-0 text-sm flex items-center gap-1.5">
       {segments.map((seg, i) => (
-        <span key={i} className="flex items-center gap-1.5 min-w-0">
-          {i > 0 && <span className="text-base-content/35 shrink-0">/</span>}
+        <span key={i} className="min-w-0 flex items-center gap-1.5">
+          {i > 0 && <span className="shrink-0 text-base-content/35">/</span>}
           <span
             className={`truncate ${
               i === segments.length - 1
                 ? 'font-semibold text-base-content'
-                : 'text-base-content/50 font-medium'
+                : 'font-medium text-base-content/50'
             }`}
           >
             {seg}

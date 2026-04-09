@@ -200,10 +200,8 @@ export function RunDetailPage() {
   const actionDescriptors = getRunActionDescriptors(detail, currentAttempt)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
-      {/* Header row 1: run ID, status, attempts, throughput, actions */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-100 px-5 py-2.5">
-        {/* Left: run ID + status */}
+    <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="iris-shell-bar flex shrink-0 items-center gap-3 px-5 py-2.5">
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[13px] font-bold tabular-nums">#{detail.id}</span>
           <StatusBadge status={effectiveStatus} subtle />
@@ -211,7 +209,6 @@ export function RunDetailPage() {
 
         <div className="h-4 w-px shrink-0 bg-base-300" />
 
-        {/* Attempt pills */}
         <div className="flex items-center gap-1 overflow-x-auto">
           {detail.attempts.map((attempt) => {
             const isSelected = attempt.executionId === currentAttempt?.executionId
@@ -220,7 +217,7 @@ export function RunDetailPage() {
               <button
                 key={attempt.executionId}
                 type="button"
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
                   isSelected
                     ? 'border-primary bg-primary text-primary-content'
                     : 'border-base-300 bg-base-100 text-base-content/45 hover:border-primary/30 hover:text-base-content'
@@ -236,7 +233,6 @@ export function RunDetailPage() {
 
         <div className="h-4 w-px shrink-0 bg-base-300" />
 
-        {/* Throughput summary */}
         {(attemptTotals.read > 0 || attemptTotals.write > 0) && (
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <span className="font-mono text-[11px] text-success/70">R {attemptTotals.read.toLocaleString()}</span>
@@ -247,17 +243,14 @@ export function RunDetailPage() {
           </div>
         )}
 
-        {/* Duration + created (compact) */}
         <div className="hidden shrink-0 items-center gap-2 text-[10px] text-base-content/40 xl:flex">
           <span className="font-mono">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
           <span>|</span>
           <span>{formatDateTimeLong(detail.createdAt)}</span>
         </div>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Actions */}
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
@@ -301,8 +294,7 @@ export function RunDetailPage() {
         </div>
       </div>
 
-      {/* Header row 2: board and logs tabs */}
-      <div className="flex shrink-0 items-center gap-0 border-b border-base-300 bg-base-200/15 px-5">
+      <div className="iris-toolbar-band flex shrink-0 items-center gap-0 px-5">
         <button
           type="button"
           className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all -mb-px ${
@@ -335,7 +327,7 @@ export function RunDetailPage() {
 
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      <section className="grid shrink-0 gap-3 border-b border-base-300 bg-base-100 px-5 py-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="iris-toolbar-band grid shrink-0 gap-3 px-5 py-3 md:grid-cols-2 xl:grid-cols-4">
         <SemanticCard
           label="Attempt"
           value={currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
@@ -361,11 +353,10 @@ export function RunDetailPage() {
         />
       </section>
 
-      {/* Main content */}
       <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/30">
         {mainTab === 'board' ? (
           <div className="flex h-full min-h-0 flex-col">
-            <div className="shrink-0 border-b border-base-300 bg-base-100/80 px-5 py-2">
+            <div className="iris-shell-bar shrink-0 px-5 py-2">
               <div className="flex flex-wrap items-center gap-2 text-[10px] text-base-content/50">
                 <span className="font-black uppercase tracking-[0.18em] text-base-content/40">Stage Semantics</span>
                 <span className="badge badge-ghost badge-xs">Parallel inside a stage</span>
@@ -471,7 +462,7 @@ function SemanticCard({
           : 'border-base-300 bg-base-100'
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
+    <div className={`iris-section-panel px-4 py-4 ${toneClass}`}>
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
       <div className="mt-2 text-sm font-bold tracking-tight">{value}</div>
       <div className="mt-1 text-xs text-base-content/50">{detail}</div>
@@ -500,9 +491,8 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
   const maxTxn = Math.max(totals.commit, totals.rollback, 1)
 
   return (
-    <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex justify-end animate-iris-slide-in-right">
-      <aside className="pointer-events-auto h-full w-[460px] max-w-[92vw] border-l border-base-300 bg-base-100 shadow-2xl flex flex-col">
-        {/* Drawer Header */}
+    <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex justify-end animate-iris-slide-in-right">
+      <aside className="pointer-events-auto flex h-full w-[460px] max-w-[92vw] flex-col border-l border-base-300 bg-base-100/96 shadow-2xl backdrop-blur-sm">
         <div className="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-4 shrink-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -524,7 +514,6 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
-          {/* I/O throughput section */}
           <div className="mb-5">
             <SectionLabel>I/O Throughput</SectionLabel>
             <div className="mt-2 space-y-3">
@@ -533,7 +522,6 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             </div>
           </div>
 
-          {/* Transaction section */}
           <div className="mb-5">
             <SectionLabel>Transactions</SectionLabel>
             <div className="mt-2 grid grid-cols-2 gap-3">
@@ -548,7 +536,6 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             )}
           </div>
 
-          {/* Skip/filter section; only show when non-zero */}
           {(totals.filter > 0 || totalSkip > 0) && (
             <div className="mb-5">
               <SectionLabel>Skip & Filter</SectionLabel>
@@ -561,7 +548,6 @@ function JobRuntimeDrawer({ job, onClose }: { job: PipelineRunJobInfo; onClose: 
             </div>
           )}
 
-          {/* Step details */}
           <div>
             <SectionLabel>{job.stepExecutionInfos.length} Step{job.stepExecutionInfos.length !== 1 ? 's' : ''}</SectionLabel>
             <div className="mt-2 space-y-3">
@@ -583,8 +569,7 @@ function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: numbe
   const hasIssues = step.rollbackCount > 0 || totalSkip > 0
 
   return (
-    <div className={`rounded-xl border bg-base-100 overflow-hidden ${hasIssues ? 'border-warning/30' : 'border-base-300'}`}>
-      {/* Step Header */}
+    <div className={`iris-section-panel overflow-hidden ${hasIssues ? 'border-warning/30 bg-warning/5' : 'bg-base-100'}`}>
       <div className={`px-4 py-3 flex items-center justify-between gap-3 ${hasIssues ? 'bg-warning/5' : 'bg-base-200/30'}`}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -601,7 +586,6 @@ function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: numbe
         </div>
       </div>
 
-      {/* Step Counters */}
       <div className="px-4 py-3">
         <div className="grid grid-cols-4 gap-2">
           <MiniCounter label="Read" value={step.readCount} />
@@ -619,9 +603,8 @@ function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: numbe
           </div>
         )}
 
-        {/* Exit description (only show if not empty / not COMPLETED) */}
         {step.exitDescription && step.exitDescription.trim().length > 0 && step.exitCode !== 'COMPLETED' && (
-          <div className="mt-3 rounded-lg bg-error/5 border border-error/15 px-3 py-2 flex gap-2 items-start">
+          <div className="iris-inset-panel mt-3 flex items-start gap-2 border-error/15 bg-error/5 px-3 py-2">
             <AlertCircle size={13} className="text-error shrink-0 mt-0.5" />
             <div className="text-[11px] font-mono text-error/80 break-all leading-relaxed">
               {step.exitDescription}
@@ -670,7 +653,7 @@ function ThroughputBar({
   }
 
   return (
-    <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+    <div className="iris-section-panel px-4 py-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {icon && <span className={`text-sm font-bold ${textMap[color]}`}>{icon}</span>}
@@ -743,7 +726,7 @@ function SummaryTile({
 }) {
   const colorMap = { success: 'text-success', error: 'text-error', warning: 'text-warning' }
   return (
-    <div className="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+    <div className="iris-section-panel px-4 py-3">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">{label}</div>
       <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''} ${highlight ? colorMap[highlight] : ''}`}>{value}</div>
     </div>

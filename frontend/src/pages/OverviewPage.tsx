@@ -94,15 +94,15 @@ export function OverviewPage() {
   const activeBatchJobs = engine.activeBatchJobs
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-base-200/50">
+    <div className="iris-page-canvas flex h-full flex-col overflow-hidden">
       {/* ?�?� Header ?�?� */}
-      <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
+      <div className="iris-shell-bar flex shrink-0 items-center justify-between px-8 py-5">
         <div>
           <div className="iris-header">IrisPipe Engine</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Pipeline Overview</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className={`iris-card flex items-center gap-3 px-4 py-2 border ${healthIsUp ? 'bg-success/5 border-success/25' : 'bg-error/5 border-error/25'}`}>
+          <div className={`iris-inset-panel flex items-center gap-3 px-4 py-2 ${healthIsUp ? 'bg-success/5 border-success/25' : 'bg-error/5 border-error/25'}`}>
             <div className={`size-2 rounded-full ${healthIsUp ? 'bg-success animate-pulse' : 'bg-error'}`} />
             <span className={`text-xs font-bold uppercase tracking-widest ${healthIsUp ? 'text-success' : 'text-error'}`}>
               Backend {engine.status}
@@ -195,8 +195,8 @@ export function OverviewPage() {
             </div>
             <div className="p-5">
               {activeRuns.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-base-300 bg-base-200/30 py-10 text-center">
-                  <div className="mb-3 rounded-full bg-base-100 p-4 shadow-sm">
+                <div className="iris-empty-panel flex flex-col items-center justify-center py-10 text-center">
+                  <div className="mb-3 rounded-md bg-base-100 p-4 shadow-sm">
                     <Zap size={28} className="text-base-content/15" />
                   </div>
                   <h3 className="text-base font-bold">No Active Runs</h3>
@@ -312,7 +312,7 @@ function MetricCard({
   return (
     <div className={`iris-card p-5 bg-base-100 border ${accentMap[accent]}`}>
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-2.5 rounded-xl bg-base-100/60 border border-current/10 ${iconColor[accent]}`}>
+        <div className={`p-2.5 rounded-md bg-base-100/60 border border-current/10 ${iconColor[accent]}`}>
           <Icon size={18} />
         </div>
         {pulse && <div className={`size-2 rounded-full ${iconColor[accent].replace('text-', 'bg-')} animate-pulse`} />}
@@ -339,7 +339,7 @@ function SuccessRateCard({ successRate, total, failed }: { successRate: number; 
   return (
     <div className={`iris-card p-5 bg-base-100 border ${c.border} ${c.bg} flex flex-col gap-3`}>
       <div className="flex items-center justify-between">
-        <div className={`p-2.5 rounded-xl bg-base-100/60 border border-current/10 ${c.text}`}>
+        <div className={`p-2.5 rounded-md bg-base-100/60 border border-current/10 ${c.text}`}>
           <TrendingUp size={18} />
         </div>
         {total > 0 && (
@@ -515,7 +515,7 @@ function AttentionRunRow({ run }: { run: PipelineRunSummaryInfo }) {
   return (
     <Link
       to={`/pipeline/items/${run.pipelineId}/runs/${run.id}${run.folderId ? `?folderId=${run.folderId}` : ''}`}
-      className="flex items-start gap-3 rounded-xl border border-base-300 bg-base-100 px-3 py-3 transition-colors hover:border-primary/20 hover:bg-base-100/80"
+      className="iris-inset-panel flex items-start gap-3 bg-base-100 px-3 py-3 transition-colors hover:border-primary/20 hover:bg-base-100/80"
     >
       <span className={`mt-1 size-2 shrink-0 rounded-full ${statusMeta.dotClass} ${active ? 'animate-pulse' : ''}`} />
       <div className="min-w-0 flex-1">
@@ -540,7 +540,7 @@ function ActiveRunCard({ run }: { run: PipelineRunSummaryInfo }) {
       className="iris-card group flex items-center justify-between p-4 bg-base-200/20 hover:bg-base-200/50 transition-all border-base-300 hover:border-success/30"
     >
       <div className="flex items-center gap-4">
-        <div className="p-3 bg-success/10 text-success rounded-xl animate-iris-pulse shrink-0">
+        <div className="p-3 bg-success/10 text-success rounded-md animate-iris-pulse shrink-0">
           <PlayCircle size={18} />
         </div>
         <div>

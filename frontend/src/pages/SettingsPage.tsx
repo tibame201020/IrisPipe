@@ -75,9 +75,9 @@ function ConnectionsTab() {
           <button type="button" className="btn btn-xs btn-ghost" onClick={() => setEditingId('new')}>Add your first connection</button>
         </div>
       ) : (
-        <div className="flex flex-col divide-y divide-base-300 border border-base-300 rounded-lg overflow-hidden">
+        <div className="iris-list-panel flex flex-col">
           {connections.map((conn) => (
-            <div key={conn.id} className="flex items-center gap-3 px-4 py-3 bg-base-100 hover:bg-base-200/30 transition-colors">
+            <div key={conn.id} className="iris-list-row flex items-center gap-3 px-4 py-3 bg-base-100 transition-colors">
               <Database size={14} className="opacity-40 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm truncate">{conn.name}</div>
@@ -103,7 +103,7 @@ function ConnectionsTab() {
 
       {deleteTarget ? (
         <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center">
-          <div className="mx-4 w-full max-w-md rounded-xl border border-base-300 bg-base-100 shadow-2xl">
+          <div className="mx-4 w-full max-w-md border border-base-300 bg-base-100 shadow-2xl">
             <div className="border-b border-error/20 bg-error/5 px-5 py-4">
               <div className="font-bold text-base text-error">Delete Connection</div>
             </div>
@@ -209,7 +209,7 @@ function ConnectionFormModal({
 
   return (
     <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center">
-      <div className="bg-base-100 rounded-xl border border-base-300 shadow-2xl w-full max-w-lg mx-4 flex flex-col">
+      <div className="bg-base-100 border border-base-300 shadow-2xl w-full max-w-lg mx-4 flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
           <div className="font-bold text-base">{id === 'new' ? 'New Connection' : 'Edit Connection'}</div>
           <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={onClose} aria-label="Close dialog"><X size={12} /></button>
@@ -310,7 +310,7 @@ function ConnectionFormModal({
           </div>
 
           {blankPasswordOverwrite ? (
-            <label className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/10 px-3 py-3 text-sm text-base-content/75">
+            <label className="iris-inset-panel flex items-start gap-3 border-warning/25 bg-warning/10 px-3 py-3 text-sm text-base-content/75">
               <input
                 type="checkbox"
                 className="checkbox checkbox-warning checkbox-sm mt-0.5"
@@ -387,7 +387,7 @@ export function SettingsPage() {
                 <div className="space-y-1">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Active theme</div>
                   <div className="flex items-center gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-box bg-primary/10 text-primary">
+                    <div className="flex size-12 items-center justify-center rounded-md bg-primary/10 text-primary">
                       <Palette size={20} />
                     </div>
                     <div>

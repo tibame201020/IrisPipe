@@ -323,10 +323,10 @@ export function PipelineExplorerPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-base-200/20">
+    <div className="iris-page-canvas flex h-full min-h-0 overflow-hidden">
       {/* ── Left: Tree Sidebar ── */}
-      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-200/30 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
+      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/72 overflow-hidden backdrop-blur-sm">
+        <div className="iris-shell-bar flex items-center justify-between px-4 py-3">
           <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Workspace</span>
           <button
             type="button"
@@ -389,7 +389,7 @@ export function PipelineExplorerPage() {
       {/* ── Right: Main Content ── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Content Toolbar */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
+        <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-4 px-6 py-3">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm min-w-0">
             <Link to="/pipeline" className="text-base-content/40 hover:text-primary transition-colors font-medium">
@@ -447,7 +447,7 @@ export function PipelineExplorerPage() {
           </div>
         )}
 
-        <section className="shrink-0 border-b border-base-300 bg-base-100 px-6 py-4">
+        <section className="iris-toolbar-band shrink-0 px-6 py-4">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]">
             <ExplorerSummaryCard
               label="Current Scope"
@@ -480,7 +480,7 @@ export function PipelineExplorerPage() {
         {/* Content grid */}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           {folders.length === 0 && pipelines.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-base-300 bg-base-200/20">
+            <div className="iris-empty-panel flex h-64 flex-col items-center justify-center">
               <FolderTree size={40} className="text-base-content/10 mb-4" />
               <div className="text-base font-semibold">Empty directory</div>
               <div className="mt-1 text-sm text-base-content/40">
@@ -495,7 +495,7 @@ export function PipelineExplorerPage() {
                   <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
                     Directories ({folders.length})
                   </div>
-                  <div className="flex flex-col border border-base-300 rounded-lg overflow-hidden divide-y divide-base-300 bg-base-100">
+                  <div className="iris-list-panel flex flex-col bg-base-100">
                     {folders.map((folder) => (
                       <FolderCard
                         key={folder.id}
@@ -514,7 +514,7 @@ export function PipelineExplorerPage() {
                   <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
                     Pipelines ({pipelines.length})
                   </div>
-                  <div className="flex flex-col border border-base-300 rounded-lg overflow-hidden divide-y divide-base-300 bg-base-100">
+                  <div className="iris-list-panel flex flex-col bg-base-100">
                     {pipelines.map((pipeline) => (
                       <PipelineCard
                         key={pipeline.id}
@@ -694,7 +694,7 @@ function ExplorerSummaryCard({
         : 'border-base-300 bg-base-200/20'
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
+    <div className={`iris-section-panel px-4 py-4 ${toneClass}`}>
       <div className="flex items-center justify-between">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
         {pulse ? <span className="size-2 rounded-full bg-info animate-pulse" /> : null}
@@ -715,9 +715,9 @@ function FolderCard({
   onDelete: () => void
 }) {
   return (
-    <div className="group flex items-center justify-between px-4 py-2 hover:bg-base-200/40 transition-colors">
+    <div className="iris-list-row group flex items-center justify-between px-4 py-2">
       <Link to={buildExplorerLocation(folder.id)} className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded bg-warning/10 text-warning group-hover:bg-warning/20 transition-colors">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-warning/10 text-warning group-hover:bg-warning/20 transition-colors">
           <Folder size={14} fill="currentColor" fillOpacity={0.2} />
         </div>
         <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_120px] items-center gap-4">
@@ -768,13 +768,13 @@ function PipelineCard({
       : 'badge-ghost'
 
   return (
-    <div className="group flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-base-200/40 xl:flex-row xl:items-center xl:justify-between">
+    <div className="iris-list-row group flex flex-col gap-4 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
       <Link
         to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
         className="min-w-0 flex-1"
       >
         <div className="flex items-start gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
             <FileJson2 size={15} />
           </div>
           <div className="min-w-0 flex-1">
@@ -803,7 +803,7 @@ function PipelineCard({
       </Link>
 
       <div className="flex flex-col gap-3 xl:min-w-[260px] xl:max-w-[320px]">
-        <div className="rounded-xl border border-base-300 bg-base-100 px-3 py-3">
+        <div className="iris-inset-panel px-3 py-3">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/40">Latest Run</div>
           {signal?.lastRun ? (
             <div className="mt-2 space-y-1.5">
@@ -869,7 +869,7 @@ function NameDialog({
   if (!open) return null
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box p-0 overflow-hidden rounded-2xl border border-base-300 shadow-2xl max-w-sm">
+      <div className="modal-box p-0 overflow-hidden border border-base-300 shadow-2xl max-w-sm">
         <div className="border-b border-base-300 bg-base-200/50 px-6 py-4">
           <h3 className="text-sm font-bold uppercase tracking-widest opacity-50">{title}</h3>
         </div>
@@ -912,7 +912,7 @@ function ConfirmDialog({
   if (!open) return null
   return (
     <dialog open className="modal modal-open">
-      <div className="modal-box p-0 overflow-hidden rounded-2xl border border-base-300 shadow-2xl max-w-sm">
+      <div className="modal-box p-0 overflow-hidden border border-base-300 shadow-2xl max-w-sm">
         <div className="border-b border-error/20 bg-error/8 px-6 py-4">
           <h3 className="text-sm font-bold uppercase tracking-widest text-error">{title}</h3>
         </div>
