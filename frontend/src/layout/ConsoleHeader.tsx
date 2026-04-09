@@ -32,7 +32,7 @@ export function ConsoleHeader() {
   const isChecking = healthStatus === 'CHECKING'
 
   return (
-    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-5 gap-4">
+    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-base-300 bg-base-100/80 px-5 gap-4 backdrop-blur-sm">
       {/* ── Left: Breadcrumb path label ── */}
       <div className="min-w-0 flex-1">
         <PageLabel pathname={location.pathname} />

@@ -129,7 +129,7 @@ export function PipelineRunsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
       <section className="shrink-0 border-b border-base-300 bg-base-100 px-5 py-4">
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
           <div className="rounded-2xl border border-base-300 bg-base-200/20 px-4 py-4">

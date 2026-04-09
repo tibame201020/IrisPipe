@@ -13,7 +13,7 @@ export function ConsoleSidebar() {
 
   return (
     <aside
-      className={`flex h-full flex-col border-r border-base-300 bg-base-100 transition-[width] duration-300 ease-in-out shrink-0 ${
+      className={`flex h-full flex-col border-r border-base-300 bg-base-100/80 backdrop-blur-sm transition-[width] duration-300 ease-in-out shrink-0 ${
         sidebarCollapsed ? 'w-[64px]' : 'w-[240px]'
       }`}
     >

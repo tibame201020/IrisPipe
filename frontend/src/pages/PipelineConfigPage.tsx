@@ -661,7 +661,7 @@ export function PipelineConfigPage() {
   }))
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
       {createMode ? (
         <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6 py-3">
           <div className="breadcrumbs text-[13px] text-base-content/50">

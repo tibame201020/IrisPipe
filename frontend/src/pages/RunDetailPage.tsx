@@ -200,7 +200,7 @@ export function RunDetailPage() {
   const actionDescriptors = getRunActionDescriptors(detail, currentAttempt)
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
       {/* Header row 1: run ID, status, attempts, throughput, actions */}
       <div className="flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-100 px-5 py-2.5">
         {/* Left: run ID + status */}

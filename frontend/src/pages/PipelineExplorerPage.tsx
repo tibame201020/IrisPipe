@@ -323,7 +323,7 @@ export function PipelineExplorerPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-base-100">
+    <div className="flex h-full min-h-0 overflow-hidden bg-base-200/20">
       {/* ── Left: Tree Sidebar ── */}
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-200/30 overflow-hidden">
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">

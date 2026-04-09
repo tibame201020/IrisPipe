@@ -131,7 +131,7 @@ export function PipelineWorkspaceLayout() {
   const configHref = `/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/20">
       <header className="z-30 shrink-0 border-b border-base-300 bg-base-100">
         <div className="flex items-center gap-3 px-5 py-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">

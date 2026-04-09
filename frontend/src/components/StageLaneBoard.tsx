@@ -424,7 +424,7 @@ function StageLaneJob({
       className={`group/job relative flex overflow-hidden rounded-lg border transition-all duration-150 ${
         job.selected
           ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/15'
-          : 'border-base-200 bg-base-100 hover:border-base-300 hover:shadow-sm'
+          : 'border-base-300 bg-base-100 hover:border-base-content/20 hover:bg-base-100/80 hover:shadow-sm'
       } ${isOver ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/15' : ''} ${
         dragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
       }`}
@@ -499,7 +499,7 @@ function StageLaneJob({
         {/* Atomic badge */}
         {job.badges && job.badges.length > 0 ? (
           <div className="mt-2">
-            <span className="rounded bg-base-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/45">
+            <span className="rounded bg-base-200/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-base-content/55">
               {job.badges[0]}
             </span>
           </div>
