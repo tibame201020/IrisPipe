@@ -169,7 +169,7 @@ export function PipelineWorkspaceLayout() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-0 border-t border-base-300/40 bg-base-200/15 px-5">
+        <div className="flex items-center justify-between gap-0 border-t border-base-300/30 bg-base-200/12 px-5">
           <div className="flex items-center">
             <Link
               to={configHref}
@@ -196,12 +196,12 @@ export function PipelineWorkspaceLayout() {
           {lastRun ? (
             <Link
               to={`${runsHref.split('?')[0]}/${lastRun.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-md border border-base-300 bg-base-100 px-2.5 py-0.5 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
+              className="iris-inset-panel flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
               title={`Last run: #${lastRun.id}`}
             >
-              <span className="text-base-content/40">last run</span>
+              <span className="text-base-content/48">last run</span>
               <StatusBadge status={lastRun.status} subtle mode="text" />
-              <span className="font-mono text-base-content/40">
+              <span className="font-mono text-base-content/48">
                 {formatDuration(lastRun.startTime ?? lastRun.createdAt, lastRun.endTime)}
               </span>
             </Link>

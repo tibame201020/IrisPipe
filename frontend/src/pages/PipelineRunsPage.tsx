@@ -130,18 +130,18 @@ export function PipelineRunsPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <section className="iris-toolbar-band shrink-0 px-5 py-4">
+      <section className="iris-toolbar-band shrink-0 px-5 py-3.5">
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
-          <div className="iris-section-panel bg-base-200/20 px-4 py-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Runtime Signal</div>
+          <div className="iris-section-panel bg-base-100/88 px-4 py-3.5">
+            <div className="iris-kicker">Runtime Signal</div>
             <div className="mt-2 flex items-center gap-2">
               {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
-              {latestRun ? <span className="text-[10px] font-mono text-base-content/45">#{latestRun.id}</span> : null}
+              {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
             </div>
-            <div className="mt-2 text-sm font-semibold">
+            <div className="mt-2 text-sm font-semibold text-base-content/80">
               {latestStatusMeta ? latestStatusMeta.description : 'This pipeline has not created any run history yet.'}
             </div>
-            <div className="mt-1 text-xs text-base-content/45">
+            <div className="mt-1 text-[11px] iris-copy">
               {latestRun
                 ? `Started ${formatDateTime(latestRun.startTime ?? latestRun.createdAt)}`
                 : 'Execute this pipeline to materialize runtime attempts and stage progress.'}
@@ -171,8 +171,8 @@ export function PipelineRunsPage() {
         </div>
       </section>
 
-      <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-3 px-5 py-2">
-        <div className="flex items-center gap-1.5">
+      <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
+        <div className="iris-inset-panel flex items-center gap-1.5 px-2 py-1">
           <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
           {(stats?.active ?? 0) > 0 && (
             <FilterChip label="Active" count={stats?.active ?? 0} active={filter === 'active'} onClick={() => setFilter('active')} pulse />
@@ -205,12 +205,12 @@ export function PipelineRunsPage() {
         <div className="flex items-center gap-3">
           {stats ? (
             <div className="hidden items-center gap-3 md:flex">
-              <span className="text-[10px] text-base-content/45 tabular-nums">
-                <span className="font-semibold text-base-content/65">{stats.successRate}%</span> success
+              <span className="text-[10px] tabular-nums iris-copy-soft">
+                <span className="font-semibold text-base-content/70">{stats.successRate}%</span> success
               </span>
-              <span className="text-[10px] text-base-content/25">|</span>
-              <span className="text-[10px] text-base-content/45 tabular-nums">
-                avg <span className="font-semibold font-mono text-base-content/65">{stats.avgLabel}</span>
+              <span className="text-[10px] iris-copy-faint">|</span>
+              <span className="text-[10px] tabular-nums iris-copy-soft">
+                avg <span className="font-semibold font-mono text-base-content/70">{stats.avgLabel}</span>
               </span>
             </div>
           ) : null}
@@ -262,14 +262,14 @@ export function PipelineRunsPage() {
         ) : (
           <div>
             <div
-              className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/95 px-5 py-1.5 backdrop-blur-sm"
-              style={{ gridTemplateColumns: '28px minmax(0,1.5fr) 160px 90px 80px 50px' }}
+              className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/96 px-5 py-2 backdrop-blur-sm"
+              style={{ gridTemplateColumns: '32px minmax(0,1.8fr) 150px 96px 112px 56px' }}
             >
               <span />
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Run</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Started</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Duration</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Status</span>
+              <span className="iris-kicker">Run</span>
+              <span className="iris-kicker">Started</span>
+              <span className="iris-kicker">Duration</span>
+              <span className="iris-kicker">Status</span>
               <span />
             </div>
 
@@ -289,9 +289,9 @@ export function PipelineRunsPage() {
                 <button
                   type="button"
                   onClick={() => void loadRuns(false)}
-                  className="btn btn-ghost btn-xs gap-1.5 text-base-content/40"
-                  disabled={loadingMore}
-                >
+                    className="btn btn-ghost btn-xs gap-1.5 text-base-content/50"
+                    disabled={loadingMore}
+                  >
                   {loadingMore ? <RefreshCw className="animate-spin" size={12} /> : <History size={12} />}
                   Load older runs
                 </button>
@@ -325,13 +325,13 @@ function HistoryOverviewCard({
   }
 
   return (
-    <div className={`iris-section-panel px-4 py-4 ${accentMap[accent]}`}>
+    <div className={`iris-section-panel px-4 py-3.5 ${accentMap[accent]}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
+        <div className="iris-kicker">{label}</div>
         {pulse ? <span className="size-2 rounded-full bg-current animate-pulse opacity-70" /> : null}
       </div>
       <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-base-content/50">{detail}</div>
+      <div className="mt-1 text-[11px] iris-copy">{detail}</div>
     </div>
   )
 }
@@ -359,18 +359,18 @@ function FilterChip({
         : variant === 'warning'
           ? 'border-warning/40 bg-warning/10 text-warning'
           : 'border-primary/40 bg-primary/10 text-primary'
-    : 'border-base-300 bg-base-100 text-base-content/45 hover:border-base-300 hover:text-base-content/70'
+    : 'border-base-300 bg-base-100 text-base-content/55 hover:border-base-300 hover:text-base-content/80'
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${baseClass}`}
+      className={`flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-all ${baseClass}`}
     >
       {pulse ? <span className="size-1.5 rounded-full bg-info animate-pulse shrink-0" /> : null}
       {label}
       {count > 0 ? (
-        <span className={`rounded-sm px-1 py-0 text-[9px] font-bold tabular-nums ${active ? 'bg-current/20' : 'bg-base-200 text-base-content/40'}`}>
+        <span className={`rounded-sm px-1 py-0 text-[9px] font-bold tabular-nums ${active ? 'bg-current/20' : 'bg-base-200 text-base-content/45'}`}>
           {count}
         </span>
       ) : null}
@@ -402,8 +402,8 @@ function RunRow({
   return (
     <Link
       to={to}
-      className={`iris-list-row group grid items-center gap-4 px-5 py-3 transition-colors ${rowBg}`}
-      style={{ gridTemplateColumns: '28px minmax(0,1.5fr) 160px 90px 80px 50px' }}
+      className={`iris-list-row group grid items-center gap-4 px-5 py-3.5 transition-colors ${rowBg} ${isLatest ? 'bg-primary/4' : ''}`}
+      style={{ gridTemplateColumns: '32px minmax(0,1.8fr) 150px 96px 112px 56px' }}
     >
       <div className="flex justify-center">
         <span className={`size-1.5 rounded-full ${statusMeta.dotClass} ${isActive ? 'animate-pulse' : ''}`} />
@@ -411,16 +411,16 @@ function RunRow({
 
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-[12px] font-semibold tabular-nums text-base-content/70">
+          <span className="font-mono text-[12px] font-semibold tabular-nums text-base-content/78">
             #{run.id}
           </span>
           {isLatest ? (
-            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+            <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
               latest
             </span>
           ) : null}
           {isActive ? (
-            <span className="text-[9px] font-black uppercase tracking-widest text-info/70">
+            <span className="text-[9px] font-black uppercase tracking-widest text-info/75">
               live
             </span>
           ) : null}
@@ -430,16 +430,16 @@ function RunRow({
             </span>
           ) : null}
         </div>
-        <div className="mt-1 truncate text-[10px] text-base-content/45" title={statusMeta.description}>
+        <div className="mt-1 truncate text-[11px] iris-copy" title={statusMeta.description}>
           {statusMeta.description}
         </div>
       </div>
 
-      <span className="truncate font-mono text-[11px] tabular-nums text-base-content/50">
+      <span className="truncate font-mono text-[11px] tabular-nums text-base-content/60">
         {formatDateTime(run.startTime ?? run.createdAt)}
       </span>
 
-      <span className="font-mono text-[11px] tabular-nums text-base-content/60">
+      <span className="font-mono text-[11px] tabular-nums text-base-content/68">
         {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
       </span>
 
@@ -448,7 +448,7 @@ function RunRow({
       </div>
 
       <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
-        <span className="text-[10px] text-base-content/45">Inspect</span>
+        <span className="text-[10px] iris-copy-soft">Inspect</span>
       </div>
     </Link>
   )

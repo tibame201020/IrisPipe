@@ -681,14 +681,14 @@ export function PipelineConfigPage() {
         </div>
       ) : null}
 
-      <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
+      <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-4 px-5 py-3">
+        <div className="iris-inset-panel flex min-w-0 flex-wrap items-center gap-2 px-3 py-1.5 text-xs">
           <span className="badge badge-ghost badge-sm">{draft.stages.length} stages</span>
           <span className="badge badge-ghost badge-sm">{draftJobCount} jobs</span>
           <span className={`badge badge-sm ${draftReadiness.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
             {draftReadiness.issueCount > 0 ? `${draftReadiness.issueCount} issues` : 'Runnable'}
           </span>
-          <span className="text-[11px] font-medium text-base-content/40">
+          <span className="text-[11px] iris-copy">
             {draftReadiness.guidance}
           </span>
         </div>
@@ -736,12 +736,12 @@ export function PipelineConfigPage() {
           />
         </main>
 
-        <aside className="flex w-[320px] shrink-0 flex-col border-l border-base-300 bg-base-100/88 backdrop-blur-sm">
-          <div className="border-b border-base-300 px-5 py-4">
+        <aside className="flex w-[288px] shrink-0 flex-col border-l border-base-300 bg-base-100/92 backdrop-blur-sm">
+          <div className="iris-shell-bar border-b-0 px-5 py-4">
             <div className="iris-header">Pipeline Summary</div>
             <div className="mt-2">
               <label className="form-control">
-                <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">
+                <span className="mb-2 iris-kicker">
                   Pipeline Name
                 </span>
                 <input
@@ -763,7 +763,7 @@ export function PipelineConfigPage() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <SummaryTile label="Stages" value={draftReadiness.stageCount} />
               <SummaryTile label="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} />
               <SummaryTile label="Steps" value={draftReadiness.stepCount} />
@@ -772,7 +772,7 @@ export function PipelineConfigPage() {
               <SummaryTile label="Dest Conn" value={draftReadiness.destConfiguredJobs} />
             </div>
 
-            <div className={`iris-section-panel mt-6 p-4 ${
+            <div className={`iris-section-panel mt-4 p-4 ${
               draftReadiness.issueCount === 0
                 ? 'border-success/20 bg-success/5'
                 : draftReadiness.issueCount <= 3
@@ -788,7 +788,7 @@ export function PipelineConfigPage() {
               }`}>
                 {draftReadiness.headline}
               </div>
-              <div className="mt-2 text-xs text-base-content/60">{draftReadiness.guidance}</div>
+              <div className="mt-2 text-[11px] iris-copy">{draftReadiness.guidance}</div>
               <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
                 <span className="badge badge-ghost badge-sm">{draftReadiness.stageCount} stage lanes</span>
                 <span className="badge badge-ghost badge-sm">{draftReadiness.jobCount} runtime jobs</span>
@@ -797,12 +797,12 @@ export function PipelineConfigPage() {
             </div>
 
             {issues.length > 0 ? (
-              <div className="iris-section-panel mt-6 border-warning/30 bg-warning/8 p-4">
+              <div className="iris-section-panel mt-4 border-warning/30 bg-warning/8 p-4">
                 <div className="iris-header text-warning">Validation Issues</div>
-                <div className="mt-2 text-xs text-warning/80">
+                <div className="mt-2 text-[11px] text-warning/80">
                   Badges on stage lanes and job cards show where fixes are needed.
                 </div>
-                <ul className="mt-3 space-y-2 text-sm">
+                <ul className="mt-3 space-y-2 text-[13px]">
                   {issues.slice(0, 6).map((issue) => (
                     <li key={issue} className="leading-relaxed text-warning">{issue}</li>
                   ))}
@@ -810,7 +810,7 @@ export function PipelineConfigPage() {
                 {issues.length > 6 ? <div className="mt-3 text-xs font-medium text-warning/80">+ {issues.length - 6} more issues</div> : null}
               </div>
             ) : (
-              <div className="iris-section-panel mt-6 border-success/20 bg-success/5 p-4 text-sm text-success">
+              <div className="iris-section-panel mt-4 border-success/20 bg-success/5 p-4 text-sm text-success">
                 No validation issues
               </div>
             )}
@@ -1781,9 +1781,9 @@ function SummaryTile({
   value: string | number | null
 }) {
   return (
-    <div className="iris-section-panel px-4 py-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</div>
-      <div className="mt-1 truncate text-sm font-semibold">{value ?? '-'}</div>
+    <div className="iris-inset-panel px-3 py-2.5">
+      <div className="iris-kicker">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-base-content/82">{value ?? '-'}</div>
     </div>
   )
 }

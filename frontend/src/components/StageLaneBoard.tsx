@@ -163,9 +163,9 @@ export function StageLaneBoard({
           backgroundSize: '20px 20px',
         }}
       >
-        <div className="px-6 py-5 h-full">
+        <div className="h-full px-5 py-4">
           <SortableContext items={stages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
-            <div className="flex h-full min-w-max items-start gap-4 pb-2">
+            <div className="flex h-full min-w-max items-start gap-3.5 pb-2">
               {stages.map((stage, index) => (
                 <StageLane
                   key={stage.id}
@@ -247,7 +247,7 @@ function StageLane({
       {/* ?�?� Stage Column ?�?� */}
       <section
         ref={setBodyRef}
-        className={`group/stage iris-section-panel relative flex w-[256px] shrink-0 flex-col overflow-hidden bg-base-100 shadow-sm transition-all duration-150 ${
+        className={`group/stage iris-section-panel relative flex w-[272px] shrink-0 flex-col overflow-hidden bg-base-100 shadow-sm transition-all duration-150 ${
           stage.selected
             ? 'border-primary/40 shadow-md'
             : 'border-base-300/80'
@@ -259,7 +259,7 @@ function StageLane({
 
         {/* Stage Header */}
         <div
-          className={`shrink-0 border-b px-3 py-2.5 ${stage.selected ? 'bg-primary/5 border-primary/20' : 'bg-base-200/50 border-base-200'}`}
+          className={`shrink-0 border-b px-3 py-2.5 ${stage.selected ? 'bg-primary/6 border-primary/20' : 'bg-base-200/54 border-base-200'}`}
           ref={setActivatorNodeRef}
           {...stageAttributes}
           {...stageListeners}
@@ -280,7 +280,7 @@ function StageLane({
               role={stage.onClick ? 'button' : undefined}
               tabIndex={stage.onClick ? 0 : -1}
             >
-              <span className="block truncate text-[13px] font-bold tracking-tight" title={stage.title}>
+              <span className="block truncate text-[13px] font-bold tracking-tight text-base-content/82" title={stage.title}>
                 {stage.title}
               </span>
             </div>
@@ -309,7 +309,7 @@ function StageLane({
           ) : null}
 
           {stage.summary ? (
-            <div className="mt-1 text-[10px] text-base-content/45">{stage.summary}</div>
+            <div className="mt-1 text-[10px] iris-copy">{stage.summary}</div>
           ) : null}
         </div>
 
@@ -343,12 +343,12 @@ function StageLane({
 
       {/* ?�?� Stage Connector ?�?� */}
       {showConnector ? (
-        <div className="flex w-[44px] shrink-0 flex-col items-center justify-start gap-1 pt-10">
-          <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/35">then</span>
+        <div className="flex w-[40px] shrink-0 flex-col items-center justify-start gap-1 pt-10">
+          <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/42">then</span>
           <div className="flex items-center">
-            <div className="h-[1.5px] w-7 bg-base-300" />
+            <div className="h-[1.5px] w-6 bg-base-300/80" />
             <svg width="7" height="10" viewBox="0 0 7 10" fill="none" className="shrink-0">
-              <path d="M1 1L6 5L1 9" stroke="hsl(var(--bc)/0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M1 1L6 5L1 9" stroke="hsl(var(--bc)/0.42)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>
@@ -421,7 +421,7 @@ function StageLaneJob({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group/job relative flex overflow-hidden rounded-md border transition-all duration-150 ${
+      className={`group/job relative flex overflow-hidden rounded-sm border transition-all duration-150 ${
         job.selected
           ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/15'
           : 'border-base-300 bg-base-100 hover:border-base-content/20 hover:bg-base-100/80 hover:shadow-sm'
@@ -455,7 +455,7 @@ function StageLaneJob({
           {statusDot ? (
             <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${statusDot}`} />
           ) : null}
-          <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-tight" title={job.title}>
+          <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-tight text-base-content/82" title={job.title}>
             {job.title}
           </span>
           {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
@@ -465,14 +465,14 @@ function StageLaneJob({
 
         {/* Subtitle ??connection summary */}
         {job.subtitle ? (
-          <div className="mt-1.5 truncate text-[10.5px] text-base-content/45" title={job.subtitle}>
+          <div className="mt-1.5 truncate text-[10.5px] iris-copy" title={job.subtitle}>
             {job.subtitle}
           </div>
         ) : null}
 
         {/* Step summary */}
         {job.stepSummary ? (
-          <div className="mt-0.5 truncate text-[10px] text-base-content/40">
+          <div className="mt-0.5 truncate text-[10px] iris-copy-soft">
             {job.stepSummary}
           </div>
         ) : null}
@@ -481,10 +481,10 @@ function StageLaneJob({
         {(job.duration || job.waitTime) ? (
           <div className="mt-2 flex items-center gap-2">
             {job.duration ? (
-              <span className="font-mono text-[10px] font-medium text-base-content/50">{job.duration}</span>
+              <span className="font-mono text-[10px] font-medium text-base-content/58">{job.duration}</span>
             ) : null}
             {job.waitTime ? (
-              <span className="font-mono text-[10px] text-base-content/35">{job.waitTime} wait</span>
+              <span className="font-mono text-[10px] text-base-content/42">{job.waitTime} wait</span>
             ) : null}
           </div>
         ) : null}
@@ -524,8 +524,8 @@ function JobOverlay({ job }: { job: StageLaneJobCard }) {
       <div className="w-[3px] shrink-0 bg-primary" />
       <div className="px-2.5 py-2.5">
         <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>
-        {job.subtitle ? <div className="mt-1.5 truncate text-[10.5px] text-base-content/45">{job.subtitle}</div> : null}
-        {job.stepSummary ? <div className="mt-0.5 truncate text-[10px] text-base-content/40">{job.stepSummary}</div> : null}
+        {job.subtitle ? <div className="mt-1.5 truncate text-[10.5px] iris-copy">{job.subtitle}</div> : null}
+        {job.stepSummary ? <div className="mt-0.5 truncate text-[10px] iris-copy-soft">{job.stepSummary}</div> : null}
       </div>
     </div>
   )
@@ -534,7 +534,7 @@ function JobOverlay({ job }: { job: StageLaneJobCard }) {
 function StageOverlay({ stage }: { stage: StageLaneData }) {
   return (
     <div className="flex items-stretch">
-      <section className="flex w-[256px] shrink-0 flex-col overflow-hidden rounded-md border border-primary/30 bg-base-100/95 shadow-2xl backdrop-blur-sm">
+      <section className="flex w-[272px] shrink-0 flex-col overflow-hidden rounded-sm border border-primary/30 bg-base-100/95 shadow-2xl backdrop-blur-sm">
         <div className="h-[3px] w-full bg-primary" />
         <div className="border-b border-base-200 bg-base-200/50 px-3 py-2.5">
           <div className="flex items-center gap-2">
@@ -544,7 +544,7 @@ function StageOverlay({ stage }: { stage: StageLaneData }) {
         </div>
         <div className="space-y-1.5 p-2">
           {stage.jobs.slice(0, 3).map((job) => (
-            <div key={job.id} className="flex overflow-hidden rounded-md border border-base-200 bg-base-100">
+            <div key={job.id} className="flex overflow-hidden rounded-sm border border-base-200 bg-base-100">
               <div className="w-[3px] shrink-0 bg-base-300" />
               <div className="px-2.5 py-2">
                 <div className="text-[12.5px] font-semibold leading-tight">{job.title}</div>

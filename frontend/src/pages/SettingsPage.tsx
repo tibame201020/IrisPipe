@@ -56,8 +56,8 @@ function ConnectionsTab() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Connection Library</div>
-          <div className="text-sm text-base-content/55 mt-0.5">Reusable JDBC connections for your pipelines</div>
+          <div className="iris-kicker">Connection Library</div>
+          <div className="mt-0.5 text-sm iris-copy">Reusable JDBC connections for your pipelines</div>
         </div>
         <button type="button" className="btn btn-sm btn-primary gap-1.5" onClick={() => setEditingId('new')}>
           <Plus size={14} /> Add Connection
@@ -77,13 +77,13 @@ function ConnectionsTab() {
       ) : (
         <div className="iris-list-panel flex flex-col">
           {connections.map((conn) => (
-            <div key={conn.id} className="iris-list-row flex items-center gap-3 px-4 py-3 bg-base-100 transition-colors">
+            <div key={conn.id} className="iris-list-row flex items-center gap-3 bg-base-100 px-4 py-3 transition-colors">
               <Database size={14} className="opacity-40 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm truncate">{conn.name}</div>
-                <div className="text-[11px] font-mono text-base-content/40 truncate">{conn.url}</div>
+                <div className="truncate text-[11px] font-mono text-base-content/48">{conn.url}</div>
               </div>
-              <div className="text-[10px] font-mono text-base-content/30 shrink-0">{conn.driver.split('.').pop()}</div>
+              <div className="text-[10px] font-mono text-base-content/38 shrink-0">{conn.driver.split('.').pop()}</div>
               <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={() => setEditingId(conn.id)}><Pencil size={12} /></button>
               <button type="button" className="btn btn-xs btn-ghost btn-square text-error/60" onClick={() => setDeleteTarget(conn)}><Trash2 size={12} /></button>
             </div>
@@ -358,84 +358,137 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="card rounded-none border-x-0 border-y border-base-300 bg-base-100 shadow-none">
-        <div className="card-body gap-6 p-6">
-          {/* Tab nav */}
-          <div role="tablist" className="tabs tabs-bordered w-fit">
-            <button
-              type="button"
-              role="tab"
-              className={`tab gap-2 ${activeTab === 'appearance' ? 'tab-active' : ''}`}
-              onClick={() => setActiveTab('appearance')}
-            >
-              <Palette size={14} /> Appearance
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={`tab gap-2 ${activeTab === 'connections' ? 'tab-active' : ''}`}
-              onClick={() => setActiveTab('connections')}
-            >
-              <Database size={14} /> Connections
-            </button>
+    <div className="iris-page-canvas h-full overflow-y-auto px-5 py-5">
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-5">
+        <div className="iris-section-panel overflow-hidden p-0">
+          <div className="iris-shell-bar border-b-0 px-5 py-4">
+            <div role="tablist" className="tabs tabs-bordered w-fit">
+              <button
+                type="button"
+                role="tab"
+                className={`tab gap-2 ${activeTab === 'appearance' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('appearance')}
+              >
+                <Palette size={14} /> Appearance
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`tab gap-2 ${activeTab === 'connections' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('connections')}
+              >
+                <Database size={14} /> Connections
+              </button>
+            </div>
           </div>
 
-          {activeTab === 'appearance' && (
-            <>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-1">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-base-content/45">Active theme</div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <Palette size={20} />
-                    </div>
+          <div className="p-5">
+            {activeTab === 'appearance' && (
+              <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.7fr)_minmax(0,1fr)]">
+                <section className="iris-section-panel flex flex-col gap-4 px-5 py-5">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-2xl font-semibold capitalize">{themeName}</div>
-                      <div className="text-sm text-base-content/55">Applied immediately to the whole console</div>
-                    </div>
-                  </div>
-                </div>
-                <span className="text-xs font-mono uppercase tracking-[0.18em] text-base-content/45">
-                  {availableThemes.length} themes
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {availableThemes.map((theme) => {
-                  const selected = theme === themeName
-                  return (
-                    <button
-                      key={theme}
-                      type="button"
-                      onClick={() => setThemeName(theme)}
-                      data-theme={theme}
-                      className={`btn h-auto min-h-0 w-full justify-start border border-base-300 bg-base-100 px-3 py-3 normal-case shadow-none ${
-                        selected ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10' : 'hover:bg-base-200'
-                      }`}
-                    >
-                      <div className="flex w-full items-start gap-3 text-left">
-                        <div className="mt-0.5 flex gap-0.5">
-                          <div className="h-6 w-1.5 rounded-sm bg-primary" />
-                          <div className="h-6 w-1.5 rounded-sm bg-secondary" />
-                          <div className="h-6 w-1.5 rounded-sm bg-accent" />
-                          <div className="h-6 w-1.5 rounded-sm bg-neutral" />
+                      <div className="iris-kicker">Active Theme</div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="flex size-11 items-center justify-center rounded-sm bg-primary/10 text-primary">
+                          <Palette size={20} />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm font-semibold capitalize">{theme}</span>
-                            {selected ? <Check size={12} className="shrink-0" /> : null}
-                          </div>
-                          <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-base-content/45">DaisyUI preset</div>
+                        <div>
+                          <div className="text-2xl font-semibold capitalize leading-none">{themeName}</div>
+                          <div className="mt-1 text-sm iris-copy">Applied immediately to the whole console</div>
                         </div>
                       </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
+                    </div>
+                    <span className="iris-mono-meta uppercase tracking-[0.18em]">
+                      {availableThemes.length} themes
+                    </span>
+                  </div>
 
-          {activeTab === 'connections' && <ConnectionsTab />}
+                  <div className="iris-inset-panel px-4 py-4">
+                    <div className="iris-kicker">Selection Rules</div>
+                    <div className="mt-2 space-y-2 text-sm iris-copy">
+                      <div>Only approved daisyUI presets are exposed.</div>
+                      <div>Theme switching must preserve text, border, inset, code, and status readability.</div>
+                      <div>Structural surfaces use `base-*`; state uses `info / success / warning / error`.</div>
+                    </div>
+                  </div>
+
+                  <div className="iris-inset-panel px-4 py-4">
+                    <div className="iris-kicker">Surface Preview</div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="h-9 flex-1 rounded-sm border border-base-300 bg-base-100" />
+                      <div className="h-9 flex-1 rounded-sm border border-base-300 bg-base-200" />
+                      <div className="h-9 flex-1 rounded-sm border border-base-300 bg-base-300" />
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="h-2 flex-1 rounded-sm bg-primary" />
+                      <div className="h-2 flex-1 rounded-sm bg-secondary" />
+                      <div className="h-2 flex-1 rounded-sm bg-accent" />
+                      <div className="h-2 flex-1 rounded-sm bg-neutral" />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="iris-section-panel overflow-hidden p-0">
+                  <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
+                    <div>
+                      <div className="iris-kicker">Approved Themes</div>
+                      <div className="mt-1 text-sm iris-copy">Choose between the supported console themes.</div>
+                    </div>
+                    <span className="iris-mono-meta uppercase tracking-[0.18em]">daisyUI presets</span>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {availableThemes.map((theme) => {
+                        const selected = theme === themeName
+                        return (
+                          <button
+                            key={theme}
+                            type="button"
+                            onClick={() => setThemeName(theme)}
+                            data-theme={theme}
+                            className={`rounded-sm border px-4 py-4 text-left transition-all ${
+                              selected
+                                ? 'border-primary bg-primary/6 text-primary shadow-sm'
+                                : 'border-base-300 bg-base-100 hover:border-base-content/20 hover:bg-base-200/55'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 flex gap-1">
+                                <div className="h-8 w-1.5 rounded-sm bg-primary" />
+                                <div className="h-8 w-1.5 rounded-sm bg-secondary" />
+                                <div className="h-8 w-1.5 rounded-sm bg-accent" />
+                                <div className="h-8 w-1.5 rounded-sm bg-neutral" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate text-sm font-semibold capitalize">{theme}</span>
+                                  {selected ? <Check size={12} className="shrink-0" /> : null}
+                                </div>
+                                <div className="mt-1 iris-kicker">Theme Preview</div>
+                                <div className="mt-3 flex gap-2">
+                                  <div className="h-8 flex-1 rounded-sm border border-base-300 bg-base-100" />
+                                  <div className="h-8 flex-1 rounded-sm border border-base-300 bg-base-200" />
+                                  <div className="h-8 flex-1 rounded-sm border border-base-300 bg-base-300" />
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {activeTab === 'connections' && (
+              <section className="iris-section-panel px-5 py-5">
+                <ConnectionsTab />
+              </section>
+            )}
+          </div>
         </div>
       </div>
     </div>

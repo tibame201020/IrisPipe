@@ -325,7 +325,7 @@ export function PipelineExplorerPage() {
   return (
     <div className="iris-page-canvas flex h-full min-h-0 overflow-hidden">
       {/* ── Left: Tree Sidebar ── */}
-      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/72 overflow-hidden backdrop-blur-sm">
+      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/82 overflow-hidden backdrop-blur-sm">
         <div className="iris-shell-bar flex items-center justify-between px-4 py-3">
           <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Workspace</span>
           <button
@@ -447,7 +447,7 @@ export function PipelineExplorerPage() {
           </div>
         )}
 
-        <section className="iris-toolbar-band shrink-0 px-6 py-4">
+        <section className="iris-toolbar-band shrink-0 px-5 py-3.5">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]">
             <ExplorerSummaryCard
               label="Current Scope"
@@ -478,7 +478,7 @@ export function PipelineExplorerPage() {
         </section>
 
         {/* Content grid */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {folders.length === 0 && pipelines.length === 0 ? (
             <div className="iris-empty-panel flex h-64 flex-col items-center justify-center">
               <FolderTree size={40} className="text-base-content/10 mb-4" />
@@ -488,14 +488,15 @@ export function PipelineExplorerPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-5">
               {/* Folders */}
               {folders.length > 0 && (
-                <div>
-                  <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
-                    Directories ({folders.length})
+                <section className="iris-section-panel overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-base-300/60 px-4 py-3">
+                    <div className="iris-kicker">Directories</div>
+                    <span className="iris-mono-meta">{folders.length} visible</span>
                   </div>
-                  <div className="iris-list-panel flex flex-col bg-base-100">
+                  <div className="flex flex-col bg-base-100/74">
                     {folders.map((folder) => (
                       <FolderCard
                         key={folder.id}
@@ -505,16 +506,17 @@ export function PipelineExplorerPage() {
                       />
                     ))}
                   </div>
-                </div>
+                </section>
               )}
 
               {/* Pipelines */}
               {pipelines.length > 0 && (
-                <div>
-                  <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/40">
-                    Pipelines ({pipelines.length})
+                <section className="iris-section-panel overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-base-300/60 px-4 py-3">
+                    <div className="iris-kicker">Pipelines</div>
+                    <span className="iris-mono-meta">{pipelines.length} definitions</span>
                   </div>
-                  <div className="iris-list-panel flex flex-col bg-base-100">
+                  <div className="flex flex-col bg-base-100/74">
                     {pipelines.map((pipeline) => (
                       <PipelineCard
                         key={pipeline.id}
@@ -525,7 +527,7 @@ export function PipelineExplorerPage() {
                       />
                     ))}
                   </div>
-                </div>
+                </section>
               )}
             </div>
           )}
@@ -686,21 +688,21 @@ function ExplorerSummaryCard({
   pulse?: boolean
 }) {
   const toneClass = tone === 'success'
-    ? 'border-success/20 bg-success/5'
+    ? 'border-success/18 bg-success/6'
     : tone === 'warning'
-      ? 'border-warning/20 bg-warning/5'
+      ? 'border-warning/18 bg-warning/6'
       : tone === 'info'
-        ? 'border-info/20 bg-info/5'
-        : 'border-base-300 bg-base-200/20'
+        ? 'border-info/18 bg-info/6'
+        : 'border-base-300/80 bg-base-100/88'
 
   return (
-    <div className={`iris-section-panel px-4 py-4 ${toneClass}`}>
+    <div className={`iris-section-panel px-4 py-3.5 ${toneClass}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
+        <div className="iris-kicker">{label}</div>
         {pulse ? <span className="size-2 rounded-full bg-info animate-pulse" /> : null}
       </div>
-      <div className="mt-2 text-sm font-bold tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-base-content/50">{detail}</div>
+      <div className="mt-2 text-lg font-bold tracking-tight">{value}</div>
+      <div className="mt-1 text-[11px] iris-copy">{detail}</div>
     </div>
   )
 }
@@ -715,20 +717,20 @@ function FolderCard({
   onDelete: () => void
 }) {
   return (
-    <div className="iris-list-row group flex items-center justify-between px-4 py-2">
+    <div className="iris-list-row group flex items-center justify-between px-4 py-2.5">
       <Link to={buildExplorerLocation(folder.id)} className="flex items-center gap-3 min-w-0 flex-1">
         <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-warning/10 text-warning group-hover:bg-warning/20 transition-colors">
           <Folder size={14} fill="currentColor" fillOpacity={0.2} />
         </div>
         <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_120px] items-center gap-4">
-          <div className="truncate font-medium text-[13px] text-base-content">{folder.folderName}</div>
-          <div className="text-[11px] font-mono tabular-nums text-base-content/40 justify-self-end text-right">
+          <div className="truncate font-semibold text-[13px] text-base-content">{folder.folderName}</div>
+          <div className="iris-mono-meta justify-self-end text-right">
             {folder.folders.length > 0 && <span>{folder.folders.length} dir </span>}
             {folder.pipelines.length} pl
           </div>
         </div>
       </Link>
-      <div className="flex items-center justify-end gap-1 ml-4 opacity-0 transition-opacity group-hover:opacity-100 w-[60px]">
+      <div className="ml-4 flex w-[60px] items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button type="button" className="btn btn-ghost btn-xs px-1.5" onClick={onRename} title="Rename">
           <PencilLine size={13} />
         </button>
@@ -768,7 +770,7 @@ function PipelineCard({
       : 'badge-ghost'
 
   return (
-    <div className="iris-list-row group flex flex-col gap-4 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
+    <div className="iris-list-row group grid gap-4 px-4 py-3.5 xl:grid-cols-[minmax(0,1fr)_272px] xl:items-stretch">
       <Link
         to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
         className="min-w-0 flex-1"
@@ -779,7 +781,7 @@ function PipelineCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="truncate font-medium text-[13px] text-base-content" title={pipeline.pipelineName}>
+              <div className="truncate font-semibold text-[13px] text-base-content" title={pipeline.pipelineName}>
                 {pipeline.pipelineName}
               </div>
               {signal ? (
@@ -790,48 +792,51 @@ function PipelineCard({
                 <span className="badge badge-ghost badge-sm">Loading semantics</span>
               ) : null}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-base-content/45">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] iris-copy">
               <span>{signal ? `${signal.stageCount} stages | ${signal.jobCount} jobs` : 'Config semantics unavailable'}</span>
               {signal ? <span>{signal.readyJobs} ready | {signal.warningJobs} need work</span> : null}
               {signal ? <span>src {signal.sourceConfiguredJobs}/{signal.jobCount} | dest {signal.destConfiguredJobs}/{signal.jobCount}</span> : null}
             </div>
-            <div className="mt-1 truncate text-[11px] text-base-content/45" title={signal?.readinessGuidance}>
-              {signal?.readinessGuidance ?? (signalLoading ? 'Resolving config readiness and runtime context...' : 'No semantic summary available yet.')}
+            <div className="mt-1 text-[11px] font-medium text-base-content/72">
+              {signal?.readinessHeadline ?? (signalLoading ? 'Resolving readiness...' : 'Semantic summary unavailable')}
+            </div>
+            <div className="mt-1 truncate text-[11px] iris-copy-soft" title={signal?.readinessGuidance}>
+              {signal?.readinessGuidance ?? (signalLoading ? 'Resolving config readiness and runtime context...' : 'No semantic guidance available yet.')}
             </div>
           </div>
         </div>
       </Link>
 
-      <div className="flex flex-col gap-3 xl:min-w-[260px] xl:max-w-[320px]">
-        <div className="iris-inset-panel px-3 py-3">
-          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/40">Latest Run</div>
+      <div className="flex flex-col gap-2.5 xl:border-l xl:border-base-300/60 xl:pl-4">
+        <div className="iris-inset-panel px-3 py-2.5">
+          <div className="iris-kicker">Latest Run</div>
           {signal?.lastRun ? (
             <div className="mt-2 space-y-1.5">
               <div className="flex items-center gap-2">
                 <StatusBadge status={signal.lastRun.status} subtle />
-                <span className="font-mono text-[10px] text-base-content/45">#{signal.lastRun.id}</span>
+                <span className="iris-mono-meta">#{signal.lastRun.id}</span>
               </div>
-              <div className="text-[11px] text-base-content/55">{lastRunMeta?.description}</div>
-              <div className="text-[10px] font-mono text-base-content/40">
+              <div className="text-[11px] font-medium text-base-content/72">{lastRunMeta?.description}</div>
+              <div className="iris-mono-meta">
                 {formatDateTime(signal.lastRun.startTime ?? signal.lastRun.createdAt)}
               </div>
             </div>
           ) : (
-            <div className="mt-2 text-[11px] text-base-content/45">No run history yet in this workspace.</div>
+            <div className="mt-2 text-[11px] iris-copy">No run history yet in this workspace.</div>
           )}
         </div>
 
         <div className="flex items-center gap-2 xl:justify-end xl:opacity-0 xl:transition-opacity xl:group-hover:opacity-100">
         <Link
           to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-          className="btn btn-ghost btn-xs font-normal gap-1 px-2"
+          className="btn btn-ghost btn-xs gap-1 px-2"
         >
           <Settings2 size={12} />
           Config
         </Link>
         <Link
           to={`/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-          className="btn btn-ghost btn-xs font-normal gap-1 px-2"
+          className="btn btn-ghost btn-xs gap-1 px-2"
         >
           <PlayCircle size={12} />
           Runs

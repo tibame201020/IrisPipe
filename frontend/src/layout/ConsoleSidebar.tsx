@@ -13,7 +13,7 @@ export function ConsoleSidebar() {
 
   return (
     <aside
-      className={`iris-shell-bar flex h-full flex-col border-r border-base-300 transition-[width] duration-300 ease-in-out shrink-0 ${
+      className={`iris-shell-bar flex h-full flex-col border-r border-base-300 bg-base-100/88 transition-[width] duration-300 ease-in-out shrink-0 ${
         sidebarCollapsed ? 'w-[64px]' : 'w-[240px]'
       }`}
     >
@@ -33,7 +33,7 @@ export function ConsoleSidebar() {
 
       <nav className="flex-1 overflow-y-auto py-3">
         {!sidebarCollapsed && (
-          <div className="px-4 pb-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/25">Navigation</div>
+          <div className="px-4 pb-2 text-[9px] font-black uppercase tracking-[0.22em] text-base-content/32">Navigation</div>
         )}
         <ul className="space-y-0.5 px-2">
           {navItems.map((item) => (

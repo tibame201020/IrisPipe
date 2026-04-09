@@ -209,7 +209,7 @@ export function RunDetailPage() {
 
         <div className="h-4 w-px shrink-0 bg-base-300" />
 
-        <div className="flex items-center gap-1 overflow-x-auto">
+        <div className="iris-inset-panel flex items-center gap-1 overflow-x-auto px-1 py-1">
           {detail.attempts.map((attempt) => {
             const isSelected = attempt.executionId === currentAttempt?.executionId
             const isLatest = attempt.executionId === latestAttempt?.executionId
@@ -217,10 +217,10 @@ export function RunDetailPage() {
               <button
                 key={attempt.executionId}
                 type="button"
-                className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-all ${
                   isSelected
                     ? 'border-primary bg-primary text-primary-content'
-                    : 'border-base-300 bg-base-100 text-base-content/45 hover:border-primary/30 hover:text-base-content'
+                    : 'border-base-300 bg-base-100 text-base-content/55 hover:border-primary/30 hover:text-base-content'
                 }`}
                 onClick={() => setSelectedAttemptId(attempt.executionId)}
               >
@@ -243,7 +243,7 @@ export function RunDetailPage() {
           </div>
         )}
 
-        <div className="hidden shrink-0 items-center gap-2 text-[10px] text-base-content/40 xl:flex">
+        <div className="hidden shrink-0 items-center gap-2 text-[10px] iris-copy-soft xl:flex">
           <span className="font-mono">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
           <span>|</span>
           <span>{formatDateTimeLong(detail.createdAt)}</span>
@@ -251,7 +251,7 @@ export function RunDetailPage() {
 
         <div className="flex-1" />
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
           <button
             type="button"
             disabled={!actionDescriptors.stop.enabled || !!pendingAction}
@@ -357,8 +357,8 @@ export function RunDetailPage() {
         {mainTab === 'board' ? (
           <div className="flex h-full min-h-0 flex-col">
             <div className="iris-shell-bar shrink-0 px-5 py-2">
-              <div className="flex flex-wrap items-center gap-2 text-[10px] text-base-content/50">
-                <span className="font-black uppercase tracking-[0.18em] text-base-content/40">Stage Semantics</span>
+              <div className="flex flex-wrap items-center gap-2 text-[10px] iris-copy-soft">
+                <span className="iris-kicker">Stage Semantics</span>
                 <span className="badge badge-ghost badge-xs">Parallel inside a stage</span>
                 <span className="badge badge-ghost badge-xs">Barrier between stages</span>
                 <span className="badge badge-ghost badge-xs">Skipped means reused on resume</span>
@@ -462,10 +462,10 @@ function SemanticCard({
           : 'border-base-300 bg-base-100'
 
   return (
-    <div className={`iris-section-panel px-4 py-4 ${toneClass}`}>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
-      <div className="mt-2 text-sm font-bold tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-base-content/50">{detail}</div>
+    <div className={`iris-section-panel px-4 py-3.5 ${toneClass}`}>
+      <div className="iris-kicker">{label}</div>
+      <div className="mt-2 text-base font-bold tracking-tight text-base-content/82">{value}</div>
+      <div className="mt-1 text-[11px] iris-copy">{detail}</div>
     </div>
   )
 }
