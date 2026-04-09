@@ -206,7 +206,8 @@ export function PipelineConfigPage() {
           <ActionButton
             size="xs"
             tone="ghost"
-            title="Add stage to the right"
+            title="Insert stage to the right"
+            className="px-2"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation()
@@ -214,10 +215,12 @@ export function PipelineConfigPage() {
             }}
           >
             <Plus size={13} />
+            Stage
           </ActionButton>
           <ActionButton
             size="xs"
             tone="ghost"
+            className="px-2"
             title="Add job"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -233,10 +236,12 @@ export function PipelineConfigPage() {
             }}
           >
             <Plus size={13} />
+            Job
           </ActionButton>
           <ActionButton
             size="xs"
             tone="dangerGhost"
+            className="px-2"
             title="Delete stage"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -247,6 +252,27 @@ export function PipelineConfigPage() {
             <Trash2 size={13} />
           </ActionButton>
         </>
+        ),
+        emptyAction: (
+          <ActionButton
+            size="xs"
+            tone="primary"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              updateStage(stage.editorId, (currentStage) => {
+                const nextJob = createBlankJob(currentStage.jobs.length)
+                openJobEditor(stage.editorId, nextJob.editorId)
+                return {
+                  ...currentStage,
+                  jobs: [...currentStage.jobs, nextJob],
+                }
+              })
+            }}
+          >
+            <Plus size={12} />
+            Add Job
+          </ActionButton>
         ),
         jobs: stage.jobs.map((job) => {
           const jobSemantic = getConfigJobSemanticSummary(job, validationSummary)
@@ -269,7 +295,8 @@ export function PipelineConfigPage() {
             <ActionButton
               size="xs"
               tone="ghost"
-              title="Edit job"
+              title="Open job workspace"
+              className="px-2"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation()
@@ -277,10 +304,12 @@ export function PipelineConfigPage() {
               }}
             >
               <Pencil size={13} />
+              Open
             </ActionButton>
             <ActionButton
               size="xs"
               tone="dangerGhost"
+              className="px-2"
               title="Delete job"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {

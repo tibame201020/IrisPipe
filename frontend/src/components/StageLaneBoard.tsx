@@ -19,6 +19,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { StatusBadge } from './StatusBadge'
 import { SurfaceBox } from './ui/Surface'
@@ -54,6 +55,7 @@ export interface StageLaneData {
   selected?: boolean
   onClick?: () => void
   toolbar?: ReactNode
+  emptyAction?: ReactNode
   jobs: StageLaneJobCard[]
 }
 
@@ -261,16 +263,13 @@ function StageLane({
         {/* Stage Header */}
         <div
           className={`shrink-0 border-b px-3 py-2.5 ${stage.selected ? 'bg-primary/6 border-primary/20' : 'bg-base-200/54 border-base-200'}`}
-          ref={setActivatorNodeRef}
-          {...stageAttributes}
-          {...stageListeners}
         >
           <div className="flex items-center gap-2">
             {/* Stage index badge */}
             <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black tabular-nums ${
               stage.selected ? 'bg-primary/15 text-primary' : 'bg-base-300/70 text-base-content/45'
             }`}>
-              S{stageIndex + 1}
+              Stage {stageIndex + 1}
             </span>
 
             {/* Stage title */}
@@ -293,15 +292,32 @@ function StageLane({
               ) : null}
               {stage.status ? <StatusBadge status={stage.status} subtle /> : null}
               <span className="text-[10px] text-base-content/40 tabular-nums">
-                {stage.jobs.length}j
+                {stage.jobs.length} jobs
               </span>
+              {!stageDnDEnabled ? null : (
+                <button
+                  type="button"
+                  ref={setActivatorNodeRef}
+                  className="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/40 hover:text-base-content"
+                  aria-label={`Reorder ${stage.title}`}
+                  {...stageAttributes}
+                  {...stageListeners}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <GripVertical size={12} />
+                </button>
+              )}
             </div>
           </div>
 
           {/* Stage toolbar */}
           {stage.toolbar ? (
             <div
-              className="mt-2 flex items-center gap-1 opacity-0 transition-opacity duration-100 group-hover/stage:opacity-100 group-focus-within/stage:opacity-100"
+              className={`mt-2 flex flex-wrap items-center gap-1 transition-opacity duration-100 ${
+                stage.selected || stage.jobs.length === 0
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover/stage:opacity-100 group-focus-within/stage:opacity-100'
+              }`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
@@ -326,7 +342,8 @@ function StageLane({
           <SortableContext items={stage.jobs.map((j) => j.id)} strategy={rectSortingStrategy}>
             {stage.jobs.length === 0 ? (
               <div className="iris-empty-panel border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/40">
-                No jobs yet. Add one above.
+                <div>No jobs in this stage yet.</div>
+                {stage.emptyAction ? <div className="mt-3 flex justify-center">{stage.emptyAction}</div> : null}
               </div>
             ) : (
               stage.jobs.map((job) => (
@@ -367,7 +384,7 @@ function StageLaneJob({
   stageId: string
   dragDisabled: boolean
 }) {
-  const { setNodeRef, transform, transition, isDragging, isOver, attributes, listeners } = useSortable({
+  const { setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver, attributes, listeners } = useSortable({
     id: job.id,
     data: { type: 'job', stageId, jobId: job.id } satisfies DragItem,
     disabled: dragDisabled,
@@ -420,14 +437,12 @@ function StageLaneJob({
     <article
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className={`group/job relative flex overflow-hidden rounded-sm border transition-all duration-150 ${
         job.selected
           ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/15'
           : 'border-base-300 bg-base-100 hover:border-base-content/20 hover:bg-base-100/80 hover:shadow-sm'
       } ${isOver ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/15' : ''} ${
-        dragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+        'cursor-default'
       }`}
       aria-label={`Job ${job.title}`}
     >
@@ -459,9 +474,25 @@ function StageLaneJob({
           <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-tight text-base-content/82" title={job.title}>
             {job.title}
           </span>
-          {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
-            <span className="badge badge-error badge-xs shrink-0 mt-0.5">{job.issuesCount}</span>
-          ) : null}
+          <div className="mt-0.5 flex shrink-0 items-center gap-1">
+            {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
+              <span className="badge badge-error badge-xs shrink-0">{job.issuesCount}</span>
+            ) : null}
+            {dragDisabled ? null : (
+              <button
+                type="button"
+                ref={setActivatorNodeRef}
+                className="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/35 hover:text-base-content"
+                aria-label={`Reorder ${job.title}`}
+                {...attributes}
+                {...listeners}
+                onClick={(event) => event.stopPropagation()}
+                onDoubleClick={(event) => event.stopPropagation()}
+              >
+                <GripVertical size={11} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Subtitle ??connection summary */}
@@ -509,7 +540,11 @@ function StageLaneJob({
 
       {/* Hover toolbar */}
       <div
-        className="absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/job:opacity-100 group-focus-within/job:opacity-100"
+        className={`absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 transition-opacity duration-100 ${
+          job.selected
+            ? 'opacity-100'
+            : 'opacity-0 group-hover/job:opacity-100 group-focus-within/job:opacity-100'
+        }`}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
