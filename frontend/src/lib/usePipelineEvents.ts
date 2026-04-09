@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 
 type SseEventType = 'run_started' | 'job_started' | 'job_finished' | 'run_completed' | 'run_failed' | 'run_stopped'
 
@@ -27,6 +27,13 @@ const EVENT_HANDLER_MAP: Record<SseEventType, keyof PipelineEventHandlers> = {
  * EventSource reconnects automatically on network drops.
  */
 export function usePipelineEvents(handlers: PipelineEventHandlers, runId?: number) {
+  const dispatchEvent = useEffectEvent((handlerKey: keyof PipelineEventHandlers, payload: unknown) => {
+    const handler = handlers[handlerKey] as ((data: unknown) => void) | undefined
+    if (!handler) return
+
+    handler(payload)
+  })
+
   useEffect(() => {
     const url = runId != null ? `/api/v1/events/runs/${runId}` : '/api/v1/events/runs'
     let source: EventSource
@@ -38,13 +45,10 @@ export function usePipelineEvents(handlers: PipelineEventHandlers, runId?: numbe
 
     for (const [eventName, handlerKey] of Object.entries(EVENT_HANDLER_MAP) as [SseEventType, keyof PipelineEventHandlers][]) {
       source.addEventListener(eventName, (e: MessageEvent) => {
-        const handler = handlers[handlerKey] as ((data: unknown) => void) | undefined
-        if (handler) {
-          try {
-            handler(JSON.parse(e.data as string))
-          } catch {
-            handler(e.data)
-          }
+        try {
+          dispatchEvent(handlerKey, JSON.parse(e.data as string))
+        } catch {
+          dispatchEvent(handlerKey, e.data)
         }
       })
     }
@@ -52,6 +56,5 @@ export function usePipelineEvents(handlers: PipelineEventHandlers, runId?: numbe
     return () => {
       source.close()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId])
+  }, [dispatchEvent, runId])
 }

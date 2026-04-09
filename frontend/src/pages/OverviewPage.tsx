@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
   FolderTree,
   Layers3,
@@ -20,6 +21,13 @@ import {
   getOverviewSummary,
 } from '../lib/api'
 import { formatDateTime } from '../lib/date'
+import {
+  getPipelineStatusMeta,
+  isPipelineStatusActive,
+  isPipelineStatusFailure,
+  isPipelineStatusResumable,
+  summarizePipelineRunHistory,
+} from '../lib/pipeline-runtime'
 import { usePipelineEvents } from '../lib/usePipelineEvents'
 import type { PipelineRunSummaryInfo } from '../types/irispipe'
 
@@ -72,7 +80,14 @@ export function OverviewPage() {
   }
 
   const { engine, catalog, runs, recentRuns } = data
-  const activeRuns = recentRuns.filter((run) => ['STARTING', 'STARTED'].includes(run.status))
+  const activeRuns = recentRuns.filter((run) => isPipelineStatusActive(run.status))
+  const recentStats = summarizePipelineRunHistory(recentRuns)
+  const resumableRuns = recentRuns.filter((run) => isPipelineStatusResumable(run.status))
+  const attentionRuns = recentRuns.filter((run) =>
+    isPipelineStatusActive(run.status)
+    || isPipelineStatusFailure(run.status)
+    || isPipelineStatusResumable(run.status),
+  ).slice(0, 6)
   const healthIsUp = engine.status === 'UP'
   const jvmPercent = engine.jvmMemoryPercent >= 0 ? engine.jvmMemoryPercent : null
   const uptime = engine.uptimeSeconds >= 0 ? engine.uptimeSeconds : null
@@ -80,7 +95,7 @@ export function OverviewPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-base-200/50">
-      {/* ── Header ── */}
+      {/* ?�?� Header ?�?� */}
       <div className="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-8 py-5">
         <div>
           <div className="iris-header">IrisPipe Engine</div>
@@ -101,7 +116,7 @@ export function OverviewPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
-        {/* ── Top KPI Row ── */}
+        {/* ?�?� Top KPI Row ?�?� */}
         <div className="grid gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             icon={FolderTree}
@@ -128,14 +143,14 @@ export function OverviewPage() {
           <SuccessRateCard successRate={runs.successRate} total={runs.last10Total} failed={runs.last10Failed} />
         </div>
 
-        {/* ── Engine Vitals Row ── */}
+        {/* ?�?� Engine Vitals Row ?�?� */}
         {(jvmPercent != null || uptime != null || activeBatchJobs != null) && (
           <div className="mb-6">
             <div className="iris-card p-0 overflow-hidden bg-base-100 iris-scan-container">
               <div className="flex items-center gap-2 border-b border-base-300 px-5 py-3">
                 <Server size={15} className="text-secondary" />
                 <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Engine Vitals</h2>
-                <span className="ml-auto badge badge-ghost badge-sm">Live · /actuator</span>
+                <span className="ml-auto badge badge-ghost badge-sm">Live via /actuator</span>
               </div>
               <div className="grid grid-cols-2 gap-0 divide-x divide-base-300 sm:grid-cols-2 lg:grid-cols-4">
                 {jvmPercent != null && (
@@ -166,28 +181,27 @@ export function OverviewPage() {
         )}
 
 
-        {/* ── Main Content Row ── */}
+        {/* ?�?� Main Content Row ?�?� */}
         <div className="grid gap-6 xl:grid-cols-3">
-          {/* Active Runs */}
-          <section className="iris-card p-0 flex flex-col bg-base-100 xl:col-span-2 overflow-hidden border-base-300">
-            <div className="px-5 py-4 border-b border-base-300 flex items-center justify-between">
+          <section className="iris-card flex flex-col overflow-hidden border-base-300 bg-base-100 p-0 xl:col-span-2">
+            <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
               <div className="flex items-center gap-2">
                 <Radar size={16} className="text-primary" />
                 <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Active Runs</h2>
               </div>
-              <span className={`badge badge-sm font-bold border-0 ${activeRuns.length > 0 ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/40'}`}>
+              <span className={`badge badge-sm border-0 font-bold ${activeRuns.length > 0 ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/40'}`}>
                 {activeRuns.length} Active
               </span>
             </div>
             <div className="p-5">
               {activeRuns.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center bg-base-200/30 rounded-2xl border-2 border-dashed border-base-300">
-                  <div className="p-4 bg-base-100 rounded-full mb-3 shadow-sm">
+                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-base-300 bg-base-200/30 py-10 text-center">
+                  <div className="mb-3 rounded-full bg-base-100 p-4 shadow-sm">
                     <Zap size={28} className="text-base-content/15" />
                   </div>
                   <h3 className="text-base font-bold">No Active Runs</h3>
-                  <p className="text-sm text-base-content/45 max-w-xs mx-auto mt-1">
-                    No pipelines executing at the moment.
+                  <p className="mx-auto mt-1 max-w-xs text-sm text-base-content/45">
+                    No pipelines are executing right now. New starts will appear here as soon as the backend launches them.
                   </p>
                 </div>
               ) : (
@@ -200,30 +214,59 @@ export function OverviewPage() {
             </div>
           </section>
 
-          {/* Recent Runs Sidebar */}
-          <section className="iris-card p-0 bg-base-100 border-base-300 overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-base-300 flex items-center gap-2">
-              <HistoryIcon size={16} className="text-secondary" />
-              <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Recent Runs</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-base-300/60">
-              {recentRuns.slice(0, 10).map((run) => (
-                <RecentRunRow key={run.id} run={run} />
-              ))}
-              {recentRuns.length === 0 && (
-                <div className="py-10 text-center text-sm text-base-content/45">No recent runs</div>
-              )}
-            </div>
-            <div className="p-4 border-t border-base-300 bg-base-200/30">
-              <Link to="/pipeline" className="btn btn-ghost btn-sm w-full gap-2">
-                Open Explorer
-                <ChevronRightIcon size={14} />
-              </Link>
-            </div>
-          </section>
+          <div className="space-y-6">
+            <section className="iris-card overflow-hidden border-base-300 bg-base-100 p-0">
+              <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-warning" />
+                  <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Operational Attention</h2>
+                </div>
+                <span className={`badge badge-sm border-0 font-bold ${attentionRuns.length > 0 ? 'bg-warning/10 text-warning' : 'bg-base-200 text-base-content/40'}`}>
+                  {attentionRuns.length} flagged
+                </span>
+              </div>
+              <div className="divide-y divide-base-300/60">
+                <AttentionSummaryRow label="Resumable Runs" value={resumableRuns.length} detail="Stopped or failed runs that can create a resume attempt" tone="warning" />
+                <AttentionSummaryRow label="Recent Failures" value={recentStats?.failed ?? 0} detail="Failed or abandoned logical runs in the current overview window" tone="error" />
+                <AttentionSummaryRow label="Runtime Success" value={`${recentStats?.successRate ?? 0}%`} detail={recentStats ? `${recentStats.completed}/${recentStats.total} completed runs` : 'No runtime history yet'} tone="success" />
+              </div>
+              <div className="border-t border-base-300 bg-base-200/20 px-5 py-4">
+                {attentionRuns.length === 0 ? (
+                  <div className="text-sm text-base-content/45">No runs currently need operator attention.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {attentionRuns.map((run) => (
+                      <AttentionRunRow key={run.id} run={run} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="iris-card flex flex-col overflow-hidden border-base-300 bg-base-100 p-0">
+              <div className="flex items-center gap-2 border-b border-base-300 px-5 py-4">
+                <HistoryIcon size={16} className="text-secondary" />
+                <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50">Recent Runs</h2>
+              </div>
+              <div className="flex-1 divide-y divide-base-300/60 overflow-y-auto">
+                {recentRuns.slice(0, 10).map((run) => (
+                  <RecentRunRow key={run.id} run={run} />
+                ))}
+                {recentRuns.length === 0 && (
+                  <div className="py-10 text-center text-sm text-base-content/45">No recent runs</div>
+                )}
+              </div>
+              <div className="border-t border-base-300 bg-base-200/30 p-4">
+                <Link to="/pipeline" className="btn btn-ghost btn-sm w-full gap-2">
+                  Open Explorer
+                  <ChevronRightIcon size={14} />
+                </Link>
+              </div>
+            </section>
+          </div>
         </div>
 
-        {/* ── Run Throughput Stats ── */}
+        {/* ?�?� Run Throughput Stats ?�?� */}
         {recentRuns.length > 0 && (
           <div className="mt-6">
             <RunThroughputPanel runs={recentRuns} />
@@ -234,7 +277,7 @@ export function OverviewPage() {
   )
 }
 
-// ─── Components ──────────────────────────────────────────────────────────────
+// ?�?�?� Components ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 
 function MetricCard({
   icon: Icon,
@@ -383,7 +426,7 @@ function RunThroughputPanel({ runs }: { runs: PipelineRunSummaryInfo[] }) {
   const completed = runs.filter(r => r.status === 'COMPLETED').length
   const failed = runs.filter(r => r.status === 'FAILED').length
   const stopped = runs.filter(r => r.status === 'STOPPED').length
-  const inFlight = runs.filter(r => ['STARTING', 'STARTED'].includes(r.status)).length
+  const inFlight = runs.filter(r => isPipelineStatusActive(r.status)).length
 
   return (
     <div className="iris-card p-0 overflow-hidden bg-base-100">
@@ -437,7 +480,60 @@ function ThroughputCell({
   )
 }
 
+function AttentionSummaryRow({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string
+  value: string | number
+  detail: string
+  tone: 'success' | 'warning' | 'error'
+}) {
+  const toneClass = tone === 'success'
+    ? 'text-success'
+    : tone === 'warning'
+      ? 'text-warning'
+      : 'text-error'
+
+  return (
+    <div className="px-5 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-base-content/45">{label}</div>
+        <div className={`text-sm font-bold ${toneClass}`}>{value}</div>
+      </div>
+      <div className="mt-1 text-xs text-base-content/45">{detail}</div>
+    </div>
+  )
+}
+
+function AttentionRunRow({ run }: { run: PipelineRunSummaryInfo }) {
+  const statusMeta = getPipelineStatusMeta(run.status)
+  const active = isPipelineStatusActive(run.status)
+
+  return (
+    <Link
+      to={`/pipeline/items/${run.pipelineId}/runs/${run.id}${run.folderId ? `?folderId=${run.folderId}` : ''}`}
+      className="flex items-start gap-3 rounded-xl border border-base-300 bg-base-100 px-3 py-3 transition-colors hover:border-primary/20 hover:bg-base-100/80"
+    >
+      <span className={`mt-1 size-2 shrink-0 rounded-full ${statusMeta.dotClass} ${active ? 'animate-pulse' : ''}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="truncate text-sm font-semibold">{run.pipelineName}</div>
+          <StatusBadge status={run.status} subtle mode="text" />
+        </div>
+        <div className="mt-1 text-[11px] text-base-content/50">{statusMeta.description}</div>
+        <div className="mt-1 text-[10px] font-mono text-base-content/40">
+          #{run.id} | {formatDateTime(run.startTime ?? run.createdAt)}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 function ActiveRunCard({ run }: { run: PipelineRunSummaryInfo }) {
+  const statusMeta = getPipelineStatusMeta(run.status)
   return (
     <Link
       to={`/pipeline/items/${run.pipelineId}/runs/${run.id}${run.folderId ? `?folderId=${run.folderId}` : ''}`}
@@ -450,8 +546,9 @@ function ActiveRunCard({ run }: { run: PipelineRunSummaryInfo }) {
         <div>
           <div className="font-bold text-sm">{run.pipelineName}</div>
           <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-base-content/45">
-            Run #{run.id}{run.folderPath ? ` · ${run.folderPath}` : ''}
+            {`Run #${run.id}${run.folderPath ? ` | ${run.folderPath}` : ''}`}
           </div>
+          <div className="mt-1 text-[11px] text-base-content/50">{statusMeta.description}</div>
         </div>
       </div>
       <div className="flex flex-col items-end gap-1">
@@ -463,7 +560,8 @@ function ActiveRunCard({ run }: { run: PipelineRunSummaryInfo }) {
 }
 
 function RecentRunRow({ run }: { run: PipelineRunSummaryInfo }) {
-  const isActive = ['STARTING', 'STARTED'].includes(run.status)
+  const statusMeta = getPipelineStatusMeta(run.status)
+  const isActive = isPipelineStatusActive(run.status)
   return (
     <Link
       to={`/pipeline/items/${run.pipelineId}/runs/${run.id}${run.folderId ? `?folderId=${run.folderId}` : ''}`}
@@ -477,6 +575,7 @@ function RecentRunRow({ run }: { run: PipelineRunSummaryInfo }) {
       }`} />
       <div className="flex-1 min-w-0">
         <div className="truncate text-sm font-semibold">{run.pipelineName}</div>
+        <div className="mt-0.5 truncate text-[11px] text-base-content/50">{statusMeta.description}</div>
         <div className="text-[10px] font-mono text-base-content/45">{formatDateTime(run.startTime ?? run.createdAt)}</div>
       </div>
       <StatusBadge status={run.status} subtle />
@@ -484,7 +583,7 @@ function RecentRunRow({ run }: { run: PipelineRunSummaryInfo }) {
   )
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ?�?�?� Helpers ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
 
 function formatUptime(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`

@@ -13,28 +13,54 @@ import {
   Settings2,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { PipelineImportDialog } from '../components/PipelineImportDialog'
+import { StatusBadge } from '../components/StatusBadge'
 import {
   createFolder,
   deleteFolder,
   deletePipelineConfig,
   getApiErrorMessage,
   getFolderDeletePreview,
+  getPipelineConfig,
+  getRecentRuns,
   getPipelineTree,
   importPipelineConfig,
   updateFolder,
 } from '../lib/api'
+import { formatDateTime } from '../lib/date'
+import { getPipelineConfigSemanticSummary } from '../lib/pipeline-config-semantics'
+import {
+  getPipelineStatusMeta,
+  isPipelineStatusActive,
+  isPipelineStatusFailure,
+  isPipelineStatusResumable,
+  summarizePipelineRunHistory,
+} from '../lib/pipeline-runtime'
 import { buildExplorerLocation, findFolderPath, getFolderChildren, sortExplorerItems } from '../lib/tree'
 import type {
   ConfigPipelineSummary,
   FolderDeletePreviewInfo,
   FolderTreeNodeInfo,
+  PipelineRunSummaryInfo,
   PipelineTreeInfo,
 } from '../types/irispipe'
+
+type PipelineCardSignal = {
+  stageCount: number
+  jobCount: number
+  issueCount: number
+  readyJobs: number
+  warningJobs: number
+  sourceConfiguredJobs: number
+  destConfiguredJobs: number
+  readinessHeadline: string
+  readinessGuidance: string
+  lastRun: PipelineRunSummaryInfo | null
+}
 
 export function PipelineExplorerPage() {
   const { folderId } = useParams()
@@ -44,6 +70,10 @@ export function PipelineExplorerPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [signalsError, setSignalsError] = useState<string | null>(null)
+  const [signalsLoading, setSignalsLoading] = useState(false)
+  const [recentRuns, setRecentRuns] = useState<PipelineRunSummaryInfo[]>([])
+  const [pipelineSignals, setPipelineSignals] = useState<Record<number, PipelineCardSignal>>({})
   const [folderNameDraft, setFolderNameDraft] = useState('')
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [createFolderSubmitting, setCreateFolderSubmitting] = useState(false)
@@ -60,6 +90,34 @@ export function PipelineExplorerPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set())
   const numericFolderId = folderId ? Number(folderId) : null
+  const current = useMemo(() => (
+    tree ? getFolderChildren(tree, numericFolderId) : { folders: [] as FolderTreeNodeInfo[], pipelines: [] as ConfigPipelineSummary[] }
+  ), [tree, numericFolderId])
+  const currentPath = useMemo(() => (
+    tree && numericFolderId ? findFolderPath(tree, numericFolderId) : []
+  ), [tree, numericFolderId])
+  const folders = useMemo(() => sortExplorerItems(current.folders, 'folderName'), [current.folders])
+  const pipelines = useMemo(() => sortExplorerItems(current.pipelines, 'pipelineName'), [current.pipelines])
+  const pipelineIdsKey = useMemo(() => pipelines.map((pipeline) => pipeline.id).join(','), [pipelines])
+  const visiblePipelineIds = useMemo(() => new Set(pipelines.map((pipeline) => pipeline.id)), [pipelines])
+  const visibleRuns = useMemo(
+    () => recentRuns.filter((run) => visiblePipelineIds.has(run.pipelineId)),
+    [recentRuns, visiblePipelineIds],
+  )
+  const visibleRunHistory = useMemo(() => summarizePipelineRunHistory(visibleRuns), [visibleRuns])
+  const signalEntries = useMemo(
+    () => pipelines
+      .map((pipeline) => pipelineSignals[pipeline.id])
+      .filter((signal): signal is PipelineCardSignal => Boolean(signal)),
+    [pipelines, pipelineSignals],
+  )
+  const runnablePipelines = signalEntries.filter((signal) => signal.issueCount === 0 && signal.jobCount > 0).length
+  const pipelinesNeedingAttention = signalEntries.filter((signal) =>
+    signal.issueCount > 0
+    || (signal.lastRun != null && (isPipelineStatusFailure(signal.lastRun.status) || isPipelineStatusResumable(signal.lastRun.status))),
+  ).length
+  const activeRuntimeCount = visibleRuns.filter((run) => isPipelineStatusActive(run.status)).length
+  const scopeLabel = currentPath[currentPath.length - 1]?.folderName ?? 'Root'
 
   async function loadTree(options?: { initial?: boolean }) {
     const initial = options?.initial ?? tree == null
@@ -95,6 +153,79 @@ export function PipelineExplorerPage() {
     })
   }, [tree, numericFolderId])
 
+  useEffect(() => {
+    let active = true
+
+    if (pipelines.length === 0) {
+      setPipelineSignals({})
+      setRecentRuns([])
+      setSignalsError(null)
+      return () => { active = false }
+    }
+
+    void (async () => {
+      setSignalsLoading(true)
+      setSignalsError(null)
+
+      try {
+        const [runs, results] = await Promise.all([
+          getRecentRuns(Math.max(24, pipelines.length * 4)),
+          Promise.allSettled(
+            pipelines.map(async (pipeline) => {
+              const config = await getPipelineConfig(pipeline.id)
+              const semantic = getPipelineConfigSemanticSummary(config)
+              return [pipeline.id, semantic] as const
+            }),
+          ),
+        ])
+
+        if (!active) return
+
+        setRecentRuns(runs)
+        const latestByPipeline = new Map<number, PipelineRunSummaryInfo>()
+        runs.forEach((run) => {
+          if (!latestByPipeline.has(run.pipelineId)) latestByPipeline.set(run.pipelineId, run)
+        })
+
+        const nextSignals: Record<number, PipelineCardSignal> = {}
+        let failedCount = 0
+
+        results.forEach((result) => {
+          if (result.status !== 'fulfilled') {
+            failedCount += 1
+            return
+          }
+
+          const [pipelineIdValue, semantic] = result.value
+          nextSignals[pipelineIdValue] = {
+            stageCount: semantic.readiness.stageCount,
+            jobCount: semantic.readiness.jobCount,
+            issueCount: semantic.readiness.issueCount,
+            readyJobs: semantic.readiness.readyJobs,
+            warningJobs: semantic.readiness.warningJobs,
+            sourceConfiguredJobs: semantic.readiness.sourceConfiguredJobs,
+            destConfiguredJobs: semantic.readiness.destConfiguredJobs,
+            readinessHeadline: semantic.readiness.headline,
+            readinessGuidance: semantic.readiness.guidance,
+            lastRun: latestByPipeline.get(pipelineIdValue) ?? null,
+          }
+        })
+
+        setPipelineSignals(nextSignals)
+        if (failedCount > 0) {
+          setSignalsError(`Loaded explorer tree, but ${failedCount} pipeline semantic panel${failedCount === 1 ? '' : 's'} could not be resolved.`)
+        }
+      } catch (loadSignalsError) {
+        if (!active) return
+        setSignalsError(getApiErrorMessage(loadSignalsError, 'Failed to load pipeline readiness signals'))
+      } finally {
+        if (active) setSignalsLoading(false)
+      }
+    })()
+
+    return () => { active = false }
+  }, [pipelineIdsKey, pipelines])
+
   if (loading) return <div className="p-12"><LoadingState /></div>
 
   if (error || !tree) {
@@ -111,11 +242,6 @@ export function PipelineExplorerPage() {
       />
     )
   }
-
-  const current = getFolderChildren(tree, numericFolderId)
-  const currentPath = numericFolderId ? findFolderPath(tree, numericFolderId) : []
-  const folders = sortExplorerItems(current.folders, 'folderName')
-  const pipelines = sortExplorerItems(current.pipelines, 'pipelineName')
 
   async function handleCreateFolder() {
     const folderName = folderNameDraft.trim()
@@ -315,6 +441,41 @@ export function PipelineExplorerPage() {
             {actionError}
           </div>
         )}
+        {signalsError && (
+          <div className="shrink-0 border-b border-warning/20 bg-warning/5 px-6 py-2 text-sm text-warning">
+            {signalsError}
+          </div>
+        )}
+
+        <section className="shrink-0 border-b border-base-300 bg-base-100 px-6 py-4">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]">
+            <ExplorerSummaryCard
+              label="Current Scope"
+              value={scopeLabel}
+              detail={`${folders.length} folder${folders.length === 1 ? '' : 's'} and ${pipelines.length} pipeline${pipelines.length === 1 ? '' : 's'} in view`}
+              tone="neutral"
+            />
+            <ExplorerSummaryCard
+              label="Runnable"
+              value={signalsLoading ? '...' : String(runnablePipelines)}
+              detail="Visible configs with jobs and no blocking validation issues"
+              tone="success"
+            />
+            <ExplorerSummaryCard
+              label="Attention"
+              value={signalsLoading ? '...' : String(pipelinesNeedingAttention)}
+              detail="Visible pipelines needing config work or runtime follow-up"
+              tone="warning"
+            />
+            <ExplorerSummaryCard
+              label="Runtime"
+              value={visibleRunHistory ? `${activeRuntimeCount} live` : 'No runs'}
+              detail={visibleRunHistory ? `${visibleRunHistory.successRate}% recent success in this scope` : 'No recent runtime history for visible pipelines'}
+              tone="info"
+              pulse={activeRuntimeCount > 0}
+            />
+          </div>
+        </section>
 
         {/* Content grid */}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -358,6 +519,8 @@ export function PipelineExplorerPage() {
                       <PipelineCard
                         key={pipeline.id}
                         pipeline={pipeline}
+                        signal={pipelineSignals[pipeline.id]}
+                        signalLoading={signalsLoading}
                         onDelete={() => setDeletePipelineTarget(pipeline)}
                       />
                     ))}
@@ -509,6 +672,39 @@ function FolderTreeItem({
 
 // ─── Folder Card ─────────────────────────────────────────────────────────────
 
+function ExplorerSummaryCard({
+  label,
+  value,
+  detail,
+  tone,
+  pulse = false,
+}: {
+  label: string
+  value: string
+  detail: string
+  tone: 'neutral' | 'success' | 'warning' | 'info'
+  pulse?: boolean
+}) {
+  const toneClass = tone === 'success'
+    ? 'border-success/20 bg-success/5'
+    : tone === 'warning'
+      ? 'border-warning/20 bg-warning/5'
+      : tone === 'info'
+        ? 'border-info/20 bg-info/5'
+        : 'border-base-300 bg-base-200/20'
+
+  return (
+    <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
+        {pulse ? <span className="size-2 rounded-full bg-info animate-pulse" /> : null}
+      </div>
+      <div className="mt-2 text-sm font-bold tracking-tight">{value}</div>
+      <div className="mt-1 text-xs text-base-content/50">{detail}</div>
+    </div>
+  )
+}
+
 function FolderCard({
   folder,
   onRename,
@@ -548,29 +744,84 @@ function FolderCard({
 
 function PipelineCard({
   pipeline,
+  signal,
+  signalLoading,
   onDelete,
 }: {
   pipeline: ConfigPipelineSummary
+  signal?: PipelineCardSignal
+  signalLoading: boolean
   onDelete: () => void
 }) {
+  const lastRunMeta = signal?.lastRun ? getPipelineStatusMeta(signal.lastRun.status) : null
+  const readinessTone = signal
+    ? signal.issueCount > 0
+      ? 'warning'
+      : signal.jobCount === 0
+        ? 'neutral'
+        : 'success'
+    : 'neutral'
+  const readinessBadgeClass = readinessTone === 'success'
+    ? 'badge-success'
+    : readinessTone === 'warning'
+      ? 'badge-warning'
+      : 'badge-ghost'
+
   return (
-    <div className="group flex items-center justify-between px-4 py-2 hover:bg-base-200/40 transition-colors">
+    <div className="group flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-base-200/40 xl:flex-row xl:items-center xl:justify-between">
       <Link
         to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-        className="flex items-center gap-3 min-w-0 flex-1"
+        className="min-w-0 flex-1"
       >
-        <div className="flex size-7 shrink-0 items-center justify-center rounded bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-          <FileJson2 size={14} />
-        </div>
-        <div className="min-w-0 flex-1 grid grid-cols-[minmax(0,1fr)_160px] items-center gap-4">
-          <div className="truncate font-medium text-[13px] text-base-content" title={pipeline.pipelineName}>{pipeline.pipelineName}</div>
-          <div className="text-[11px] font-mono text-base-content/40 truncate justify-self-end">
-            {pipeline.folderPath || 'Root'}
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+            <FileJson2 size={15} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="truncate font-medium text-[13px] text-base-content" title={pipeline.pipelineName}>
+                {pipeline.pipelineName}
+              </div>
+              {signal ? (
+                <span className={`badge badge-sm border-0 ${readinessBadgeClass}`}>
+                  {signal.issueCount > 0 ? `${signal.issueCount} issues` : signal.jobCount === 0 ? 'No jobs yet' : 'Runnable'}
+                </span>
+              ) : signalLoading ? (
+                <span className="badge badge-ghost badge-sm">Loading semantics</span>
+              ) : null}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-base-content/45">
+              <span>{signal ? `${signal.stageCount} stages | ${signal.jobCount} jobs` : 'Config semantics unavailable'}</span>
+              {signal ? <span>{signal.readyJobs} ready | {signal.warningJobs} need work</span> : null}
+              {signal ? <span>src {signal.sourceConfiguredJobs}/{signal.jobCount} | dest {signal.destConfiguredJobs}/{signal.jobCount}</span> : null}
+            </div>
+            <div className="mt-1 truncate text-[11px] text-base-content/45" title={signal?.readinessGuidance}>
+              {signal?.readinessGuidance ?? (signalLoading ? 'Resolving config readiness and runtime context...' : 'No semantic summary available yet.')}
+            </div>
           </div>
         </div>
       </Link>
 
-      <div className="flex items-center gap-2 ml-4 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
+      <div className="flex flex-col gap-3 xl:min-w-[260px] xl:max-w-[320px]">
+        <div className="rounded-xl border border-base-300 bg-base-100 px-3 py-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/40">Latest Run</div>
+          {signal?.lastRun ? (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <StatusBadge status={signal.lastRun.status} subtle />
+                <span className="font-mono text-[10px] text-base-content/45">#{signal.lastRun.id}</span>
+              </div>
+              <div className="text-[11px] text-base-content/55">{lastRunMeta?.description}</div>
+              <div className="text-[10px] font-mono text-base-content/40">
+                {formatDateTime(signal.lastRun.startTime ?? signal.lastRun.createdAt)}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 text-[11px] text-base-content/45">No run history yet in this workspace.</div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 xl:justify-end xl:opacity-0 xl:transition-opacity xl:group-hover:opacity-100">
         <Link
           to={`/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
           className="btn btn-ghost btn-xs font-normal gap-1 px-2"
@@ -588,6 +839,7 @@ function PipelineCard({
         <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error ml-1" onClick={onDelete} title="Delete">
           <Trash2 size={13} />
         </button>
+      </div>
       </div>
     </div>
   )

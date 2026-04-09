@@ -22,6 +22,9 @@ function ConnectionsTab() {
   const [presets, setPresets] = useState<DriverPreset[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | 'new' | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ConnectionDTO | null>(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([listConnections(), getDriverPresets()])
@@ -34,13 +37,18 @@ function ConnectionsTab() {
     setConnections(conns)
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm('Delete this connection?')) return
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleteSubmitting(true)
+    setActionError(null)
     try {
-      await deleteConnection(id)
+      await deleteConnection(deleteTarget.id)
+      setDeleteTarget(null)
       await reload()
     } catch (e) {
-      alert(getApiErrorMessage(e))
+      setActionError(getApiErrorMessage(e))
+    } finally {
+      setDeleteSubmitting(false)
     }
   }
 
@@ -55,6 +63,8 @@ function ConnectionsTab() {
           <Plus size={14} /> Add Connection
         </button>
       </div>
+
+      {actionError ? <div className="alert alert-error text-sm">{actionError}</div> : null}
 
       {loading ? (
         <div className="flex justify-center py-8"><span className="loading loading-spinner loading-sm opacity-40" /></div>
@@ -75,7 +85,7 @@ function ConnectionsTab() {
               </div>
               <div className="text-[10px] font-mono text-base-content/30 shrink-0">{conn.driver.split('.').pop()}</div>
               <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={() => setEditingId(conn.id)}><Pencil size={12} /></button>
-              <button type="button" className="btn btn-xs btn-ghost btn-square text-error/60" onClick={() => handleDelete(conn.id)}><Trash2 size={12} /></button>
+              <button type="button" className="btn btn-xs btn-ghost btn-square text-error/60" onClick={() => setDeleteTarget(conn)}><Trash2 size={12} /></button>
             </div>
           ))}
         </div>
@@ -90,6 +100,33 @@ function ConnectionsTab() {
           onSaved={async () => { setEditingId(null); await reload() }}
         />
       )}
+
+      {deleteTarget ? (
+        <div className="iris-scrim fixed inset-0 z-50 flex items-center justify-center">
+          <div className="mx-4 w-full max-w-md rounded-xl border border-base-300 bg-base-100 shadow-2xl">
+            <div className="border-b border-error/20 bg-error/5 px-5 py-4">
+              <div className="font-bold text-base text-error">Delete Connection</div>
+            </div>
+            <div className="space-y-3 px-5 py-5">
+              <p className="text-sm text-base-content/70">
+                Remove <span className="font-semibold text-base-content">{deleteTarget.name}</span> from the saved connection library.
+              </p>
+              <p className="text-xs text-base-content/50">
+                This action removes the saved credential entry and does not preserve a rollback copy.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-base-300 px-5 py-3">
+              <button type="button" className="btn btn-sm btn-ghost" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-sm btn-error" disabled={deleteSubmitting} onClick={() => void handleDelete()}>
+                {deleteSubmitting ? <span className="loading loading-spinner loading-xs" /> : null}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -119,8 +156,12 @@ function ConnectionFormModal({
   const [testState, setTestState] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
   const [error, setError] = useState('')
+  const [confirmBlankPassword, setConfirmBlankPassword] = useState(false)
 
   const selectedPreset = presets.find((p) => p.driverClass === form.driver) ?? null
+  const editingExisting = id !== 'new'
+  const blankPasswordOverwrite = editingExisting && form.password.trim().length === 0
+  const canSave = Boolean(form.name && form.driver && form.url && (!blankPasswordOverwrite || confirmBlankPassword))
 
   function buildUrl(template: string, values: Record<string, string>) {
     return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '')
@@ -174,6 +215,12 @@ function ConnectionFormModal({
           <button type="button" className="btn btn-xs btn-ghost btn-square" onClick={onClose} aria-label="Close dialog"><X size={12} /></button>
         </div>
         <div className="flex flex-col gap-4 p-5 overflow-y-auto">
+          {editingExisting ? (
+            <div className={`alert ${blankPasswordOverwrite ? 'alert-warning' : 'alert-info'} text-sm`}>
+              Backend updates save exactly the submitted password. Leaving this field empty will overwrite the stored password with blank.
+            </div>
+          ) : null}
+
           {/* Name */}
           <div className="form-control gap-1">
             <label className="text-[10px] font-black uppercase tracking-widest text-base-content/40">Name</label>
@@ -246,16 +293,33 @@ function ConnectionFormModal({
               <input type="text" className="input input-bordered input-sm w-full" placeholder="root" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} />
             </div>
             <div className="form-control gap-1 flex-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-base-content/40">Password</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Password {editingExisting ? '(required unless you intentionally blank it)' : ''}
+              </label>
               <input
                 type="password"
                 className="input input-bordered input-sm w-full"
-                placeholder="Enter password"
+                placeholder={editingExisting ? 'Re-enter to keep or replace the stored password' : 'Enter password'}
                 value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, password: e.target.value }))
+                  setConfirmBlankPassword(false)
+                }}
               />
             </div>
           </div>
+
+          {blankPasswordOverwrite ? (
+            <label className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/10 px-3 py-3 text-sm text-base-content/75">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-warning checkbox-sm mt-0.5"
+                checked={confirmBlankPassword}
+                onChange={(e) => setConfirmBlankPassword(e.target.checked)}
+              />
+              <span>I intentionally want to save this connection with a blank password.</span>
+            </label>
+          ) : null}
 
           {/* Test */}
           <div className="flex items-center gap-3">
@@ -275,7 +339,7 @@ function ConnectionFormModal({
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-base-300">
           <button type="button" className="btn btn-sm btn-ghost" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-sm btn-primary" disabled={saving || !form.name || !form.driver || !form.url} onClick={handleSave}>
+          <button type="button" className="btn btn-sm btn-primary" disabled={saving || !canSave} onClick={handleSave}>
             {saving ? <span className="loading loading-spinner loading-xs" /> : null}
             Save
           </button>

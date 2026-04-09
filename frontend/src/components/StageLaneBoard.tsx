@@ -27,7 +27,7 @@ export interface StageLaneJobCard {
   title: string
   status?: string
   // Semantic fields (all optional, backward-compatible)
-  subtitle?: string           // e.g. "MySQL → PostgreSQL"
+  subtitle?: string           // e.g. "MySQL ??PostgreSQL"
   stepSummary?: string        // e.g. "3 steps · SELECT / INSERT"
   duration?: string           // e.g. "1.2s" (run mode)
   waitTime?: string           // e.g. "0.3s wait" (run mode)
@@ -244,7 +244,7 @@ function StageLane({
         pointerEvents: stageDragging ? 'none' : undefined,
       }}
     >
-      {/* ── Stage Column ── */}
+      {/* ?�?� Stage Column ?�?� */}
       <section
         ref={setBodyRef}
         className={`group/stage relative flex w-[256px] shrink-0 flex-col overflow-hidden rounded-xl border bg-base-100 shadow-sm transition-all duration-150 ${
@@ -325,7 +325,7 @@ function StageLane({
           <SortableContext items={stage.jobs.map((j) => j.id)} strategy={rectSortingStrategy}>
             {stage.jobs.length === 0 ? (
               <div className="rounded-lg border border-dashed border-base-300/60 px-3 py-6 text-center text-[11px] text-base-content/40">
-                No jobs — add one above
+                No jobs yet. Add one above.
               </div>
             ) : (
               stage.jobs.map((job) => (
@@ -341,7 +341,7 @@ function StageLane({
         </div>
       </section>
 
-      {/* ── Stage Connector ── */}
+      {/* ?�?� Stage Connector ?�?� */}
       {showConnector ? (
         <div className="flex w-[52px] shrink-0 flex-col items-center justify-start pt-10 gap-1">
           <span className="text-[7px] font-bold uppercase tracking-widest text-base-content/35">then</span>
@@ -378,7 +378,7 @@ function StageLaneJob({
     opacity: isDragging ? 0.4 : 1,
   }
 
-  // Left bar color — priority: run status > validation status
+  // Left bar color ??priority: run status > validation status
   const barClass =
     job.status === 'COMPLETED'
       ? 'bg-success'
@@ -463,7 +463,7 @@ function StageLaneJob({
           ) : null}
         </div>
 
-        {/* Subtitle — connection summary */}
+        {/* Subtitle ??connection summary */}
         {job.subtitle ? (
           <div className="mt-1.5 truncate text-[10.5px] text-base-content/45" title={job.subtitle}>
             {job.subtitle}

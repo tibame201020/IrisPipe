@@ -7,12 +7,24 @@ import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard
 import { StatusBadge } from '../components/StatusBadge'
 import { deleteRun, getApiErrorMessage, getRunDetail, getRunLogs, rerunRun, resumeRun, stopRun, type RunLogEntry } from '../lib/api'
 import { formatDateTimeLong, formatDuration } from '../lib/date'
+import {
+  extractRunJobErrorLine,
+  findResumeTargetStage,
+  getAttemptKindLabel,
+  getAttemptStepTotals,
+  getPipelineStatusMeta,
+  getRunActionDescriptors,
+  getRunEffectiveStatus,
+  isPipelineStatusActive,
+  summarizeAttemptProgress,
+  summarizePipelineStage,
+  type RunActionKey,
+} from '../lib/pipeline-runtime'
 import { usePipelineEvents } from '../lib/usePipelineEvents'
 import type {
   AtomicLevel,
   PipelineRunDetailInfo,
   PipelineRunJobInfo,
-  PipelineRunStageInfo,
   PipelineRunStatus,
   StepExecutionInfo,
 } from '../types/irispipe'
@@ -27,7 +39,7 @@ export function RunDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<RunActionKey | null>(null)
   const [selectedAttemptId, setSelectedAttemptId] = useState<number | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
   const [mainTab, setMainTab] = useState<'board' | 'logs'>('board')
@@ -75,7 +87,7 @@ export function RunDetailPage() {
   // Fallback polling: 5 s while run is in-flight (SSE handles instant updates)
   useEffect(() => {
     if (!detail) return
-    const isRunning = ['STARTING', 'STARTED'].includes(detail.status)
+    const isRunning = isPipelineStatusActive(detail.status)
     if (!isRunning) return
     const timer = setInterval(() => { void loadDetail() }, 5000)
     return () => clearInterval(timer)
@@ -93,33 +105,9 @@ export function RunDetailPage() {
 
   useEffect(() => { setSelectedJobId(null) }, [selectedAttemptId])
 
-  // Aggregate throughput across all jobs in current attempt
   const attemptTotals = useMemo(() => {
     if (!currentAttempt) return { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, skip: 0 }
-    return currentAttempt.jobs.reduce(
-      (acc, job) => {
-        const jobTotals = job.stepExecutionInfos.reduce(
-          (s, step) => ({
-            read: s.read + step.readCount,
-            write: s.write + step.writeCount,
-            commit: s.commit + step.commitCount,
-            rollback: s.rollback + step.rollbackCount,
-            filter: s.filter + step.filterCount,
-            skip: s.skip + step.readSkipCount + step.writeSkipCount + step.processSkipCount,
-          }),
-          { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, skip: 0 },
-        )
-        return {
-          read: acc.read + jobTotals.read,
-          write: acc.write + jobTotals.write,
-          commit: acc.commit + jobTotals.commit,
-          rollback: acc.rollback + jobTotals.rollback,
-          filter: acc.filter + jobTotals.filter,
-          skip: acc.skip + jobTotals.skip,
-        }
-      },
-      { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, skip: 0 },
-    )
+    return getAttemptStepTotals(currentAttempt)
   }, [currentAttempt])
 
   const selectedJob = useMemo(() => {
@@ -129,12 +117,14 @@ export function RunDetailPage() {
 
   const stageLanes = useMemo<StageLaneData[]>(() => {
     if (!currentAttempt) return []
-    return currentAttempt.stages.map((stage) => ({
-      id: stage.stage,
-      title: stage.stage,
-      status: stage.status,
-      summary: buildStageSummary(stage),
-      jobs: stage.jobs.map((job) => {
+    return currentAttempt.stages.map((stage) => {
+      const stageSummary = summarizePipelineStage(stage)
+      return {
+        id: stage.stage,
+        title: stage.stage,
+        status: stage.status,
+        summary: stageSummary.summary,
+        jobs: stage.jobs.map((job) => {
         const jobTotals = job.stepExecutionInfos.reduce(
           (acc, step) => ({
             read: acc.read + step.readCount,
@@ -142,13 +132,6 @@ export function RunDetailPage() {
           }),
           { read: 0, write: 0 },
         )
-        // Build error line from first failed step's exitDescription
-        const failedStep = job.stepExecutionInfos.find(
-          (s) => s.exitDescription && s.exitDescription.trim().length > 0 && s.exitCode !== 'COMPLETED',
-        )
-        const errorLine = failedStep?.exitDescription
-          ? failedStep.exitDescription.split('\n')[0].slice(0, 80)
-          : undefined
 
         return {
           id: String(job.id),
@@ -163,11 +146,12 @@ export function RunDetailPage() {
           stepSummary: `${job.stepExecutionInfos.length} step${job.stepExecutionInfos.length !== 1 ? 's' : ''} | ${job.atomicLevel}`,
           duration: formatDuration(job.startTime, job.endTime),
           waitTime: job.createdAt && job.startTime ? formatDuration(job.createdAt, job.startTime) : undefined,
-          errorLine,
+          errorLine: extractRunJobErrorLine(job),
           badges: [job.atomicLevel],
         }
       }),
-    }))
+      }
+    })
   }, [currentAttempt, selectedJobId])
 
   async function runAction(actionName: string, action: () => Promise<unknown>) {
@@ -209,9 +193,11 @@ export function RunDetailPage() {
     )
   }
 
-  const canStop = ['STARTING', 'STARTED'].includes(detail.status)
-  const canResume = ['FAILED', 'STOPPED'].includes(detail.status)
-  const canRerun = ['FAILED', 'STOPPED', 'COMPLETED', 'ABANDONED'].includes(detail.status)
+  const effectiveStatus = getRunEffectiveStatus(detail, currentAttempt)
+  const effectiveStatusMeta = getPipelineStatusMeta(effectiveStatus)
+  const attemptSummary = currentAttempt ? summarizeAttemptProgress(currentAttempt) : null
+  const resumeTargetStage = findResumeTargetStage(detail.attempts[detail.attempts.length - 1] ?? null)
+  const actionDescriptors = getRunActionDescriptors(detail, currentAttempt)
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
@@ -220,7 +206,7 @@ export function RunDetailPage() {
         {/* Left: run ID + status */}
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[13px] font-bold tabular-nums">#{detail.id}</span>
-          <StatusBadge status={currentAttempt?.status ?? detail.status} subtle />
+          <StatusBadge status={effectiveStatus} subtle />
         </div>
 
         <div className="h-4 w-px shrink-0 bg-base-300" />
@@ -275,33 +261,37 @@ export function RunDetailPage() {
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            disabled={!canStop || !!pendingAction}
+            disabled={!actionDescriptors.stop.enabled || !!pendingAction}
             className="btn btn-ghost btn-xs text-error"
-            onClick={() => void runAction('stop', () => stopRun(detail.id))}
+            title={actionDescriptors.stop.enabled ? actionDescriptors.stop.detail : actionDescriptors.stop.disabledReason}
+            onClick={() => setConfirmAction('stop')}
           >
             <Square size={12} />Stop
           </button>
           <button
             type="button"
-            disabled={!canResume || !!pendingAction}
+            disabled={!actionDescriptors.resume.enabled || !!pendingAction}
             className="btn btn-ghost btn-xs"
-            onClick={() => void runAction('resume', () => resumeRun(detail.id))}
+            title={actionDescriptors.resume.enabled ? actionDescriptors.resume.detail : actionDescriptors.resume.disabledReason}
+            onClick={() => setConfirmAction('resume')}
           >
             <PlayCircle size={12} />Resume
           </button>
           <button
             type="button"
-            disabled={!canRerun || !!pendingAction}
+            disabled={!actionDescriptors.rerun.enabled || !!pendingAction}
             className="btn btn-ghost btn-xs"
-            onClick={() => void runAction('rerun', () => rerunRun(detail.id))}
+            title={actionDescriptors.rerun.detail}
+            onClick={() => setConfirmAction('rerun')}
           >
             <RotateCcw size={12} />Rerun
           </button>
           <button
             type="button"
-            disabled={!!pendingAction}
+            disabled={!actionDescriptors.delete.enabled || !!pendingAction}
             className="btn btn-ghost btn-xs text-error"
-            onClick={() => setDeleteConfirmOpen(true)}
+            title={actionDescriptors.delete.enabled ? actionDescriptors.delete.detail : actionDescriptors.delete.disabledReason}
+            onClick={() => setConfirmAction('delete')}
           >
             <Trash2 size={12} />
           </button>
@@ -345,14 +335,53 @@ export function RunDetailPage() {
 
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
+      <section className="grid shrink-0 gap-3 border-b border-base-300 bg-base-100 px-5 py-3 md:grid-cols-2 xl:grid-cols-4">
+        <SemanticCard
+          label="Attempt"
+          value={currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
+          detail={attemptSummary?.detail ?? 'This run has not materialized any execution attempt yet.'}
+        />
+        <SemanticCard
+          label="Runtime"
+          value={effectiveStatusMeta.label}
+          detail={effectiveStatusMeta.description}
+          tone={effectiveStatusMeta.tone}
+        />
+        <SemanticCard
+          label="Stage Progress"
+          value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
+          detail={attemptSummary?.headline ?? 'No stage projection'}
+        />
+        <SemanticCard
+          label="Resume Path"
+          value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
+          detail={resumeTargetStage
+            ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as Skipped.'
+            : 'No resumable stage is pending right now.'}
+        />
+      </section>
+
       {/* Main content */}
       <main className="relative min-w-0 flex-1 overflow-hidden bg-base-200/30">
         {mainTab === 'board' ? (
-          <StageLaneBoard
-            stages={stageLanes}
-            emptyTitle="No attempt stages"
-            emptyDescription="This attempt did not materialize any runtime stage projection."
-          />
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="shrink-0 border-b border-base-300 bg-base-100/80 px-5 py-2">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] text-base-content/50">
+                <span className="font-black uppercase tracking-[0.18em] text-base-content/40">Stage Semantics</span>
+                <span className="badge badge-ghost badge-xs">Parallel inside a stage</span>
+                <span className="badge badge-ghost badge-xs">Barrier between stages</span>
+                <span className="badge badge-ghost badge-xs">Skipped means reused on resume</span>
+                <span className="badge badge-ghost badge-xs">Not Run means blocked downstream</span>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1">
+              <StageLaneBoard
+                stages={stageLanes}
+                emptyTitle="No attempt stages"
+                emptyDescription="This attempt did not materialize any runtime stage projection."
+              />
+            </div>
+          </div>
         ) : (
           <div className="h-full overflow-y-auto px-5 py-4 font-mono text-xs">
             {logsLoading ? (
@@ -380,37 +409,72 @@ export function RunDetailPage() {
         ) : null}
       </main>
 
-      {/* Delete confirmation modal */}
-      {deleteConfirmOpen ? (
+      {confirmAction ? (
         <dialog open className="modal modal-open">
           <div className="modal-box max-w-md border border-base-300">
-            <h3 className="text-lg font-bold">Delete Run</h3>
-            <p className="mt-3 text-sm text-base-content/65">
-              Delete run #{detail.id}. This only removes the selected run. It does not purge the whole pipeline history.
-            </p>
+            <h3 className="text-lg font-bold">{actionDescriptors[confirmAction].confirmTitle}</h3>
+            <p className="mt-3 text-sm text-base-content/65">{actionDescriptors[confirmAction].detail}</p>
             {error ? <div className="alert alert-error mt-4 text-sm">{error}</div> : null}
             <div className="modal-action">
-              <button type="button" className="btn btn-ghost" onClick={() => setDeleteConfirmOpen(false)}>
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmAction(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn btn-error"
-                disabled={pendingAction === 'delete'}
+                className={`btn ${confirmAction === 'delete' || confirmAction === 'stop' ? 'btn-error' : 'btn-primary'}`}
+                disabled={pendingAction === confirmAction}
                 onClick={async () => {
-                  await runAction('delete', () => deleteRun(detail.id))
-                  setDeleteConfirmOpen(false)
+                  if (confirmAction === 'stop') {
+                    await runAction('stop', () => stopRun(detail.id))
+                  } else if (confirmAction === 'resume') {
+                    await runAction('resume', () => resumeRun(detail.id))
+                  } else if (confirmAction === 'rerun') {
+                    await runAction('rerun', () => rerunRun(detail.id))
+                  } else {
+                    await runAction('delete', () => deleteRun(detail.id))
+                  }
+                  setConfirmAction(null)
                 }}
               >
-                {pendingAction === 'delete' ? 'Deleting...' : 'Delete Run'}
+                {pendingAction === confirmAction ? 'Working...' : actionDescriptors[confirmAction].label}
               </button>
             </div>
           </div>
           <form method="dialog" className="modal-backdrop">
-            <button type="button" onClick={() => setDeleteConfirmOpen(false)}>close</button>
+            <button type="button" onClick={() => setConfirmAction(null)}>close</button>
           </form>
         </dialog>
       ) : null}
+    </div>
+  )
+}
+
+function SemanticCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string
+  value: string
+  detail: string
+  tone?: 'success' | 'error' | 'warning' | 'info' | 'neutral'
+}) {
+  const toneClass = tone === 'success'
+    ? 'border-success/20 bg-success/5'
+    : tone === 'error'
+      ? 'border-error/20 bg-error/5'
+      : tone === 'warning'
+        ? 'border-warning/20 bg-warning/5'
+        : tone === 'info'
+          ? 'border-info/20 bg-info/5'
+          : 'border-base-300 bg-base-100'
+
+  return (
+    <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
+      <div className="mt-2 text-sm font-bold tracking-tight">{value}</div>
+      <div className="mt-1 text-xs text-base-content/50">{detail}</div>
     </div>
   )
 }
@@ -688,13 +752,4 @@ function SummaryTile({
 
 // Helpers
 
-function buildStageSummary(stage: PipelineRunStageInfo) {
-  const completedJobs = stage.jobs.filter((job) => job.status === 'COMPLETED').length
-  const failedJobs = stage.jobs.filter((job) => job.status === 'FAILED').length
-  const stoppedJobs = stage.jobs.filter((job) => job.status === 'STOPPED').length
-
-  if (failedJobs > 0) return `${failedJobs} failed, ${completedJobs} completed`
-  if (stoppedJobs > 0) return `${stoppedJobs} stopped, ${completedJobs} completed`
-  return `${completedJobs}/${stage.jobs.length} completed`
-}
 

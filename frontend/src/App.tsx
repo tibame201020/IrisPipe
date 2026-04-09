@@ -3,14 +3,14 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from './state/theme'
 import { LayoutProvider } from './state/layout'
 import { ConsoleLayout } from './layout/ConsoleLayout'
-import { PipelineWorkspaceLayout } from './layout/PipelineWorkspaceLayout'
-import { PipelineRunsLayout } from './layout/PipelineRunsLayout'
-import { PipelineConfigPage } from './pages/PipelineConfigPage'
-import { PipelineRunsPage } from './pages/PipelineRunsPage'
-import { RunDetailPage } from './pages/RunDetailPage'
 
 const OverviewPage = lazy(() => import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })))
 const PipelineExplorerPage = lazy(() => import('./pages/PipelineExplorerPage').then((module) => ({ default: module.PipelineExplorerPage })))
+const PipelineWorkspaceLayout = lazy(() => import('./layout/PipelineWorkspaceLayout').then((module) => ({ default: module.PipelineWorkspaceLayout })))
+const PipelineRunsLayout = lazy(() => import('./layout/PipelineRunsLayout').then((module) => ({ default: module.PipelineRunsLayout })))
+const PipelineConfigPage = lazy(() => import('./pages/PipelineConfigPage').then((module) => ({ default: module.PipelineConfigPage })))
+const PipelineRunsPage = lazy(() => import('./pages/PipelineRunsPage').then((module) => ({ default: module.PipelineRunsPage })))
+const RunDetailPage = lazy(() => import('./pages/RunDetailPage').then((module) => ({ default: module.RunDetailPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })))
 
 function RouteLoadingFallback() {

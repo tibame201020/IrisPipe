@@ -23,7 +23,6 @@ import {
 } from '../lib/api'
 import {
   countDraftJobs,
-  countDraftSteps,
   createBlankConnection,
   createBlankJob,
   createBlankParameter,
@@ -33,13 +32,18 @@ import {
   draftToPayload,
   pipelineToDraft,
   type DraftValidationField,
-  type DraftValidationIssue,
   type EditableJob,
   type EditableParameter,
   type EditableStage,
   type EditableStep,
   type PipelineDraft,
 } from '../lib/pipeline-draft'
+import {
+  buildDraftReadinessSummary as buildConfigReadinessSummary,
+  getJobSemanticSummary as getConfigJobSemanticSummary,
+  getStageSemanticSummary as getConfigStageSemanticSummary,
+  summarizeDraftValidation as summarizeConfigDraftValidation,
+} from '../lib/pipeline-config-semantics'
 import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
 import type { ExecutionType } from '../types/irispipe'
 
@@ -48,13 +52,6 @@ type SelectedItem =
   | { kind: 'job'; stageEditorId: string; jobEditorId: string }
 
 type EditingJobTarget = { stageEditorId: string; jobEditorId: string }
-
-function buildConnectionSummary(database: { source: { driver?: string } | null; dest: { driver?: string } | null }): string {
-  const src = database.source?.driver ?? '--'
-  const dst = database.dest?.driver ?? '--'
-  if (src === '--' && dst === '--') return 'No connections configured'
-  return `${src} -> ${dst}`
-}
 
 function buildStepSummary(job: { executions: Array<{ type?: string; name?: string | null }> }): string {
   const count = job.executions.length
@@ -164,8 +161,8 @@ export function PipelineConfigPage() {
   const validationIssues = useMemo(() => (draft ? collectPipelineDraftIssues(draft) : []), [draft])
   const issues = useMemo(() => validationIssues.map((issue) => issue.message), [validationIssues])
   const draftJobCount = countDraftJobs(draft)
-  const draftStepCount = countDraftSteps(draft)
-  const validationSummary = useMemo(() => summarizeDraftValidation(validationIssues), [validationIssues])
+  const validationSummary = useMemo(() => summarizeConfigDraftValidation(validationIssues), [validationIssues])
+  const draftReadiness = useMemo(() => (draft ? buildConfigReadinessSummary(draft, validationSummary) : null), [draft, validationSummary])
 
   useEffect(() => {
     if (selectedItem?.kind !== 'stage') return
@@ -195,16 +192,16 @@ export function PipelineConfigPage() {
 
   const stageLanes = useMemo<StageLaneData[]>(() => {
     if (!draft) return []
-    return draft.stages.map((stage, stageIndex) => ({
-      id: stage.editorId,
-      title: stage.stageName || `stage${stageIndex + 1}`,
-      selected: selectedStage?.editorId === stage.editorId && selectedItem?.kind === 'stage',
-      onClick: () => setSelectedItem({ kind: 'stage', stageEditorId: stage.editorId }),
-      summary: validationSummary.stageIssues.get(stage.editorId)
-        ? `${validationSummary.stageIssues.get(stage.editorId)} validation issues`
-        : undefined,
-      issuesCount: validationSummary.stageIssues.get(stage.editorId) ?? 0,
-      toolbar: (
+    return draft.stages.map((stage, stageIndex) => {
+      const stageSemantic = getConfigStageSemanticSummary(stage, validationSummary)
+      return {
+        id: stage.editorId,
+        title: stage.stageName || `stage${stageIndex + 1}`,
+        selected: selectedStage?.editorId === stage.editorId && selectedItem?.kind === 'stage',
+        onClick: () => setSelectedItem({ kind: 'stage', stageEditorId: stage.editorId }),
+        summary: stageSemantic.summary,
+        issuesCount: stageSemantic.issueCount,
+        toolbar: (
         <>
           <button
             type="button"
@@ -250,23 +247,24 @@ export function PipelineConfigPage() {
             <Trash2 size={13} />
           </button>
         </>
-      ),
-      jobs: stage.jobs.map((job) => {
-        const jobIssues = validationSummary.jobIssues.get(job.editorId) ?? 0
-        const validationStatus: 'ok' | 'warning' | 'error' =
-          jobIssues > 0 ? 'error' : (job.database.source && job.database.dest) ? 'ok' : 'warning'
-        return ({
-        id: job.editorId,
-        title: job.jobName || 'Untitled job',
-        selected: selectedJob?.editorId === job.editorId,
-        onClick: () => setSelectedItem({ kind: 'job', stageEditorId: stage.editorId, jobEditorId: job.editorId }),
-        onDoubleClick: () => openJobEditor(stage.editorId, job.editorId),
-        issuesCount: jobIssues,
-        validationStatus,
-        subtitle: buildConnectionSummary(job.database),
-        stepSummary: buildStepSummary(job),
-        badges: [`${job.setting.atomicLevel ?? 'JOB'}`],
-        toolbar: (
+        ),
+        jobs: stage.jobs.map((job) => {
+          const jobSemantic = getConfigJobSemanticSummary(job, validationSummary)
+          const validationStatus: 'ok' | 'warning' | 'error' =
+            jobSemantic.state === 'error' ? 'error' : jobSemantic.state === 'warning' ? 'warning' : 'ok'
+
+          return ({
+          id: job.editorId,
+          title: job.jobName || 'Untitled job',
+          selected: selectedJob?.editorId === job.editorId,
+          onClick: () => setSelectedItem({ kind: 'job', stageEditorId: stage.editorId, jobEditorId: job.editorId }),
+          onDoubleClick: () => openJobEditor(stage.editorId, job.editorId),
+          issuesCount: jobSemantic.issueCount,
+          validationStatus,
+          subtitle: jobSemantic.connectionSummary,
+          stepSummary: buildStepSummary(job),
+          badges: [`${job.setting.atomicLevel ?? 'JOB'}`],
+          toolbar: (
           <>
             <button
               type="button"
@@ -293,9 +291,10 @@ export function PipelineConfigPage() {
               <Trash2 size={13} />
             </button>
           </>
-        ),
-      })}),
-    }))
+          ),
+        })}),
+      }
+    })
   }, [
     draft,
     openJobEditor,
@@ -654,7 +653,7 @@ export function PipelineConfigPage() {
     )
   }
 
-  if (!draft) return null
+  if (!draft || !draftReadiness) return null
 
   const stageOptions = draft.stages.map((stage) => ({
     label: stage.stageName || 'Untitled stage',
@@ -686,8 +685,12 @@ export function PipelineConfigPage() {
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-base-content/55">
           <span className="badge badge-ghost badge-sm">{draft.stages.length} stages</span>
           <span className="badge badge-ghost badge-sm">{draftJobCount} jobs</span>
-          {issues.length > 0 ? <span className="badge badge-warning badge-sm">{issues.length} issues</span> : null}
-          <span className="text-[11px] font-medium text-base-content/40">Jobs in the same stage run in parallel. Drag cards to reorganize, double-click a job to edit.</span>
+          <span className={`badge badge-sm ${draftReadiness.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+            {draftReadiness.issueCount > 0 ? `${draftReadiness.issueCount} issues` : 'Runnable'}
+          </span>
+          <span className="text-[11px] font-medium text-base-content/40">
+            {draftReadiness.guidance}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -761,10 +764,36 @@ export function PipelineConfigPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
             <div className="grid grid-cols-2 gap-3">
-              <SummaryTile label="Stages" value={draft.stages.length} />
-              <SummaryTile label="Jobs" value={draftJobCount} />
-              <SummaryTile label="Steps" value={draftStepCount} />
-              <SummaryTile label="Issues" value={issues.length} />
+              <SummaryTile label="Stages" value={draftReadiness.stageCount} />
+              <SummaryTile label="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} />
+              <SummaryTile label="Steps" value={draftReadiness.stepCount} />
+              <SummaryTile label="Issues" value={draftReadiness.issueCount} />
+              <SummaryTile label="Source Conn" value={draftReadiness.sourceConfiguredJobs} />
+              <SummaryTile label="Dest Conn" value={draftReadiness.destConfiguredJobs} />
+            </div>
+
+            <div className={`mt-6 rounded-2xl border p-4 ${
+              draftReadiness.issueCount === 0
+                ? 'border-success/20 bg-success/5'
+                : draftReadiness.issueCount <= 3
+                  ? 'border-warning/20 bg-warning/5'
+                  : 'border-error/20 bg-error/5'
+            }`}>
+              <div className={`iris-header ${
+                draftReadiness.issueCount === 0
+                  ? 'text-success'
+                  : draftReadiness.issueCount <= 3
+                    ? 'text-warning'
+                    : 'text-error'
+              }`}>
+                {draftReadiness.headline}
+              </div>
+              <div className="mt-2 text-xs text-base-content/60">{draftReadiness.guidance}</div>
+              <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+                <span className="badge badge-ghost badge-sm">{draftReadiness.stageCount} stage lanes</span>
+                <span className="badge badge-ghost badge-sm">{draftReadiness.jobCount} runtime jobs</span>
+                <span className="badge badge-ghost badge-sm">{draftReadiness.warningJobs} jobs still need review</span>
+              </div>
             </div>
 
             {issues.length > 0 ? (
@@ -1702,84 +1731,6 @@ type DraftValidationSummary = {
   jobFieldMessages: Map<string, Map<DraftValidationField, string[]>>
   stepFieldMessages: Map<string, Map<DraftValidationField, string[]>>
   jobMessages: Map<string, string[]>
-}
-
-function summarizeDraftValidation(validationIssues: DraftValidationIssue[]): DraftValidationSummary {
-  const pipelineFields = new Set<DraftValidationField>()
-  const pipelineMessages = new Map<DraftValidationField, string[]>()
-  const stageIssues = new Map<string, number>()
-  const jobIssues = new Map<string, number>()
-  const stepIssues = new Map<string, number>()
-  const stageFieldMessages = new Map<string, Map<DraftValidationField, string[]>>()
-  const jobFieldMessages = new Map<string, Map<DraftValidationField, string[]>>()
-  const stepFieldMessages = new Map<string, Map<DraftValidationField, string[]>>()
-  const jobMessages = new Map<string, string[]>()
-
-  validationIssues.forEach((issue) => {
-    if (!issue.stageEditorId && !issue.jobEditorId && !issue.stepEditorId && issue.field) {
-      pipelineFields.add(issue.field)
-      pushFieldMessage(pipelineMessages, issue.field, issue.message)
-    }
-
-    if (issue.stageEditorId) {
-      stageIssues.set(issue.stageEditorId, (stageIssues.get(issue.stageEditorId) ?? 0) + 1)
-      if (issue.field) {
-        pushScopedFieldMessage(stageFieldMessages, issue.stageEditorId, issue.field, issue.message)
-      }
-    }
-
-    if (issue.jobEditorId) {
-      jobIssues.set(issue.jobEditorId, (jobIssues.get(issue.jobEditorId) ?? 0) + 1)
-      pushScopedMessage(jobMessages, issue.jobEditorId, issue.message)
-      if (issue.field) {
-        pushScopedFieldMessage(jobFieldMessages, issue.jobEditorId, issue.field, issue.message)
-      }
-    }
-
-    if (issue.stepEditorId) {
-      stepIssues.set(issue.stepEditorId, (stepIssues.get(issue.stepEditorId) ?? 0) + 1)
-      if (issue.field) {
-        pushScopedFieldMessage(stepFieldMessages, issue.stepEditorId, issue.field, issue.message)
-      }
-    }
-  })
-
-  return {
-    pipelineFields,
-    pipelineMessages,
-    stageIssues,
-    jobIssues,
-    stepIssues,
-    stageFieldMessages,
-    jobFieldMessages,
-    stepFieldMessages,
-    jobMessages,
-  }
-}
-
-function pushScopedMessage(map: Map<string, string[]>, id: string, message: string) {
-  const current = map.get(id) ?? []
-  current.push(message)
-  map.set(id, Array.from(new Set(current)))
-}
-
-function pushFieldMessage(map: Map<DraftValidationField, string[]>, field: DraftValidationField, message: string) {
-  const current = map.get(field) ?? []
-  current.push(message)
-  map.set(field, Array.from(new Set(current)))
-}
-
-function pushScopedFieldMessage(
-  map: Map<string, Map<DraftValidationField, string[]>>,
-  id: string,
-  field: DraftValidationField,
-  message: string,
-) {
-  const scoped = map.get(id) ?? new Map<DraftValidationField, string[]>()
-  const current = scoped.get(field) ?? []
-  current.push(message)
-  scoped.set(field, Array.from(new Set(current)))
-  map.set(id, scoped)
 }
 
 function getFieldMessages(

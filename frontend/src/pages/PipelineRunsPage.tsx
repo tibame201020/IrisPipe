@@ -1,4 +1,4 @@
-﻿import { History, RefreshCw, TimerReset, Zap } from 'lucide-react'
+import { History, RefreshCw, TimerReset, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
@@ -6,11 +6,17 @@ import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
 import { executePipeline, getApiErrorMessage, getPipelineRuns } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
+import {
+  getPipelineStatusMeta,
+  isPipelineStatusActive,
+  isPipelineStatusResumable,
+  summarizePipelineRunHistory,
+} from '../lib/pipeline-runtime'
 import { usePipelineEvents } from '../lib/usePipelineEvents'
 import type { PipelineRunSummaryInfo } from '../types/irispipe'
 import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
 
-type FilterTab = 'all' | 'active' | 'failed' | 'completed'
+type FilterTab = 'all' | 'active' | 'failed' | 'completed' | 'resumable'
 
 export function PipelineRunsPage() {
   const { pipelineId } = useParams()
@@ -36,10 +42,11 @@ export function PipelineRunsPage() {
     } else {
       setLoadingMore(true)
     }
+
     try {
-      const runsResponse = await getPipelineRuns(numericPipelineId, 20, reset ? undefined : beforeRunId)
-      setRuns((current) => (reset ? runsResponse : [...current, ...runsResponse]))
-      const lastRun = runsResponse[runsResponse.length - 1]
+      const response = await getPipelineRuns(numericPipelineId, 20, reset ? undefined : beforeRunId)
+      setRuns((current) => (reset ? response : [...current, ...response]))
+      const lastRun = response[response.length - 1]
       setBeforeRunId(lastRun?.id)
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, 'Failed to load pipeline runs'))
@@ -49,28 +56,37 @@ export function PipelineRunsPage() {
     }
   }
 
+  function refreshRunHistory() {
+    setRuns([])
+    setBeforeRunId(undefined)
+    void loadRuns(true)
+  }
+
   useEffect(() => {
     if (!Number.isFinite(numericPipelineId)) {
       setError('Invalid pipeline id')
       setLoading(false)
       return
     }
+
     setRuns([])
     setBeforeRunId(undefined)
     void loadRuns(true)
   }, [numericPipelineId])
 
   usePipelineEvents({
-    onRunStarted: () => { setRuns([]); setBeforeRunId(undefined); void loadRuns(true) },
-    onRunCompleted: () => { setRuns([]); setBeforeRunId(undefined); void loadRuns(true) },
-    onRunFailed: () => { setRuns([]); setBeforeRunId(undefined); void loadRuns(true) },
-    onRunStopped: () => { setRuns([]); setBeforeRunId(undefined); void loadRuns(true) },
+    onRunStarted: refreshRunHistory,
+    onRunCompleted: refreshRunHistory,
+    onRunFailed: refreshRunHistory,
+    onRunStopped: refreshRunHistory,
   })
 
   async function handleExecute() {
     if (!pipeline) return
+
     setExecuting(true)
     setError(null)
+
     try {
       const run = await executePipeline({ pipelineId: pipeline.id, useAsyncLaucher: true })
       navigate(`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`)
@@ -80,38 +96,24 @@ export function PipelineRunsPage() {
     }
   }
 
-  const stats = useMemo(() => {
-    if (runs.length === 0) return null
-    const completed = runs.filter((r) => r.status === 'COMPLETED').length
-    const failed = runs.filter((r) => r.status === 'FAILED').length
-    const active = runs.filter((r) => ['STARTED', 'STARTING'].includes(r.status)).length
-    const successRate = runs.length > 0 ? Math.round((completed / runs.length) * 100) : 0
-    const finishedWithTime = runs.filter((r) => r.startTime && r.endTime)
-    const avgDurationMs = finishedWithTime.length > 0
-      ? finishedWithTime.reduce((sum, r) => {
-          const toMs = (v: typeof r.startTime) => {
-            if (!v) return 0
-            if (typeof v === 'string') return new Date(v).getTime()
-            if (Array.isArray(v)) return new Date(...(v as [number, number, number, number, number, number, number])).getTime()
-            return Number(v)
-          }
-          return sum + Math.max(0, toMs(r.endTime) - toMs(r.startTime))
-        }, 0) / finishedWithTime.length
-      : null
-    const avgLabel = avgDurationMs !== null
-      ? avgDurationMs < 60000 ? `${Math.round(avgDurationMs / 1000)}s` : `${Math.round(avgDurationMs / 60000)}m`
-      : '--'
-    return { completed, failed, active, successRate, avgLabel }
-  }, [runs])
+  const stats = useMemo(() => summarizePipelineRunHistory(runs), [runs])
+  const latestRun = runs[0] ?? null
+  const latestStatusMeta = latestRun ? getPipelineStatusMeta(latestRun.status) : null
 
   const filteredRuns = useMemo(() => {
-    if (filter === 'active') return runs.filter((r) => ['STARTED', 'STARTING'].includes(r.status))
-    if (filter === 'failed') return runs.filter((r) => r.status === 'FAILED')
-    if (filter === 'completed') return runs.filter((r) => r.status === 'COMPLETED')
-    return runs
-  }, [runs, filter])
-
-  const activeCount = runs.filter((r) => ['STARTED', 'STARTING'].includes(r.status)).length
+    switch (filter) {
+      case 'active':
+        return runs.filter((run) => isPipelineStatusActive(run.status))
+      case 'failed':
+        return runs.filter((run) => run.status === 'FAILED' || run.status === 'ABANDONED')
+      case 'completed':
+        return runs.filter((run) => run.status === 'COMPLETED')
+      case 'resumable':
+        return runs.filter((run) => isPipelineStatusResumable(run.status))
+      default:
+        return runs
+    }
+  }, [filter, runs])
 
   if (loading) return <div className="p-12"><LoadingState /></div>
 
@@ -128,33 +130,80 @@ export function PipelineRunsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      {/* Filter bar */}
+      <section className="shrink-0 border-b border-base-300 bg-base-100 px-5 py-4">
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))]">
+          <div className="rounded-2xl border border-base-300 bg-base-200/20 px-4 py-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Runtime Signal</div>
+            <div className="mt-2 flex items-center gap-2">
+              {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
+              {latestRun ? <span className="text-[10px] font-mono text-base-content/45">#{latestRun.id}</span> : null}
+            </div>
+            <div className="mt-2 text-sm font-semibold">
+              {latestStatusMeta ? latestStatusMeta.description : 'This pipeline has not created any run history yet.'}
+            </div>
+            <div className="mt-1 text-xs text-base-content/45">
+              {latestRun
+                ? `Started ${formatDateTime(latestRun.startTime ?? latestRun.createdAt)}`
+                : 'Execute this pipeline to materialize runtime attempts and stage progress.'}
+            </div>
+          </div>
+
+          <HistoryOverviewCard label="History" value={stats?.total ?? 0} detail="Recorded logical runs" accent="neutral" />
+          <HistoryOverviewCard
+            label="In Flight"
+            value={stats?.active ?? 0}
+            detail="Attempts actively executing"
+            accent="info"
+            pulse={(stats?.active ?? 0) > 0}
+          />
+          <HistoryOverviewCard
+            label="Resumable"
+            value={stats?.resumable ?? 0}
+            detail="Stopped or failed runs"
+            accent="warning"
+          />
+          <HistoryOverviewCard
+            label="Avg Runtime"
+            value={stats?.avgLabel ?? '--'}
+            detail={`${stats?.successRate ?? 0}% recent success`}
+            accent="success"
+          />
+        </div>
+      </section>
+
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-base-300 bg-base-100 px-5 py-2">
         <div className="flex items-center gap-1.5">
-          {/* Filter chips */}
           <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
-          {activeCount > 0 && (
-            <FilterChip label="Active" count={activeCount} active={filter === 'active'} onClick={() => setFilter('active')} pulse />
+          {(stats?.active ?? 0) > 0 && (
+            <FilterChip label="Active" count={stats?.active ?? 0} active={filter === 'active'} onClick={() => setFilter('active')} pulse />
           )}
           <FilterChip
             label="Failed"
-            count={runs.filter((r) => r.status === 'FAILED').length}
+            count={stats?.failed ?? 0}
             active={filter === 'failed'}
             onClick={() => setFilter('failed')}
             variant="error"
           />
           <FilterChip
             label="Completed"
-            count={runs.filter((r) => r.status === 'COMPLETED').length}
+            count={stats?.completed ?? 0}
             active={filter === 'completed'}
             onClick={() => setFilter('completed')}
             variant="success"
           />
+          {(stats?.resumable ?? 0) > 0 && (
+            <FilterChip
+              label="Resumable"
+              count={stats?.resumable ?? 0}
+              active={filter === 'resumable'}
+              onClick={() => setFilter('resumable')}
+              variant="warning"
+            />
+          )}
         </div>
 
-        {/* Stats summary + actions */}
         <div className="flex items-center gap-3">
-          {stats && (
+          {stats ? (
             <div className="hidden items-center gap-3 md:flex">
               <span className="text-[10px] text-base-content/45 tabular-nums">
                 <span className="font-semibold text-base-content/65">{stats.successRate}%</span> success
@@ -164,15 +213,18 @@ export function PipelineRunsPage() {
                 avg <span className="font-semibold font-mono text-base-content/65">{stats.avgLabel}</span>
               </span>
             </div>
-          )}
-          <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-xs btn-square">
+          ) : null}
+
+          <button type="button" onClick={() => void loadRuns(true)} className="btn btn-ghost btn-xs btn-square" aria-label="Refresh run history">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           </button>
+
           <button
             type="button"
             onClick={() => void handleExecute()}
             className={`btn btn-primary btn-sm gap-1.5 ${executing ? 'iris-execute-ring' : ''}`}
             disabled={executing}
+            title="Start a fresh logical run from the current saved pipeline definition."
           >
             <Zap size={13} className={executing ? 'animate-pulse' : ''} />
             {executing ? 'Launching...' : 'Execute'}
@@ -180,9 +232,8 @@ export function PipelineRunsPage() {
         </div>
       </div>
 
-      {error && <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div>}
+      {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      {/* Timeline */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {runs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -190,7 +241,9 @@ export function PipelineRunsPage() {
               <TimerReset size={36} className="text-base-content/30" />
             </div>
             <h3 className="text-lg font-bold">No runs yet</h3>
-            <p className="mt-1.5 max-w-xs text-sm text-base-content/50">Execute this pipeline to create the first run record.</p>
+            <p className="mt-1.5 max-w-xs text-sm text-base-content/50">
+              Execute this pipeline to create the first runtime record and stage projection.
+            </p>
             <button
               type="button"
               onClick={() => void handleExecute()}
@@ -203,14 +256,15 @@ export function PipelineRunsPage() {
           </div>
         ) : filteredRuns.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-sm text-base-content/40">No runs match this filter.</p>
+            <p className="text-sm text-base-content/45">No runs match this semantic filter.</p>
             <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={() => setFilter('all')}>Show all</button>
           </div>
         ) : (
           <div>
-            {/* Column header */}
-            <div className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/95 px-5 py-1.5 backdrop-blur-sm"
-              style={{ gridTemplateColumns: '28px 1fr 140px 90px 80px 28px' }}>
+            <div
+              className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/95 px-5 py-1.5 backdrop-blur-sm"
+              style={{ gridTemplateColumns: '28px minmax(0,1.5fr) 160px 90px 80px 50px' }}
+            >
               <span />
               <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Run</span>
               <span className="text-[9px] font-black uppercase tracking-widest text-base-content/35">Started</span>
@@ -220,17 +274,17 @@ export function PipelineRunsPage() {
             </div>
 
             <div className="divide-y divide-base-200/70">
-              {filteredRuns.map((run, i) => (
+              {filteredRuns.map((run, index) => (
                 <RunRow
                   key={run.id}
                   run={run}
-                  isLatest={i === 0 && filter === 'all'}
+                  isLatest={index === 0 && filter === 'all'}
                   to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
                 />
               ))}
             </div>
 
-            {beforeRunId && (
+            {beforeRunId ? (
               <div className="flex justify-center px-5 py-4">
                 <button
                   type="button"
@@ -242,10 +296,42 @@ export function PipelineRunsPage() {
                   Load older runs
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function HistoryOverviewCard({
+  label,
+  value,
+  detail,
+  accent,
+  pulse = false,
+}: {
+  label: string
+  value: string | number
+  detail: string
+  accent: 'neutral' | 'info' | 'warning' | 'success'
+  pulse?: boolean
+}) {
+  const accentMap = {
+    neutral: 'border-base-300 bg-base-100 text-base-content',
+    info: 'border-info/20 bg-info/5 text-info',
+    warning: 'border-warning/20 bg-warning/5 text-warning',
+    success: 'border-success/20 bg-success/5 text-success',
+  }
+
+  return (
+    <div className={`rounded-2xl border px-4 py-4 ${accentMap[accent]}`}>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/45">{label}</div>
+        {pulse ? <span className="size-2 rounded-full bg-current animate-pulse opacity-70" /> : null}
+      </div>
+      <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
+      <div className="mt-1 text-xs text-base-content/50">{detail}</div>
     </div>
   )
 }
@@ -263,14 +349,16 @@ function FilterChip({
   active: boolean
   onClick: () => void
   pulse?: boolean
-  variant?: 'error' | 'success'
+  variant?: 'error' | 'success' | 'warning'
 }) {
   const baseClass = active
     ? variant === 'error'
       ? 'border-error/40 bg-error/10 text-error'
       : variant === 'success'
         ? 'border-success/40 bg-success/10 text-success'
-        : 'border-primary/40 bg-primary/10 text-primary'
+        : variant === 'warning'
+          ? 'border-warning/40 bg-warning/10 text-warning'
+          : 'border-primary/40 bg-primary/10 text-primary'
     : 'border-base-300 bg-base-100 text-base-content/45 hover:border-base-300 hover:text-base-content/70'
 
   return (
@@ -279,13 +367,13 @@ function FilterChip({
       onClick={onClick}
       className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${baseClass}`}
     >
-      {pulse && <span className="size-1.5 rounded-full bg-info animate-pulse shrink-0" />}
+      {pulse ? <span className="size-1.5 rounded-full bg-info animate-pulse shrink-0" /> : null}
       {label}
-      {count > 0 && (
+      {count > 0 ? (
         <span className={`rounded-full px-1 py-0 text-[9px] font-bold tabular-nums ${active ? 'bg-current/20' : 'bg-base-200 text-base-content/40'}`}>
           {count}
         </span>
-      )}
+      ) : null}
     </button>
   )
 }
@@ -299,72 +387,69 @@ function RunRow({
   isLatest: boolean
   to: string
 }) {
-  const isActive = ['STARTED', 'STARTING'].includes(run.status)
-  const isFailed = run.status === 'FAILED'
-  const isCompleted = run.status === 'COMPLETED'
+  const statusMeta = getPipelineStatusMeta(run.status)
+  const isActive = isPipelineStatusActive(run.status)
+  const isResumable = isPipelineStatusResumable(run.status)
 
-  const dotClass = isActive
-    ? 'bg-info animate-pulse'
-    : isFailed
-      ? 'bg-error'
-      : isCompleted
-        ? 'bg-success'
-        : 'bg-base-content/30'
-
-  const rowBg = isFailed
+  const rowBg = statusMeta.tone === 'error'
     ? 'hover:bg-error/5'
-    : isActive
+    : statusMeta.tone === 'info'
       ? 'hover:bg-info/5'
-      : 'hover:bg-base-200/40'
+      : statusMeta.tone === 'warning'
+        ? 'hover:bg-warning/5'
+        : 'hover:bg-base-200/40'
 
   return (
     <Link
       to={to}
-      className={`group grid items-center gap-4 px-5 py-2.5 transition-colors ${rowBg}`}
-      style={{ gridTemplateColumns: '28px 1fr 140px 90px 80px 28px' }}
+      className={`group grid items-center gap-4 px-5 py-3 transition-colors ${rowBg}`}
+      style={{ gridTemplateColumns: '28px minmax(0,1.5fr) 160px 90px 80px 50px' }}
     >
-      {/* Status dot */}
       <div className="flex justify-center">
-        <span className={`size-1.5 rounded-full ${dotClass}`} />
+        <span className={`size-1.5 rounded-full ${statusMeta.dotClass} ${isActive ? 'animate-pulse' : ''}`} />
       </div>
 
-      {/* Run ID + latest badge */}
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="font-mono text-[12px] font-semibold tabular-nums text-base-content/70">
-          #{run.id}
-        </span>
-        {isLatest && (
-          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
-            latest
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="font-mono text-[12px] font-semibold tabular-nums text-base-content/70">
+            #{run.id}
           </span>
-        )}
-        {isActive && (
-          <span className="text-[9px] font-black uppercase tracking-widest text-info/70">
-            live
-          </span>
-        )}
+          {isLatest ? (
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+              latest
+            </span>
+          ) : null}
+          {isActive ? (
+            <span className="text-[9px] font-black uppercase tracking-widest text-info/70">
+              live
+            </span>
+          ) : null}
+          {isResumable ? (
+            <span className="text-[9px] font-black uppercase tracking-widest text-warning/80">
+              resumable
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-1 truncate text-[10px] text-base-content/45" title={statusMeta.description}>
+          {statusMeta.description}
+        </div>
       </div>
 
-      {/* Timestamp */}
       <span className="truncate font-mono text-[11px] tabular-nums text-base-content/50">
         {formatDateTime(run.startTime ?? run.createdAt)}
       </span>
 
-      {/* Duration */}
       <span className="font-mono text-[11px] tabular-nums text-base-content/60">
         {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
       </span>
 
-      {/* Status badge */}
       <div>
         <StatusBadge status={run.status} subtle mode="text" />
       </div>
 
-      {/* Arrow */}
       <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
-        <span className="text-[10px] text-base-content/45">View</span>
+        <span className="text-[10px] text-base-content/45">Inspect</span>
       </div>
     </Link>
   )
 }
-

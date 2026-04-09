@@ -1,13 +1,13 @@
-import { Outlet, Link, useParams, useSearchParams, Navigate, useLocation } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, Navigate, Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { Layers3, PlayCircle, Waypoints } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { StatusBadge } from '../components/StatusBadge'
 import { getApiErrorMessage, getPipelineConfig, getPipelineTree, getRecentRuns } from '../lib/api'
+import { formatDuration } from '../lib/date'
 import { findFolderPath } from '../lib/tree'
 import type { ConfigPipelineInfo, FolderTreeNodeInfo, PipelineRunSummaryInfo, PipelineTreeInfo } from '../types/irispipe'
-import { Layers3, PlayCircle, Waypoints } from 'lucide-react'
-import { formatDuration } from '../lib/date'
-import { StatusBadge } from '../components/StatusBadge'
 
 export type PipelineWorkspaceContext = {
   pipeline: ConfigPipelineInfo
@@ -39,8 +39,10 @@ export function PipelineWorkspaceLayout() {
       setLoading(false)
       return
     }
+
     setLoading(true)
     setError(null)
+
     try {
       const [pipelineResponse, treeResponse] = await Promise.all([
         getPipelineConfig(numericPipelineId),
@@ -56,15 +58,18 @@ export function PipelineWorkspaceLayout() {
   }, [numericPipelineId])
 
   useEffect(() => {
+    let active = true
+
     if (!Number.isFinite(numericPipelineId)) {
       setError('Invalid pipeline id')
       setLoading(false)
       return
     }
-    let active = true
+
     void (async () => {
       setLoading(true)
       setError(null)
+
       try {
         const [pipelineResponse, treeResponse] = await Promise.all([
           getPipelineConfig(numericPipelineId),
@@ -80,16 +85,21 @@ export function PipelineWorkspaceLayout() {
         if (active) setLoading(false)
       }
     })()
-    return () => { active = false }
+
+    return () => {
+      active = false
+    }
   }, [numericPipelineId])
 
-  // Load last run for the pipeline (used in tab bar)
   useEffect(() => {
     if (!Number.isFinite(numericPipelineId)) return
-    getRecentRuns(1).then((runs) => {
-      const match = runs.find((r) => r.pipelineId === numericPipelineId)
-      if (match) setLastRun(match)
-    }).catch(() => {})
+
+    getRecentRuns(1)
+      .then((runs) => {
+        const match = runs.find((run) => run.pipelineId === numericPipelineId)
+        if (match) setLastRun(match)
+      })
+      .catch(() => {})
   }, [numericPipelineId])
 
   const folderPathNodes = useMemo(() => {
@@ -117,16 +127,13 @@ export function PipelineWorkspaceLayout() {
   const runsActive = location.pathname.includes(`/pipeline/items/${pipeline.id}/runs`)
   const totalJobs = pipeline.jobs.length
   const totalStages = pipeline.stages.length
-
   const runsHref = `/pipeline/items/${pipeline.id}/runs${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`
   const configHref = `/pipeline/items/${pipeline.id}/config${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
       <header className="z-30 shrink-0 border-b border-base-300 bg-base-100">
-        {/* Single compact row: breadcrumb / title / chips */}
         <div className="flex items-center gap-3 px-5 py-2.5">
-          {/* Breadcrumb + title */}
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <Link to="/pipeline" className="shrink-0 text-[11px] text-base-content/45 transition-colors hover:text-primary">
               Root
@@ -144,11 +151,12 @@ export function PipelineWorkspaceLayout() {
               {pipeline.pipelineName}
             </h1>
             {dirty ? (
-              <span className="shrink-0 text-[10px] text-warning" title="Unsaved changes">●</span>
+              <span className="badge badge-warning badge-xs shrink-0" title="Unsaved changes">
+                unsaved
+              </span>
             ) : null}
           </div>
 
-          {/* Summary chips */}
           <div className="hidden shrink-0 items-center gap-1.5 md:flex">
             <span className="flex items-center gap-1 rounded-full bg-primary/8 px-2.5 py-0.5 text-[10px] font-bold text-primary/70">
               <Layers3 size={10} />
@@ -161,32 +169,30 @@ export function PipelineWorkspaceLayout() {
           </div>
         </div>
 
-        {/* Tab row */}
         <div className="flex items-center justify-between gap-0 border-t border-base-300/40 bg-base-200/15 px-5">
           <div className="flex items-center">
             <Link
               to={configHref}
-              className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all duration-150 -mb-px ${
+              className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all duration-150 ${
                 !runsActive
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+                  : 'border-transparent text-base-content/40 hover:border-base-300 hover:text-base-content'
               }`}
             >
               Config
             </Link>
             <Link
               to={runsHref}
-              className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all duration-150 -mb-px ${
+              className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-semibold transition-all duration-150 ${
                 runsActive
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-base-content/40 hover:text-base-content hover:border-base-300'
+                  : 'border-transparent text-base-content/40 hover:border-base-300 hover:text-base-content'
               }`}
             >
               Runs
             </Link>
           </div>
 
-          {/* Last run chip */}
           {lastRun ? (
             <Link
               to={`${runsHref.split('?')[0]}/${lastRun.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
@@ -209,7 +215,9 @@ export function PipelineWorkspaceLayout() {
           tree,
           folderPathNodes,
           refreshWorkspace: loadWorkspace,
-          applyPipeline: (nextPipeline: ConfigPipelineInfo) => { setPipeline(nextPipeline) },
+          applyPipeline: (nextPipeline: ConfigPipelineInfo) => {
+            setPipeline(nextPipeline)
+          },
           setDirty,
           lastRun,
         } satisfies PipelineWorkspaceContext}
