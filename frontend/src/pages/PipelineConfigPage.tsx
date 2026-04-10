@@ -1,7 +1,7 @@
 ﻿import { ArrowDown, ArrowUp, FileUp, Link2, Plus, Save, Server, Trash2, Waypoints } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Pencil, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { ArrowLeft, ArrowRight, Pencil, X } from 'lucide-react'
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { SqlEditor } from '../components/SqlEditor'
@@ -12,6 +12,7 @@ import { ActionButton, ActionLink } from '../components/ui/Action'
 import { PanelHeader, SummaryTile as SharedSummaryTile, SurfaceBox } from '../components/ui/Surface'
 import {
   createPipelineConfig,
+  executePipeline,
   getApiErrorMessage,
   getDriverPresets,
   getPipelineConfig,
@@ -72,6 +73,7 @@ export function PipelineConfigPage() {
   const [editingJobTarget, setEditingJobTarget] = useState<EditingJobTarget | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [executing, setExecuting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [importSubmitting, setImportSubmitting] = useState(false)
@@ -613,6 +615,22 @@ export function PipelineConfigPage() {
     }
   }
 
+  async function handleExecute() {
+    if (createMode || !workspace?.pipeline?.id) return
+
+    setExecuting(true)
+    setError(null)
+
+    try {
+      const run = await executePipeline({ pipelineId: workspace.pipeline.id, useAsyncLaucher: true })
+      navigate(`/pipeline/items/${workspace.pipeline.id}/runs/${run.id}${workspace.pipeline.folderId ? `?folderId=${workspace.pipeline.folderId}` : ''}`)
+    } catch (executeError) {
+      setError(getApiErrorMessage(executeError, 'Failed to execute pipeline'))
+    } finally {
+      setExecuting(false)
+    }
+  }
+
   async function handleImport(payload: { pipelineName: string; file: File; format?: string }) {
     if (!draft) return
 
@@ -718,7 +736,7 @@ export function PipelineConfigPage() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ActionButton
             tone="toolbar"
             onClick={() => {
@@ -739,6 +757,18 @@ export function PipelineConfigPage() {
             <Plus size={14} />
             Add Stage
           </ActionButton>
+          {!createMode ? (
+            <ActionButton
+              tone="outline"
+              className="border-success/30 text-success hover:bg-success/8"
+              disabled={executing || draftReadiness.issueCount > 0}
+              title={draftReadiness.issueCount > 0 ? 'Resolve validation blockers before executing this pipeline.' : 'Start a fresh logical run from the current saved pipeline definition.'}
+              onClick={() => void handleExecute()}
+            >
+              <Zap size={14} className={executing ? 'animate-pulse' : ''} />
+              {executing ? 'Launching...' : 'Execute'}
+            </ActionButton>
+          ) : null}
           <ActionButton tone="primary" disabled={saving} onClick={() => void handleSave()}>
             <Save size={14} />
             {saving ? 'Saving...' : createMode ? 'Create Pipeline' : 'Save Pipeline'}
@@ -749,98 +779,112 @@ export function PipelineConfigPage() {
       {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
 
       <div className="iris-workspace-shell relative flex min-h-0 flex-1 overflow-hidden">
-        {jobWorkspaceActive && editingStage && editingJob ? (
-          <JobWorkspacePanel
-            stage={editingStage}
-            job={editingJob}
-            stageOptions={stageOptions}
-            validation={validationSummary}
-            onDismiss={() => setEditingJobTarget(null)}
-            onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
-            onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
-            onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
-            onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
-            onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
-            onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
-            onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
-            onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
-            onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
-              updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
-            }
-            onRemoveParameter={(stepEditorId, parameterEditorId) =>
-              removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
-            }
-          />
-        ) : (
-          <>
-            <main className="min-w-0 flex-1 overflow-hidden">
-              <StageLaneBoard
-                mode="topology"
-                stages={stageLanes}
-                emptyTitle="No stages"
-                emptyDescription="Add the first stage to begin defining this pipeline."
-                onMoveStage={moveStageById}
-                onMoveJob={moveJobById}
-              />
-            </main>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <StageLaneBoard
+              mode="topology"
+              stages={stageLanes}
+              emptyTitle="No stages"
+              emptyDescription="Add the first stage to begin defining this pipeline."
+              onMoveStage={moveStageById}
+              onMoveJob={moveJobById}
+            />
+          </main>
 
-            <aside className="iris-inspector-rail flex w-[336px] shrink-0 flex-col border-l">
-              {selectedStage && selectedItem?.kind === 'stage' ? (
-                <StageEditorPanel
-                  stage={selectedStage}
-                  stageIndex={draft.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)}
-                  stageCount={draft.stages.length}
-                  issueCount={validationSummary.stageIssues.get(selectedStage.editorId) ?? 0}
-                  validation={validationSummary}
-                  onDismiss={() => setSelectedItem(null)}
-                  onChange={(recipe) => updateStage(selectedStage.editorId, recipe)}
-                  onMoveStage={(direction) =>
-                    updateDraft((current) => {
-                      const currentIndex = current.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)
-                      const targetIndex = currentIndex + direction
-                      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.stages.length) return current
-                      return {
-                        ...current,
-                        stages: moveArrayItem(current.stages, currentIndex, targetIndex),
-                      }
-                    })
+          <div
+            className={`iris-workspace-dock shrink-0 overflow-hidden transition-[height] duration-200 ${
+              jobWorkspaceActive && editingStage && editingJob ? 'h-[360px] xl:h-[420px]' : 'h-[56px]'
+            }`}
+          >
+            {jobWorkspaceActive && editingStage && editingJob ? (
+              <JobWorkspacePanel
+                stage={editingStage}
+                job={editingJob}
+                stageOptions={stageOptions}
+                validation={validationSummary}
+                onDismiss={() => setEditingJobTarget(null)}
+                onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
+                onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
+                onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
+                onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
+                onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
+                onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
+                onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
+                onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
+                onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
+                  updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
+                }
+                onRemoveParameter={(stepEditorId, parameterEditorId) =>
+                  removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
+                }
+              />
+            ) : (
+              <CollapsedJobWorkspaceHint
+                selectedStageName={selectedStage?.stageName}
+                selectedJobName={selectedJob?.jobName}
+                onOpenSelectedJob={
+                  selectedStage && selectedJob ? () => openJobEditor(selectedStage.editorId, selectedJob.editorId) : undefined
+                }
+              />
+            )}
+          </div>
+        </div>
+
+        <aside className="iris-inspector-rail flex w-[336px] shrink-0 flex-col border-l">
+          {selectedStage && selectedItem?.kind === 'stage' ? (
+            <StageEditorPanel
+              stage={selectedStage}
+              stageIndex={draft.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)}
+              stageCount={draft.stages.length}
+              issueCount={validationSummary.stageIssues.get(selectedStage.editorId) ?? 0}
+              validation={validationSummary}
+              onDismiss={() => setSelectedItem(null)}
+              onChange={(recipe) => updateStage(selectedStage.editorId, recipe)}
+              onMoveStage={(direction) =>
+                updateDraft((current) => {
+                  const currentIndex = current.stages.findIndex((stage) => stage.editorId === selectedStage.editorId)
+                  const targetIndex = currentIndex + direction
+                  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.stages.length) return current
+                  return {
+                    ...current,
+                    stages: moveArrayItem(current.stages, currentIndex, targetIndex),
                   }
-                  onRemoveStage={() => removeStageById(selectedStage.editorId)}
-                  onAddJob={() =>
-                    updateStage(selectedStage.editorId, (stage) => {
-                      const nextJob = createBlankJob(stage.jobs.length)
-                      openJobEditor(selectedStage.editorId, nextJob.editorId)
-                      return {
-                        ...stage,
-                        jobs: [...stage.jobs, nextJob],
-                      }
-                    })
+                })
+              }
+              onRemoveStage={() => removeStageById(selectedStage.editorId)}
+              onAddJob={() =>
+                updateStage(selectedStage.editorId, (stage) => {
+                  const nextJob = createBlankJob(stage.jobs.length)
+                  openJobEditor(selectedStage.editorId, nextJob.editorId)
+                  return {
+                    ...stage,
+                    jobs: [...stage.jobs, nextJob],
                   }
-                />
-              ) : selectedStage && selectedJob && selectedItem?.kind === 'job' ? (
-                <JobInspectorPanel
-                  stage={selectedStage}
-                  job={selectedJob}
-                  validation={validationSummary}
-                  onOpenEditor={() => openJobEditor(selectedStage.editorId, selectedJob.editorId)}
-                  onRemoveJob={() => removeJobFromStage(selectedStage.editorId, selectedJob.editorId)}
-                  onDismiss={() => setSelectedItem(null)}
-                />
-              ) : (
-                <PipelineOverviewInspector
-                  draft={draft}
-                  draftReadiness={draftReadiness}
-                  validation={validationSummary}
-                  issues={issues}
-                  onPipelineNameChange={(value) => {
-                    setDraft((current) => (current ? { ...current, pipelineName: value } : current))
-                    workspace?.setDirty(true)
-                  }}
-                />
-              )}
-            </aside>
-          </>
-        )}
+                })
+              }
+            />
+          ) : selectedStage && selectedJob && selectedItem?.kind === 'job' ? (
+            <JobInspectorPanel
+              stage={selectedStage}
+              job={selectedJob}
+              validation={validationSummary}
+              onOpenEditor={() => openJobEditor(selectedStage.editorId, selectedJob.editorId)}
+              onRemoveJob={() => removeJobFromStage(selectedStage.editorId, selectedJob.editorId)}
+              onDismiss={() => setSelectedItem(null)}
+            />
+          ) : (
+            <PipelineOverviewInspector
+              draft={draft}
+              draftReadiness={draftReadiness}
+              validation={validationSummary}
+              issues={issues}
+              onPipelineNameChange={(value) => {
+                setDraft((current) => (current ? { ...current, pipelineName: value } : current))
+                workspace?.setDirty(true)
+              }}
+            />
+          )}
+        </aside>
       </div>
 
       <PipelineImportDialog
@@ -861,6 +905,40 @@ export function PipelineConfigPage() {
         }}
         onSubmit={handleImport}
       />
+    </div>
+  )
+}
+
+function CollapsedJobWorkspaceHint({
+  selectedStageName,
+  selectedJobName,
+  onOpenSelectedJob,
+}: {
+  selectedStageName?: string
+  selectedJobName?: string
+  onOpenSelectedJob?: () => void
+}) {
+  return (
+    <div className="flex h-full items-center justify-between gap-3 px-4">
+      <div className="min-w-0">
+        <div className="iris-kicker">Job Workspace Dock</div>
+        <div className="mt-1 truncate text-sm font-semibold text-base-content/78">
+          {selectedJobName
+            ? `${selectedJobName} is selected`
+            : 'Select a job node to open the workspace'}
+        </div>
+        <div className="mt-0.5 truncate text-[11px] iris-copy-soft">
+          {selectedJobName && selectedStageName
+            ? `Keep topology visible while editing ${selectedStageName}.`
+            : 'Topology stays visible while the editor opens from the bottom dock.'}
+        </div>
+      </div>
+      {onOpenSelectedJob ? (
+        <ActionButton tone="ghost" onClick={onOpenSelectedJob}>
+          <Pencil size={13} />
+          Open Workspace
+        </ActionButton>
+      ) : null}
     </div>
   )
 }
@@ -1267,7 +1345,7 @@ function JobWorkspacePanel({
       <div className="iris-family-shell flex shrink-0 items-center gap-3 px-4 py-3">
         <button type="button" className="btn btn-ghost btn-sm gap-2" onClick={onDismiss}>
           <ArrowLeft size={14} />
-          Back to topology
+          Close workspace
         </button>
         <span className="badge badge-primary badge-sm font-semibold">{stage.stageName || 'Stage'}</span>
         <div className="min-w-0 flex-1">

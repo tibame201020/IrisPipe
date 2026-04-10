@@ -360,39 +360,46 @@
   }
 
   .iris-topology-shell {
-    border: 1px solid hsl(var(--bc) / 0.08);
+    border: 1px solid hsl(var(--n) / 0.18);
     border-radius: var(--iris-radius-section);
-    background: linear-gradient(180deg, hsl(var(--b2) / 0.52), hsl(var(--b1) / 0.92));
+    background:
+      linear-gradient(180deg, hsl(var(--b2) / 0.82), hsl(var(--b1) / 0.94));
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.24);
+      inset 0 1px 0 hsl(var(--b1) / 0.24),
+      0 10px 24px hsl(var(--bc) / 0.028);
   }
 
   .iris-topology-job {
     border: 1px solid var(--theme-topology-edge);
     border-radius: var(--iris-radius-inset);
-    background: hsl(var(--b1) / 0.98);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.99), hsl(var(--b1) / 0.94));
     box-shadow:
       inset 0 1px 0 hsl(var(--b1) / 0.34),
-      0 2px 6px hsl(var(--bc) / 0.012);
+      0 4px 10px hsl(var(--bc) / 0.016);
   }
 
   .iris-topology-lane {
-    border: 1px solid var(--theme-topology-edge);
+    border: 1px solid hsl(var(--n) / 0.22);
     border-radius: var(--iris-radius-section);
-    background: var(--theme-topology-stage-body-bg);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--n) / 0.06));
     box-shadow:
       inset 0 1px 0 hsl(var(--b1) / 0.48),
-      inset 0 0 0 1px hsl(var(--b1) / 0.12);
+      inset 0 0 0 1px hsl(var(--b1) / 0.08),
+      0 8px 18px hsl(var(--bc) / 0.022);
   }
 
   .iris-topology-connector-line {
-    background: hsl(var(--bc) / 0.24);
-    box-shadow: none;
+    background:
+      linear-gradient(90deg, hsl(var(--n) / 0.32), hsl(var(--n) / 0.52));
+    box-shadow: 0 0 0 1px hsl(var(--b1) / 0.08);
   }
 
   .iris-lane-header {
     border-bottom: 1px solid var(--theme-border-soft);
-    background: hsl(var(--b1) / 0.96);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.36));
   }
 
   .iris-lane-body {
@@ -433,6 +440,61 @@
     border-bottom: 1px solid var(--theme-border-soft);
     background:
       linear-gradient(180deg, hsl(var(--b1) / 0.97), hsl(var(--b2) / 0.2));
+  }
+
+  .iris-family-hero {
+    border: 1px solid var(--theme-border-default);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--b2) / 0.28));
+    border-radius: var(--iris-radius-section);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--b1) / 0.34),
+      0 12px 26px hsl(var(--bc) / 0.03);
+  }
+
+  .iris-run-ledger-head {
+    border-bottom: 1px solid var(--theme-border-soft);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.96), hsl(var(--b2) / 0.24));
+  }
+
+  .iris-workspace-dock {
+    border-top: 1px solid var(--theme-border-strong);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.96), hsl(var(--b2) / 0.22));
+    box-shadow: 0 -10px 22px hsl(var(--bc) / 0.03);
+  }
+
+  .iris-diagnostics-drawer {
+    border-top: 1px solid var(--theme-border-strong);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--b2) / 0.2));
+    box-shadow: 0 -8px 18px hsl(var(--bc) / 0.028);
+  }
+
+  .iris-attempt-strip {
+    border: 1px solid var(--theme-border-default);
+    border-radius: var(--iris-radius-section);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.96), hsl(var(--b2) / 0.24));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--b1) / 0.34),
+      0 8px 20px hsl(var(--bc) / 0.024);
+  }
+
+  .iris-attempt-link {
+    background: linear-gradient(90deg, hsl(var(--n) / 0.26), hsl(var(--n) / 0.48));
+  }
+
+  .iris-overlay-panel {
+    border: 1px solid var(--theme-border-strong);
+    border-radius: var(--iris-radius-section);
+    background:
+      linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--b2) / 0.22));
+    box-shadow:
+      inset 0 1px 0 hsl(var(--b1) / 0.36),
+      0 18px 36px hsl(var(--bc) / 0.08);
+    @apply backdrop-blur-sm;
   }
 
   .iris-kv-row {

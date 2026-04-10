@@ -6,16 +6,18 @@ import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
 import { ActionButton, ActionLink } from '../components/ui/Action'
 import { SurfaceBox } from '../components/ui/Surface'
-import { executePipeline, getApiErrorMessage, getPipelineRuns } from '../lib/api'
+import { executePipeline, getApiErrorMessage, getPipelineRuns, getRunDetail } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
 import {
+  findResumeTargetStage,
+  getAttemptKindLabel,
   getPipelineStatusMeta,
   isPipelineStatusActive,
   isPipelineStatusResumable,
   summarizePipelineRunHistory,
 } from '../lib/pipeline-runtime'
 import { usePipelineEvents } from '../lib/usePipelineEvents'
-import type { PipelineRunSummaryInfo } from '../types/irispipe'
+import type { PipelineRunDetailInfo, PipelineRunSummaryInfo } from '../types/irispipe'
 import type { PipelineWorkspaceContext } from '../layout/PipelineWorkspaceLayout'
 
 type FilterTab = 'all' | 'active' | 'failed' | 'completed' | 'resumable'
@@ -32,6 +34,7 @@ export function PipelineRunsPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [executing, setExecuting] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
+  const [runDetailsById, setRunDetailsById] = useState<Record<number, PipelineRunDetailInfo>>({})
 
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
@@ -41,6 +44,7 @@ export function PipelineRunsPage() {
     if (reset) {
       setLoading(true)
       setError(null)
+      setRunDetailsById({})
     } else {
       setLoadingMore(true)
     }
@@ -61,6 +65,7 @@ export function PipelineRunsPage() {
   function refreshRunHistory() {
     setRuns([])
     setBeforeRunId(undefined)
+    setRunDetailsById({})
     void loadRuns(true)
   }
 
@@ -73,8 +78,33 @@ export function PipelineRunsPage() {
 
     setRuns([])
     setBeforeRunId(undefined)
+    setRunDetailsById({})
     void loadRuns(true)
   }, [numericPipelineId])
+
+  useEffect(() => {
+    const targetRuns = runs.slice(0, 12)
+    const missingIds = targetRuns.map((run) => run.id).filter((id) => !runDetailsById[id])
+    if (missingIds.length === 0) return
+
+    let active = true
+    void Promise.allSettled(missingIds.map((id) => getRunDetail(id))).then((results) => {
+      if (!active) return
+      setRunDetailsById((current) => {
+        const next = { ...current }
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            next[missingIds[index]] = result.value
+          }
+        })
+        return next
+      })
+    })
+
+    return () => {
+      active = false
+    }
+  }, [runs, runDetailsById])
 
   usePipelineEvents({
     onRunStarted: refreshRunHistory,
@@ -94,6 +124,7 @@ export function PipelineRunsPage() {
       navigate(`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`)
     } catch (executeError) {
       setError(getApiErrorMessage(executeError, 'Failed to execute pipeline'))
+    } finally {
       setExecuting(false)
     }
   }
@@ -132,51 +163,72 @@ export function PipelineRunsPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="iris-family-shell flex shrink-0 items-center justify-between gap-3 px-5 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="iris-signal-strip flex min-w-[300px] items-center gap-2 px-3 py-2">
-            {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
-            {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
-            <span className="truncate text-[11px] iris-copy">
-              {latestStatusMeta ? latestStatusMeta.description : 'This pipeline has not created any run history yet.'}
-            </span>
-          </div>
-          <div className="hidden items-center gap-2 lg:flex">
-            <CompactHistoryMetric label="History" value={stats?.total ?? 0} />
-            <CompactHistoryMetric label="In Flight" value={stats?.active ?? 0} tone="info" pulse={(stats?.active ?? 0) > 0} />
-            <CompactHistoryMetric label="Resumable" value={stats?.resumable ?? 0} tone="warning" />
-            <CompactHistoryMetric label="Avg Runtime" value={stats?.avgLabel ?? '--'} tone="success" />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {stats ? (
-            <div className="hidden items-center gap-3 md:flex">
-              <span className="text-[10px] tabular-nums iris-copy-soft">
-                <span className="font-semibold text-base-content/70">{stats.successRate}%</span> success
-              </span>
-              <span className="text-[10px] iris-copy-faint">|</span>
-              <span className="text-[10px] tabular-nums iris-copy-soft">
-                avg <span className="font-semibold font-mono text-base-content/70">{stats.avgLabel}</span>
-              </span>
+      <div className="iris-family-shell shrink-0 px-5 py-4">
+        <SurfaceBox variant="section" className="iris-family-hero grid gap-4 px-4 py-4 xl:grid-cols-[minmax(0,1.4fr)_auto]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
+              {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
+              <span className="badge badge-ghost badge-sm">Logical run history</span>
             </div>
-          ) : null}
+            <div className="mt-3 text-lg font-bold tracking-tight text-base-content">
+              {latestRun ? `Latest run #${latestRun.id}` : 'No run history yet'}
+            </div>
+            <div className="mt-1.5 max-w-2xl text-sm iris-copy">
+              {latestStatusMeta ? latestStatusMeta.description : 'Execute this pipeline to create the first logical run and attempt timeline.'}
+            </div>
+            {latestRun ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] iris-copy-soft">
+                <span>Started {formatDateTime(latestRun.startTime ?? latestRun.createdAt)}</span>
+                <span className="iris-copy-faint">|</span>
+                <span>Duration {formatDuration(latestRun.startTime ?? latestRun.createdAt, latestRun.endTime)}</span>
+                {isPipelineStatusResumable(latestRun.status) ? (
+                  <>
+                    <span className="iris-copy-faint">|</span>
+                    <span className="text-warning">This run can create a new resume attempt.</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
-          <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          </ActionButton>
+          <div className="flex flex-col justify-between gap-3 xl:items-end">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <CompactHistoryMetric label="History" value={stats?.total ?? 0} />
+              <CompactHistoryMetric label="In Flight" value={stats?.active ?? 0} tone="info" pulse={(stats?.active ?? 0) > 0} />
+              <CompactHistoryMetric label="Resumable" value={stats?.resumable ?? 0} tone="warning" />
+              <CompactHistoryMetric label="Avg Runtime" value={stats?.avgLabel ?? '--'} tone="success" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {stats ? (
+                <div className="hidden items-center gap-3 md:flex">
+                  <span className="text-[10px] tabular-nums iris-copy-soft">
+                    <span className="font-semibold text-base-content/70">{stats.successRate}%</span> success
+                  </span>
+                  <span className="text-[10px] iris-copy-faint">|</span>
+                  <span className="text-[10px] tabular-nums iris-copy-soft">
+                    avg <span className="font-semibold font-mono text-base-content/70">{stats.avgLabel}</span>
+                  </span>
+                </div>
+              ) : null}
 
-          <ActionButton
-            tone="primary"
-            onClick={() => void handleExecute()}
-            className={executing ? 'iris-execute-ring' : ''}
-            disabled={executing}
-            title="Start a fresh logical run from the current saved pipeline definition."
-          >
-            <Zap size={13} className={executing ? 'animate-pulse' : ''} />
-            {executing ? 'Launching...' : 'Execute'}
-          </ActionButton>
-        </div>
+              <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
+                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              </ActionButton>
+
+              <ActionButton
+                tone="primary"
+                onClick={() => void handleExecute()}
+                className={executing ? 'iris-execute-ring' : ''}
+                disabled={executing}
+                title="Start a fresh logical run from the current saved pipeline definition."
+              >
+                <Zap size={13} className={executing ? 'animate-pulse' : ''} />
+                {executing ? 'Launching...' : 'Execute'}
+              </ActionButton>
+            </div>
+          </div>
+        </SurfaceBox>
       </div>
 
       <div className="iris-family-context flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
@@ -245,15 +297,15 @@ export function PipelineRunsPage() {
         ) : (
           <div>
             <div
-              className="sticky top-0 z-10 grid items-center border-b border-base-200 bg-base-100/96 px-5 py-2 backdrop-blur-sm"
-              style={{ gridTemplateColumns: '28px minmax(0,1.9fr) 150px 88px 116px 56px' }}
+              className="iris-run-ledger-head sticky top-0 z-10 grid items-center px-5 py-2 backdrop-blur-sm"
+              style={{ gridTemplateColumns: '28px minmax(0,1.5fr) minmax(0,1.1fr) 160px 120px 92px' }}
             >
               <span />
               <span className="iris-kicker">Run</span>
-              <span className="iris-kicker">Started</span>
-              <span className="iris-kicker">Duration</span>
+              <span className="iris-kicker">Attempt</span>
+              <span className="iris-kicker">Timeline</span>
               <span className="iris-kicker">Status</span>
-              <span />
+              <span className="iris-kicker text-right">Action</span>
             </div>
 
             <div className="iris-list-panel">
@@ -261,6 +313,7 @@ export function PipelineRunsPage() {
                 <RunRow
                   key={run.id}
                   run={run}
+                  detail={runDetailsById[run.id]}
                   isLatest={index === 0 && filter === 'all'}
                   to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
                 />
@@ -359,16 +412,20 @@ function FilterChip({
 
 function RunRow({
   run,
+  detail,
   isLatest,
   to,
 }: {
   run: PipelineRunSummaryInfo
+  detail?: PipelineRunDetailInfo
   isLatest: boolean
   to: string
 }) {
   const statusMeta = getPipelineStatusMeta(run.status)
   const isActive = isPipelineStatusActive(run.status)
   const isResumable = isPipelineStatusResumable(run.status)
+  const latestAttempt = detail?.attempts[detail.attempts.length - 1] ?? null
+  const resumeTarget = latestAttempt ? findResumeTargetStage(latestAttempt) : null
 
   const rowBg = statusMeta.tone === 'error'
     ? 'hover:bg-error/5'
@@ -382,7 +439,7 @@ function RunRow({
     <Link
       to={to}
       className={`iris-list-row group grid items-center gap-4 px-5 py-2.5 transition-colors ${rowBg} ${isLatest ? 'bg-primary/4' : ''}`}
-      style={{ gridTemplateColumns: '28px minmax(0,1.9fr) 150px 88px 116px 56px' }}
+      style={{ gridTemplateColumns: '28px minmax(0,1.5fr) minmax(0,1.1fr) 160px 120px 92px' }}
     >
       <div className="flex justify-center">
         <span className={`size-1.5 rounded-full ${statusMeta.dotClass} ${isActive ? 'animate-pulse' : ''}`} />
@@ -414,20 +471,38 @@ function RunRow({
         </div>
       </div>
 
-      <span className="truncate font-mono text-[11px] tabular-nums text-base-content/60">
-        {formatDateTime(run.startTime ?? run.createdAt)}
-      </span>
+      <div className="min-w-0">
+        <div className="truncate text-[11px] font-semibold text-base-content/76">
+          {latestAttempt
+            ? `Attempt #${latestAttempt.executionNo} · ${getAttemptKindLabel(latestAttempt.executionKind)}`
+            : 'Loading attempt context...'}
+        </div>
+        <div className="mt-0.5 truncate text-[10px] iris-copy-soft">
+          {latestAttempt
+            ? resumeTarget && isResumable
+              ? `Resume from ${resumeTarget.stage}`
+              : `${detail?.attempts.length ?? 1} attempt${(detail?.attempts.length ?? 1) === 1 ? '' : 's'} in this run`
+            : 'Runtime summary is loading'}
+        </div>
+      </div>
 
-      <span className="font-mono text-[11px] tabular-nums text-base-content/68">
-        {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
-      </span>
+      <div className="min-w-0">
+        <div className="truncate font-mono text-[11px] tabular-nums text-base-content/68">
+          {formatDateTime(run.startTime ?? run.createdAt)}
+        </div>
+        <div className="mt-0.5 font-mono text-[10px] tabular-nums iris-copy-soft">
+          {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
+        </div>
+      </div>
 
       <div>
         <StatusBadge status={run.status} subtle mode="text" />
       </div>
 
-      <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
-        <span className="text-[10px] iris-copy-soft">Inspect</span>
+      <div className="flex justify-end">
+        <span className="rounded-sm border border-base-300 bg-base-100 px-2 py-1 text-[10px] font-semibold text-base-content/60 transition-colors group-hover:border-primary/30 group-hover:text-primary">
+          Open Detail
+        </span>
       </div>
     </Link>
   )
