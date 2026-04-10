@@ -353,44 +353,27 @@
   .iris-lane-shell {
     border: 1px solid var(--theme-border-default);
     border-radius: var(--iris-radius-section);
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.82), hsl(var(--b2) / 0.32));
+    background: hsl(var(--b2) / 0.56);
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.42),
-      0 12px 28px hsl(var(--bc) / 0.03);
+      inset 0 1px 0 hsl(var(--b1) / 0.28),
+      0 4px 10px hsl(var(--bc) / 0.018);
   }
 
   .iris-topology-shell {
-    border: 1px solid var(--theme-topology-edge);
+    border: 1px solid hsl(var(--bc) / 0.08);
     border-radius: var(--iris-radius-section);
-    background: var(--theme-topology-shell-bg);
+    background: linear-gradient(180deg, hsl(var(--b2) / 0.52), hsl(var(--b1) / 0.92));
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.56),
-      0 12px 28px hsl(var(--bc) / 0.03);
-  }
-
-  .iris-topology-stage {
-    background: var(--theme-topology-stage-bg);
-    box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.44),
-      0 4px 14px hsl(var(--bc) / 0.018);
-  }
-
-  .iris-topology-stage-header {
-    background: var(--theme-topology-stage-header-bg);
-  }
-
-  .iris-topology-stage-body {
-    background: var(--theme-topology-stage-body-bg);
+      inset 0 1px 0 hsl(var(--b1) / 0.24);
   }
 
   .iris-topology-job {
     border: 1px solid var(--theme-topology-edge);
     border-radius: var(--iris-radius-inset);
-    background: var(--theme-topology-job-bg);
+    background: hsl(var(--b1) / 0.98);
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.56),
-      0 4px 10px hsl(var(--bc) / 0.024);
+      inset 0 1px 0 hsl(var(--b1) / 0.34),
+      0 2px 6px hsl(var(--bc) / 0.012);
   }
 
   .iris-topology-lane {
@@ -403,39 +386,31 @@
   }
 
   .iris-topology-connector-line {
-    background:
-      linear-gradient(90deg, transparent, var(--theme-topology-connector) 12%, var(--theme-topology-connector) 88%, transparent);
-    box-shadow:
-      0 0 0 1px hsl(var(--b1) / 0.12),
-      0 0 10px hsl(var(--bc) / 0.035);
+    background: hsl(var(--bc) / 0.24);
+    box-shadow: none;
   }
 
   .iris-lane-header {
     border-bottom: 1px solid var(--theme-border-soft);
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.92), hsl(var(--b2) / 0.26));
+    background: hsl(var(--b1) / 0.96);
   }
 
   .iris-lane-body {
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.42), transparent 28%),
-      hsl(var(--b2) / 0.22);
+    background: transparent;
   }
 
   .iris-job-tile {
     border: 1px solid var(--theme-border-default);
     border-radius: var(--iris-radius-inset);
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.95), hsl(var(--b2) / 0.28));
+    background: hsl(var(--b1) / 0.98);
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.36),
-      0 8px 18px hsl(var(--bc) / 0.026);
+      inset 0 1px 0 hsl(var(--b1) / 0.28),
+      0 2px 6px hsl(var(--bc) / 0.012);
   }
 
   .iris-job-tile:hover {
     border-color: var(--theme-border-strong);
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--b2) / 0.34));
+    background: hsl(var(--b1) / 1);
   }
 
   .iris-step-nav-item {

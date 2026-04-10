@@ -238,24 +238,6 @@ function StageLane({
 
   const hasIssues = typeof stage.issuesCount === 'number' && stage.issuesCount > 0
   const runtimeTone = getRuntimeStageTone(stage.status)
-  const accentClass =
-    mode === 'runtime' && stage.status
-      ? stage.status === 'COMPLETED'
-        ? 'bg-success'
-        : stage.status === 'FAILED' || stage.status === 'ABANDONED'
-          ? 'bg-error'
-          : stage.status === 'STARTED' || stage.status === 'STARTING'
-            ? 'bg-info'
-            : stage.status === 'STOPPING' || stage.status === 'STOPPED'
-              ? 'bg-warning'
-              : stage.status === 'NOT_RUN'
-                ? 'bg-base-300/80'
-                : 'bg-base-300/60'
-      : hasIssues
-        ? 'bg-error/70'
-        : stage.selected
-          ? 'bg-primary'
-          : 'bg-base-300/60'
 
   return (
     <div
@@ -271,49 +253,56 @@ function StageLane({
       {/* ?�?� Stage Column ?�?� */}
       {mode === 'topology' ? (
         <section
-          className={`group/stage relative flex w-[236px] shrink-0 flex-col rounded-[var(--iris-radius-section)] border px-2.5 pb-3 pt-2 transition-all duration-150 ${
+          className={`group/stage relative flex w-[264px] shrink-0 flex-col rounded-[var(--iris-radius-section)] border transition-all duration-150 ${
             stage.selected
-              ? 'z-10 border-primary/60 bg-base-100 ring-2 ring-primary/25 shadow-[0_0_0_1px_hsl(var(--p)/0.2),0_12px_28px_hsl(var(--p)/0.08)]'
-              : 'border-neutral/45 bg-base-100/96 shadow-[inset_0_1px_0_hsl(var(--b1)/0.45)]'
+              ? 'z-10 border-primary/45 bg-base-200/70 ring-2 ring-primary/18 shadow-[0_10px_24px_hsl(var(--p)/0.08)]'
+              : 'border-base-300/80 bg-base-200/58 shadow-[inset_0_1px_0_hsl(var(--b1)/0.24)]'
           } ${stageBodyIsOver || stageDropTarget ? 'border-primary/35 ring-2 ring-primary/25' : ''} ${
             stage.onClick ? 'cursor-default' : ''
           }`}
           aria-label={`Stage ${stage.title}`}
         >
-          <div className="relative z-10 flex items-start justify-between gap-2">
+          <div className="relative z-10 rounded-t-[var(--iris-radius-section)] border-b border-base-300/80 bg-base-100/96 px-4 py-3">
+            {stage.toolbar ? (
+              <div
+                className={`absolute right-2 top-2 z-20 flex items-center justify-end gap-1 rounded-md border border-base-300/85 bg-base-100/96 p-1 shadow-sm transition-opacity duration-100 ${
+                  stage.selected
+                    ? 'opacity-100'
+                    : 'pointer-events-none opacity-0 group-hover/stage:pointer-events-auto group-hover/stage:opacity-100 group-focus-within/stage:pointer-events-auto group-focus-within/stage:opacity-100'
+                }`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {stage.toolbar}
+              </div>
+            ) : null}
+
+            <div className="flex items-start justify-between gap-3">
             <div
-              className={`flex min-w-0 flex-1 flex-col rounded-[var(--iris-radius-inset)] border px-2.5 py-1.5 ${
-                stage.selected
-                  ? 'border-primary/55 bg-primary/[0.1] shadow-sm'
-                  : 'border-neutral/45 bg-base-100'
-              } ${stage.onClick ? 'cursor-pointer' : ''}`}
+              className={`min-w-0 flex-1 ${stage.onClick ? 'cursor-pointer' : ''}`}
               onClick={stage.onClick}
               onKeyDown={(e) => triggerButtonLikeAction(e, stage.onClick)}
               role={stage.onClick ? 'button' : undefined}
               tabIndex={stage.onClick ? 0 : -1}
             >
-              <div className="flex items-center gap-2">
-                <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black tabular-nums ${
-                  stage.selected ? 'bg-primary text-primary-content' : 'bg-base-300/70 text-base-content/48'
-                }`}>
-                  Stage {stageIndex + 1}
-                </span>
-                {hasIssues ? <span className="badge badge-error badge-xs">{stage.issuesCount}</span> : null}
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-base-content/40">
+                Stage {stageIndex + 1}
               </div>
-              <span className="mt-1 min-w-0 truncate text-[13px] font-bold tracking-tight text-base-content/90" title={stage.title}>
+              <div className="mt-1 min-w-0 truncate text-[14px] font-semibold tracking-tight text-base-content/88" title={stage.title}>
                 {stage.title}
-              </span>
+              </div>
             </div>
 
-            <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
-              <span className={`badge badge-xs shrink-0 ${stage.selected ? 'badge-primary' : 'badge-ghost'}`}>
-                {stage.jobs.length} jobs
-              </span>
+              <div className="flex shrink-0 items-center gap-2 pl-2">
+                {hasIssues ? <span className="badge badge-error badge-xs">{stage.issuesCount}</span> : null}
+                <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-base-content/46">
+                  {stage.jobs.length} jobs
+                </span>
               {!stageDnDEnabled ? null : (
                 <button
                   type="button"
                   ref={setActivatorNodeRef}
-                  className="btn btn-ghost btn-xs btn-square shrink-0 cursor-grab text-base-content/42 hover:text-base-content active:cursor-grabbing"
+                  className="btn btn-ghost btn-xs btn-square shrink-0 cursor-grab text-base-content/36 hover:text-base-content active:cursor-grabbing"
                   aria-label={`Reorder ${stage.title}`}
                   {...stageAttributes}
                   {...stageListeners}
@@ -324,40 +313,25 @@ function StageLane({
               )}
             </div>
           </div>
+          </div>
 
           <div
             ref={setBodyRef}
-            className={`relative mt-2.5 min-h-[216px] flex-1 px-1 pb-2 pt-12 transition-all ${stageBodyIsOver ? 'bg-primary/4' : ''}`}
+            className={`relative min-h-[194px] flex-1 px-3 py-3 transition-all ${stageBodyIsOver ? 'bg-primary/4' : ''}`}
           >
-            {stage.toolbar ? (
-              <div
-                className={`absolute left-3 right-3 top-2.5 z-20 flex items-center justify-end gap-1 rounded-md border border-base-300/85 bg-base-100/96 p-1 shadow-sm transition-opacity duration-100 ${
-                  stage.selected || stage.jobs.length === 0
-                    ? 'opacity-100'
-                    : 'pointer-events-none opacity-0 group-hover/stage:pointer-events-auto group-hover/stage:opacity-100 group-focus-within/stage:pointer-events-auto group-focus-within/stage:opacity-100'
-                }`}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {stage.toolbar}
-              </div>
-            ) : null}
-            <div
-              className={`absolute bottom-3 left-1 top-12 w-[2px] rounded-full ${stage.selected ? 'bg-primary/50' : 'bg-neutral/50'}`}
-            />
             {stageBodyIsOver ? (
-              <div className="iris-inset-panel ml-4 border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+              <div className="iris-inset-panel border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
                 Drop here
               </div>
             ) : null}
             <SortableContext items={stage.jobs.map((j) => j.id)} strategy={rectSortingStrategy}>
               {stage.jobs.length === 0 ? (
-                <div className="iris-empty-panel ml-4 border-base-300/80 px-3 py-7 text-center text-[11px] text-base-content/42">
+                <div className="iris-empty-panel border-base-300/80 bg-base-100/90 px-3 py-7 text-center text-[11px] text-base-content/42">
                   <div>No jobs in this stage yet.</div>
                   {stage.emptyAction ? <div className="mt-3 flex justify-center">{stage.emptyAction}</div> : null}
                 </div>
               ) : (
-                <div className="ml-4 space-y-2.5">
+                <div className="space-y-2.5">
                   {stage.jobs.map((job) => (
                     <StageLaneJob
                       key={job.id}
@@ -376,17 +350,13 @@ function StageLane({
         <section
           ref={setBodyRef}
           className={`group/stage relative flex shrink-0 flex-col overflow-hidden transition-all duration-150 iris-lane-shell w-[276px] ${
-            stage.selected ? 'border-primary/35 shadow-md' : 'border-base-300/60'
+            stage.selected ? 'border-primary/35 shadow-md ring-1 ring-primary/15' : 'border-base-300/70'
           } ${runtimeTone.shellClass} ${stageBodyIsOver || stageDropTarget ? 'ring-2 ring-primary/25 shadow-lg border-primary/30' : ''}`}
           aria-label={`Stage ${stage.title}`}
         >
-          <div className={`h-[3px] w-full shrink-0 ${accentClass} transition-colors`} />
-
-          <div className={`shrink-0 px-3 iris-lane-header py-3 ${stage.selected ? 'bg-primary/6' : runtimeTone.headerClass}`}>
+          <div className={`shrink-0 px-4 iris-lane-header py-3 ${stage.selected ? 'bg-primary/6' : runtimeTone.headerClass}`}>
             <div className="flex items-center gap-2">
-              <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-black tabular-nums ${
-                stage.selected ? 'bg-primary/15 text-primary' : 'bg-base-300/70 text-base-content/45'
-              }`}>
+              <span className="text-[9px] font-black uppercase tracking-[0.18em] text-base-content/40">
                 Stage {stageIndex + 1}
               </span>
 
@@ -397,7 +367,7 @@ function StageLane({
                 role={stage.onClick ? 'button' : undefined}
                 tabIndex={stage.onClick ? 0 : -1}
               >
-                <span className="block truncate text-[13px] font-bold tracking-tight text-base-content/84" title={stage.title}>
+                <span className="block truncate text-[14px] font-semibold tracking-tight text-base-content/88" title={stage.title}>
                   {stage.title}
                 </span>
               </div>
@@ -405,7 +375,7 @@ function StageLane({
               <div className="flex shrink-0 items-center gap-1.5">
                 {hasIssues ? <span className="badge badge-error badge-xs">{stage.issuesCount}</span> : null}
                 {stage.status ? <StatusBadge status={stage.status} subtle /> : null}
-                <span className="text-[10px] text-base-content/40 tabular-nums">{stage.jobs.length} jobs</span>
+                <span className="text-[10px] uppercase tracking-[0.12em] text-base-content/40 tabular-nums">{stage.jobs.length} jobs</span>
                 {!stageDnDEnabled ? null : (
                   <button
                     type="button"
@@ -435,7 +405,7 @@ function StageLane({
             {stage.summary ? <div className="mt-2 text-[10px] iris-copy">{stage.summary}</div> : null}
           </div>
 
-          <div className={`flex-1 overflow-y-auto transition-colors iris-lane-body space-y-2 p-2.5 ${stageBodyIsOver ? 'bg-primary/5' : ''}`}>
+          <div className={`flex-1 overflow-y-auto transition-colors iris-lane-body space-y-2 p-3 ${stageBodyIsOver ? 'bg-primary/5' : ''}`}>
             {stageBodyIsOver ? (
               <div className="iris-inset-panel border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
                 Drop here
@@ -465,14 +435,11 @@ function StageLane({
 
       {/* ?�?� Stage Connector ?�?� */}
       {showConnector ? (
-        <div className={`flex shrink-0 flex-col items-center justify-start gap-1 ${mode === 'topology' ? 'w-[38px] pt-14' : 'w-[42px] pt-11'}`}>
-          <span className={`text-[7px] font-bold uppercase tracking-[0.22em] ${mode === 'topology' ? 'text-neutral/80' : runtimeTone.connectorLabelClass}`}>
-            then
-          </span>
+        <div className={`flex shrink-0 items-start justify-center ${mode === 'topology' ? 'w-[34px] pt-[64px]' : 'w-[36px] pt-[58px]'}`}>
           <div
-            className={`flex items-center ${mode === 'topology' ? 'text-neutral/80' : runtimeTone.connectorClass}`}
+            className={`flex items-center ${mode === 'topology' ? 'text-base-content/36' : runtimeTone.connectorClass}`}
           >
-            <div className={`h-[2px] rounded-full ${mode === 'topology' ? 'w-7 bg-neutral/70' : 'w-6 iris-topology-connector-line'}`} />
+            <div className="iris-topology-connector-line h-px w-6 rounded-full" />
             <svg width="9" height="10" viewBox="0 0 9 10" fill="none" className="shrink-0 overflow-visible">
               <path d="M1 1L7.5 5L1 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -549,8 +516,8 @@ function StageLaneJob({
       style={style}
       className={`group/job relative flex overflow-hidden transition-all duration-150 ${
         mode === 'topology'
-          ? `iris-topology-job ${job.selected ? 'border-primary/55 bg-primary/[0.1] shadow-sm ring-1 ring-primary/20' : 'hover:border-base-300'}`
-          : `iris-job-tile ${job.selected ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/15' : 'border-base-300/60'}`
+          ? `iris-topology-job ${job.selected ? 'border-primary/45 bg-primary/[0.06] shadow-sm ring-1 ring-primary/14' : 'hover:border-base-300/90'}`
+          : `iris-job-tile ${job.selected ? 'border-primary/45 bg-primary/5 shadow-sm ring-1 ring-primary/12' : 'border-base-300/70'}`
       } ${isOver ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/15' : ''} cursor-default`}
       aria-label={`Job ${job.title}`}
     >
@@ -564,7 +531,7 @@ function StageLaneJob({
 
       {/* Card content */}
       <div
-        className={`min-w-0 flex-1 cursor-pointer ${mode === 'topology' ? 'px-3 py-2.75' : 'px-2.75 py-2.5'}`}
+        className={`min-w-0 flex-1 cursor-pointer ${mode === 'topology' ? 'px-3 py-2.5' : 'px-3 py-2.5'}`}
         onClick={job.onClick}
         onDoubleClick={job.onDoubleClick}
         onKeyDown={(e) => {
@@ -582,57 +549,40 @@ function StageLaneJob({
           <span className="min-w-0 flex-1 text-[12.5px] font-semibold leading-tight text-base-content/84" title={job.title}>
             {job.title}
           </span>
-          {mode !== 'topology' ? (
-            <div className="mt-0.5 flex shrink-0 items-center gap-1">
-              {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
-                <span className="badge badge-error badge-xs shrink-0">{job.issuesCount}</span>
-              ) : null}
-              {dragDisabled ? null : (
-                <button
-                  type="button"
-                  ref={setActivatorNodeRef}
-                  className="btn btn-ghost btn-xs btn-square shrink-0 cursor-grab text-base-content/35 hover:text-base-content active:cursor-grabbing"
-                  aria-label={`Reorder ${job.title}`}
-                  {...attributes}
-                  {...listeners}
-                  onClick={(event) => event.stopPropagation()}
-                  onDoubleClick={(event) => event.stopPropagation()}
-                >
-                  <GripVertical size={11} />
-                </button>
-              )}
-            </div>
-          ) : null}
+          <div
+            className={`mt-0.5 flex shrink-0 items-center gap-1 ${mode === 'topology' ? 'opacity-80 group-hover/job:opacity-100' : ''}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
+              <span className="badge badge-error badge-xs shrink-0">{job.issuesCount}</span>
+            ) : null}
+            {mode === 'topology' && job.toolbar ? (
+              <div className="flex items-center gap-1 opacity-0 transition-opacity duration-100 group-hover/job:opacity-100 group-focus-within/job:opacity-100">
+                {job.toolbar}
+              </div>
+            ) : null}
+            {dragDisabled ? null : (
+              <button
+                type="button"
+                ref={setActivatorNodeRef}
+                className="btn btn-ghost btn-xs btn-square shrink-0 cursor-grab text-base-content/35 hover:text-base-content active:cursor-grabbing"
+                aria-label={`Reorder ${job.title}`}
+                {...attributes}
+                {...listeners}
+                onClick={(event) => event.stopPropagation()}
+                onDoubleClick={(event) => event.stopPropagation()}
+              >
+                <GripVertical size={11} />
+              </button>
+            )}
+          </div>
         </div>
 
         {mode === 'topology' ? (
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               {job.stepSummary ? <span className="text-[10px] iris-copy-soft">{job.stepSummary}</span> : null}
-              {typeof job.issuesCount === 'number' && job.issuesCount > 0 ? (
-                <span className="badge badge-error badge-xs shrink-0">{job.issuesCount}</span>
-              ) : null}
-            </div>
-            <div
-              className="flex shrink-0 items-center gap-1"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {job.toolbar}
-              {dragDisabled ? null : (
-                <button
-                  type="button"
-                  ref={setActivatorNodeRef}
-                  className="btn btn-ghost btn-xs btn-square shrink-0 cursor-grab text-base-content/35 hover:text-base-content active:cursor-grabbing"
-                  aria-label={`Reorder ${job.title}`}
-                  {...attributes}
-                  {...listeners}
-                  onClick={(event) => event.stopPropagation()}
-                  onDoubleClick={(event) => event.stopPropagation()}
-                >
-                  <GripVertical size={11} />
-                </button>
-              )}
             </div>
           </div>
         ) : null}
