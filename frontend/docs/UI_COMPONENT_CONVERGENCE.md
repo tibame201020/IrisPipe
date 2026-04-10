@@ -11,6 +11,8 @@ The current frontend already has a visual direction, but too much of the UI is s
 
 This document defines the component convergence target based on the actual IrisPipe screens, not on abstract design-system theory.
 
+Color semantics are defined separately in `frontend/docs/FRONTEND_COLOR_SYSTEM_RULES.md`. Component convergence should follow that document rather than inventing page-local color logic.
+
 ## Current inventory
 
 ### Existing shared components

@@ -328,8 +328,8 @@ export function PipelineExplorerPage() {
   return (
     <div className="iris-page-canvas flex h-full min-h-0 overflow-hidden">
       {/* ── Left: Tree Sidebar ── */}
-      <aside className="flex w-[240px] shrink-0 flex-col border-r border-base-300 bg-base-100/72 overflow-hidden backdrop-blur-md">
-        <div className="iris-shell-bar iris-glass flex items-center justify-between px-4 py-3">
+      <aside className="iris-inspector-rail flex w-[244px] shrink-0 flex-col border-r overflow-hidden">
+        <div className="iris-family-shell iris-glass flex items-center justify-between px-4 py-3">
           <span className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">Workspace</span>
           <ActionButton
             size="xs"
@@ -398,7 +398,7 @@ export function PipelineExplorerPage() {
       {/* ── Right: Main Content ── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Content Toolbar */}
-        <div className="iris-shell-bar iris-glass flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+        <div className="iris-family-shell iris-glass flex shrink-0 items-center justify-between gap-4 px-6 py-3">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm min-w-0">
             <Link to="/pipeline" className="text-base-content/40 hover:text-primary transition-colors font-medium">
@@ -456,7 +456,7 @@ export function PipelineExplorerPage() {
           </div>
         )}
 
-        <section className="iris-toolbar-band shrink-0 px-5 py-3.5">
+        <section className="iris-family-context shrink-0 px-5 py-3.5">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))]">
             <ExplorerSummaryCard
               label="Current Scope"
@@ -487,7 +487,7 @@ export function PipelineExplorerPage() {
         </section>
 
         {/* Content grid */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <div className="iris-workspace-shell min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {folders.length === 0 && pipelines.length === 0 ? (
             <div className="iris-empty-panel flex h-64 flex-col items-center justify-center">
               <FolderTree size={40} className="text-base-content/10 mb-4" />

@@ -98,7 +98,7 @@ export function OverviewPage() {
   return (
     <div className="iris-page-canvas flex h-full flex-col overflow-hidden">
       {/* ?�?� Header ?�?� */}
-      <div className="iris-shell-bar iris-glass flex shrink-0 items-center justify-between px-8 py-5">
+      <div className="iris-family-shell iris-glass flex shrink-0 items-center justify-between px-8 py-5">
         <div>
           <div className="iris-header">IrisPipe Engine</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Pipeline Overview</h1>
@@ -117,7 +117,7 @@ export function OverviewPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-7 py-5">
+      <div className="iris-workspace-shell flex-1 overflow-y-auto px-7 py-5">
         {/* ?�?� Top KPI Row ?�?� */}
         <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard

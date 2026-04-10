@@ -132,8 +132,8 @@ export function PipelineWorkspaceLayout() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="iris-shell-bar relative z-20 shrink-0">
-        <div className="flex items-center gap-3 px-5 py-2.5">
+      <header className="iris-family-shell relative z-20 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 px-5 py-3">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <Link to="/pipeline" className="shrink-0 text-[11px] text-base-content/45 transition-colors hover:text-primary">
               Root
@@ -157,19 +157,32 @@ export function PipelineWorkspaceLayout() {
             ) : null}
           </div>
 
-          <div className="hidden shrink-0 items-center gap-1.5 md:flex">
-            <span className="flex items-center gap-1 rounded-full bg-primary/8 px-2.5 py-0.5 text-[10px] font-bold text-primary/70">
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="iris-signal-strip flex items-center gap-1 rounded-sm px-2.5 py-1 text-[10px] font-bold text-primary/70">
               <Layers3 size={10} />
               {totalStages}
             </span>
-            <span className="flex items-center gap-1 rounded-full bg-base-200 px-2.5 py-0.5 text-[10px] font-bold text-base-content/45">
+            <span className="iris-signal-strip flex items-center gap-1 rounded-sm px-2.5 py-1 text-[10px] font-bold text-base-content/55">
               <PlayCircle size={10} />
               {totalJobs}
             </span>
+            {lastRun ? (
+              <Link
+                to={`${runsHref.split('?')[0]}/${lastRun.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
+                className="iris-glass-band flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
+                title={`Last run: #${lastRun.id}`}
+              >
+                <span className="text-base-content/48">last run</span>
+                <StatusBadge status={lastRun.status} subtle mode="text" />
+                <span className="font-mono text-base-content/48">
+                  {formatDuration(lastRun.startTime ?? lastRun.createdAt, lastRun.endTime)}
+                </span>
+              </Link>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-0 border-t border-base-300/30 bg-base-200/12 px-5">
+        <div className="iris-family-context flex items-center justify-between gap-3 px-5">
           <div className="flex items-center">
             <Link
               to={configHref}
@@ -192,20 +205,9 @@ export function PipelineWorkspaceLayout() {
               Runs
             </Link>
           </div>
-
-          {lastRun ? (
-            <Link
-              to={`${runsHref.split('?')[0]}/${lastRun.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-              className="iris-inset-panel flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-[10px] transition-colors hover:border-primary/30 hover:bg-primary/5"
-              title={`Last run: #${lastRun.id}`}
-            >
-              <span className="text-base-content/48">last run</span>
-              <StatusBadge status={lastRun.status} subtle mode="text" />
-              <span className="font-mono text-base-content/48">
-                {formatDuration(lastRun.startTime ?? lastRun.createdAt, lastRun.endTime)}
-              </span>
-            </Link>
-          ) : null}
+          <span className="hidden text-[10px] iris-copy-soft md:inline">
+            Pipeline family workspace
+          </span>
         </div>
       </header>
 

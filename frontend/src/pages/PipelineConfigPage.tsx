@@ -58,8 +58,7 @@ type EditingJobTarget = { stageEditorId: string; jobEditorId: string }
 function buildStepSummary(job: { executions: Array<{ type?: string; name?: string | null }> }): string {
   const count = job.executions.length
   if (count === 0) return 'No steps'
-  const types = [...new Set(job.executions.map((s) => s.type ?? 'EXECUTE'))].slice(0, 3).join(' | ')
-  return `${count} step${count === 1 ? '' : 's'} | ${types}`
+  return `${count} step${count === 1 ? '' : 's'}`
 }
 
 export function PipelineConfigPage() {
@@ -205,23 +204,22 @@ export function PipelineConfigPage() {
         <>
           <ActionButton
             size="xs"
-            tone="ghost"
+            tone="icon"
+            square
             title="Insert stage to the right"
-            className="px-2"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation()
               insertStageAfter(stage.editorId)
             }}
           >
-            <Plus size={13} />
-            Stage
+            <Waypoints size={13} />
           </ActionButton>
           <ActionButton
             size="xs"
-            tone="ghost"
-            className="px-2"
-            title="Add job"
+            tone="icon"
+            square
+            title="Add job to this stage"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation()
@@ -236,13 +234,12 @@ export function PipelineConfigPage() {
             }}
           >
             <Plus size={13} />
-            Job
           </ActionButton>
           <ActionButton
             size="xs"
             tone="dangerGhost"
-            className="px-2"
-            title="Delete stage"
+            square
+            title="Delete this stage"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation()
@@ -287,16 +284,14 @@ export function PipelineConfigPage() {
           onDoubleClick: () => openJobEditor(stage.editorId, job.editorId),
           issuesCount: jobSemantic.issueCount,
           validationStatus,
-          subtitle: jobSemantic.connectionSummary,
           stepSummary: buildStepSummary(job),
-          badges: [`${job.setting.atomicLevel ?? 'JOB'}`],
           toolbar: (
           <>
             <ActionButton
               size="xs"
-              tone="ghost"
+              tone="icon"
+              square
               title="Open job workspace"
-              className="px-2"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation()
@@ -304,12 +299,11 @@ export function PipelineConfigPage() {
               }}
             >
               <Pencil size={13} />
-              Open
             </ActionButton>
             <ActionButton
               size="xs"
               tone="dangerGhost"
-              className="px-2"
+              square
               title="Delete job"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
@@ -712,7 +706,8 @@ export function PipelineConfigPage() {
       ) : null}
 
       <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-4 px-5 py-3">
-        <div className="iris-inset-panel flex min-w-0 flex-wrap items-center gap-2 px-3 py-1.5 text-xs">
+        <div className="iris-signal-strip flex min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-xs">
+          <span className="badge badge-ghost badge-sm">Topology</span>
           <span className="badge badge-ghost badge-sm">{draft.stages.length} stages</span>
           <span className="badge badge-ghost badge-sm">{draftJobCount} jobs</span>
           <span className={`badge badge-sm ${draftReadiness.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
@@ -753,7 +748,7 @@ export function PipelineConfigPage() {
 
       {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <div className="iris-workspace-shell relative flex min-h-0 flex-1 overflow-hidden">
         {jobWorkspaceActive && editingStage && editingJob ? (
           <JobWorkspacePanel
             stage={editingStage}
@@ -778,8 +773,9 @@ export function PipelineConfigPage() {
           />
         ) : (
           <>
-            <main className="iris-page-canvas min-w-0 flex-1 overflow-hidden">
+            <main className="min-w-0 flex-1 overflow-hidden">
               <StageLaneBoard
+                mode="topology"
                 stages={stageLanes}
                 emptyTitle="No stages"
                 emptyDescription="Add the first stage to begin defining this pipeline."
@@ -788,7 +784,7 @@ export function PipelineConfigPage() {
               />
             </main>
 
-            <aside className="flex w-[336px] shrink-0 flex-col border-l border-base-300 bg-base-100">
+            <aside className="iris-inspector-rail flex w-[336px] shrink-0 flex-col border-l">
               {selectedStage && selectedItem?.kind === 'stage' ? (
                 <StageEditorPanel
                   stage={selectedStage}
@@ -827,6 +823,7 @@ export function PipelineConfigPage() {
                   job={selectedJob}
                   validation={validationSummary}
                   onOpenEditor={() => openJobEditor(selectedStage.editorId, selectedJob.editorId)}
+                  onRemoveJob={() => removeJobFromStage(selectedStage.editorId, selectedJob.editorId)}
                   onDismiss={() => setSelectedItem(null)}
                 />
               ) : (
@@ -1072,12 +1069,14 @@ function JobInspectorPanel({
   job,
   validation,
   onOpenEditor,
+  onRemoveJob,
   onDismiss,
 }: {
   stage: EditableStage
   job: EditableJob
   validation: DraftValidationSummary
   onOpenEditor: () => void
+  onRemoveJob: () => void
   onDismiss: () => void
 }) {
   const semantic = getConfigJobSemanticSummary(job, validation)
@@ -1117,10 +1116,16 @@ function JobInspectorPanel({
             <div>{semantic.stepSummary}</div>
           </div>
           <div className="mt-4">
-            <ActionButton tone="primary" onClick={onOpenEditor}>
-              <Pencil size={14} />
-              Open Job Workspace
-            </ActionButton>
+            <div className="flex flex-wrap gap-2">
+              <ActionButton tone="primary" onClick={onOpenEditor}>
+                <Pencil size={14} />
+                Open Job Workspace
+              </ActionButton>
+              <ActionButton tone="dangerGhost" onClick={onRemoveJob}>
+                <Trash2 size={14} />
+                Delete Job
+              </ActionButton>
+            </div>
           </div>
         </SurfaceBox>
 
@@ -1259,7 +1264,7 @@ function JobWorkspacePanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-base-100">
-      <div className="iris-shell-bar flex shrink-0 items-center gap-3 px-4 py-3">
+      <div className="iris-family-shell flex shrink-0 items-center gap-3 px-4 py-3">
         <button type="button" className="btn btn-ghost btn-sm gap-2" onClick={onDismiss}>
           <ArrowLeft size={14} />
           Back to topology
@@ -1267,18 +1272,41 @@ function JobWorkspacePanel({
         <span className="badge badge-primary badge-sm font-semibold">{stage.stageName || 'Stage'}</span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-bold">{job.jobName || 'Untitled job'}</div>
-          <div className="truncate text-[11px] text-base-content/48">{jobSemantic.connectionSummary}</div>
+          <div className="truncate text-[11px] iris-copy-soft">{jobSemantic.connectionSummary}</div>
         </div>
-        <span className={`badge badge-sm ${jobSemantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
-          {jobSemantic.issueCount > 0 ? `${jobSemantic.issueCount} issues` : 'Job workspace'}
-        </span>
+        <div className="iris-signal-strip hidden items-center gap-2 px-3 py-1.5 md:flex">
+          <span className="badge badge-ghost badge-sm">{job.executions.length} steps</span>
+          <span className={`badge badge-sm ${jobSemantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+            {jobSemantic.issueCount > 0 ? `${jobSemantic.issueCount} issues` : 'Ready to edit'}
+          </span>
+        </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="w-[336px] shrink-0 overflow-y-auto border-r border-base-300 bg-base-100">
+      <div className="flex min-h-0 flex-1 overflow-hidden iris-workspace-shell">
+        <aside className="iris-inspector-rail w-[320px] shrink-0 overflow-y-auto border-r">
           <div className="space-y-4 px-4 py-4">
-            <div className="iris-section-panel p-4">
-              <div className="iris-header">Job Identity</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SharedSummaryTile
+                kicker="Stage"
+                value={stage.stageName || 'Unnamed'}
+                detail={jobSemantic.connectionSummary}
+                tone="primary"
+                className="px-3.5 py-3"
+                valueClassName="text-base"
+              />
+              <SharedSummaryTile
+                kicker="Atomic"
+                value={job.setting.atomicLevel ?? 'JOB'}
+                detail={jobSemantic.stepSummary}
+                tone={jobSemantic.issueCount > 0 ? 'warning' : 'success'}
+                className="px-3.5 py-3"
+                valueClassName="text-base"
+              />
+            </div>
+
+            <div className="iris-section-panel overflow-hidden">
+              <PanelHeader kicker="Job Identity" title="Core semantics" detail="Name, atomic level, and placement determine how this job behaves at runtime." />
+              <div className="space-y-4 p-4">
               <label className="form-control mt-4">
                 <span className="mb-2 iris-kicker">Job Name</span>
                 <input
@@ -1307,6 +1335,7 @@ function JobWorkspacePanel({
                 </select>
                 <FieldMessages messages={atomicLevelErrors} />
               </label>
+              </div>
             </div>
 
             <ConnectionPanel
@@ -1327,9 +1356,9 @@ function JobWorkspacePanel({
               onChange={(connection) => onChange((current) => ({ ...current, database: { ...current.database, dest: connection } }))}
             />
 
-            <div className="iris-section-panel p-4">
-              <div className="iris-header">Batch Settings</div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="iris-section-panel overflow-hidden">
+              <PanelHeader kicker="Batch Settings" detail="Tune fetch, batch, and delete thresholds for this job only." />
+              <div className="grid grid-cols-2 gap-2 p-4">
                 <NumberField
                   label="Fetch Size"
                   value={job.setting.fetchSize}
@@ -1350,9 +1379,9 @@ function JobWorkspacePanel({
               </div>
             </div>
 
-            <div className="iris-section-panel p-4">
-              <div className="iris-header">Stage Placement</div>
-              <div className="mt-4 space-y-2">
+            <div className="iris-section-panel overflow-hidden">
+              <PanelHeader kicker="Stage Placement" detail="Move this job across topology lanes without leaving the workspace." />
+              <div className="space-y-2 p-4">
                 <select
                   className="select select-bordered w-full"
                   value={stage.editorId}
@@ -1387,34 +1416,36 @@ function JobWorkspacePanel({
               </div>
             </div>
 
-            <div className="iris-section-panel border-error/20 bg-error/5 p-4">
-              <div className="iris-header text-error">Job Actions</div>
-              <FieldMessages messages={executionsErrors} className="mt-3" />
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm mt-3 w-full justify-start text-error hover:bg-error/10"
-                onClick={onRemoveJob}
-              >
-                <Trash2 size={13} />
-                Delete Job
-              </button>
+            <div className="iris-section-panel overflow-hidden border-error/20 bg-error/5">
+              <PanelHeader kicker="Job Actions" detail="This removes the job from its stage lane and topology." className="border-error/20" />
+              <div className="p-4">
+                <FieldMessages messages={executionsErrors} className="mb-3" />
+                <ActionButton
+                  tone="dangerGhost"
+                  className="w-full justify-start"
+                  onClick={onRemoveJob}
+                >
+                  <Trash2 size={13} />
+                  Delete Job
+                </ActionButton>
+              </div>
             </div>
           </div>
         </aside>
 
-        <aside className="flex w-[272px] shrink-0 flex-col border-r border-base-300 bg-base-200/24">
-          <div className="iris-toolbar-band px-4 py-3">
+        <aside className="iris-inspector-rail flex w-[276px] shrink-0 flex-col border-r">
+          <div className="iris-editor-toolbar px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="iris-header">Steps</div>
-                <div className="mt-1 text-xs text-base-content/48">
+                <div className="iris-header">Step Navigator</div>
+                <div className="mt-1 text-xs iris-copy-soft">
                   {job.executions.length} total · {jobSemantic.stepSummary}
                 </div>
               </div>
-              <button type="button" className="btn btn-primary btn-xs gap-1" onClick={handleAddStep}>
+              <ActionButton size="xs" tone="primary" onClick={handleAddStep}>
                 <Plus size={11} />
                 Add
-              </button>
+              </ActionButton>
             </div>
             <input
               type="text"
@@ -1440,7 +1471,7 @@ function JobWorkspacePanel({
                     <button
                       key={step.editorId}
                       type="button"
-                      className={`iris-inset-panel w-full px-3 py-3 text-left transition-all ${
+                      className={`iris-step-nav-item w-full px-3 py-3 text-left transition-all ${
                         isSelected
                           ? 'border-primary/35 bg-primary/6 shadow-sm'
                           : stepIssues > 0
@@ -1451,11 +1482,13 @@ function JobWorkspacePanel({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate text-[12px] font-semibold text-base-content/80">
+                          <div className="truncate text-[12px] font-semibold text-base-content/82">
                             {step.name?.trim() || `Step ${originalIndex + 1}`}
                           </div>
-                          <div className="mt-1 text-[11px] text-base-content/45">
-                            {step.type} · {step.sql.length} chars
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] iris-copy-soft">
+                            <span>{step.type}</span>
+                            <span>·</span>
+                            <span>{step.sql.length} chars</span>
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
@@ -1528,36 +1561,47 @@ function InlineStepEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Step meta row */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-base-300 bg-base-200/20 px-4 py-2">
-        <select
-          className="select select-xs select-bordered w-[110px] shrink-0"
-          value={step.type}
-          onChange={(event) => onChange((current) => ({ ...current, type: event.target.value as ExecutionType }))}
-        >
-          <option value="EXECUTE">EXECUTE</option>
-          <option value="INSERT">INSERT</option>
-          <option value="UPDATE">UPDATE</option>
-          <option value="UPSERT">UPSERT</option>
-          <option value="DELETE">DELETE</option>
-        </select>
+      <div className="iris-editor-toolbar flex shrink-0 flex-wrap items-center gap-2 px-4 py-3">
+        <div className="iris-signal-strip flex items-center gap-2 px-2 py-1.5">
+          <span className="badge badge-ghost badge-sm">Step {stepIndex + 1}</span>
+          <select
+            className="select select-xs select-bordered w-[118px] shrink-0"
+            value={step.type}
+            onChange={(event) => onChange((current) => ({ ...current, type: event.target.value as ExecutionType }))}
+          >
+            <option value="EXECUTE">EXECUTE</option>
+            <option value="INSERT">INSERT</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="UPSERT">UPSERT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+          <span className="shrink-0 font-mono text-[10px] iris-copy-soft">{step.sql.length} chars</span>
+          {issueCount > 0 ? <span className="badge badge-warning badge-xs shrink-0">{issueCount}</span> : null}
+        </div>
         <input
           type="text"
-          className="input input-xs input-bordered min-w-0 flex-1"
+          className="input input-sm input-bordered min-w-[220px] flex-1"
           value={step.name ?? ''}
           placeholder="step name"
           onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
         />
-        <span className="shrink-0 font-mono text-[10px] text-base-content/40">{step.sql.length}c</span>
-        {issueCount > 0 ? <span className="badge badge-warning badge-xs shrink-0">{issueCount}</span> : null}
-        <button type="button" className="btn btn-ghost btn-xs shrink-0" disabled={stepIndex === 0} onClick={() => onMove(-1)}><ArrowUp size={11} /></button>
-        <button type="button" className="btn btn-ghost btn-xs shrink-0" disabled={stepIndex >= stepCount - 1} onClick={() => onMove(1)}><ArrowDown size={11} /></button>
-        <button type="button" className="btn btn-ghost btn-xs shrink-0 text-error" onClick={onRemove}><Trash2 size={11} /></button>
+        <div className="flex items-center gap-1">
+          <ActionButton size="xs" tone="ghost" disabled={stepIndex === 0} onClick={() => onMove(-1)}>
+            <ArrowUp size={11} />
+            Up
+          </ActionButton>
+          <ActionButton size="xs" tone="ghost" disabled={stepIndex >= stepCount - 1} onClick={() => onMove(1)}>
+            <ArrowDown size={11} />
+            Down
+          </ActionButton>
+          <ActionButton size="xs" tone="dangerGhost" onClick={onRemove}>
+            <Trash2 size={11} />
+            Remove
+          </ActionButton>
+        </div>
       </div>
 
-      {/* Scrollable body */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
-        {/* SQL Editor */}
+      <div className="min-h-0 flex-1 overflow-y-auto space-y-4 p-4">
         <div>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-widest text-base-content/45">SQL</span>
@@ -1570,7 +1614,6 @@ function InlineStepEditor({
           />
         </div>
 
-        {/* Target + Watermark */}
         <div className="grid grid-cols-2 gap-3">
           <label className="form-control">
             <span className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/35">Dest Table</span>
@@ -1595,53 +1638,63 @@ function InlineStepEditor({
           </label>
         </div>
 
-        {/* Parameters */}
         <div>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-widest text-base-content/35">
               Parameters{step.parameters.length > 0 ? ` (${step.parameters.length})` : ''}
             </span>
-            <button type="button" className="btn btn-ghost btn-xs gap-1" onClick={onAddParameter}>
-              <Plus size={11} />Add
-            </button>
+            <ActionButton size="xs" tone="ghost" onClick={onAddParameter}>
+              <Plus size={11} />
+              Add
+            </ActionButton>
           </div>
           {step.parameters.length === 0 ? (
             <div className="iris-empty-panel px-4 py-4 text-center text-[11px] text-base-content/45">
               No parameters
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="iris-list-panel divide-y divide-base-300/60">
               {step.parameters.map((parameter) => (
                 <div
                   key={parameter.editorId}
-                  className="iris-section-panel grid gap-2 bg-base-100 p-2.5"
-                  style={{ gridTemplateColumns: '1fr 1fr 100px auto' }}
+                  className="grid items-center gap-2 px-3 py-3"
+                  style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) 110px auto' }}
                 >
-                  <input
-                    type="text"
-                    className="input input-bordered input-xs"
-                    placeholder="name"
-                    value={parameter.param}
-                    onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, param: event.target.value }))}
-                  />
-                  <input
-                    type="text"
-                    className="input input-bordered input-xs"
-                    placeholder="value"
-                    value={String(parameter.value ?? '')}
-                    onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, value: event.target.value }))}
-                  />
-                  <select
-                    className="select select-bordered select-xs"
-                    value={parameter.type ?? 'general'}
-                    onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, type: event.target.value as EditableParameter['type'] }))}
-                  >
-                    <option value="general">general</option>
-                    <option value="timestamp">timestamp</option>
-                  </select>
-                  <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => onRemoveParameter(parameter.editorId)}>
+                  <label className="form-control">
+                    <span className="mb-1 iris-kicker">Name</span>
+                    <input
+                      type="text"
+                      className="input input-bordered input-xs"
+                      placeholder="name"
+                      value={parameter.param}
+                      onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, param: event.target.value }))}
+                    />
+                  </label>
+                  <label className="form-control">
+                    <span className="mb-1 iris-kicker">Value</span>
+                    <input
+                      type="text"
+                      className="input input-bordered input-xs"
+                      placeholder="value"
+                      value={String(parameter.value ?? '')}
+                      onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, value: event.target.value }))}
+                    />
+                  </label>
+                  <label className="form-control">
+                    <span className="mb-1 iris-kicker">Type</span>
+                    <select
+                      className="select select-bordered select-xs"
+                      value={parameter.type ?? 'general'}
+                      onChange={(event) => onUpdateParameter(parameter.editorId, (current) => ({ ...current, type: event.target.value as EditableParameter['type'] }))}
+                    >
+                      <option value="general">general</option>
+                      <option value="timestamp">timestamp</option>
+                    </select>
+                  </label>
+                  <ActionButton size="xs" tone="dangerGhost" className="mt-4" onClick={() => onRemoveParameter(parameter.editorId)}>
                     <Trash2 size={11} />
-                  </button>
+                    Remove
+                  </ActionButton>
                 </div>
               ))}
             </div>
@@ -1730,9 +1783,8 @@ function ConnectionPanel({
   }
 
   return (
-    <div className={`iris-section-panel overflow-hidden shadow-sm transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300'}`}>
-      {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/40 border-base-300'}`}>
+    <div className={`iris-section-panel overflow-hidden shadow-sm transition-colors ${hasErrors ? 'border-warning/50' : 'border-base-300/60'}`}>
+      <div className={`flex items-center justify-between border-b px-4 py-3 ${hasErrors ? 'bg-warning/5 border-warning/20' : 'bg-base-200/34 border-base-300/60'}`}>
         <div className="flex items-center gap-2">
           <Icon size={14} className="opacity-60" />
           <div className="text-[13px] font-bold tracking-wide">{title}</div>

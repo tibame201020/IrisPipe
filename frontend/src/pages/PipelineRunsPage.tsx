@@ -132,9 +132,9 @@ export function PipelineRunsPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="iris-shell-bar flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
+      <div className="iris-family-shell flex shrink-0 items-center justify-between gap-3 px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="iris-inset-panel flex min-w-[280px] items-center gap-2 px-3 py-2">
+          <div className="iris-signal-strip flex min-w-[300px] items-center gap-2 px-3 py-2">
             {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
             {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
             <span className="truncate text-[11px] iris-copy">
@@ -179,8 +179,8 @@ export function PipelineRunsPage() {
         </div>
       </div>
 
-      <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
-        <div className="iris-inset-panel flex items-center gap-1.5 px-2 py-1">
+      <div className="iris-family-context flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
+        <div className="iris-signal-strip flex items-center gap-1.5 px-2 py-1">
           <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
           {(stats?.active ?? 0) > 0 && (
             <FilterChip label="Active" count={stats?.active ?? 0} active={filter === 'active'} onClick={() => setFilter('active')} pulse />
@@ -217,7 +217,7 @@ export function PipelineRunsPage() {
 
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="iris-workspace-shell min-h-0 flex-1 overflow-y-auto">
         {runs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="iris-inset-panel mb-5 p-7">

@@ -204,14 +204,14 @@ export function RunDetailPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="iris-shell-bar flex shrink-0 flex-wrap items-center gap-3 px-5 py-2.5">
+      <div className="iris-family-shell flex shrink-0 flex-wrap items-center gap-3 px-5 py-3">
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[13px] font-bold tabular-nums">#{detail.id}</span>
           <StatusBadge status={effectiveStatus} subtle />
           <span className="text-[10px] iris-copy-soft">{formatDuration(detail.startTime ?? detail.createdAt, detail.endTime)}</span>
         </div>
 
-        <div className="iris-inset-panel flex min-w-0 items-center gap-1 overflow-x-auto px-1 py-1">
+        <div className="iris-signal-strip flex min-w-0 items-center gap-1 overflow-x-auto px-1 py-1">
           {detail.attempts.map((attempt) => {
             const isSelected = attempt.executionId === currentAttempt?.executionId
             const isLatest = attempt.executionId === latestAttempt?.executionId
@@ -233,7 +233,7 @@ export function RunDetailPage() {
           })}
         </div>
 
-        <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
+        <div className="iris-signal-strip flex shrink-0 items-center gap-1 px-1 py-1">
           <ActionButton size="xs" tone="ghost" className={mainTab === 'board' ? 'text-primary' : ''} onClick={() => setMainTab('board')}>
             <Filter size={12} />Board
           </ActionButton>
@@ -269,7 +269,7 @@ export function RunDetailPage() {
           <span>{formatDateTimeLong(detail.createdAt)}</span>
         </div>
 
-        <div className="iris-inset-panel flex shrink-0 items-center gap-1 px-1 py-1">
+        <div className="iris-signal-strip flex shrink-0 items-center gap-1 px-1 py-1">
           <ActionButton
             size="xs"
             tone="dangerGhost"
@@ -314,7 +314,7 @@ export function RunDetailPage() {
 
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      <main className="relative flex min-h-0 flex-1 overflow-hidden bg-base-200/30">
+      <main className="iris-workspace-shell relative flex min-h-0 flex-1 overflow-hidden">
         <section className="min-w-0 flex-1 overflow-hidden">
           {mainTab === 'board' ? (
             <div className="h-full">
@@ -347,7 +347,7 @@ export function RunDetailPage() {
           )}
         </section>
 
-        <aside className="flex w-[352px] shrink-0 flex-col border-l border-base-300 bg-base-100">
+        <aside className="iris-inspector-rail flex w-[352px] shrink-0 flex-col border-l">
           {mainTab === 'board' && selectedJob ? (
             <JobRuntimeInspector job={selectedJob} onClose={() => setSelectedJobId(null)} />
           ) : (
