@@ -6,6 +6,8 @@ export interface PipelineOverviewRailProps extends HTMLAttributes<HTMLElement> {
   header?: ReactNode
   children?: ReactNode
   footer?: ReactNode
+  widthClassName?: string
+  shellClassName?: string
   className?: string
   headerClassName?: string
   bodyClassName?: string
@@ -17,6 +19,8 @@ export const PipelineOverviewRail = forwardRef<HTMLElement, PipelineOverviewRail
     header,
     children,
     footer,
+    widthClassName,
+    shellClassName,
     className,
     headerClassName,
     bodyClassName,
@@ -28,7 +32,7 @@ export const PipelineOverviewRail = forwardRef<HTMLElement, PipelineOverviewRail
   return (
     <aside
       ref={ref}
-      className={cn('flex h-full min-h-0 w-[336px] shrink-0 flex-col border-l bg-base-100', className)}
+      className={cn('iris-inspector-rail flex h-full min-h-0 shrink-0 flex-col border-l', widthClassName ?? 'w-[336px]', shellClassName, className)}
       {...props}
     >
       {header ? (

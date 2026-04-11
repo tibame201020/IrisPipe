@@ -22,6 +22,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { StatusBadge } from './StatusBadge'
+import { PipelineJobSlab } from './pipeline-family/PipelineJobSlab'
+import { PipelineStageColumn } from './pipeline-family/PipelineStageColumn'
 import { SurfaceBox } from './ui/Surface'
 
 export interface StageLaneJobCard {
@@ -238,10 +240,13 @@ function StageLane({
 
   const hasIssues = typeof stage.issuesCount === 'number' && stage.issuesCount > 0
   const runtimeTone = getRuntimeStageTone(stage.status)
+  const stageShellRef = (node: HTMLElement | null) => {
+    setStageRef(node)
+    setBodyRef(node)
+  }
 
   return (
     <div
-      ref={setStageRef}
       className="flex items-stretch"
       style={{
         transform: CSS.Transform.toString(stageTransform),
@@ -252,7 +257,8 @@ function StageLane({
     >
       {/* ?�?� Stage Column ?�?� */}
       {mode === 'topology' ? (
-        <section
+        <PipelineStageColumn
+          ref={stageShellRef}
           className={`iris-topology-lane group/stage relative flex w-[300px] shrink-0 flex-col transition-all duration-150 ${
             stage.selected
               ? 'z-10 border-primary/35 ring-2 ring-primary/20 shadow-[0_10px_24px_hsl(var(--p)/0.08)]'
@@ -312,10 +318,7 @@ function StageLane({
           </div>
           </div>
 
-          <div
-            ref={setBodyRef}
-            className={`iris-lane-body relative min-h-[236px] flex-1 px-3 py-3 transition-all ${stageBodyIsOver ? 'bg-primary/4' : ''}`}
-          >
+          <div className={`iris-lane-body relative min-h-[236px] flex-1 px-3 py-3 transition-all ${stageBodyIsOver ? 'bg-primary/4' : ''}`}>
             {stageBodyIsOver ? (
               <div className="iris-inset-panel border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
                 Drop here
@@ -342,10 +345,10 @@ function StageLane({
               )}
             </SortableContext>
           </div>
-        </section>
+        </PipelineStageColumn>
       ) : (
-        <section
-          ref={setBodyRef}
+        <PipelineStageColumn
+          ref={stageShellRef}
           className={`group/stage relative flex shrink-0 flex-col overflow-hidden transition-all duration-150 iris-lane-shell w-[300px] ${
             stage.selected ? 'border-primary/35 shadow-md ring-1 ring-primary/15' : 'border-base-300/70'
           } ${runtimeTone.shellClass} ${stageBodyIsOver || stageDropTarget ? 'ring-2 ring-primary/25 shadow-lg border-primary/30' : ''}`}
@@ -427,7 +430,7 @@ function StageLane({
               )}
             </SortableContext>
           </div>
-        </section>
+        </PipelineStageColumn>
       )}
 
       {/* ?�?� Stage Connector ?�?� */}
@@ -508,7 +511,7 @@ function StageLaneJob({
               : null
 
   return (
-    <article
+    <PipelineJobSlab
       ref={setNodeRef}
       style={style}
       className={`group/job relative flex overflow-hidden transition-all duration-150 ${
@@ -635,7 +638,7 @@ function StageLaneJob({
           </div>
         </div>
       ) : null}
-    </article>
+    </PipelineJobSlab>
   )
 }
 

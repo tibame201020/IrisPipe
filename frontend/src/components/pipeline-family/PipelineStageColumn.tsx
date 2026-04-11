@@ -3,7 +3,7 @@ import { forwardRef } from 'react'
 import { cn } from '../../lib/cn'
 
 export interface PipelineStageColumnProps extends HTMLAttributes<HTMLElement> {
-  header: ReactNode
+  header?: ReactNode
   children?: ReactNode
   footer?: ReactNode
   selected?: boolean
@@ -46,17 +46,23 @@ export const PipelineStageColumn = forwardRef<HTMLElement, PipelineStageColumnPr
       )}
       {...props}
     >
-      <div className={cn('shrink-0 px-4 py-3', headerClassName)}>
-        {header}
-      </div>
-      <div className={cn('min-h-0 flex-1 overflow-y-auto px-3 py-3', bodyClassName)}>
-        {children}
-      </div>
-      {footer ? (
-        <div className={cn('shrink-0 px-4 py-3', footerClassName)}>
-          {footer}
-        </div>
-      ) : null}
+      {header ? (
+        <>
+          <div className={cn('shrink-0 px-4 py-3', headerClassName)}>
+            {header}
+          </div>
+          <div className={cn('min-h-0 flex-1 overflow-y-auto px-3 py-3', bodyClassName)}>
+            {children}
+          </div>
+          {footer ? (
+            <div className={cn('shrink-0 px-4 py-3', footerClassName)}>
+              {footer}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        children
+      )}
     </section>
   )
 })

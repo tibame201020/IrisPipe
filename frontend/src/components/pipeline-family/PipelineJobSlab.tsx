@@ -3,7 +3,7 @@ import { forwardRef } from 'react'
 import { cn } from '../../lib/cn'
 
 export interface PipelineJobSlabProps extends HTMLAttributes<HTMLElement> {
-  header: ReactNode
+  header?: ReactNode
   children?: ReactNode
   footer?: ReactNode
   leading?: ReactNode
@@ -55,25 +55,31 @@ export const PipelineJobSlab = forwardRef<HTMLElement, PipelineJobSlabProps>(fun
       {dropTarget ? <div className="absolute inset-x-2 -top-[1.5px] h-[2px] rounded-full bg-primary" /> : null}
       {leading ? <div className={cn('w-[3px] shrink-0 self-stretch', leadingClassName)}>{leading}</div> : null}
 
-      <div className="min-w-0 flex-1 px-3 py-2.5">
-        <div className={cn('flex items-start gap-1.5', headerClassName)}>
-          <div className="min-w-0 flex-1">{header}</div>
-          {headerAside ? <div className="mt-0.5 flex shrink-0 items-center gap-1">{headerAside}</div> : null}
-        </div>
+      {header ? (
+        <>
+          <div className="min-w-0 flex-1 px-3 py-2.5">
+            <div className={cn('flex items-start gap-1.5', headerClassName)}>
+              <div className="min-w-0 flex-1">{header}</div>
+              {headerAside ? <div className="mt-0.5 flex shrink-0 items-center gap-1">{headerAside}</div> : null}
+            </div>
 
-        {children ? <div className={cn('min-w-0', bodyClassName)}>{children}</div> : null}
-      </div>
+            {children ? <div className={cn('min-w-0', bodyClassName)}>{children}</div> : null}
+          </div>
 
-      {footer ? (
-        <div
-          className={cn(
-            'shrink-0 px-1.5 py-1.5',
-            footerClassName,
-          )}
-        >
-          {footer}
-        </div>
-      ) : null}
+          {footer ? (
+            <div
+              className={cn(
+                'shrink-0 px-1.5 py-1.5',
+                footerClassName,
+              )}
+            >
+              {footer}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        children
+      )}
     </article>
   )
 })
