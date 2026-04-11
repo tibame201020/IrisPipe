@@ -36,7 +36,7 @@ export const PipelineOverviewRail = forwardRef<HTMLElement, PipelineOverviewRail
       {...props}
     >
       {header ? (
-        <div className={cn('shrink-0 border-b border-base-300/60 px-5 py-4', headerClassName)}>
+        <div className={cn('shrink-0 border-b border-base-300/35 px-5 py-4', headerClassName)}>
           {header}
         </div>
       ) : null}
@@ -44,7 +44,7 @@ export const PipelineOverviewRail = forwardRef<HTMLElement, PipelineOverviewRail
         {children}
       </div>
       {footer ? (
-        <div className={cn('shrink-0 border-t border-base-300/60 px-5 py-4', footerClassName)}>
+        <div className={cn('shrink-0 border-t border-base-300/35 px-5 py-4', footerClassName)}>
           {footer}
         </div>
       ) : null}

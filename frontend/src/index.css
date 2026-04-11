@@ -25,29 +25,29 @@
     --theme-copy-default: hsl(var(--bc) / 0.62);
     --theme-copy-soft: hsl(var(--bc) / 0.48);
     --theme-copy-faint: hsl(var(--bc) / 0.34);
-    --theme-structure-shell-bg: linear-gradient(180deg, hsl(var(--n) / 0.16), hsl(var(--b2) / 0.92));
-    --theme-structure-group-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b1) / 0.99));
-    --theme-structure-group-header-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.94));
-    --theme-structure-group-edge: hsl(var(--n) / 0.28);
+    --theme-structure-shell-bg: linear-gradient(180deg, hsl(var(--b2) / 0.98), hsl(var(--b3) / 0.9));
+    --theme-structure-group-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.76));
+    --theme-structure-group-header-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.82));
+    --theme-structure-group-edge: hsl(var(--n) / 0.46);
     --theme-topology-shell-bg: var(--theme-structure-shell-bg);
     --theme-topology-stage-bg: var(--theme-structure-group-bg);
     --theme-topology-stage-header-bg: var(--theme-structure-group-header-bg);
-    --theme-topology-stage-body-bg: transparent;
-    --theme-topology-job-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b1) / 0.98));
-    --theme-topology-line: hsl(var(--n) / 0.28);
-    --theme-topology-connector: hsl(var(--n) / 0.38);
+    --theme-topology-stage-body-bg: linear-gradient(180deg, hsl(var(--b1) / 0.82), hsl(var(--b2) / 0.44));
+    --theme-topology-job-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b1) / 0.96));
+    --theme-topology-line: hsl(var(--n) / 0.4);
+    --theme-topology-connector: hsl(var(--n) / 0.58);
     --theme-topology-edge: var(--theme-structure-group-edge);
-    --theme-topology-shell-highlight: hsl(var(--b1) / 0.24);
-    --theme-topology-shell-shadow: 0 10px 24px hsl(var(--bc) / 0.028);
-    --theme-topology-stage-highlight: hsl(var(--b1) / 0.55);
-    --theme-topology-stage-inner-edge: hsl(var(--b1) / 0.12);
-    --theme-topology-stage-shadow: 0 12px 24px hsl(var(--bc) / 0.03);
-    --theme-topology-job-highlight: hsl(var(--b1) / 0.4);
-    --theme-topology-job-shadow: 0 2px 8px hsl(var(--bc) / 0.016);
+    --theme-topology-shell-highlight: hsl(var(--b1) / 0.22);
+    --theme-topology-shell-shadow: 0 12px 30px hsl(var(--bc) / 0.04);
+    --theme-topology-stage-highlight: hsl(var(--b1) / 0.44);
+    --theme-topology-stage-inner-edge: hsl(var(--b1) / 0.08);
+    --theme-topology-stage-shadow: 0 14px 28px hsl(var(--bc) / 0.05);
+    --theme-topology-job-highlight: hsl(var(--b1) / 0.36);
+    --theme-topology-job-shadow: 0 3px 10px hsl(var(--bc) / 0.022);
     --theme-topology-order-bg: hsl(var(--n) / 0.1);
     --theme-topology-order-copy: hsl(var(--nc) / 0.86);
-    --theme-topology-line-highlight: hsl(var(--b1) / 0.06);
-    --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.12);
+    --theme-topology-line-highlight: hsl(var(--b1) / 0.08);
+    --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.14);
     --iris-radius-shell: 0.375rem;
     --iris-radius-section: 0.5rem;
     --iris-radius-inset: 0.375rem;
@@ -79,29 +79,29 @@
     --theme-copy-default: hsl(var(--bc) / 0.66);
     --theme-copy-soft: hsl(var(--bc) / 0.5);
     --theme-copy-faint: hsl(var(--bc) / 0.36);
-    --theme-structure-shell-bg: linear-gradient(180deg, hsl(var(--n) / 0.3), hsl(var(--b2) / 0.78));
-    --theme-structure-group-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b1) / 0.96));
-    --theme-structure-group-header-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.82));
-    --theme-structure-group-edge: hsl(var(--n) / 0.38);
+    --theme-structure-shell-bg: linear-gradient(180deg, hsl(var(--n) / 0.5), hsl(var(--b2) / 0.98));
+    --theme-structure-group-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.82));
+    --theme-structure-group-header-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.96));
+    --theme-structure-group-edge: hsl(var(--n) / 0.62);
     --theme-topology-shell-bg: var(--theme-structure-shell-bg);
     --theme-topology-stage-bg: var(--theme-structure-group-bg);
     --theme-topology-stage-header-bg: var(--theme-structure-group-header-bg);
-    --theme-topology-stage-body-bg: transparent;
-    --theme-topology-job-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.4));
-    --theme-topology-line: hsl(var(--n) / 0.5);
-    --theme-topology-connector: hsl(var(--n) / 0.62);
+    --theme-topology-stage-body-bg: linear-gradient(180deg, hsl(var(--b1) / 0.34), hsl(var(--b1) / 0.14));
+    --theme-topology-job-bg: linear-gradient(180deg, hsl(var(--b1) / 1), hsl(var(--b2) / 0.58));
+    --theme-topology-line: hsl(var(--n) / 0.72);
+    --theme-topology-connector: hsl(var(--n) / 0.86);
     --theme-topology-edge: var(--theme-structure-group-edge);
-    --theme-topology-shell-highlight: hsl(var(--b1) / 0.18);
-    --theme-topology-shell-shadow: 0 10px 24px hsl(var(--bc) / 0.042);
-    --theme-topology-stage-highlight: hsl(var(--b1) / 0.42);
-    --theme-topology-stage-inner-edge: hsl(var(--b1) / 0.08);
-    --theme-topology-stage-shadow: 0 12px 24px hsl(var(--bc) / 0.05);
-    --theme-topology-job-highlight: hsl(var(--b1) / 0.28);
-    --theme-topology-job-shadow: 0 2px 8px hsl(var(--bc) / 0.03);
+    --theme-topology-shell-highlight: hsl(var(--b1) / 0.16);
+    --theme-topology-shell-shadow: 0 12px 30px hsl(var(--bc) / 0.06);
+    --theme-topology-stage-highlight: hsl(var(--b1) / 0.24);
+    --theme-topology-stage-inner-edge: hsl(var(--b1) / 0.04);
+    --theme-topology-stage-shadow: 0 14px 30px hsl(var(--bc) / 0.1);
+    --theme-topology-job-highlight: hsl(var(--b1) / 0.22);
+    --theme-topology-job-shadow: 0 4px 12px hsl(var(--bc) / 0.045);
     --theme-topology-order-bg: hsl(var(--n) / 0.18);
     --theme-topology-order-copy: hsl(var(--nc) / 0.86);
-    --theme-topology-line-highlight: hsl(var(--b1) / 0.03);
-    --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.06);
+    --theme-topology-line-highlight: hsl(var(--b1) / 0.02);
+    --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.08);
   }
 
   [data-theme='light'],
@@ -323,10 +323,10 @@
   }
 
   .iris-inspector-rail {
-    border-color: var(--theme-border-strong);
+    border-color: var(--theme-border-default);
     background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.99), hsl(var(--b2) / 0.32));
-    box-shadow: inset 1px 0 0 hsl(var(--b1) / 0.32);
+      linear-gradient(180deg, hsl(var(--b1) / 0.985), hsl(var(--b2) / 0.18));
+    box-shadow: inset 1px 0 0 hsl(var(--b1) / 0.18);
   }
 
   .iris-section-panel {
@@ -446,14 +446,19 @@
     align-items: center;
     justify-content: flex-end;
     gap: 0.35rem;
-    opacity: 0.72;
+    opacity: 0.1;
+    pointer-events: none;
     transition: opacity 160ms ease;
   }
 
   .group\/stage:hover .iris-topology-stage-tools,
+  .group\/stage:focus-within .iris-topology-stage-tools,
+  .iris-topology-stage-tools.is-visible,
   .group\/job:hover .iris-topology-job-actions,
-  .group\/job:focus-within .iris-topology-job-actions {
+  .group\/job:focus-within .iris-topology-job-actions,
+  .iris-topology-job-actions.is-visible {
     opacity: 1;
+    pointer-events: auto;
   }
 
   .iris-topology-stage-spine {
@@ -483,7 +488,8 @@
   }
 
   .iris-topology-job-actions {
-    opacity: 0.78;
+    opacity: 0.08;
+    pointer-events: none;
     transition:
       opacity 160ms ease,
       background-color 160ms ease;

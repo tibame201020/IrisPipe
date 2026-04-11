@@ -173,7 +173,7 @@ export function StageLaneBoard({
           backgroundSize: mode === 'topology' ? 'auto' : '20px 20px',
         }}
       >
-        <div className={`h-full ${mode === 'topology' ? 'iris-topology-shell px-4 py-4' : 'px-5 py-4'}`}>
+        <div className={`h-full ${mode === 'topology' ? 'iris-topology-shell border-base-300/90 bg-base-200/80 px-4 py-4 shadow-[0_10px_24px_hsl(var(--bc)/0.04)]' : 'px-5 py-4'}`}>
           <SortableContext items={stages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
             <div className={`flex h-full min-w-max items-start ${mode === 'topology' ? 'gap-4 pb-2' : 'gap-3.5 pb-2'}`}>
               {stages.map((stage, index) => (
@@ -259,15 +259,15 @@ function StageLane({
       {mode === 'topology' ? (
         <PipelineStageColumn
           ref={stageShellRef}
-          className={`iris-topology-stage-column group/stage relative flex w-[312px] shrink-0 flex-col transition-all duration-150 ${
+          className={`iris-topology-stage-column group/stage relative flex w-[312px] shrink-0 flex-col bg-base-100/96 transition-all duration-150 ${
             stage.selected
-              ? 'z-10 border-primary/40 ring-2 ring-primary/18 shadow-[0_14px_32px_hsl(var(--p)/0.07)]'
-              : 'hover:border-base-300/90'
+              ? 'z-10 border-primary/55 ring-2 ring-primary/20 shadow-[0_16px_36px_hsl(var(--p)/0.08),0_0_0_1px_hsl(var(--p)/0.1)]'
+              : 'border-base-300 shadow-[0_10px_24px_hsl(var(--bc)/0.045),0_0_0_1px_hsl(var(--bc)/0.05)] hover:border-neutral/45'
           } ${stageBodyIsOver || stageDropTarget ? 'border-primary/35 ring-2 ring-primary/25' : ''} ${
             stage.onClick ? 'cursor-default' : ''
           }`}
           headerClassName="iris-topology-stage-head"
-          bodyClassName={`iris-topology-stage-body ${stageBodyIsOver ? 'bg-primary/4' : ''}`}
+          bodyClassName={`iris-topology-stage-body bg-base-100/80 ${stageBodyIsOver ? 'bg-primary/4' : ''}`}
           header={
             <div className="space-y-3 px-4 py-3.5">
               <div className="flex items-start justify-between gap-3">
@@ -292,7 +292,7 @@ function StageLane({
                 </div>
 
                 <div
-                  className="iris-topology-stage-tools shrink-0"
+                  className={`iris-topology-stage-tools shrink-0 ${stage.selected ? 'is-visible' : ''}`}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -539,7 +539,7 @@ function StageLaneJob({
       style={style}
       className={`group/job relative flex overflow-hidden transition-all duration-150 ${
         mode === 'topology'
-          ? `iris-topology-job-slab ${job.selected ? 'border-primary/45 bg-primary/[0.06] shadow-sm ring-1 ring-primary/14' : 'hover:border-neutral/45'}`
+          ? `iris-topology-job-slab ${job.selected ? 'border-primary/55 bg-primary/[0.08] shadow-sm ring-1 ring-primary/18' : 'border-base-300 bg-base-100 shadow-[0_3px_10px_hsl(var(--bc)/0.03)] hover:border-neutral/45'}`
           : `iris-job-tile ${job.selected ? 'border-primary/45 bg-primary/5 shadow-sm ring-1 ring-primary/12' : 'border-base-300/70'}`
       } ${isOver ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/15' : ''} ${mode === 'topology' ? '' : 'cursor-default'}`}
       headerClassName={mode === 'topology' ? 'items-start gap-2 px-3 py-2.5' : ''}
@@ -575,7 +575,7 @@ function StageLaneJob({
       headerAside={
         mode === 'topology' && topologyControls ? (
           <div
-            className="iris-topology-job-actions flex items-center gap-1"
+            className={`iris-topology-job-actions flex items-center gap-1 ${job.selected ? 'is-visible' : ''}`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
