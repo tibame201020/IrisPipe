@@ -2,7 +2,7 @@
 import { ArrowLeft, ArrowRight, Pencil, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { SqlEditor } from '../components/SqlEditor'
 import { PipelineImportDialog } from '../components/PipelineImportDialog'
@@ -738,6 +738,36 @@ export function PipelineConfigPage() {
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
+      {createMode ? (
+        <div className="shrink-0 px-5 pt-4">
+          <div className="flex items-center justify-between gap-3 rounded-[var(--iris-radius-section)] border border-base-300/60 bg-base-100/60 px-4 py-2.5">
+            <div className="breadcrumbs min-w-0 text-[11px] text-base-content/52">
+              <ul>
+                <li>
+                  <Link to="/pipeline">Explorer</Link>
+                </li>
+                {Number.isFinite(targetFolderId) ? (
+                  <li>
+                    <Link to={`/pipeline/folders/${targetFolderId}`}>Folder #{targetFolderId}</Link>
+                  </li>
+                ) : null}
+                <li className="font-semibold text-base-content">New pipeline</li>
+              </ul>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <ActionLink tone="ghost" to="/pipeline">
+                Back to Explorer
+              </ActionLink>
+              {Number.isFinite(targetFolderId) ? (
+                <ActionLink tone="ghost" to={`/pipeline/folders/${targetFolderId}`}>
+                  Folder #{targetFolderId}
+                </ActionLink>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="shrink-0 px-5 pt-4">
         <PipelineContextStrip
           eyebrow={createMode ? 'Draft config' : 'Config workspace'}
@@ -819,16 +849,56 @@ export function PipelineConfigPage() {
       {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
 
       <div className="iris-workspace-shell relative flex min-h-0 flex-1 overflow-hidden">
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <StageLaneBoard
-            mode="topology"
-            stages={stageLanes}
-            emptyTitle="No stages"
-            emptyDescription="Add the first stage to begin defining this pipeline."
-            onMoveStage={moveStageById}
-            onMoveJob={moveJobById}
-          />
-        </main>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <StageLaneBoard
+              mode="topology"
+              stages={stageLanes}
+              emptyTitle="No stages"
+              emptyDescription="Add the first stage to begin defining this pipeline."
+              onMoveStage={moveStageById}
+              onMoveJob={moveJobById}
+            />
+          </main>
+
+          <div
+            className={`iris-workspace-dock shrink-0 overflow-hidden transition-[height] duration-200 ${
+              jobWorkspaceActive && editingStage && editingJob ? 'h-[360px] xl:h-[420px]' : 'h-[56px]'
+            }`}
+          >
+            {jobWorkspaceActive && editingStage && editingJob ? (
+              <JobWorkspacePanel
+                stage={editingStage}
+                job={editingJob}
+                stageOptions={stageOptions}
+                validation={validationSummary}
+                onDismiss={() => setEditingJobTarget(null)}
+                onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
+                onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
+                onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
+                onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
+                onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
+                onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
+                onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
+                onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
+                onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
+                  updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
+                }
+                onRemoveParameter={(stepEditorId, parameterEditorId) =>
+                  removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
+                }
+              />
+            ) : (
+              <CollapsedJobWorkspaceHint
+                selectedStageName={selectedStage?.stageName}
+                selectedJobName={selectedJob?.jobName}
+                onOpenSelectedJob={
+                  selectedStage && selectedJob ? () => openJobEditor(selectedStage.editorId, selectedJob.editorId) : undefined
+                }
+              />
+            )}
+          </div>
+        </div>
 
         <PipelineOverviewRail
           widthClassName="w-[300px] xl:w-[316px]"
@@ -909,44 +979,6 @@ export function PipelineConfigPage() {
             />
           )}
         </PipelineOverviewRail>
-      </div>
-
-      <div
-        className={`iris-workspace-dock shrink-0 overflow-hidden transition-[height] duration-200 ${
-          jobWorkspaceActive && editingStage && editingJob ? 'h-[360px] xl:h-[420px]' : 'h-[56px]'
-        }`}
-      >
-        {jobWorkspaceActive && editingStage && editingJob ? (
-          <JobWorkspacePanel
-            stage={editingStage}
-            job={editingJob}
-            stageOptions={stageOptions}
-            validation={validationSummary}
-            onDismiss={() => setEditingJobTarget(null)}
-            onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
-            onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
-            onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
-            onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
-            onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
-            onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
-            onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
-            onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
-            onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
-              updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
-            }
-            onRemoveParameter={(stepEditorId, parameterEditorId) =>
-              removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
-            }
-          />
-        ) : (
-          <CollapsedJobWorkspaceHint
-            selectedStageName={selectedStage?.stageName}
-            selectedJobName={selectedJob?.jobName}
-            onOpenSelectedJob={
-              selectedStage && selectedJob ? () => openJobEditor(selectedStage.editorId, selectedJob.editorId) : undefined
-            }
-          />
-        )}
       </div>
 
       <PipelineImportDialog
@@ -1033,20 +1065,21 @@ function StageEditorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PanelHeader
-        kicker={`Stage ${stageIndex + 1}`}
-        title={stage.stageName || 'Untitled stage'}
-        detail="Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow."
-        aside={(
+      <div className="border-b border-base-300/60 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="iris-kicker">Stage {stageIndex + 1}</div>
+            <div className="mt-1 truncate text-sm font-semibold text-base-content">{stage.stageName || 'Untitled stage'}</div>
+            <div className="mt-1 text-[11px] iris-copy">Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow.</div>
+          </div>
           <div className="flex items-center gap-2">
             {issueCount > 0 ? <span className="badge badge-warning badge-sm">{issueCount} issues</span> : null}
             <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close stage editor" onClick={onDismiss}>
               <X size={16} />
             </ActionButton>
           </div>
-        )}
-        className="px-5 py-4"
-      />
+        </div>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="space-y-5">
@@ -1121,23 +1154,20 @@ function PipelineOverviewInspector({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PanelHeader
-        kicker="Pipeline Overview"
-        title={(
-          <label className="form-control mt-1">
-            <span className="mb-2 iris-kicker">Pipeline Name</span>
-            <input
-              type="text"
-              className={getControlClass(hasPipelineFieldIssue(validation, 'pipelineName'), 'input input-bordered w-full')}
-              value={draft.pipelineName}
-              onChange={(event) => onPipelineNameChange(event.target.value)}
-              placeholder="pipeline_name"
-            />
-            <FieldMessages messages={getPipelineFieldMessages(validation, 'pipelineName')} />
-          </label>
-        )}
-        className="px-5 py-4"
-      />
+      <div className="border-b border-base-300/60 px-5 py-4">
+        <div className="iris-kicker">Pipeline Overview</div>
+        <label className="form-control mt-2">
+          <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Pipeline Name</span>
+          <input
+            type="text"
+            className={getControlClass(hasPipelineFieldIssue(validation, 'pipelineName'), 'input input-bordered w-full')}
+            value={draft.pipelineName}
+            onChange={(event) => onPipelineNameChange(event.target.value)}
+            placeholder="pipeline_name"
+          />
+          <FieldMessages messages={getPipelineFieldMessages(validation, 'pipelineName')} />
+        </label>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="grid grid-cols-2 gap-2.5">
@@ -1224,11 +1254,13 @@ function JobInspectorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PanelHeader
-        kicker={stage.stageName || 'Stage'}
-        title={job.jobName || 'Untitled job'}
-        detail={semantic.guidance}
-        aside={(
+      <div className="border-b border-base-300/60 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="iris-kicker">{stage.stageName || 'Stage'}</div>
+            <div className="mt-1 truncate text-sm font-semibold text-base-content">{job.jobName || 'Untitled job'}</div>
+            <div className="mt-1 text-[11px] iris-copy">{semantic.guidance}</div>
+          </div>
           <div className="flex items-center gap-2">
             <span className={`badge badge-sm ${semantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
               {semantic.issueCount > 0 ? `${semantic.issueCount} issues` : 'Ready to edit'}
@@ -1237,9 +1269,8 @@ function JobInspectorPanel({
               <X size={16} />
             </ActionButton>
           </div>
-        )}
-        className="px-5 py-4"
-      />
+        </div>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <div className="grid grid-cols-2 gap-2.5">
