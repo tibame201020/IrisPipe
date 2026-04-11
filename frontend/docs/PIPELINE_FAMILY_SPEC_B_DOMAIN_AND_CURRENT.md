@@ -1,108 +1,182 @@
 # IrisPipe Pipeline Family Spec B
 
-副標：`domain-aware + current-view-aware + reviewer-revised`
-
-語言：繁體中文  
-輸入來源限制：
-- canonical domain brief
-- current view 截圖：Config / Runs / Run Detail
-- staff reviewer 摘要
-
-本文件用途：
-- 延續既有 `Spec B` 的方向
-- 只補齊 staff reviewer 指出的交付缺口
-- 不重寫成另一套不同方向的 spec
+角色：Senior UIUX with IrisPipe Pipeline Domain + Current View  
+來源限制：以 canonical domain brief 為唯一 backend/domain 真實來源；current view 僅用來診斷現況落差，不升格為 domain 真理。
 
 ---
 
-## 0. 修訂目標
+## 0. Spec 定位
 
-本次修訂只補強下列缺口：
+- `Spec A` 負責 family/domain contract。
+- `Spec B` 負責 implementation-facing handoff。
+- `Config` = `topology workspace + contextual inspector + job workspace dock`
+- `Runs` = `operations ledger`
+- `Run Detail` = `single logical run workspace`，內含 attempt timeline 與 selected attempt runtime board。
 
-1. 具體的介面標注與區塊尺寸 / 滾動 / 固定規則
-2. Config / Runs / Run Detail 的 page-level interaction transitions
-3. current view 到 target view 的重構過渡說明
-4. dark theme 下結構邊界與 connector 可讀性要求
-5. component governance
+### Run Detail 視角修正
 
-維持不變的核心方向：
-- `Config` 仍是 `topology workspace + contextual inspector + job workspace dock`
-- `Runs` 仍是 `operations ledger`
-- `Run Detail` 仍是 `hero summary + attempt timeline + runtime board + diagnostics drawer + overview rail`
-- frontend 仍以展示 backend pipeline 使用方式與執行語意為主，不是堆資料
+- `Run Detail` 不是「current attempt 專頁」。
+- 它是「單一 logical run 的 detail workspace」。
+- 預設可聚焦 latest 或最 relevant attempt，但必須保留 timeline，允許切換到同一 run 的其他 attempts。
+- 資訊優先序固定：
+  - `run identity`
+  - `selected attempt context`
+  - `runtime board`
+  - `diagnostics`
 
 ---
 
-## 1. Family 級介面標注
+## 1. Annotated Screen Inventory
 
-## 1.1 共用 shell 分區
+## 1.1 Desktop
 
-所有 pipeline family 頁面共享固定層級：
+### Config
+
+1. `Config / default`
+   - identity row
+   - family tabs
+   - readiness/context strip
+   - topology workspace
+   - contextual inspector
+   - job workspace dock
+2. `Config / stage selected`
+   - selected stage
+   - stage inspector
+   - dock 收斂
+3. `Config / job selected`
+   - selected job
+   - job inspector
+   - dock 展開
+4. `Config / empty`
+   - no stages
+   - stage with no jobs
+5. `Config / validation state`
+   - runnable
+   - has issues
+   - blocked from execute
+6. `Config / drag state`
+   - dragging stage
+   - dragging job
+   - insertion cue
+
+### Runs
+
+1. `Runs / default`
+   - compact hero strip
+   - filters
+   - ledger
+2. `Runs / filtered`
+   - all
+   - in flight
+   - failed
+   - completed
+   - resumable
+3. `Runs / loading`
+   - ledger skeleton
+4. `Runs / empty`
+   - no runs yet
+   - no results for filters
+
+### Run Detail
+
+1. `Run Detail / default`
+   - hero summary
+   - attempt timeline
+   - runtime board
+   - overview rail
+   - diagnostics drawer
+2. `Run Detail / alternate attempt selected`
+   - selected attempt changes board/rail/drawer
+3. `Run Detail / active run`
+   - auto-refresh
+   - active markers
+   - stop action enabled
+4. `Run Detail / failed or resumable`
+   - failed stage emphasis
+   - resume affordance
+   - resume path summary
+5. `Run Detail / drawer open`
+   - logs
+   - metrics
+   - step detail
+
+## 1.2 Tablet
+
+- `Config`
+  - topology remains primary
+  - right rail becomes side sheet
+  - dock remains bottom sheet
+- `Runs`
+  - ledger remains primary
+  - hero shrinks into compact strip
+- `Run Detail`
+  - runtime board remains primary
+  - overview rail becomes side sheet
+  - diagnostics remains bottom drawer
+
+## 1.3 Mobile
+
+- `Config`
+  - stage list as primary
+  - selected job in bottom/full-height sheet
+- `Runs`
+  - single-column ledger rows
+- `Run Detail`
+  - hero
+  - attempt timeline
+  - collapsible stage sections
+  - diagnostics tabs
+
+## 1.4 關鍵狀態變體
+
+- empty
+- loading
+- partial loading
+- error
+- stale
+- selected
+- active
+- disabled
+- danger confirm
+
+---
+
+## 2. Family Shell 與 Page-Level 結構
 
 ```text
-+----------------------------------------------------------------------------------+
-| App shell / left navigation                                                      |
-+----------------------------------------------------------------------------------+
-| Identity row                                                                     |
-+----------------------------------------------------------------------------------+
-| Family tabs                                                                      |
-+----------------------------------------------------------------------------------+
-| Context strip                                                                    |
-+----------------------------------------------------------------------------------+
-| Main workspace                                                                   |
-+----------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------+
+| App shell / left navigation                                                          |
++--------------------------------------------------------------------------------------+
+| Identity row                                                                         |
++--------------------------------------------------------------------------------------+
+| Family tabs                                                                          |
++--------------------------------------------------------------------------------------+
+| Context strip                                                                        |
++--------------------------------------------------------------------------------------+
+| Main workspace                                                                       |
++--------------------------------------------------------------------------------------+
 ```
 
-### 區塊高度規則
+### Layout 原則
 
-- `Identity row`：48px
-- `Family tabs row`：44px
-- `Context strip`：56px
-- `Main workspace`：佔剩餘高度
+- `Identity Row`：表達 pipeline identity 與 family context
+- `Family Tabs`：切換 Config / Runs / Run Detail
+- `Context Strip`：顯示該頁必要狀態與主 actions
+- `Main Workspace`：每頁唯一主角
 
-### 行為規則
+### 視覺層級
 
-- `Identity row` 固定在頁面頂部，不隨主內容滾動
-- `Family tabs row` 固定在 `Identity row` 下方
-- `Context strip` 固定在 `Family tabs row` 下方
-- 只有 `Main workspace` 可產生主要捲動
-
-### 寬度規則
-
-- App shell 左欄：固定 232px
-- 內容區最小寬度：1120px
-- 若視窗小於 1280px，右側 rail 與 dock 優先收斂，不壓縮 topology/ledger/board 的主視圖
+- L1：shell/chrome
+- L2：page anchor area
+- L3：contextual panel
+- L4：diagnostics/inspector
+- L5：chips/actions/meta
 
 ---
 
-## 1.2 狀態與互動的共用契約
+## 3. Config Implementation Spec
 
-### Hover
-- 只做輕量表面變化
-- 不可造成 layout shift
-- 不可新增推擠內容的按鈕列
-
-### Selected
-- 必須同時改變 `surface + border/ring + emphasis`
-- 不可只靠細 border
-
-### Focus
-- 與 selected 分開
-- 只表示輸入 / 鍵盤焦點，不代表當前上下文
-
-### Disabled
-- 仍保留 control 外形
-- 文字與邊界都需低飽和，但不可像普通靜態文字
-
-### Drag / reorder
-- drag affordance 必須和 edit / delete 分開辨識
-- pointer 狀態必須清楚：`default / hover / grab / grabbing`
-
----
-
-## 2. Config 修訂規格
-
-## 2.1 Page IA
+## 3.1 Page IA
 
 ```text
 +--------------------------------------------------------------------------------------+
@@ -111,153 +185,124 @@
 | Family tabs: Config | Runs                                                           |
 +--------------------------------------------------------------------------------------+
 | Context strip                                                                        |
-| [Topology] [4 stages] [6 jobs] [Runnable]                    [Import] [Add] [Save]    |
+| [Topology] [4 stages] [6 jobs] [Runnable]                            [Primary Actions]|
 +--------------------------------------------------------------------------------------+
 | Topology workspace                                                | Context rail     |
 |                                                                    |                 |
 |  Stage flow canvas                                                 | Pipeline /      |
-|  (主角)                                                            | Stage / Job      |
-|                                                                    | Inspector        |
+|                                                                    | Stage / Job     |
+|                                                                    | Inspector       |
 +--------------------------------------------------------------------------------------+
 | Job workspace dock                                                                  |
 +--------------------------------------------------------------------------------------+
 ```
 
-## 2.2 區塊尺寸與固定規則
+## 3.2 Screen Anatomy
 
-### 主畫布與右 rail
-- `Topology workspace`：`minmax(0, 1fr)`
-- `Context rail`：固定 320px
-- 當視窗寬度小於 1360px：
-  - `Context rail` 收斂為 280px
-  - 若仍不足，切成 overlay inspector，不壓縮主畫布
+### Topology Workspace
 
-### Stage column
-- 欄寬：288px
-- stage 之間水平間距：24px
-- stage 間 connector 保留區：40px
-- stage body 最小高度：240px
+- main reading surface
+- left-to-right stage flow
+- stage connector
+- stage columns
+- job slabs
 
-### Job row
-- 列高：64px
-- 內距：12px 14px
-- job rows 間距：10px
+### Context Rail
 
-### Bottom dock
-- 收合高度：56px
-- 展開高度：
-  - 標準：360px
-  - 大螢幕：420px
-- dock 固定在 `Main workspace` 底部
-- dock 內部自捲動，不帶動整頁
+- pipeline summary
+- selected stage summary
+- selected job summary
+- readiness / validation context
+- contextual actions
 
-### 捲動規則
-- stage flow canvas 橫向可捲動
-- `Context rail` 自己垂直捲動
-- `Job workspace dock` 自己垂直捲動
-- 三者不可共用同一捲動容器
+### Job Workspace Dock
 
-## 2.3 介面標注
+- source / destination
+- steps / executions
+- SQL/query
+- params
+- watermark
+- batch / atomic settings
 
-### Stage column
-每個 stage 必須固定有 3 層：
+## 3.3 Stage Column Anatomy
 
-1. `Stage header`
-2. `Stage body`
-3. `Stage helper strip`
+### Stage Header
 
-#### Stage header
-只允許：
 - stage badge
 - stage name
 - job count
 - compact stage actions
 
-禁止：
-- readiness 長文
-- 過多 chips
-- 會把 stage name 壓縮的 icon cluster
+### Stage Body
 
-#### Stage body
-只承載：
-- job rows
+- job rows / slabs
 - empty-stage CTA
 
-#### Stage helper strip
-放：
-- `2/2 jobs ready`
-- `0 issues`
-- barrier / order hint
+### Stage Helper Strip
 
-這一層必須低於 header 的權重。
+- jobs ready
+- issue count
+- order / barrier hint
 
-### Job row
-Job row 固定成兩行：
+## 3.4 Job Slab Anatomy
 
-第一行：
+### Primary line
+
 - job name
 - issue hint
 
-第二行：
-- `2 steps`
-- compact action row：`drag | edit | delete`
+### Secondary line
 
-動作列規則：
-- 與 job name 同列不行
-- 與 drag 同列可以
-- 三者等寬點擊區至少 28px
+- step count
+- compact interaction row: `drag | contextual open`
 
-## 2.4 Page-level interaction transitions
+### Rules
 
-### Config page 進入頁面
-1. 先看到 pipeline identity
-2. 再看到 readiness + actions
-3. 視線落在 topology canvas
-4. 只有選取 stage/job 後，才把注意力帶到右 rail 或 dock
+- name line cannot be crowded out by controls
+- drag affordance must be visually distinct
+- action row must not overlap title
 
-### 選取 stage
-- 變化：
-  - stage column surface 提升
-  - ring / border 增強
-  - `Context rail` 切成 stage inspector
-- 不變：
-  - stage 高度
-  - jobs 位置
-  - connector 位置
+## 3.5 Page-Level Flows
 
-### 選取 job
-- 變化：
-  - job row 背景與 ring 提升
-  - `Context rail` 切成 job inspector
-  - `Job workspace dock` 可展開
-- 不變：
-  - stage column 寬度
-  - 其他 rows 位置
+### Selection
 
-### 展開 job workspace
-- 由 dock 向上展開
-- 中央 topology 仍必須保持完整可見
-- dock 只改自身高度，不可讓 topology 消失
+- click stage -> stage selected -> rail shows stage inspector
+- click job -> job selected -> rail shows job inspector -> dock opens
+- click empty area -> selection clears -> rail falls back to pipeline summary
 
-## 2.5 Current view -> target view 過渡說明
+### Drag
 
-### current view 問題
-- stage 邊界太輕，像背景群組
-- job actions 與內容過近
-- 右 rail 權重太高
-- 空白區雖大，但未形成清楚 flow
+- drag stage -> stage placeholder + insertion cue
+- drag job -> job reorder cue within stage
+- no layout jump for hover tools
 
-### target view 修正
-- 把 stage 從「淡淡群組」改成「明確 column block」
-- 把 job 從「內容 + 操作擠在一起」改成「兩行 slab」
-- 把 overview rail 從「重 summary panel」改成「context rail」
-- 保留底部 dock，但把它定義成第二主層，而不是搶 topology 主視角
+### Save / Execute
+
+- `Save` high emphasis
+- `Execute` high emphasis but blocked by readiness issues
+- disabled state must show reason
+
+## 3.6 Current View -> Target View
+
+### Current View Issues
+
+- stage boundaries too soft
+- job actions too crowded
+- right rail too visually strong
+- dock lacks clear role as actual editor
+
+### Target Direction
+
+- stage = strong column block
+- job = compact slab
+- rail = secondary contextual panel
+- dock = clear editing zone without hiding topology
 
 ---
 
-## 3. Runs 修訂規格
+## 4. Runs Implementation Spec
 
-## 3.1 Page IA
+## 4.1 Page IA
 
 ```text
 +--------------------------------------------------------------------------------------+
@@ -268,66 +313,51 @@ Job row 固定成兩行：
 | Context strip                                                                        |
 | Latest run / inflight / resumable / avg runtime                     [Refresh][Execute]|
 +--------------------------------------------------------------------------------------+
-| Filter row                                                                           |
-| [All] [Running] [Failed] [Completed] [Resumable]                                     |
+| Filter row                                                | Low-weight contextual rail|
+| [All] [Running] [Failed] [Completed] [Resumable]          | selected run summary      |
 +--------------------------------------------------------------------------------------+
-| Operations ledger                                                                    |
+| Operations ledger                                            | contextual rail          |
 +--------------------------------------------------------------------------------------+
 ```
 
-## 3.2 區塊尺寸與固定規則
+## 4.2 Ledger Layout
 
-- `Context strip` 高度：64px
-- `Filter row` 高度：44px
-- Ledger header：sticky，固定在 filter row 下方
-- Ledger row 高度：72px
+### Columns
 
-### Ledger columns
-- 狀態點：24px
-- Run：`minmax(180px, 1.3fr)`
-- Attempt：`minmax(180px, 1fr)`
-- Timeline：140px
-- Status：120px
-- Action：96px
+- Run
+- Latest Attempt
+- Timeline
+- Status
+- Resume Hint
+- Primary Action
 
-### 捲動規則
-- 只有 ledger list 自捲動
-- hero/context strip 與 filter row 固定
+### Rules
 
-## 3.3 Page-level interaction transitions
+- hero/context strip is lighter than ledger
+- ledger header stays sticky under filters
+- row density favors scanability over dashboard aesthetics
 
-### Runs page 進入頁面
-1. 先看到 latest signal 與最重要 CTA
-2. 接著立即看到 ledger header
-3. 第一屏就能看到 run rows
+## 4.3 Row Anatomy
 
-### 切換 filter
-- 只更新 ledger list
-- 不重排 header
-- filter chip 的 selected 狀態要明確
+- run identity
+- latest attempt summary
+- timeline summary
+- effective status
+- resumable / blocked cue
+- open detail action
 
-### 點擊 row
-- 可有 hover highlight
-- 點擊後直接開 `Run Detail`
-- 不在同頁展開大量 secondary content
+## 4.4 Flow Rules
 
-## 3.4 Current view -> target view 過渡說明
-
-### current view 問題
-- hero 仍然偏 dashboard
-- metrics 與 list 有競爭
-- run row 雖清楚，但頁首仍吸走注意力
-
-### target view 修正
-- hero 收斂成一條 operator cue strip
-- 把 ledger header 與 list 提前到首屏核心
-- 所有統計都服務於「下一筆該看哪個 run」，而不是服務儀表板閱讀
+- row click opens `Run Detail`
+- filters update ledger, not the whole shell
+- hero is a quiet signal strip, not a KPI dashboard
+- resumable / failed / active must be first-class scan cues
 
 ---
 
-## 4. Run Detail 修訂規格
+## 5. Run Detail Implementation Spec
 
-## 4.1 Page IA
+## 5.1 Page IA
 
 ```text
 +--------------------------------------------------------------------------------------+
@@ -345,269 +375,638 @@ Job row 固定成兩行：
 +--------------------------------------------------------------------------------------+
 ```
 
-## 4.2 區塊尺寸與固定規則
+## 5.2 Hero Summary Anatomy
 
-### Hero summary
-- 高度：92px
-- 只放：
-  - run id
-  - effective status
-  - attempt count / current attempt
-  - key totals
-  - primary actions
+- run id
+- effective run status
+- selected attempt
+- attempt count / latest attempt cue
+- duration / timestamps
+- primary run actions
 
-### Attempt timeline
-- 高度：84px
-- 固定在 hero 下方
-- 橫向可捲動
+## 5.3 Attempt Timeline Anatomy
 
-### Runtime board 與 rail
-- `Runtime board`：`minmax(0, 1fr)`
-- `Overview rail`：320px
-- board 是主視角，rail 只做補充
+- attempt number
+- attempt kind
+- status
+- is-selected marker
+- created time
 
-### Diagnostics drawer
-- 收合高度：52px
-- 展開高度：
-  - 標準：280px
-  - 大螢幕：340px
-- drawer 內部自捲動
-- 不覆蓋 hero / timeline
+## 5.4 Runtime Board Anatomy
 
-## 4.3 Page-level interaction transitions
+- stage-first board
+- each stage contains runtime job rows
+- status cues must cover:
+  - `PENDING`
+  - `STARTED`
+  - `COMPLETED`
+  - `FAILED`
+  - `STOPPED`
+  - `SKIPPED`
+  - `NOT_RUN`
 
-### 進入 Run Detail
-1. 先看 run status 與 attempt identity
-2. 再看 attempt timeline
-3. 視線落到 runtime board
-4. 只有需要時才打開 diagnostics
+## 5.5 Overview Rail Anatomy
 
-### 切換 attempt
-- board 與 overview 同步切換
-- diagnostics 若已開啟，保留 tab，但內容更新
-- 不重新排版整頁
+- run overview
+- selected attempt summary
+- resume path / blocked path
+- selected node summary
+- contextual actions
 
-### 選取 job
-- board 中的 job row 強化 selected state
-- `Job runtime inspector` 以 overlay 或側邊 contextual panel 出現
-- 不取代整個 overview rail
+## 5.6 Diagnostics Drawer Anatomy
 
-### 展開 diagnostics
-- 從底部滑出
-- board 保持可視
-- tab 切換只換內容，不換 container 結構
+- scope label
+- tabs:
+  - Logs
+  - Metrics
+  - Step Detail
+- tab content states:
+  - ready
+  - loading
+  - empty
+  - error
 
-## 4.4 Current view -> target view 過渡說明
+## 5.7 Page-Level Flows
 
-### current view 問題
-- hero / timeline / board / rail / drawer 都有存在感
-- 對第一次進來的使用者，主視角不夠明確
-
-### target view 修正
-- hero 只保留 run identity 與控制
-- attempt timeline 成為唯一上層 narrative
-- runtime board 成主角
-- overview rail 降權
-- diagnostics drawer 改成按需展開的第二層
+- select attempt -> hero keeps run identity, board/rail/drawer rebind to selected attempt
+- select stage/job -> diagnostics scope changes, overview rail updates
+- open drawer -> no navigation away from board
+- stop / rerun / resume -> danger or contextual action group, not mixed into neutral controls
 
 ---
 
-## 5. Dark theme clarity 明確規格
+## 6. Design Token / daisyUI Theme Mapping
 
-本節是 reviewer 特別要求補強的部分。
+允許主題僅有：
 
-## 5.1 結構色階規則
+- `light`
+- `dark`
+- `dracula`
+- `autumn`
 
-在 `dark / dracula` 下，結構可讀性必須靠 `base-* + neutral + primary` 的層級差建立，不可靠細 border 硬撐。
+## 6.1 Semantic Mapping
 
-### 固定語意
-- `Canvas / work surface`：`base-100`
-- `Stage / shell / rail / ledger header`：`neutral`
-- `Selected stage/job/context`：`primary`
-- `Runtime state`：`success / warning / error / info`
+### 結構層
 
-## 5.2 Stage 與 canvas 的對比要求
+- app background -> `base-100`
+- secondary surface -> `base-200`
+- tertiary separators / subtle cards -> `base-300`
+- default text/icon -> `base-content`
 
-未選取 stage 在 dark theme 下也必須清楚辨識。
+### 結構群組
 
-必須滿足：
-- stage column 與 canvas 至少有一層明確表面差
-- stage header 與 stage body 必須再分一層
-- connector 線不可沉進背景
+- shell / stage lane / grouped panels -> `neutral`
+- content on neutral -> `neutral-content`
 
-### 可讀性要求
-- stage column 外輪廓：必須可在 1 秒內辨識每一欄範圍
-- stage header：必須明顯高於 stage body
-- job row：必須能被看作 stage 裡的可點擊節點，不是文字列表
+### 主焦點
 
-## 5.3 Connector 規格
+- selected row/card/tab/primary CTA -> `primary`
+- content on primary -> `primary-content`
 
-### Config
-- connector 顏色：中性高對比線
-- 線寬：2px
-- 箭頭或方向提示不可省略
-- 位置固定在 stage 中線高度附近
+### 次焦點
 
-### Run Detail
-- connector 除了結構線，還可疊加 runtime state 強調
-- blocked / skipped / not-run 的 connector 或 stage transition 需要有輔助標記
+- secondary CTA -> `secondary`
+- optional micro emphasis -> `accent`
 
-## 5.4 Selected 規格
+### Runtime 狀態
 
-dark theme 下 selected 不得只靠細 border。
+- `COMPLETED` -> `success`
+- `FAILED` -> `error`
+- `STARTED` / active / in-flight -> `info`
+- `STOPPED` / resumable caution / blocked attention -> `warning`
+- `PENDING` / `SKIPPED` / `NOT_RUN`
+  - 不用大面積 state fill
+  - 優先用 `base-*` / `neutral` + label + icon 差異
 
-必須同時有：
-- 背景表面差
-- 明顯 ring 或外框
-- header / label emphasis
+## 6.2 Usage Rules
 
-## 5.5 Focus 規格
-
-keyboard focus 在 dark theme 下必須：
-- 與 selected 不同色或不同層級
-- 不得被 selected surface 吃掉
+- 不使用 raw hex 作為 theme-dependent surface 或 text
+- 不把 `success/error/info/warning` 當 stage lane 基底色
+- 不以顏色單獨區分 `SKIPPED` vs `NOT_RUN`
+- selected 必須使用 `surface + ring + emphasis`
+- focus 必須獨立於 selected
 
 ---
 
-## 6. 動畫與過場補充
+## 7. Component Inventory / Variant / State Matrix
 
-## 6.1 頁級 transition
-
-### Config -> Runs
-- family tab 切換
-- 保留 identity row 與 context row 的穩定感
-- 主要內容以 120ms cross-fade + 12px 上移進場
-
-### Runs -> Run Detail
-- 點 row 後進 detail
-- 保持同 family shell
-- 由 ledger context 過渡到 run hero，不做大幅 page wipe
-
-### Run Detail -> Config
-- 若由某 run 回看 config，不應讓使用者失去 pipeline identity
-- 保留相同 pipeline breadcrumb 與 tab 位置
-
-## 6.2 區塊級 transition
-
-- rail 切換 stage/job/pipeline context：150ms opacity + translate
-- dock 展開：180ms height + opacity
-- diagnostics drawer：180ms translateY + opacity
-- attempt chip current 切換：120ms emphasis shift
-
----
-
-## 7. 邊界情境與內容規則
-
-## 7.1 Config edge cases
-
-- `0 stage`
-  - topology 直接顯示 empty-state CTA：`Add first stage`
-- `empty stage`
-  - stage body 顯示 `Add Job`
-- `job name very long`
-  - 第一行截斷，完整名稱進 tooltip 或 inspector
-- `validation issues > 0`
-  - readiness 不可顯示 runnable
-- `dock open + small viewport`
-  - dock 仍可展開，但 inspector 改 overlay
-
-## 7.2 Runs edge cases
-
-- `no runs yet`
-  - 顯示空 ledger 與 `Execute pipeline`
-- `resumable run exists`
-  - row 需有 clear resumable cue
-- `multiple active runs`
-  - filter 與 latest strip 不可只顯示一筆
-
-## 7.3 Run Detail edge cases
-
-- `attempt count = 1`
-  - timeline 仍存在，但不誇張
-- `resume attempt`
-  - timeline 必須能辨識 resume context
-- `selected job has no logs`
-  - drawer 顯示 empty diagnostic state
-- `NOT_RUN downstream`
-  - board 不可與一般 pending 混淆
-
----
-
-## 8. Component governance
-
-本節只補治理規則，不改 spec 方向。
-
-## 8.1 Pipeline family 專屬元件層
-
-建議元件責任如下：
+## 7.1 Component Inventory
 
 - `PipelineWorkspaceShell`
-  - identity row
-  - family tabs
-  - context strip
-
 - `StageColumn`
-  - stage header
-  - stage helper strip
-  - stage body
-  - connector anchor
-
 - `JobSlab`
-  - job identity
-  - step summary
-  - compact actions
-
+- `ContextRail`
+- `JobWorkspaceDock`
 - `RunLedgerRow`
-  - run identity
-  - attempt summary
-  - timeline summary
-  - status
-  - action
-
-- `AttemptTimeline`
-  - current attempt
-  - resume/rerun semantics
-
+- `AttemptTimelineItem`
+- `OverviewRailSection`
 - `DiagnosticsDrawer`
-  - logs
-  - metrics
-  - step detail
+- `StatusChip`
+- `PrimaryActionGroup`
+- `EmptyState`
+- `LoadingSkeleton`
+- `ConfirmDialog`
 
-## 8.2 不可越界規則
+## 7.2 Variants
 
-- StageColumn 不處理 job 深層設定
-- JobSlab 不顯示完整 config 細節
-- Overview rail 不複製 board 已可見的資訊
-- Diagnostics drawer 不主導整頁結構
-- Hero strip 不取代 ledger / board 的主角位置
+### StageColumn
 
-## 8.3 Theme governance
+- config lane
+- runtime lane
+- collapsed lane
 
-- 所有 family 結構色必須走 daisyUI semantic tokens
-- 禁止為單頁補硬編碼結構色
-- dark theme clarity 問題要回到 semantic mapping 修，不是補任意灰階
+### JobSlab
+
+- config slab
+- runtime slab
+- compact slab
+
+### RunLedgerRow
+
+- default
+- selected
+- latest
+- filtered highlight
+
+### AttemptTimelineItem
+
+- initial
+- resume
+- rerun
+
+### DiagnosticsDrawer
+
+- logs
+- metrics
+- step detail
+
+## 7.3 State Matrix
+
+### Shared States
+
+- default
+- hover
+- focus
+- selected
+- disabled
+- loading
+- error
+- stale
+- active
+
+### Component Notes
+
+- `StageColumn`: drag-target state required
+- `JobSlab`: issue state, active-runtime state required
+- `RunLedgerRow`: stale + resumable + blocked states required
+- `AttemptTimelineItem`: current-context + selected states must be distinct
+- `PrimaryActionGroup`: loading + confirm-required must be explicit
 
 ---
 
-## 9. 交付就緒判準
+## 8. Action & Flow Matrix
 
-Spec B 修訂後，前端若要開始實作，至少必須滿足以下條件：
+## 8.1 Selection
 
-1. 每頁都有明確主視角
-2. 每頁都有 sticky / scroll / rail / drawer 規則
-3. current view 到 target view 的過渡可分階段執行
-4. dark theme 下 stage / job / connector 可讀性有明確標準
-5. component responsibilities 已定清楚，不再讓 summary、board、inspector 互搶
+- source:
+  - Config: click stage or job
+  - Runs: click run row
+  - Run Detail: click attempt timeline item
+- result: single page-bound primary selection only
+- side effects:
+  - rail updates
+  - drawer scope updates
+  - dock opens/closes where appropriate
+
+`Run Detail` 內的 stage/job click 不屬於 page-bound primary selection 來源；它們只更新 diagnostics target。
+
+## 8.2 Attempt Switching
+
+- source: click attempt timeline item
+- result:
+  - run identity remains
+  - selected attempt changes
+  - board + rail + drawer all rebind
+- partial loading allowed
+- full page wipe forbidden
+
+## 8.3 Resume
+
+- entry points:
+  - Runs row
+  - Run Detail hero
+  - Run Detail rail
+- precondition:
+  - run is resumable
+- result:
+  - new attempt under same logical run
+  - timeline grows
+
+## 8.4 Rerun
+
+- entry points:
+  - Runs row
+  - Run Detail hero
+- precondition:
+  - rerun allowed
+- result:
+  - new logical run
+  - old snapshot reused
+
+## 8.5 Stop
+
+- entry points:
+  - active Run Detail hero
+  - contextual action group
+- precondition:
+  - active run/attempt
+- result:
+  - danger confirm
+  - pending stop feedback
+  - final stopped state
+
+## 8.6 Drawer / Rail / Dock
+
+- `ContextRail`
+  - desktop fixed
+  - tablet/mobile sheet
+- `JobWorkspaceDock`
+  - Config only
+  - opens on job selection
+- `DiagnosticsDrawer`
+  - Run Detail only
+  - scoped by selected stage/job/step
+
+## 8.7 Refresh
+
+- manual refresh everywhere
+- preserve selection / scroll / open tab where possible
+- reset stale badge on success
 
 ---
 
-## 10. 結語
+## 9. Live Update / Stale Data Contract
 
-本修訂版不改 Spec B 的方向，只把它補到可交付前端執行的粒度。
+## 9.1 Auto Refresh
 
-它的核心立場仍然是：
-- frontend 是 backend pipeline domain 的產品化操作介面
-- `Config` 要先讓人看懂 stage flow
-- `Runs` 要像 operations ledger
-- `Run Detail` 要像 attempt-centric runtime workspace
-- current view 可以作為落地參考，但不能繼續綁死最終方向
+適用：
+
+- active run
+- in-flight attempt
+- recently mutated views
+
+範圍：
+
+- Runs ledger
+- Run Detail selected attempt
+- overview rail
+- currently open diagnostics scope
+
+## 9.2 Manual Refresh
+
+- Config / Runs / Run Detail 全部提供
+- manual refresh 優先
+- 成功後清 stale badge
+
+## 9.3 Stale Badge
+
+顯示條件：
+
+- freshness threshold exceeded
+- background refresh failed
+- page regained focus and data may be outdated
+
+位置：
+
+- page-level near timestamp
+- section-level if only one section stale
+
+## 9.4 Partial Loading / Error
+
+- new data not yet ready -> keep old data + stale badge + section skeleton
+- logs failed but board okay -> only drawer shows error
+- entire page whiteout is forbidden
+
+## 9.5 Snapshot Drift
+
+- Config：明示 current config
+- Run Detail：明示 selected attempt snapshot
+- drift 提示文案：
+  - `Viewing run snapshot, not current config`
+  - `Current config may differ from this run snapshot`
+
+## 9.6 Selection Persistence
+
+- refresh 後優先保留 selection
+- 若 selected entity 不存在，回退到最近有效父層
+
+---
+
+## 10. Content Matrix
+
+## 10.1 Field Labels
+
+### Config
+
+- Pipeline name
+- Stages
+- Jobs ready
+- Validation issues
+- Source connections
+- Destination connections
+
+### Runs
+
+- Run #
+- Latest attempt
+- Attempt type
+- Started at
+- Duration
+- Status
+- Action
+
+### Run Detail
+
+- Run #
+- Selected attempt
+- Attempt type
+- Created at
+- Duration
+- Stage progress
+- Resume path
+- Logs / Metrics / Step Detail
+
+## 10.2 Empty States
+
+- `No stages yet`
+- `No jobs in this stage`
+- `No runs yet`
+- `No diagnostics available for this scope`
+
+## 10.3 Disabled Reasons
+
+- Execute disabled -> `Resolve validation issues before execute`
+- Resume disabled -> `This run is not resumable`
+- Stop disabled -> `Only active runs can be stopped`
+- Drawer tab disabled -> `No step selected`
+
+## 10.4 Time / Duration Format
+
+- absolute -> `YYYY/MM/DD HH:mm:ss`
+- relative time can be supporting only
+- duration:
+  - `0s`
+  - `8s`
+  - `2m 14s`
+
+## 10.5 Truncation / Recovery
+
+- pipeline/stage/job names single-line truncate
+- full value recoverable by hover/focus/inspector
+- important IDs do not truncate
+
+## 10.6 Canonical Status Labels
+
+- `PENDING`
+- `STARTED`
+- `COMPLETED`
+- `FAILED`
+- `STOPPED`
+- `SKIPPED`
+- `NOT_RUN`
+
+`resumable`、`blocked`、`active` 是輔助 badge，不取代主 status。
+
+---
+
+## 11. Responsive Priority
+
+## 11.1 Desktop >= 1280
+
+- Config：topology > inspector > dock
+- Runs：ledger > filters > compact summary
+- Run Detail：board > timeline > rail > drawer
+
+## 11.2 Tablet 768-1279
+
+- Config：topology > dock > inspector sheet
+- Runs：ledger > filters > summary chips
+- Run Detail：board > timeline > drawer > rail sheet
+
+## 11.3 Mobile <= 767
+
+- Config：stage list > selected job sheet > readiness summary
+- Runs：ledger rows > status filter > summary count
+- Run Detail：hero > attempt timeline > stage accordions > diagnostics tabs > secondary overview
+
+### Responsive Rules
+
+- 先保留辨識與操作，再縮資訊密度
+- mobile 不可完全失去 stage-first 結構
+- 任一 breakpoint 都保留 run vs attempt distinction
+
+---
+
+## 12. Accessibility 與 Motion
+
+## 12.1 Accessibility
+
+- keyboard path must cover:
+  - family tabs
+  - filters
+  - stage lanes
+  - job slabs
+  - run rows
+  - attempt timeline
+  - drawer tabs
+- focus ring must be visible in all 4 themes
+- status must not rely on color only
+- icon-only controls need tooltip + aria label
+- drawer/sheet/confirm dialog require focus trap and return focus point
+
+## 12.2 Motion
+
+- hover/press: `120-160ms`
+- selection/rail update: `160-220ms`
+- drawer/sheet: `220-280ms`
+- board refresh: crossfade + state continuity
+- runtime updates animate changed units only
+
+---
+
+## 13. Handoff Checklist / DoD
+
+### 13.1 Handoff Checklist
+
+- [ ] 三頁主角明確且一致
+- [ ] Run Detail 已修正為 run workspace，不是 attempt-only page
+- [ ] 四個 theme 都只走 daisyUI semantic tokens
+- [ ] shared states 已定義
+- [ ] responsive priority 已定義
+- [ ] content / empty / disabled reason 已定義
+- [ ] execute / resume / rerun / stop / refresh / attempt switch 已定義
+- [ ] snapshot vs current config 已定義
+- [ ] stale badge / live update / partial loading 已定義
+
+### 13.2 Engineering-Ready Work Items
+
+1. family shell & page scaffolding
+2. token/theme compliance
+3. Config topology system
+4. Config inspector + dock
+5. Runs ledger + filters
+6. Run Detail hero + timeline
+7. runtime board
+8. overview rail
+9. diagnostics drawer
+10. live update / stale contract
+11. empty / loading / error states
+12. responsive pass
+13. accessibility pass
+
+### 13.3 DoD
+
+- 每個 work item 都對應：
+  - component
+  - states
+  - empty/loading/error
+  - responsive
+  - accessibility
+- 工程不需要回頭猜 domain 才能切票
+
+---
+
+## 14. Current View 與目標差距
+
+### Config
+
+- stage 邊界仍不夠穩
+- job actions 噪音偏高
+- right rail 容易過重
+- dock 作為編輯區的角色仍不夠清楚
+
+### Runs
+
+- summary strip 容易 dashboard 化
+- ledger 主角感不足時會影響掃描效率
+
+### Run Detail
+
+- hero / timeline / board / rail / drawer 容易權重過近
+- 必須強化 selected attempt 對 board/rail/drawer 的 rebind 語意
+
+### Theme
+
+- dark / dracula 下 stage / job / connector 必須靠 semantic hierarchy 維持清晰，不可只靠細 border
+
+---
+
+## 15. Focused Revision: Blocker Alignment
+
+## 15.1 Run Detail Selection Model
+
+`Run Detail` 是單一 logical run 的 detail workspace，但 page-bound primary selection 永遠是 `attempt`。
+
+### Selection 規則
+
+- 頁面載入時，系統需預設選到一個 attempt。
+- hero、runtime board、overview rail、diagnostics drawer 全部都以上述 `selected attempt` 為上游 context。
+- `attempt timeline item` 是 `Run Detail` 唯一的一級 selection 來源。
+- `stage` 與 `job` 在 `Run Detail` 中不是 page-bound primary selection。
+- `stage` 與 `job` 只能作為：
+  - `diagnostics target`
+  - `board focus target`
+
+### Interaction Contract
+
+- 切換 `attempt`
+  - 改變整頁主上下文
+  - hero、board、rail、drawer 全部切換
+- 點擊 `stage/job`
+  - 不改變 page primary selection
+  - 只改變 diagnostics scope 與 contextual highlight
+- drawer tabs 的作用域永遠是：
+  - `selected attempt`
+  - 加上可選的 `selected diagnostics target`
+
+若沒有選到 stage/job，drawer 顯示 attempt-level diagnostics；若有選到 stage/job，drawer 顯示該 target 在 selected attempt 下的 diagnostics。
+
+## 15.2 Runs Page Skeleton 與 A 對齊
+
+`Runs` 的主角是 `operations ledger`。
+
+### 頁面骨架
+
+- identity row
+- context row
+- compact status / filter strip
+- ledger main column
+- low-weight contextual rail
+
+### Rail 規則
+
+contextual rail 若存在，只能作為輕量 contextual summary，不可與 ledger 爭主角，不可變成 dashboard。
+
+它的職責僅限：
+
+- selected or highlighted run 的輕摘要
+- filters context
+- 非主敘事的輔助說明
+
+它不得承擔：
+
+- 主要 KPI 儀表板
+- 大面積 summary 卡群
+- 重複 ledger 已可掃描得出的主資訊
+
+### 資訊優先序
+
+1. ledger rows
+2. filters / status chips
+3. low-weight contextual rail
+
+### 狀態規則
+
+- loading 時優先出現 ledger row skeleton，rail 僅顯示低權重 placeholder。
+- empty/filter-empty 時，empty state 置於 ledger 主欄，rail 不可成為主要空狀態容器。
+- row selection 或 hover 只可強化 ledger 掃描，不可觸發高權重頁面重組。
+
+## 15.3 Action Surface Governance
+
+本 spec 只將 canonical brief 已明示或可直接推導的 action surface 視為 handoff-required。
+
+### handoff-required actions
+
+- `execute`
+- `resume`
+- `rerun`
+- `stop`
+- `refresh`
+- `attempt switching`
+- `drawer / rail / dock` 開關
+- 與 selection model 直接相關的 contextual open/close
+
+### 不得在本 spec 中被寫成 invariant 或 handoff-required 的 actions
+
+- `Import`
+- job-level `delete`
+- stage/job creation shortcuts 的具體位置與樣式
+- 任意 icon-only management actions
+- 其他未被 canonical brief 或 A spec 錨定的操作面
+
+### Optional / Provisional Actions
+
+上述未被錨定 actions 一律降級為 `implementation only if product confirms`。
+
+若後續需要承接，應以獨立 action inventory 補件，不得混入本輪 family invariant。
+
+### Action Inventory Note
+
+- Config、Runs、Run Detail 先定義：
+  - `where primary actions belong`
+  - `how action hierarchy works`
+- 不預設每一個具體按鈕都已被產品確認。
+- 對未被授權的操作，只保留佔位原則：
+  - 可存在於 overflow
+  - 不得搶 primary CTA
+  - 不影響 family invariant 與 selection model

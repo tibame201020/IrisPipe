@@ -1,180 +1,149 @@
-# Pipeline Family Spec Review Summary
+# IrisPipe Pipeline Family Spec Review Summary
 
-本文件整理 `staff UIUX & frontend reviewer` 對以下兩份 spec 的 review 結果：
-
-- `PIPELINE_FAMILY_SPEC_A_DOMAIN_ONLY.md`
-- `PIPELINE_FAMILY_SPEC_B_DOMAIN_AND_CURRENT.md`
-
-reviewer 角色限制：
-
-- 只 review
-- 不參與設計
-- 不補寫 spec
+本文件記錄本輪 multi-agent spec loop 的 review 結論。
 
 ---
 
-## 1. 總評
+## 1. Review 流程
 
-兩份 spec 的方向整體正確，且都符合 canonical domain brief：
+本輪流程採雙迴圈：
 
-- 保留 `stage-first model`
-- 正確區分 `logical run` 與 `attempt`
-- 將 `Config / Runs / Run Detail` 視為同一 family
-- 色彩規則維持 daisyUI semantic token 思路
+1. `senior UIUX with IrisPipe pipeline domain`
+2. `senior UIUX with IrisPipe pipeline domain + current view`
+3. `staff UIUX & frontend reviewer`
 
-但 reviewer 認為：
+規則：
 
-- 兩份 spec 都還需要補件，才能成為低歧義 implementation spec
-- Spec A 較像產品與資訊架構總規格
-- Spec B 較像面向 current view 的重構落地藍圖
-
----
-
-## 2. 共同優點
-
-1. IA 與 page hierarchy 已成形
-2. family language 有一致方向
-3. 已納入 state contract、theme semantics、ASCII wireframes
-4. 沒有被 current UI 綁死
+- 我作為唯一 domain source。
+- 兩位 senior agent 若遇到 IrisPipe pipeline domain 不確定，必須先回來問我。
+- reviewer 只做 review，不補 spec、不代寫設計。
+- 流程不是一次性，而是：
+  - 補件
+  - review
+  - 再補件
+  - 再 review
+  - 直到可 handoff / 可實作
 
 ---
 
-## 3. reviewer 指出的共同缺口
+## 2. 第一輪 Reviewer 結論
 
-1. 元件層級與命名還不夠精準
-2. 資產與標注交付仍偏概念
-3. 邊界條件不足
-4. 動畫與互動規則缺少觸發條件與停止條件
-5. accessibility 與 responsive 規格不足
+第一輪 reviewer 判定：
 
----
+- `A` 比較像 family/domain contract
+- `B` 比較像 implementation-facing spec
+- 兩者都還不能直接進入實作
 
-## 4. Spec A review 摘要
+主要缺漏：
 
-### 優勢
-
-- domain 與產品定位最穩
-- family IA 清楚
-- 能作為北極星規格
-
-### reviewer 指出需補足的項目
-
-1. `Specs & Assets`
-   - 固定高度 / 最小高度 / 可滾動區塊 / 預設收合狀態
-   - icon、badge、chip、connector、drag affordance 的資產級定義
-
-2. `Design System / UI Kit`
-   - family 共用元件清單
-   - component inventory
-   - variant / state matrix
-
-3. `Flow & Interaction`
-   - 核心任務流程圖或步驟表
-   - interaction precedence
-   - 中斷與錯誤流程
-
-4. `Content & Edge Cases`
-   - 空態
-   - 極長內容
-   - 無 attempts / 無 diagnostics
-   - API fail / partial loading
-   - destructive wording / disabled reason
-
-5. 其他
-   - accessibility
-   - responsive
-
-### reviewer 結論
-
-Spec A 適合作為：
-
-- 產品與 domain 主規格
-
-但不能單獨直接交付工程。
+1. annotated screen inventory
+2. asset manifest
+3. daisyUI token mapping
+4. component inventory / anatomy / variant / state matrix
+5. action & flow matrix
+6. live update / stale data contract
+7. content matrix
+8. handoff checklist / DoD
 
 ---
 
-## 5. Spec B review 摘要
+## 3. 第一輪補件後的 Reviewer 判定
 
-### 優勢
+第一輪補件完成後：
 
-- 比 Spec A 更接近頁面實際落地
-- 對 current view 的問題判讀較準
-- 對 Config / Runs / Run Detail 的主從關係有較具體規範
+- `A` 已補回：
+  - family/domain invariants
+  - 視角邊界
+  - selection / hierarchy guardrails
+  - Config stage header 的 config-facing 狀態語意
+  - resume / rerun / skipped / not_run / snapshot drift 等 domain semantics
+- `B` 已補回：
+  - annotated screen inventory
+  - asset manifest
+  - daisyUI token mapping
+  - component/state/action matrix
+  - live update / stale contract
+  - content matrix
+  - responsive priority
+  - handoff checklist / DoD
 
-### reviewer 指出需補足的項目
+reviewer 當時的判定是：
 
-1. `Specs & Assets`
-   - 尺寸標注
-   - breakpoints
-   - sticky / pinned / scroll-synced 規則
-   - connector、job action rail、drawer handle、timeline item 的資產規格
-
-2. `Design System / UI Kit`
-   - family-shared vs page-specific components
-   - component governance
-   - icon-only / icon+label / destructive hierarchy 規則
-
-3. `Flow & Interaction`
-   - stage select → inspector
-   - job select → dock
-   - hover actions / selected actions 分層
-   - drawer 預設開合
-   - loading state interaction lock
-
-4. `Content & Edge Cases`
-   - 多 stage 橫向 overflow
-   - stage 無 jobs
-   - run row badges 過多
-   - 長 attempt timeline
-   - diagnostics 空資料
-   - delete stage / delete job 的確認層級
-
-5. 其他
-   - dark theme 下結構邊界與 connector 的清楚規格
-   - 過渡策略與最終形態區分
-
-### reviewer 結論
-
-Spec B 適合作為：
-
-- current view 重構落地規格
-
-但仍不能直接無歧義交付前端。
+- coverage 上已接近可實作
+- 但 `B` 正文內部仍有 3 個 blocker
 
 ---
 
-## 6. reviewer 的路由建議
+## 4. 第二輪 Focused Blockers
 
-### 回到 Spec A 補件
+reviewer 指出的 3 個 blocker：
 
-由 `senior UIUX with IrisPipe pipeline domain` 補：
+1. `Run Detail selection model` 在 `B` 內部衝突
+2. `Runs page skeleton / overview rail` 在 `A` 與 `B` 之間，以及 `B` 內部有衝突
+3. `B` 中仍保留未被 canonical brief 或 A 錨定的 action surface
 
-1. family 共用元件清單與變體矩陣
-2. 核心任務流程與 interaction precedence
-3. content rules 與 edge case matrix
-4. accessibility 與 responsive 原則
+處理方式：
 
-### 回到 Spec B 補件
-
-由 `senior UIUX with IrisPipe pipeline domain and current view` 補：
-
-1. 介面標注與尺寸 / 滾動 / 固定規則
-2. page-level interaction transitions
-3. current → target 的重構過渡說明
-4. dark theme 下結構邊界與 connector 的更明確規格
+- `A` 補件：
+  - 明確將 `Runs overview rail` 降級為非 invariant
+- `B` 補件：
+  - 將 `Run Detail` primary selection 對齊為 `attempt`
+  - 將 `stage/job` 降為 diagnostics target
+  - 將 `Runs` 明確寫成 `ledger + low-weight contextual rail`
+  - 將 `Import`、job-level `delete` 等未錨定 action 從 handoff-required surface 中移除或降級
 
 ---
 
-## 7. reviewer 最終判定
+## 5. 最終 Reviewer 結論
 
-最佳使用方式：
+最終 focused review 結論：
 
-- Spec A = `產品與 domain 主規格`
-- Spec B = `current view 重構落地規格`
+- `A` 已足夠作為 family/domain invariant spec
+- `B` 已足夠作為 implementation-facing handoff spec
+- 先前 3 個 blocker 已全部關閉
+- 現在 `可以進入實作`
 
-在後續討論與實作時：
+### 已關閉的 blocker
 
-- 先用 Spec A 保證不偏離 domain
-- 再用 Spec B 指導當前畫面的重構順序與落地方式
+1. `Run Detail selection model`
+   - 已統一為：
+     - page-bound primary selection = `attempt`
+     - `stage/job` = diagnostics target
+
+2. `Runs page skeleton / overview rail`
+   - `A` 已明確說明 rail 非 invariant
+   - `B` 已明確將 rail 定位為 low-weight contextual rail
+
+3. `未被錨定的 action surface`
+   - `Import`
+   - job-level `delete`
+   - 其他未被 canonical brief / A 錨定 actions
+   - 已從 handoff-required surface 中移除或降級為 provisional
+
+---
+
+## 6. Remaining Non-Blocking Improvements
+
+目前仍可補強，但不阻斷實作的項目：
+
+1. `Runs` context strip 中像 `avg runtime` 這類偏 dashboard 的訊號，後續可再檢查是否必要。
+2. `B` 尚未獨立整理成資產清單章節；目前 inventory 足夠開工，但若要減少漂移，仍可後補。
+3. `Content Matrix` 對 `filter-empty`、`stale`、`partial loading` 的具體 copy 仍可更細。
+
+---
+
+## 7. 當前文件角色
+
+- canonical domain source：
+  - [IRISPIPE_PIPELINE_CANONICAL_DOMAIN_BRIEF.md](/C:/Users/16/Downloads/codes/IrisPipe/frontend/docs/IRISPIPE_PIPELINE_CANONICAL_DOMAIN_BRIEF.md)
+- family/domain invariant spec：
+  - [PIPELINE_FAMILY_SPEC_A_DOMAIN_ONLY.md](/C:/Users/16/Downloads/codes/IrisPipe/frontend/docs/PIPELINE_FAMILY_SPEC_A_DOMAIN_ONLY.md)
+- implementation-facing handoff spec：
+  - [PIPELINE_FAMILY_SPEC_B_DOMAIN_AND_CURRENT.md](/C:/Users/16/Downloads/codes/IrisPipe/frontend/docs/PIPELINE_FAMILY_SPEC_B_DOMAIN_AND_CURRENT.md)
+
+目前建議使用方式：
+
+- `A` 定義不可破壞的語意邊界
+- `B` 作為實作 handoff 主文件
+- reviewer summary 作為這輪 spec loop 的審稿紀錄
 
