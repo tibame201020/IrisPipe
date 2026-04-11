@@ -959,7 +959,6 @@ export function PipelineConfigPage() {
             />
           ) : selectedStage && selectedJob && selectedItem?.kind === 'job' ? (
             <JobInspectorPanel
-              stage={selectedStage}
               job={selectedJob}
               validation={validationSummary}
               onOpenEditor={() => openJobEditor(selectedStage.editorId, selectedJob.editorId)}
@@ -1065,20 +1064,11 @@ function StageEditorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-base-300/60 px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="iris-kicker">Stage {stageIndex + 1}</div>
-            <div className="mt-1 truncate text-sm font-semibold text-base-content">{stage.stageName || 'Untitled stage'}</div>
-            <div className="mt-1 text-[11px] iris-copy">Jobs inside this stage execute in parallel. Reorder lanes horizontally to change pipeline flow.</div>
-          </div>
-          <div className="flex items-center gap-2">
-            {issueCount > 0 ? <span className="badge badge-warning badge-sm">{issueCount} issues</span> : null}
-            <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close stage editor" onClick={onDismiss}>
-              <X size={16} />
-            </ActionButton>
-          </div>
-        </div>
+      <div className="flex items-center justify-end gap-2 border-b border-base-300/60 px-5 py-3">
+        {issueCount > 0 ? <span className="badge badge-warning badge-sm">{issueCount} issues</span> : null}
+        <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close stage editor" onClick={onDismiss}>
+          <X size={16} />
+        </ActionButton>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
@@ -1154,22 +1144,22 @@ function PipelineOverviewInspector({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-base-300/60 px-5 py-4">
-        <div className="iris-kicker">Pipeline Overview</div>
-        <label className="form-control mt-2">
-          <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Pipeline Name</span>
-          <input
-            type="text"
-            className={getControlClass(hasPipelineFieldIssue(validation, 'pipelineName'), 'input input-bordered w-full')}
-            value={draft.pipelineName}
-            onChange={(event) => onPipelineNameChange(event.target.value)}
-            placeholder="pipeline_name"
-          />
-          <FieldMessages messages={getPipelineFieldMessages(validation, 'pipelineName')} />
-        </label>
-      </div>
-
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <SurfaceBox variant="section" className="p-4">
+          <div className="iris-header">Pipeline Name</div>
+          <label className="form-control mt-3">
+            <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-base-content/35">Pipeline Name</span>
+            <input
+              type="text"
+              className={getControlClass(hasPipelineFieldIssue(validation, 'pipelineName'), 'input input-bordered w-full')}
+              value={draft.pipelineName}
+              onChange={(event) => onPipelineNameChange(event.target.value)}
+              placeholder="pipeline_name"
+            />
+            <FieldMessages messages={getPipelineFieldMessages(validation, 'pipelineName')} />
+          </label>
+        </SurfaceBox>
+
         <div className="grid grid-cols-2 gap-2.5">
           <SharedSummaryTile kicker="Stages" value={draftReadiness.stageCount} detail="Stage lanes" tone="neutral" className="px-3 py-2.5" />
           <SharedSummaryTile kicker="Jobs Ready" value={`${draftReadiness.readyJobs}/${draftReadiness.jobCount}`} detail="Runnable jobs" tone="success" className="px-3 py-2.5" />
@@ -1235,14 +1225,12 @@ function PipelineOverviewInspector({
 }
 
 function JobInspectorPanel({
-  stage,
   job,
   validation,
   onOpenEditor,
   onRemoveJob,
   onDismiss,
 }: {
-  stage: EditableStage
   job: EditableJob
   validation: DraftValidationSummary
   onOpenEditor: () => void
@@ -1254,22 +1242,13 @@ function JobInspectorPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-base-300/60 px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="iris-kicker">{stage.stageName || 'Stage'}</div>
-            <div className="mt-1 truncate text-sm font-semibold text-base-content">{job.jobName || 'Untitled job'}</div>
-            <div className="mt-1 text-[11px] iris-copy">{semantic.guidance}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`badge badge-sm ${semantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
-              {semantic.issueCount > 0 ? `${semantic.issueCount} issues` : 'Ready to edit'}
-            </span>
-            <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close inspector" onClick={onDismiss}>
-              <X size={16} />
-            </ActionButton>
-          </div>
-        </div>
+      <div className="flex items-center justify-end gap-2 border-b border-base-300/60 px-5 py-3">
+        <span className={`badge badge-sm ${semantic.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
+          {semantic.issueCount > 0 ? `${semantic.issueCount} issues` : 'Ready to edit'}
+        </span>
+        <ActionButton size="sm" tone="icon" square className="shrink-0" aria-label="Close inspector" onClick={onDismiss}>
+          <X size={16} />
+        </ActionButton>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
