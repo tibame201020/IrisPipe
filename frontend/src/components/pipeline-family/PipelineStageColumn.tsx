@@ -48,14 +48,14 @@ export const PipelineStageColumn = forwardRef<HTMLElement, PipelineStageColumnPr
     >
       {header ? (
         <>
-          <div className={cn('shrink-0 px-4 py-3', headerClassName)}>
+          <div className={cn('shrink-0', headerClassName)}>
             {header}
           </div>
-          <div className={cn('min-h-0 flex-1 overflow-y-auto px-3 py-3', bodyClassName)}>
+          <div className={cn('min-h-0 flex-1 overflow-y-auto', bodyClassName)}>
             {children}
           </div>
           {footer ? (
-            <div className={cn('shrink-0 px-4 py-3', footerClassName)}>
+            <div className={cn('shrink-0', footerClassName)}>
               {footer}
             </div>
           ) : null}

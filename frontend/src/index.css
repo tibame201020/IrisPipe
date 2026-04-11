@@ -37,6 +37,17 @@
     --theme-topology-line: hsl(var(--n) / 0.28);
     --theme-topology-connector: hsl(var(--n) / 0.38);
     --theme-topology-edge: var(--theme-structure-group-edge);
+    --theme-topology-shell-highlight: hsl(var(--b1) / 0.24);
+    --theme-topology-shell-shadow: 0 10px 24px hsl(var(--bc) / 0.028);
+    --theme-topology-stage-highlight: hsl(var(--b1) / 0.55);
+    --theme-topology-stage-inner-edge: hsl(var(--b1) / 0.12);
+    --theme-topology-stage-shadow: 0 12px 24px hsl(var(--bc) / 0.03);
+    --theme-topology-job-highlight: hsl(var(--b1) / 0.4);
+    --theme-topology-job-shadow: 0 2px 8px hsl(var(--bc) / 0.016);
+    --theme-topology-order-bg: hsl(var(--n) / 0.1);
+    --theme-topology-order-copy: hsl(var(--nc) / 0.86);
+    --theme-topology-line-highlight: hsl(var(--b1) / 0.06);
+    --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.12);
     --iris-radius-shell: 0.375rem;
     --iris-radius-section: 0.5rem;
     --iris-radius-inset: 0.375rem;
@@ -80,6 +91,17 @@
     --theme-topology-line: hsl(var(--n) / 0.5);
     --theme-topology-connector: hsl(var(--n) / 0.62);
     --theme-topology-edge: var(--theme-structure-group-edge);
+    --theme-topology-shell-highlight: hsl(var(--b1) / 0.18);
+    --theme-topology-shell-shadow: 0 10px 24px hsl(var(--bc) / 0.042);
+    --theme-topology-stage-highlight: hsl(var(--b1) / 0.42);
+    --theme-topology-stage-inner-edge: hsl(var(--b1) / 0.08);
+    --theme-topology-stage-shadow: 0 12px 24px hsl(var(--bc) / 0.05);
+    --theme-topology-job-highlight: hsl(var(--b1) / 0.28);
+    --theme-topology-job-shadow: 0 2px 8px hsl(var(--bc) / 0.03);
+    --theme-topology-order-bg: hsl(var(--n) / 0.18);
+    --theme-topology-order-copy: hsl(var(--nc) / 0.86);
+    --theme-topology-line-highlight: hsl(var(--b1) / 0.03);
+    --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.06);
   }
 
   [data-theme='light'],
@@ -360,40 +382,134 @@
   }
 
   .iris-topology-shell {
-    border: 1px solid hsl(var(--n) / 0.18);
+    border: 1px solid var(--theme-topology-edge);
     border-radius: var(--iris-radius-section);
-    background:
-      linear-gradient(180deg, hsl(var(--b2) / 0.82), hsl(var(--b1) / 0.94));
+    background: var(--theme-topology-shell-bg);
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.24),
-      0 10px 24px hsl(var(--bc) / 0.028);
+      inset 0 1px 0 var(--theme-topology-shell-highlight),
+      var(--theme-topology-shell-shadow);
   }
 
   .iris-topology-job {
     border: 1px solid var(--theme-topology-edge);
     border-radius: var(--iris-radius-inset);
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.99), hsl(var(--b1) / 0.94));
+    background: var(--theme-topology-job-bg);
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.34),
-      0 4px 10px hsl(var(--bc) / 0.016);
+      inset 0 1px 0 var(--theme-topology-job-highlight),
+      var(--theme-topology-job-shadow);
   }
 
   .iris-topology-lane {
-    border: 1px solid hsl(var(--n) / 0.22);
+    border: 1px solid var(--theme-topology-edge);
     border-radius: var(--iris-radius-section);
-    background:
-      linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--n) / 0.06));
+    background: var(--theme-topology-stage-bg);
     box-shadow:
-      inset 0 1px 0 hsl(var(--b1) / 0.48),
-      inset 0 0 0 1px hsl(var(--b1) / 0.08),
-      0 8px 18px hsl(var(--bc) / 0.022);
+      inset 0 1px 0 var(--theme-topology-stage-highlight),
+      inset 0 0 0 1px var(--theme-topology-stage-inner-edge),
+      var(--theme-topology-stage-shadow);
+  }
+
+  .iris-topology-stage-column {
+    border: 1px solid var(--theme-topology-edge);
+    border-radius: var(--iris-radius-section);
+    background: var(--theme-topology-stage-bg);
+    box-shadow:
+      inset 0 1px 0 var(--theme-topology-stage-highlight),
+      inset 0 0 0 1px var(--theme-topology-stage-inner-edge),
+      var(--theme-topology-stage-shadow);
+  }
+
+  .iris-topology-stage-head {
+    border-bottom: 1px solid var(--theme-topology-edge);
+    background: var(--theme-topology-stage-header-bg);
+  }
+
+  .iris-topology-stage-body {
+    background: var(--theme-topology-stage-body-bg);
+  }
+
+  .iris-topology-stage-order {
+    border: 1px solid var(--theme-topology-edge);
+    background: var(--theme-topology-order-bg);
+    border-radius: 999px;
+    color: var(--theme-topology-order-copy);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .iris-topology-stage-tools {
+    display: flex;
+    min-width: 2.75rem;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    opacity: 0.72;
+    transition: opacity 160ms ease;
+  }
+
+  .group\/stage:hover .iris-topology-stage-tools,
+  .group\/job:hover .iris-topology-job-actions,
+  .group\/job:focus-within .iris-topology-job-actions {
+    opacity: 1;
+  }
+
+  .iris-topology-stage-spine {
+    background: linear-gradient(180deg, transparent, var(--theme-topology-line), transparent);
+    box-shadow: 0 0 0 1px var(--theme-topology-line-highlight);
+  }
+
+  .iris-topology-job-stack {
+    padding-left: 0.6rem;
+  }
+
+  .iris-topology-grip {
+    opacity: 0.72;
+  }
+
+  .iris-topology-job-slab {
+    border: 1px solid var(--theme-topology-edge);
+    border-radius: var(--iris-radius-inset);
+    background: var(--theme-topology-job-bg);
+    box-shadow:
+      inset 0 1px 0 var(--theme-topology-job-highlight),
+      var(--theme-topology-job-shadow);
+  }
+
+  .iris-topology-job-main {
+    padding: 0;
+  }
+
+  .iris-topology-job-actions {
+    opacity: 0.78;
+    transition:
+      opacity 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .iris-topology-flow-stack {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .iris-topology-flow-label {
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    opacity: 0.8;
+    text-transform: uppercase;
+  }
+
+  .iris-topology-flow-arrow {
+    opacity: 0.92;
   }
 
   .iris-topology-connector-line {
     background:
-      linear-gradient(90deg, hsl(var(--n) / 0.32), hsl(var(--n) / 0.52));
-    box-shadow: 0 0 0 1px hsl(var(--b1) / 0.08);
+      linear-gradient(90deg, var(--theme-topology-line), var(--theme-topology-connector));
+    box-shadow: var(--theme-topology-connector-shadow);
   }
 
   .iris-lane-header {

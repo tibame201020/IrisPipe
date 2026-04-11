@@ -57,7 +57,7 @@ export const PipelineJobSlab = forwardRef<HTMLElement, PipelineJobSlabProps>(fun
 
       {header ? (
         <>
-          <div className="min-w-0 flex-1 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
             <div className={cn('flex items-start gap-1.5', headerClassName)}>
               <div className="min-w-0 flex-1">{header}</div>
               {headerAside ? <div className="mt-0.5 flex shrink-0 items-center gap-1">{headerAside}</div> : null}
@@ -69,7 +69,7 @@ export const PipelineJobSlab = forwardRef<HTMLElement, PipelineJobSlabProps>(fun
           {footer ? (
             <div
               className={cn(
-                'shrink-0 px-1.5 py-1.5',
+                'shrink-0',
                 footerClassName,
               )}
             >
