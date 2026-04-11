@@ -13,8 +13,8 @@ export function StatusBadge({ status, subtle = false, mode = 'badge' }: StatusBa
   if (mode === 'text') {
     return (
       <span
-        className={`iris-state-runtime iris-status-tone inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'text-xs' : 'text-sm'}`}
-        data-state="runtime"
+        className={`iris-pipeline-state-runtime iris-pipeline-status-tone inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'text-xs' : 'text-sm'}`}
+        data-kind="runtime"
         data-tone={tone}
         title={meta.description}
       >
@@ -26,8 +26,8 @@ export function StatusBadge({ status, subtle = false, mode = 'badge' }: StatusBa
 
   return (
     <span
-      className={`badge iris-state-runtime iris-status-badge gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'badge-sm' : ''}`}
-      data-state="runtime"
+      className={`badge iris-pipeline-state-runtime iris-pipeline-status-badge gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'badge-sm' : ''}`}
+      data-kind="runtime"
       data-tone={tone}
       title={meta.description}
     >

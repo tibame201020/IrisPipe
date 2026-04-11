@@ -600,7 +600,7 @@
     border-radius: 0.35rem;
   }
 
-  .iris-state-frame {
+  .iris-pipeline-state-frame {
     border: 1px solid var(--theme-border-default);
     background: linear-gradient(180deg, var(--theme-surface-panel-strong), var(--theme-surface-panel));
     color: var(--theme-copy-strong);
@@ -614,20 +614,20 @@
       transform 160ms ease;
   }
 
-  .iris-state-frame:hover:not(:disabled):not([aria-disabled='true']) {
+  .iris-pipeline-state-frame:hover:not(:disabled):not([aria-disabled='true']) {
     border-color: var(--theme-border-strong);
     background: linear-gradient(180deg, hsl(var(--b1) / 0.98), hsl(var(--b2) / 0.26));
   }
 
-  .iris-state-frame:focus-visible {
+  .iris-pipeline-state-frame:focus-visible {
     border-color: hsl(var(--p) / 0.46);
     box-shadow: 0 0 0 3px hsl(var(--p) / 0.18);
     outline: none;
   }
 
-  .iris-state-frame[aria-selected='true'],
-  .iris-state-frame[data-state='selected'],
-  .iris-state-frame.is-selected {
+  .iris-pipeline-state-frame[aria-selected='true'],
+  .iris-pipeline-state-frame[data-state='selected'],
+  .iris-pipeline-state-frame.is-selected {
     border-color: hsl(var(--p) / 0.52);
     background: linear-gradient(180deg, hsl(var(--p) / 0.14), var(--theme-surface-panel-strong));
     box-shadow:
@@ -636,8 +636,8 @@
     color: var(--theme-copy-strong);
   }
 
-  .iris-state-frame[data-state='stale'],
-  .iris-state-frame.is-stale {
+  .iris-pipeline-state-frame[data-state='stale'],
+  .iris-pipeline-state-frame.is-stale {
     border-style: dashed;
     border-color: hsl(var(--n) / 0.34);
     background: linear-gradient(180deg, hsl(var(--b1) / 0.94), hsl(var(--b2) / 0.76));
@@ -645,49 +645,49 @@
     box-shadow: inset 0 1px 0 hsl(var(--b1) / 0.26);
   }
 
-  .iris-state-frame:disabled,
-  .iris-state-frame[aria-disabled='true'] {
+  .iris-pipeline-state-frame:disabled,
+  .iris-pipeline-state-frame[aria-disabled='true'] {
     cursor: not-allowed;
     opacity: 0.56;
     box-shadow: none;
   }
 
-  .iris-state-runtime {
+  .iris-pipeline-state-runtime {
     --iris-state-tone: var(--n);
     --iris-state-tone-soft: hsl(var(--n) / 0.14);
     --iris-state-tone-border: hsl(var(--n) / 0.24);
     --iris-state-tone-foreground: var(--theme-copy-soft);
   }
 
-  .iris-state-runtime[data-tone='success'] {
+  .iris-pipeline-state-runtime[data-tone='success'] {
     --iris-state-tone: var(--su);
     --iris-state-tone-soft: hsl(var(--su) / 0.16);
     --iris-state-tone-border: hsl(var(--su) / 0.34);
     --iris-state-tone-foreground: hsl(var(--su));
   }
 
-  .iris-state-runtime[data-tone='info'] {
+  .iris-pipeline-state-runtime[data-tone='info'] {
     --iris-state-tone: var(--in);
     --iris-state-tone-soft: hsl(var(--in) / 0.16);
     --iris-state-tone-border: hsl(var(--in) / 0.32);
     --iris-state-tone-foreground: hsl(var(--in));
   }
 
-  .iris-state-runtime[data-tone='warning'] {
+  .iris-pipeline-state-runtime[data-tone='warning'] {
     --iris-state-tone: var(--wa);
     --iris-state-tone-soft: hsl(var(--wa) / 0.18);
     --iris-state-tone-border: hsl(var(--wa) / 0.34);
     --iris-state-tone-foreground: hsl(var(--wa));
   }
 
-  .iris-state-runtime[data-tone='error'] {
+  .iris-pipeline-state-runtime[data-tone='error'] {
     --iris-state-tone: var(--er);
     --iris-state-tone-soft: hsl(var(--er) / 0.16);
     --iris-state-tone-border: hsl(var(--er) / 0.34);
     --iris-state-tone-foreground: hsl(var(--er));
   }
 
-  .iris-status-badge {
+  .iris-pipeline-status-badge {
     border: 1px solid var(--iris-state-tone-border);
     background: linear-gradient(180deg, hsl(var(--b1) / 0.96), var(--iris-state-tone-soft));
     box-shadow:
@@ -696,7 +696,7 @@
     color: var(--iris-state-tone-foreground);
   }
 
-  .iris-status-tone {
+  .iris-pipeline-status-tone {
     color: var(--iris-state-tone-foreground);
   }
 
