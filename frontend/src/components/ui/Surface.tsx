@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
-type SurfaceVariant = 'section' | 'list' | 'inset' | 'glass' | 'glassSoft' | 'glassBand' | 'empty'
+type SurfaceVariant = 'section' | 'list' | 'inset' | 'glass' | 'glassSoft' | 'glassBand' | 'shell' | 'empty'
 
 const surfaceClassMap: Record<SurfaceVariant, string> = {
   section: 'iris-section-panel',
@@ -10,6 +10,7 @@ const surfaceClassMap: Record<SurfaceVariant, string> = {
   glass: 'iris-glass',
   glassSoft: 'iris-glass-soft',
   glassBand: 'iris-glass-band',
+  shell: 'iris-family-shell',
   empty: 'iris-empty-panel',
 }
 
