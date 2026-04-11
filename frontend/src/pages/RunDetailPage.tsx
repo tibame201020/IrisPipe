@@ -5,6 +5,8 @@ import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
+import { PipelineDiagnosticsDrawer } from '../components/pipeline-family/PipelineDiagnosticsDrawer'
+import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
 import { StatusBadge } from '../components/StatusBadge'
 import { ActionButton, ActionLink } from '../components/ui/Action'
 import { DialogShell } from '../components/ui/DialogShell'
@@ -350,26 +352,119 @@ export function RunDetailPage() {
             ) : null}
           </section>
 
-          <DiagnosticsDrawer
-            tab={diagnosticsTab}
-            onTabChange={setDiagnosticsTab}
-            logs={logs}
-            logsLoading={logsLoading}
-            selectedJob={selectedJob}
-            attemptSummary={attemptSummary}
-            attemptTotals={attemptTotals}
-          />
+          <PipelineDiagnosticsDrawer
+            header={
+              <>
+                <div>
+                  <div className="iris-header">Diagnostics Drawer</div>
+                  <div className="mt-1 text-xs iris-copy-soft">
+                    Board remains visible while logs, metrics, and step evidence stay attached to the current attempt.
+                  </div>
+                </div>
+                <div className="iris-signal-strip flex items-center gap-1 px-1 py-1">
+                  <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'logs' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('logs')}>
+                    <FileText size={12} />Logs
+                  </ActionButton>
+                  <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'metrics' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('metrics')}>
+                    <BarChart3 size={12} />Metrics
+                  </ActionButton>
+                  <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'steps' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('steps')}>
+                    <List size={12} />Step Detail
+                  </ActionButton>
+                </div>
+              </>
+            }
+          >
+            {diagnosticsTab === 'logs' ? (
+              logsLoading ? (
+                <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
+              ) : !logs || logs.length === 0 ? (
+                <div className="py-10 text-center text-base-content/40">No log entries available</div>
+              ) : (
+                <div className="iris-list-panel">
+                  {logs.map((entry, idx) => (
+                    <div key={idx} className={`iris-list-row flex items-start gap-3 px-3 py-2 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
+                      <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>{entry.level}</span>
+                      <span className="shrink-0 tabular-nums text-base-content/40">
+                        {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
+                      </span>
+                      <span className="flex-1 break-all font-mono text-[11px]">{entry.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : diagnosticsTab === 'metrics' ? (
+              <div className="grid gap-3 md:grid-cols-4">
+                <SemanticCard label="Read" value={attemptTotals.read.toLocaleString()} detail="Current attempt" tone="success" />
+                <SemanticCard label="Write" value={attemptTotals.write.toLocaleString()} detail="Current attempt" tone="info" />
+                <SemanticCard label="Rollback" value={attemptTotals.rollback.toLocaleString()} detail="Current attempt" tone={attemptTotals.rollback > 0 ? 'error' : 'neutral'} />
+                <SemanticCard label="Skip/Filter" value={`${attemptTotals.skip + attemptTotals.filter}`} detail="Current attempt" tone={attemptTotals.skip + attemptTotals.filter > 0 ? 'warning' : 'neutral'} />
+                <div className="iris-section-panel p-4 md:col-span-4">
+                  <div className="iris-header">Attempt Summary</div>
+                  <div className="mt-2 text-sm text-base-content/80">{attemptSummary?.headline ?? 'No attempt summary'}</div>
+                  <div className="mt-1 text-[11px] iris-copy">{attemptSummary?.detail ?? 'No runtime projection is available for this attempt.'}</div>
+                </div>
+              </div>
+            ) : selectedJob ? (
+              <div className="space-y-3">
+                {selectedJob.stepExecutionInfos.map((step, index) => (
+                  <StepDetailCard key={step.id} step={step} index={index} />
+                ))}
+              </div>
+            ) : (
+              <div className="iris-empty-panel px-4 py-8 text-center text-sm text-base-content/45">
+                Select a job from the stage board to inspect step-level evidence.
+              </div>
+            )}
+          </PipelineDiagnosticsDrawer>
         </div>
 
-        <aside className="iris-inspector-rail flex w-[336px] shrink-0 flex-col border-l">
-          <RunOverviewInspector
-            detail={detail}
-            currentAttempt={currentAttempt}
-            effectiveStatusMeta={effectiveStatusMeta}
-            attemptSummary={attemptSummary}
-            resumeTargetStage={resumeTargetStage}
-          />
-        </aside>
+        <PipelineOverviewRail className="iris-inspector-rail" header={
+          <div>
+            <div className="iris-header">Run Overview</div>
+            <div className="mt-2 text-sm font-semibold text-base-content/82">
+              {currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
+            </div>
+            <div className="mt-1 text-[11px] iris-copy">
+              {effectiveStatusMeta.description}
+            </div>
+          </div>
+        }>
+          <div className="space-y-3">
+            <SemanticCard
+              label="Runtime"
+              value={effectiveStatusMeta.label}
+              detail={currentAttempt?.endTime
+                ? `Ended ${formatDateTimeLong(currentAttempt.endTime)}`
+                : currentAttempt?.startTime
+                  ? `Started ${formatDateTimeLong(currentAttempt.startTime)}`
+                  : `Created ${formatDateTimeLong(detail.createdAt)}`}
+              tone={effectiveStatusMeta.tone}
+            />
+            <SemanticCard
+              label="Stage Progress"
+              value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
+              detail={attemptSummary?.headline ?? 'No stage projection'}
+            />
+            <SemanticCard
+              label="Resume Path"
+              value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
+              detail={resumeTargetStage
+                ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as Skipped.'
+                : 'No resumable stage is pending right now.'}
+            />
+          </div>
+
+          <div className="iris-section-panel mt-4 p-4">
+            <div className="iris-header">Stage Semantics</div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+              <span className="badge badge-ghost badge-sm">Parallel inside a stage</span>
+              <span className="badge badge-ghost badge-sm">Barrier between stages</span>
+              <span className="badge badge-ghost badge-sm">Skipped means reused on resume</span>
+              <span className="badge badge-ghost badge-sm">Not Run means blocked downstream</span>
+            </div>
+          </div>
+        </PipelineOverviewRail>
       </main>
 
       {confirmAction ? (
@@ -464,92 +559,6 @@ function AttemptTimelineStrip({
   )
 }
 
-function DiagnosticsDrawer({
-  tab,
-  onTabChange,
-  logs,
-  logsLoading,
-  selectedJob,
-  attemptSummary,
-  attemptTotals,
-}: {
-  tab: 'logs' | 'metrics' | 'steps'
-  onTabChange: (tab: 'logs' | 'metrics' | 'steps') => void
-  logs: RunLogEntry[] | null
-  logsLoading: boolean
-  selectedJob: PipelineRunJobInfo | null
-  attemptSummary: ReturnType<typeof summarizeAttemptProgress> | null
-  attemptTotals: ReturnType<typeof getAttemptStepTotals>
-}) {
-  return (
-    <div className="iris-diagnostics-drawer shrink-0 overflow-hidden">
-      <div className="iris-editor-toolbar flex items-center justify-between gap-3 px-4 py-3">
-        <div>
-          <div className="iris-header">Diagnostics Drawer</div>
-          <div className="mt-1 text-xs iris-copy-soft">
-            Board remains visible while logs, metrics, and step evidence stay attached to the current attempt.
-          </div>
-        </div>
-        <div className="iris-signal-strip flex items-center gap-1 px-1 py-1">
-          <ActionButton size="xs" tone="ghost" className={tab === 'logs' ? 'text-primary' : ''} onClick={() => onTabChange('logs')}>
-            <FileText size={12} />Logs
-          </ActionButton>
-          <ActionButton size="xs" tone="ghost" className={tab === 'metrics' ? 'text-primary' : ''} onClick={() => onTabChange('metrics')}>
-            <BarChart3 size={12} />Metrics
-          </ActionButton>
-          <ActionButton size="xs" tone="ghost" className={tab === 'steps' ? 'text-primary' : ''} onClick={() => onTabChange('steps')}>
-            <List size={12} />Step Detail
-          </ActionButton>
-        </div>
-      </div>
-
-      <div className="h-[248px] overflow-y-auto px-4 py-4">
-        {tab === 'logs' ? (
-          logsLoading ? (
-            <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
-          ) : !logs || logs.length === 0 ? (
-            <div className="py-10 text-center text-base-content/40">No log entries available</div>
-          ) : (
-            <div className="iris-list-panel">
-              {logs.map((entry, idx) => (
-                <div key={idx} className={`iris-list-row flex items-start gap-3 px-3 py-2 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
-                  <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>{entry.level}</span>
-                  <span className="shrink-0 tabular-nums text-base-content/40">
-                    {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
-                  </span>
-                  <span className="flex-1 break-all font-mono text-[11px]">{entry.message}</span>
-                </div>
-              ))}
-            </div>
-          )
-        ) : tab === 'metrics' ? (
-          <div className="grid gap-3 md:grid-cols-4">
-            <SemanticCard label="Read" value={attemptTotals.read.toLocaleString()} detail="Current attempt" tone="success" />
-            <SemanticCard label="Write" value={attemptTotals.write.toLocaleString()} detail="Current attempt" tone="info" />
-            <SemanticCard label="Rollback" value={attemptTotals.rollback.toLocaleString()} detail="Current attempt" tone={attemptTotals.rollback > 0 ? 'error' : 'neutral'} />
-            <SemanticCard label="Skip/Filter" value={`${attemptTotals.skip + attemptTotals.filter}`} detail="Current attempt" tone={attemptTotals.skip + attemptTotals.filter > 0 ? 'warning' : 'neutral'} />
-            <div className="iris-section-panel p-4 md:col-span-4">
-              <div className="iris-header">Attempt Summary</div>
-              <div className="mt-2 text-sm text-base-content/80">{attemptSummary?.headline ?? 'No attempt summary'}</div>
-              <div className="mt-1 text-[11px] iris-copy">{attemptSummary?.detail ?? 'No runtime projection is available for this attempt.'}</div>
-            </div>
-          </div>
-        ) : selectedJob ? (
-          <div className="space-y-3">
-            {selectedJob.stepExecutionInfos.map((step, index) => (
-              <StepDetailCard key={step.id} step={step} index={index} />
-            ))}
-          </div>
-        ) : (
-          <div className="iris-empty-panel px-4 py-8 text-center text-sm text-base-content/45">
-            Select a job from the stage board to inspect step-level evidence.
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 function SemanticCard({
   label,
   value,
@@ -580,71 +589,6 @@ function SemanticCard({
       className="px-4 py-3.5"
       valueClassName="text-base text-base-content/82"
     />
-  )
-}
-
-function RunOverviewInspector({
-  detail,
-  currentAttempt,
-  effectiveStatusMeta,
-  attemptSummary,
-  resumeTargetStage,
-}: {
-  detail: PipelineRunDetailInfo
-  currentAttempt: PipelineRunDetailInfo['attempts'][number] | null
-  effectiveStatusMeta: ReturnType<typeof getPipelineStatusMeta>
-  attemptSummary: ReturnType<typeof summarizeAttemptProgress> | null
-  resumeTargetStage: ReturnType<typeof findResumeTargetStage>
-}) {
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="iris-shell-bar border-b-0 px-5 py-4">
-        <div className="iris-header">Run Overview</div>
-        <div className="mt-2 text-sm font-semibold text-base-content/82">
-          {currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
-        </div>
-        <div className="mt-1 text-[11px] iris-copy">
-          {effectiveStatusMeta.description}
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-        <div className="space-y-3">
-          <SemanticCard
-            label="Runtime"
-            value={effectiveStatusMeta.label}
-            detail={currentAttempt?.endTime
-              ? `Ended ${formatDateTimeLong(currentAttempt.endTime)}`
-              : currentAttempt?.startTime
-                ? `Started ${formatDateTimeLong(currentAttempt.startTime)}`
-                : `Created ${formatDateTimeLong(detail.createdAt)}`}
-            tone={effectiveStatusMeta.tone}
-          />
-          <SemanticCard
-            label="Stage Progress"
-            value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
-            detail={attemptSummary?.headline ?? 'No stage projection'}
-          />
-          <SemanticCard
-            label="Resume Path"
-            value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
-            detail={resumeTargetStage
-              ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as Skipped.'
-              : 'No resumable stage is pending right now.'}
-          />
-        </div>
-
-        <div className="iris-section-panel mt-4 p-4">
-          <div className="iris-header">Stage Semantics</div>
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
-            <span className="badge badge-ghost badge-sm">Parallel inside a stage</span>
-            <span className="badge badge-ghost badge-sm">Barrier between stages</span>
-            <span className="badge badge-ghost badge-sm">Skipped means reused on resume</span>
-            <span className="badge badge-ghost badge-sm">Not Run means blocked downstream</span>
-          </div>
-        </div>
-      </div>
-    </div>
   )
 }
 
