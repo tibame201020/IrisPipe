@@ -1,10 +1,10 @@
-﻿import { AlertCircle, Filter, List, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2, X } from 'lucide-react'
-import { BarChart3, FileText } from 'lucide-react'
+import { AlertCircle, BarChart3, FileText, Filter, List, PlayCircle, RefreshCw, RotateCcw, SkipForward, Square, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
+import { PipelineAttemptTimeline } from '../components/pipeline-family/PipelineAttemptTimeline'
 import { PipelineDiagnosticsDrawer } from '../components/pipeline-family/PipelineDiagnosticsDrawer'
 import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
 import { StatusBadge } from '../components/StatusBadge'
@@ -18,6 +18,7 @@ import {
   findResumeTargetStage,
   getAttemptKindLabel,
   getAttemptStepTotals,
+  getJobStepTotals,
   getPipelineStatusMeta,
   getRunActionDescriptors,
   getRunEffectiveStatus,
@@ -30,7 +31,6 @@ import { usePipelineEvents } from '../lib/usePipelineEvents'
 import type {
   AtomicLevel,
   PipelineRunDetailInfo,
-  PipelineRunJobInfo,
   PipelineRunStatus,
   StepExecutionInfo,
 } from '../types/irispipe'
@@ -47,6 +47,7 @@ export function RunDetailPage() {
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<RunActionKey | null>(null)
   const [selectedAttemptId, setSelectedAttemptId] = useState<number | null>(null)
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
   const [diagnosticsTab, setDiagnosticsTab] = useState<'logs' | 'metrics' | 'steps'>('logs')
   const [logs, setLogs] = useState<RunLogEntry[] | null>(null)
@@ -59,6 +60,7 @@ export function RunDetailPage() {
   async function loadDetail() {
     setLoading(true)
     setError(null)
+
     try {
       const response = await getRunDetail(numericRunId)
       setDetail(response)
@@ -78,10 +80,10 @@ export function RunDetailPage() {
       setLoading(false)
       return
     }
+
     void loadDetail()
   }, [numericPipelineId, numericRunId])
 
-  // SSE: instant reload on job/run events for this specific run
   usePipelineEvents({
     onJobStarted: () => void loadDetail(),
     onJobFinished: () => void loadDetail(),
@@ -90,11 +92,10 @@ export function RunDetailPage() {
     onRunStopped: () => void loadDetail(),
   }, Number.isFinite(numericRunId) ? numericRunId : undefined)
 
-  // Fallback polling: 5 s while run is in-flight (SSE handles instant updates)
   useEffect(() => {
     if (!detail) return
-    const isRunning = isPipelineStatusActive(detail.status)
-    if (!isRunning) return
+    if (!isPipelineStatusActive(detail.status)) return
+
     const timer = setInterval(() => { void loadDetail() }, 5000)
     return () => clearInterval(timer)
   }, [detail?.status])
@@ -104,12 +105,10 @@ export function RunDetailPage() {
     return detail.attempts[detail.attempts.length - 1]
   }, [detail])
 
-  const currentAttempt = useMemo(() => {
+  const selectedAttempt = useMemo(() => {
     if (!detail || detail.attempts.length === 0) return null
     return detail.attempts.find((attempt) => attempt.executionId === selectedAttemptId) ?? latestAttempt
   }, [detail, latestAttempt, selectedAttemptId])
-
-  useEffect(() => { setSelectedJobId(null) }, [selectedAttemptId])
 
   useEffect(() => {
     if (!Number.isFinite(numericRunId) || diagnosticsTab !== 'logs' || logs !== null || logsLoading) return
@@ -132,58 +131,78 @@ export function RunDetailPage() {
     }
   }, [diagnosticsTab, logs, logsLoading, numericRunId])
 
-  const attemptTotals = useMemo(() => {
-    if (!currentAttempt) return { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, skip: 0 }
-    return getAttemptStepTotals(currentAttempt)
-  }, [currentAttempt])
-
+  const selectedAttemptTotals = useMemo(() => {
+    if (!selectedAttempt) return { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, skip: 0 }
+    return getAttemptStepTotals(selectedAttempt)
+  }, [selectedAttempt])
   const selectedJob = useMemo(() => {
-    if (!currentAttempt || !selectedJobId) return null
-    return currentAttempt.jobs.find((job) => job.id === selectedJobId) ?? null
-  }, [currentAttempt, selectedJobId])
-
+    if (!selectedAttempt || !selectedJobId) return null
+    return selectedAttempt.jobs.find((job) => job.id === selectedJobId) ?? null
+  }, [selectedAttempt, selectedJobId])
+  const selectedStage = useMemo(() => {
+    if (!selectedAttempt || !selectedStageId) return null
+    return selectedAttempt.stages.find((stage) => stage.stage === selectedStageId) ?? null
+  }, [selectedAttempt, selectedStageId])
+  const selectedJobTotals = useMemo(() => {
+    if (!selectedJob) return { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, skip: 0 }
+    return getJobStepTotals(selectedJob)
+  }, [selectedJob])
   const stageLanes = useMemo<StageLaneData[]>(() => {
-    if (!currentAttempt) return []
-    return currentAttempt.stages.map((stage) => {
+    if (!selectedAttempt) return []
+
+    return selectedAttempt.stages.map((stage) => {
       const stageSummary = summarizePipelineStage(stage)
+
       return {
         id: stage.stage,
         title: stage.stage,
         status: stage.status,
+        selected: stage.stage === selectedStageId,
+        onClick: () => {
+          setSelectedStageId(stage.stage)
+          setSelectedJobId(null)
+        },
         summary: stageSummary.summary,
         jobs: stage.jobs.map((job) => {
-        const jobTotals = job.stepExecutionInfos.reduce(
-          (acc, step) => ({
-            read: acc.read + step.readCount,
-            write: acc.write + step.writeCount,
-          }),
-          { read: 0, write: 0 },
-        )
+          const jobTotals = job.stepExecutionInfos.reduce(
+            (acc, step) => ({
+              read: acc.read + step.readCount,
+              write: acc.write + step.writeCount,
+            }),
+            { read: 0, write: 0 },
+          )
 
-        return {
-          id: String(job.id),
-          title: job.jobName,
-          status: job.status,
-          selected: job.id === selectedJobId,
-          onClick: () => setSelectedJobId(job.id),
-          onDoubleClick: () => setSelectedJobId(job.id),
-          subtitle: (jobTotals.read > 0 || jobTotals.write > 0)
-            ? `Read ${jobTotals.read.toLocaleString()} | Write ${jobTotals.write.toLocaleString()}`
-            : undefined,
-          stepSummary: `${job.stepExecutionInfos.length} step${job.stepExecutionInfos.length !== 1 ? 's' : ''} | ${job.atomicLevel}`,
-          duration: formatDuration(job.startTime, job.endTime),
-          waitTime: job.createdAt && job.startTime ? formatDuration(job.createdAt, job.startTime) : undefined,
-          errorLine: extractRunJobErrorLine(job),
-          badges: [job.atomicLevel],
-        }
-      }),
+          return {
+            id: String(job.id),
+            title: job.jobName,
+            status: job.status,
+            selected: job.id === selectedJobId,
+            onClick: () => {
+              setSelectedStageId(stage.stage)
+              setSelectedJobId(job.id)
+            },
+            onDoubleClick: () => {
+              setSelectedStageId(stage.stage)
+              setSelectedJobId(job.id)
+            },
+            subtitle: (jobTotals.read > 0 || jobTotals.write > 0)
+              ? `Read ${jobTotals.read.toLocaleString()} | Write ${jobTotals.write.toLocaleString()}`
+              : undefined,
+            stepSummary: `${job.stepExecutionInfos.length} step${job.stepExecutionInfos.length !== 1 ? 's' : ''} | ${job.atomicLevel}`,
+            duration: formatDuration(job.startTime, job.endTime),
+            waitTime: job.createdAt && job.startTime ? formatDuration(job.createdAt, job.startTime) : undefined,
+            errorLine: extractRunJobErrorLine(job),
+            badges: [job.atomicLevel],
+          }
+        }),
       }
     })
-  }, [currentAttempt, selectedJobId])
+  }, [selectedAttempt, selectedJobId, selectedStageId])
 
   async function runAction(actionName: string, action: () => Promise<unknown>) {
     setPendingAction(actionName)
     setError(null)
+
     try {
       await action()
       if (actionName === 'delete') {
@@ -220,28 +239,58 @@ export function RunDetailPage() {
     )
   }
 
-  const effectiveStatus = getRunEffectiveStatus(detail, currentAttempt)
-  const effectiveStatusMeta = getPipelineStatusMeta(effectiveStatus)
-  const attemptSummary = currentAttempt ? summarizeAttemptProgress(currentAttempt) : null
+  const selectedAttemptStatus = selectedAttempt ? getRunEffectiveStatus(detail, selectedAttempt) : detail.status
+  const selectedAttemptStatusMeta = getPipelineStatusMeta(selectedAttemptStatus)
+  const selectedAttemptProgress = selectedAttempt ? summarizeAttemptProgress(selectedAttempt) : null
   const resumeTargetStage = findResumeTargetStage(detail.attempts[detail.attempts.length - 1] ?? null)
-  const actionDescriptors = getRunActionDescriptors(detail, currentAttempt)
+  const actionDescriptors = getRunActionDescriptors(detail, selectedAttempt)
+  const selectedJobSummary = selectedJob
+    ? {
+        title: selectedJob.jobName,
+        stage: selectedJob.stage,
+        status: selectedJob.status,
+        atomicLevel: selectedJob.atomicLevel,
+        stepCount: selectedJob.stepExecutionInfos.length,
+      }
+    : null
+  const selectedStageSummary = selectedStage
+    ? {
+        title: selectedStage.stage,
+        status: selectedStage.status,
+        jobCount: selectedStage.jobs.length,
+        summary: summarizePipelineStage(selectedStage).summary,
+      }
+    : null
+
+  useEffect(() => {
+    setSelectedStageId(null)
+    setSelectedJobId(null)
+  }, [selectedAttemptId, selectedAttempt?.executionId])
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
       <div className="iris-family-shell shrink-0 px-5 py-4">
         <SurfaceBox variant="section" className="iris-family-hero flex flex-col gap-4 px-4 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[13px] font-bold tabular-nums">#{detail.id}</span>
-                <StatusBadge status={effectiveStatus} subtle />
-                <span className="badge badge-ghost badge-sm">{currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} attempt` : 'No attempt'}</span>
+                <StatusBadge status={selectedAttemptStatus} subtle />
+                <span className="badge badge-ghost badge-sm">
+                  {selectedAttempt ? `${getAttemptKindLabel(selectedAttempt.executionKind)} attempt` : 'No attempt'}
+                </span>
+                {selectedAttempt?.executionId === latestAttempt?.executionId ? (
+                  <span className="badge badge-primary badge-sm">latest</span>
+                ) : null}
+                {selectedStageSummary && !selectedJobSummary ? <span className="badge badge-secondary badge-sm">selected stage</span> : null}
+                {selectedJobSummary ? <span className="badge badge-info badge-sm">selected job</span> : null}
               </div>
+
               <div className="mt-3 text-lg font-bold tracking-tight text-base-content">
-                {currentAttempt ? `Attempt #${currentAttempt.executionNo}` : 'No attempt selected'}
+                {selectedAttempt ? `Attempt #${selectedAttempt.executionNo}` : 'No attempt selected'}
               </div>
-              <div className="mt-1.5 max-w-3xl text-sm iris-copy">
-                {effectiveStatusMeta.description}
+              <div className="mt-1 max-w-3xl text-sm iris-copy">
+                {selectedAttemptStatusMeta.description}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] iris-copy-soft">
                 <span>Created {formatDateTimeLong(detail.createdAt)}</span>
@@ -253,34 +302,43 @@ export function RunDetailPage() {
                     <span className="text-warning">Resume target: {resumeTargetStage.stage}</span>
                   </>
                 ) : null}
+                {selectedStageSummary ? (
+                  <>
+                    <span className="iris-copy-faint">|</span>
+                    <span>Stage: {selectedStageSummary.title}</span>
+                  </>
+                ) : null}
+                {selectedJobSummary ? (
+                  <>
+                    <span className="iris-copy-faint">|</span>
+                    <span>Job: {selectedJobSummary.title}</span>
+                  </>
+                ) : null}
               </div>
             </div>
 
-            <div className="flex flex-col items-stretch gap-2 sm:items-end">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <SemanticCard
-                  label="Attempts"
-                  value={String(detail.attempts.length)}
-                  detail="Logical run timeline"
-                />
-                <SemanticCard
-                  label="Stages"
-                  value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
-                  detail={attemptSummary?.headline ?? 'No stage projection'}
-                />
-                <SemanticCard
-                  label="Read"
-                  value={attemptTotals.read.toLocaleString()}
+            <div className="flex w-full max-w-lg flex-col gap-2 sm:w-auto">
+              <div className="grid grid-cols-2 gap-2">
+                <SemanticSummaryTile kicker="Attempts" value={String(detail.attempts.length)} detail="Logical run timeline" />
+                <SemanticSummaryTile
+                  kicker="Stage Progress"
+                  value={selectedAttemptProgress ? `${selectedAttemptProgress.completedStages}/${selectedAttemptProgress.totalStages}` : '0/0'}
+                  detail={selectedAttemptProgress?.headline ?? 'No stage projection'}
+                  />
+                <SemanticSummaryTile
+                  kicker="Read"
+                  value={selectedAttemptTotals.read.toLocaleString()}
                   detail="Current attempt"
                   tone="success"
                 />
-                <SemanticCard
-                  label="Write"
-                  value={attemptTotals.write.toLocaleString()}
+                <SemanticSummaryTile
+                  kicker="Write"
+                  value={selectedAttemptTotals.write.toLocaleString()}
                   detail="Current attempt"
                   tone="info"
                 />
               </div>
+
               <div className="iris-signal-strip flex flex-wrap items-center gap-1 px-1 py-1">
                 <ActionButton
                   size="xs"
@@ -325,9 +383,9 @@ export function RunDetailPage() {
             </div>
           </div>
 
-          <AttemptTimelineStrip
+          <PipelineAttemptTimeline
             attempts={detail.attempts}
-            currentAttemptId={currentAttempt?.executionId ?? null}
+            selectedAttemptId={selectedAttempt?.executionId ?? null}
             latestAttemptId={latestAttempt?.executionId ?? null}
             onSelect={setSelectedAttemptId}
           />
@@ -336,73 +394,211 @@ export function RunDetailPage() {
 
       {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-      <main className="iris-workspace-shell relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <section className="relative min-h-0 flex-1 overflow-hidden">
-            <StageLaneBoard
-              stages={stageLanes}
-              emptyTitle="No attempt stages"
-              emptyDescription="This attempt did not materialize any runtime stage projection."
+      <main className="iris-workspace-shell relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 pb-4 xl:flex-row">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+            <SurfaceBox variant="section" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-base-300/60 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="iris-header">Selected Attempt Runtime Board</div>
+                  <div className="mt-1 text-sm font-semibold text-base-content/84">
+                    {selectedAttempt ? `Attempt #${selectedAttempt.executionNo} · ${getAttemptKindLabel(selectedAttempt.executionKind)}` : 'No attempt selected'}
+                  </div>
+                  <div className="mt-1 text-[11px] iris-copy">
+                    Job selections drive the diagnostics drawer and stay scoped to this attempt snapshot.
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[10px] iris-copy-soft">
+                  <span className="badge badge-ghost badge-sm">{selectedAttemptStatusMeta.label}</span>
+                  <span className="badge badge-ghost badge-sm">{selectedAttempt?.jobs.length ?? 0} jobs</span>
+                  <span className="badge badge-ghost badge-sm">{selectedAttemptProgress?.headline ?? 'No progress summary'}</span>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <StageLaneBoard
+                  stages={stageLanes}
+                  emptyTitle="No attempt stages"
+                  emptyDescription="This attempt did not materialize any runtime stage projection."
+                />
+              </div>
+            </SurfaceBox>
+          </div>
+
+          <PipelineOverviewRail
+            className="w-full xl:w-[336px]"
+            header={(
+              <div>
+                <div className="iris-header">Run Overview</div>
+                <div className="mt-2 text-sm font-semibold text-base-content/82">
+                  {selectedAttempt ? `${getAttemptKindLabel(selectedAttempt.executionKind)} #${selectedAttempt.executionNo}` : 'No attempt'}
+                </div>
+                <div className="mt-1 text-[11px] iris-copy">
+                  {selectedAttemptStatusMeta.description}
+                </div>
+              </div>
+            )}
+          >
+            <SemanticSummaryTile
+              kicker="Runtime"
+              value={selectedAttemptStatusMeta.label}
+              detail={selectedAttempt?.endTime
+                ? `Ended ${formatDateTimeLong(selectedAttempt.endTime)}`
+                : selectedAttempt?.startTime
+                  ? `Started ${formatDateTimeLong(selectedAttempt.startTime)}`
+                  : `Created ${formatDateTimeLong(detail.createdAt)}`}
+              tone={selectedAttemptStatusMeta.tone === 'neutral' ? 'neutral' : selectedAttemptStatusMeta.tone}
+            />
+            <SemanticSummaryTile
+              kicker="Stage Progress"
+              value={selectedAttemptProgress ? `${selectedAttemptProgress.completedStages}/${selectedAttemptProgress.totalStages}` : '0/0'}
+              detail={selectedAttemptProgress?.detail ?? 'No stage projection'}
+            />
+            <SemanticSummaryTile
+              kicker="Resume Path"
+              value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
+              detail={resumeTargetStage
+                ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as skipped.'
+                : 'No resumable stage is pending right now.'}
             />
 
-            {selectedJob ? (
-              <div className="absolute inset-y-4 right-4 z-20 w-[380px] overflow-hidden iris-overlay-panel">
-                <JobRuntimeInspector job={selectedJob} onClose={() => setSelectedJobId(null)} />
+            {selectedJobSummary ? (
+              <div className="iris-section-panel px-4 py-3">
+                <div className="iris-header">Selected Job</div>
+                <div className="mt-1 text-sm font-semibold text-base-content/82">{selectedJobSummary.title}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] iris-copy-soft">
+                  <span className="badge badge-ghost badge-xs">Stage {selectedJobSummary.stage}</span>
+                  <span className="badge badge-ghost badge-xs">{selectedJobSummary.stepCount} steps</span>
+                  <AtomicLevelBadge level={selectedJobSummary.atomicLevel} />
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <SemanticSummaryTile kicker="Read" value={selectedJobTotals.read.toLocaleString()} detail="Selected job" tone="success" />
+                  <SemanticSummaryTile kicker="Write" value={selectedJobTotals.write.toLocaleString()} detail="Selected job" tone="info" />
+                </div>
               </div>
-            ) : null}
-          </section>
+            ) : selectedStageSummary ? (
+              <div className="iris-section-panel px-4 py-3">
+                <div className="iris-header">Selected Stage</div>
+                <div className="mt-1 text-sm font-semibold text-base-content/82">{selectedStageSummary.title}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] iris-copy-soft">
+                  <StatusBadge status={selectedStageSummary.status} subtle />
+                  <span className="badge badge-ghost badge-xs">{selectedStageSummary.jobCount} jobs</span>
+                </div>
+                <div className="mt-3 text-[11px] iris-copy">{selectedStageSummary.summary}</div>
+              </div>
+            ) : (
+              <div className="iris-empty-panel px-4 py-4 text-[11px] iris-copy">
+                Select a stage or job from the runtime board to inspect scoped diagnostics.
+              </div>
+            )}
 
-          <PipelineDiagnosticsDrawer
-            header={
-              <>
+            <div className="iris-section-panel px-4 py-3">
+              <div className="iris-header">Stage Semantics</div>
+              <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+                <span className="badge badge-ghost badge-sm">Parallel inside a stage</span>
+                <span className="badge badge-ghost badge-sm">Barrier between stages</span>
+                <span className="badge badge-ghost badge-sm">Skipped means reused on resume</span>
+                <span className="badge badge-ghost badge-sm">Not Run means blocked downstream</span>
+              </div>
+            </div>
+          </PipelineOverviewRail>
+        </div>
+
+        <PipelineDiagnosticsDrawer
+          className="mx-5 mb-4"
+          bodyHeightClassName="h-[320px]"
+          header={(
+            <>
                 <div>
                   <div className="iris-header">Diagnostics Drawer</div>
                   <div className="mt-1 text-xs iris-copy-soft">
-                    Board remains visible while logs, metrics, and step evidence stay attached to the current attempt.
+                    Logs remain run-scoped; metrics and step evidence follow the selected attempt and selected job.
                   </div>
                 </div>
-                <div className="iris-signal-strip flex items-center gap-1 px-1 py-1">
-                  <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'logs' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('logs')}>
-                    <FileText size={12} />Logs
-                  </ActionButton>
-                  <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'metrics' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('metrics')}>
-                    <BarChart3 size={12} />Metrics
-                  </ActionButton>
-                  <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'steps' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('steps')}>
-                    <List size={12} />Step Detail
-                  </ActionButton>
+              <div className="iris-signal-strip flex items-center gap-1 px-1 py-1">
+                <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'logs' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('logs')}>
+                  <FileText size={12} />Logs
+                </ActionButton>
+                <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'metrics' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('metrics')}>
+                  <BarChart3 size={12} />Metrics
+                </ActionButton>
+                <ActionButton size="xs" tone="ghost" className={diagnosticsTab === 'steps' ? 'text-primary' : ''} onClick={() => setDiagnosticsTab('steps')}>
+                  <List size={12} />Step Detail
+                </ActionButton>
+              </div>
+            </>
+          )}
+        >
+          <div className="space-y-4">
+            {selectedJobSummary ? (
+              <div className="iris-section-panel px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="iris-header">Selected Job Context</div>
+                    <div className="mt-1 truncate text-sm font-semibold text-base-content/82">{selectedJobSummary.title}</div>
+                    <div className="mt-1 text-[11px] iris-copy-soft">
+                      Stage {selectedJobSummary.stage} · {selectedJobSummary.stepCount} step{selectedJobSummary.stepCount === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={selectedJobSummary.status} subtle />
+                    <AtomicLevelBadge level={selectedJobSummary.atomicLevel} />
+                  </div>
                 </div>
-              </>
-            }
-          >
+              </div>
+            ) : selectedStageSummary ? (
+              <div className="iris-section-panel px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="iris-header">Selected Stage Context</div>
+                    <div className="mt-1 truncate text-sm font-semibold text-base-content/82">{selectedStageSummary.title}</div>
+                    <div className="mt-1 text-[11px] iris-copy-soft">
+                      {selectedStageSummary.jobCount} job{selectedStageSummary.jobCount === 1 ? '' : 's'} in this stage
+                    </div>
+                  </div>
+                  <StatusBadge status={selectedStageSummary.status} subtle />
+                </div>
+              </div>
+            ) : null}
+
             {diagnosticsTab === 'logs' ? (
               logsLoading ? (
                 <div className="flex justify-center py-10"><span className="loading loading-spinner loading-sm opacity-40" /></div>
               ) : !logs || logs.length === 0 ? (
                 <div className="py-10 text-center text-base-content/40">No log entries available</div>
               ) : (
-                <div className="iris-list-panel">
-                  {logs.map((entry, idx) => (
-                    <div key={idx} className={`iris-list-row flex items-start gap-3 px-3 py-2 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}>
-                      <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>{entry.level}</span>
-                      <span className="shrink-0 tabular-nums text-base-content/40">
-                        {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
-                      </span>
-                      <span className="flex-1 break-all font-mono text-[11px]">{entry.message}</span>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  <div className="iris-inset-panel px-3 py-2 text-[11px] iris-copy-soft">
+                    Log entries are scoped to the logical run. Switching attempts does not filter this stream.
+                  </div>
+                  <div className="iris-list-panel">
+                    {logs.map((entry, index) => (
+                      <div
+                        key={`${entry.timestamp ?? 'log'}-${index}`}
+                        className={`iris-list-row flex items-start gap-3 px-3 py-2 ${entry.level === 'ERROR' ? 'bg-error/5 text-error/80' : 'hover:bg-base-200/40'}`}
+                      >
+                        <span className={`w-12 shrink-0 text-[10px] font-bold uppercase tracking-wider ${entry.level === 'ERROR' ? 'text-error' : 'text-base-content/40'}`}>
+                          {entry.level}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-base-content/40">
+                          {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '--:--:--'}
+                        </span>
+                        <span className="flex-1 break-all font-mono text-[11px]">{entry.message}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             ) : diagnosticsTab === 'metrics' ? (
               <div className="grid gap-3 md:grid-cols-4">
-                <SemanticCard label="Read" value={attemptTotals.read.toLocaleString()} detail="Current attempt" tone="success" />
-                <SemanticCard label="Write" value={attemptTotals.write.toLocaleString()} detail="Current attempt" tone="info" />
-                <SemanticCard label="Rollback" value={attemptTotals.rollback.toLocaleString()} detail="Current attempt" tone={attemptTotals.rollback > 0 ? 'error' : 'neutral'} />
-                <SemanticCard label="Skip/Filter" value={`${attemptTotals.skip + attemptTotals.filter}`} detail="Current attempt" tone={attemptTotals.skip + attemptTotals.filter > 0 ? 'warning' : 'neutral'} />
-                <div className="iris-section-panel p-4 md:col-span-4">
+                <SemanticSummaryTile kicker="Read" value={selectedAttemptTotals.read.toLocaleString()} detail="Current attempt" tone="success" />
+                <SemanticSummaryTile kicker="Write" value={selectedAttemptTotals.write.toLocaleString()} detail="Current attempt" tone="info" />
+                <SemanticSummaryTile kicker="Rollback" value={selectedAttemptTotals.rollback.toLocaleString()} detail="Current attempt" tone={selectedAttemptTotals.rollback > 0 ? 'error' : 'neutral'} />
+                <SemanticSummaryTile kicker="Skip/Filter" value={`${selectedAttemptTotals.skip + selectedAttemptTotals.filter}`} detail="Current attempt" tone={selectedAttemptTotals.skip + selectedAttemptTotals.filter > 0 ? 'warning' : 'neutral'} />
+                <div className="iris-section-panel px-4 py-4 md:col-span-4">
                   <div className="iris-header">Attempt Summary</div>
-                  <div className="mt-2 text-sm text-base-content/80">{attemptSummary?.headline ?? 'No attempt summary'}</div>
-                  <div className="mt-1 text-[11px] iris-copy">{attemptSummary?.detail ?? 'No runtime projection is available for this attempt.'}</div>
+                  <div className="mt-2 text-sm text-base-content/80">{selectedAttemptProgress?.headline ?? 'No attempt summary'}</div>
+                  <div className="mt-1 text-[11px] iris-copy">{selectedAttemptProgress?.detail ?? 'No runtime projection is available for this attempt.'}</div>
                 </div>
               </div>
             ) : selectedJob ? (
@@ -411,60 +607,17 @@ export function RunDetailPage() {
                   <StepDetailCard key={step.id} step={step} index={index} />
                 ))}
               </div>
+            ) : selectedStageSummary ? (
+              <div className="iris-empty-panel px-4 py-8 text-center text-sm text-base-content/45">
+                Stage selected. Pick a job in this stage to inspect step-level evidence.
+              </div>
             ) : (
               <div className="iris-empty-panel px-4 py-8 text-center text-sm text-base-content/45">
-                Select a job from the stage board to inspect step-level evidence.
+                Select a stage or job from the board to inspect diagnostics.
               </div>
             )}
-          </PipelineDiagnosticsDrawer>
-        </div>
-
-        <PipelineOverviewRail className="iris-inspector-rail" header={
-          <div>
-            <div className="iris-header">Run Overview</div>
-            <div className="mt-2 text-sm font-semibold text-base-content/82">
-              {currentAttempt ? `${getAttemptKindLabel(currentAttempt.executionKind)} #${currentAttempt.executionNo}` : 'No attempt'}
-            </div>
-            <div className="mt-1 text-[11px] iris-copy">
-              {effectiveStatusMeta.description}
-            </div>
           </div>
-        }>
-          <div className="space-y-3">
-            <SemanticCard
-              label="Runtime"
-              value={effectiveStatusMeta.label}
-              detail={currentAttempt?.endTime
-                ? `Ended ${formatDateTimeLong(currentAttempt.endTime)}`
-                : currentAttempt?.startTime
-                  ? `Started ${formatDateTimeLong(currentAttempt.startTime)}`
-                  : `Created ${formatDateTimeLong(detail.createdAt)}`}
-              tone={effectiveStatusMeta.tone}
-            />
-            <SemanticCard
-              label="Stage Progress"
-              value={attemptSummary ? `${attemptSummary.completedStages}/${attemptSummary.totalStages}` : '0/0'}
-              detail={attemptSummary?.headline ?? 'No stage projection'}
-            />
-            <SemanticCard
-              label="Resume Path"
-              value={resumeTargetStage ? resumeTargetStage.stage : 'No pending resume'}
-              detail={resumeTargetStage
-                ? 'Resume creates a new attempt from the first incomplete stage and replays earlier completed jobs as Skipped.'
-                : 'No resumable stage is pending right now.'}
-            />
-          </div>
-
-          <div className="iris-section-panel mt-4 p-4">
-            <div className="iris-header">Stage Semantics</div>
-            <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
-              <span className="badge badge-ghost badge-sm">Parallel inside a stage</span>
-              <span className="badge badge-ghost badge-sm">Barrier between stages</span>
-              <span className="badge badge-ghost badge-sm">Skipped means reused on resume</span>
-              <span className="badge badge-ghost badge-sm">Not Run means blocked downstream</span>
-            </div>
-          </div>
-        </PipelineOverviewRail>
+        </PipelineDiagnosticsDrawer>
       </main>
 
       {confirmAction ? (
@@ -506,308 +659,74 @@ export function RunDetailPage() {
   )
 }
 
-function AttemptTimelineStrip({
-  attempts,
-  currentAttemptId,
-  latestAttemptId,
-  onSelect,
-}: {
-  attempts: PipelineRunDetailInfo['attempts']
-  currentAttemptId: number | null
-  latestAttemptId: number | null
-  onSelect: (executionId: number) => void
-}) {
-  return (
-    <div className="iris-attempt-strip overflow-x-auto px-3 py-3">
-      <div className="flex min-w-max items-center gap-2">
-        {attempts.map((attempt, index) => {
-          const isSelected = attempt.executionId === currentAttemptId
-          const isLatest = attempt.executionId === latestAttemptId
-          return (
-            <div key={attempt.executionId} className="flex items-center gap-2">
-              {index > 0 ? <div className="iris-attempt-link h-px w-8 shrink-0 rounded-full" /> : null}
-              <button
-                type="button"
-                className={`min-w-[152px] rounded-[var(--iris-radius-inset)] border px-3 py-2 text-left transition-all ${
-                  isSelected
-                    ? 'border-primary/35 bg-primary/8 ring-1 ring-primary/16'
-                    : 'border-base-300 bg-base-100/94 hover:border-primary/25 hover:bg-base-100'
-                }`}
-                onClick={() => onSelect(attempt.executionId)}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-base-content/42">
-                    Attempt #{attempt.executionNo}
-                  </span>
-                  {isLatest ? <span className="badge badge-primary badge-xs">current</span> : null}
-                </div>
-                <div className="mt-1 text-sm font-semibold text-base-content/84">
-                  {getAttemptKindLabel(attempt.executionKind)}
-                </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <StatusBadge status={attempt.status} subtle />
-                </div>
-                <div className="mt-2 text-[10px] iris-copy-soft">
-                  {attempt.startTime ? formatDateTimeLong(attempt.startTime) : 'Pending'}
-                </div>
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function SemanticCard({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string
-  value: string
-  detail: string
-  tone?: 'success' | 'error' | 'warning' | 'info' | 'neutral'
-}) {
-  const toneClass = tone === 'success'
-    ? 'success'
-    : tone === 'error'
-      ? 'error'
-      : tone === 'warning'
-        ? 'warning'
-        : tone === 'info'
-          ? 'info'
-          : 'neutral'
-
-  return (
-    <SemanticSummaryTile
-      kicker={label}
-      value={value}
-      detail={detail}
-      tone={toneClass}
-      className="px-4 py-3.5"
-      valueClassName="text-base text-base-content/82"
-    />
-  )
-}
-
-// Job runtime inspector
-
-function JobRuntimeInspector({ job, onClose }: { job: PipelineRunJobInfo; onClose: () => void }) {
-  const totals = job.stepExecutionInfos.reduce(
-    (acc, step) => ({
-      read: acc.read + step.readCount,
-      write: acc.write + step.writeCount,
-      commit: acc.commit + step.commitCount,
-      rollback: acc.rollback + step.rollbackCount,
-      filter: acc.filter + step.filterCount,
-      readSkip: acc.readSkip + step.readSkipCount,
-      writeSkip: acc.writeSkip + step.writeSkipCount,
-      processSkip: acc.processSkip + step.processSkipCount,
-    }),
-    { read: 0, write: 0, commit: 0, rollback: 0, filter: 0, readSkip: 0, writeSkip: 0, processSkip: 0 },
-  )
-  const totalSkip = totals.readSkip + totals.writeSkip + totals.processSkip
-  const maxIO = Math.max(totals.read, totals.write, 1)
-  const maxTxn = Math.max(totals.commit, totals.rollback, 1)
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-4 shrink-0">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="badge badge-ghost badge-sm">Job #{job.sequenceOrder + 1}</span>
-              <StatusBadge status={job.status} subtle />
-              <AtomicLevelBadge level={job.atomicLevel} />
-            </div>
-            <div className="mt-2 truncate text-xl font-bold">{job.jobName}</div>
-            {job.startTime && (
-              <div className="mt-1 text-xs text-base-content/50 font-mono">
-                {formatDateTimeLong(job.startTime)}
-                {job.endTime && <span className="ml-2 text-base-content/30">| {formatDuration(job.startTime, job.endTime)}</span>}
-              </div>
-            )}
-          </div>
-          <button type="button" className="btn btn-ghost btn-sm btn-square shrink-0" onClick={onClose} aria-label="Close job details">
-            <X size={16} />
-          </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 py-5">
-        <div className="mb-5">
-            <SectionLabel>I/O Throughput</SectionLabel>
-            <div className="mt-2 space-y-3">
-              <ThroughputBar label="Read" value={totals.read} max={maxIO} color="success" icon="R" />
-              <ThroughputBar label="Write" value={totals.write} max={maxIO} color="primary" icon="W" />
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <SectionLabel>Transactions</SectionLabel>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <SummaryTile label="Commit" value={totals.commit} mono highlight={totals.commit > 0 ? 'success' : undefined} />
-              <SummaryTile label="Rollback" value={totals.rollback} mono highlight={totals.rollback > 0 ? 'error' : undefined} />
-            </div>
-            {(totals.commit > 0 || totals.rollback > 0) && (
-              <div className="mt-2">
-                <ThroughputBar label="Commit" value={totals.commit} max={maxTxn} color="success" compact />
-                <ThroughputBar label="Rollback" value={totals.rollback} max={maxTxn} color="error" compact />
-              </div>
-            )}
-          </div>
-
-          {(totals.filter > 0 || totalSkip > 0) && (
-            <div className="mb-5">
-              <SectionLabel>Skip & Filter</SectionLabel>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                {totals.filter > 0 && <SummaryTile label="Filter" value={totals.filter} mono />}
-                {totals.readSkip > 0 && <SummaryTile label="Read Skip" value={totals.readSkip} mono highlight="warning" />}
-                {totals.writeSkip > 0 && <SummaryTile label="Write Skip" value={totals.writeSkip} mono highlight="warning" />}
-                {totals.processSkip > 0 && <SummaryTile label="Process Skip" value={totals.processSkip} mono highlight="warning" />}
-              </div>
-            </div>
-          )}
-
-        <div>
-            <SectionLabel>{job.stepExecutionInfos.length} Step{job.stepExecutionInfos.length !== 1 ? 's' : ''}</SectionLabel>
-            <div className="mt-2 space-y-3">
-              {job.stepExecutionInfos.map((step, idx) => (
-                <StepDetailCard key={step.id} step={step} index={idx} />
-              ))}
-            </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Step detail card
-
 function StepDetailCard({ step, index }: { step: StepExecutionInfo; index: number }) {
   const totalSkip = step.readSkipCount + step.writeSkipCount + step.processSkipCount
   const hasIssues = step.rollbackCount > 0 || totalSkip > 0
 
   return (
     <div className={`iris-section-panel overflow-hidden ${hasIssues ? 'border-warning/30 bg-warning/5' : 'bg-base-100'}`}>
-      <div className={`px-4 py-3 flex items-center justify-between gap-3 ${hasIssues ? 'bg-warning/5' : 'bg-base-200/30'}`}>
+      <div className={`flex items-start justify-between gap-3 px-4 py-3 ${hasIssues ? 'bg-warning/5' : 'bg-base-200/30'}`}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.16em] text-base-content/40">Step {index + 1}</span>
-            {hasIssues && <span className="badge badge-warning badge-xs">Issues</span>}
+            {hasIssues ? <span className="badge badge-warning badge-xs">Issues</span> : null}
           </div>
-          <div className="truncate text-sm font-semibold mt-0.5">{step.stepName}</div>
+          <div className="mt-0.5 truncate text-sm font-semibold">{step.stepName}</div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {step.startTime && step.endTime && (
+        <div className="flex shrink-0 items-center gap-2">
+          {step.startTime && step.endTime ? (
             <span className="text-[10px] font-mono text-base-content/40">{formatDuration(step.startTime, step.endTime)}</span>
-          )}
+          ) : null}
           <StatusBadge status={step.status as PipelineRunStatus} subtle />
         </div>
       </div>
 
-      <div className="px-4 py-3">
-        <div className="grid grid-cols-4 gap-2">
-          <MiniCounter label="Read" value={step.readCount} />
-          <MiniCounter label="Write" value={step.writeCount} />
-          <MiniCounter label="Commit" value={step.commitCount} />
-          <MiniCounter label="Rollback" value={step.rollbackCount} highlight={step.rollbackCount > 0 ? 'error' : undefined} />
-        </div>
-
-        {(step.filterCount > 0 || totalSkip > 0) && (
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {step.filterCount > 0 && <MiniCounter label="Filter" value={step.filterCount} />}
-            {step.readSkipCount > 0 && <MiniCounter label="RdSkip" value={step.readSkipCount} highlight="warning" />}
-            {step.writeSkipCount > 0 && <MiniCounter label="WrSkip" value={step.writeSkipCount} highlight="warning" />}
-            {step.processSkipCount > 0 && <MiniCounter label="PrSkip" value={step.processSkipCount} highlight="warning" />}
-          </div>
-        )}
-
-        {step.exitDescription && step.exitDescription.trim().length > 0 && step.exitCode !== 'COMPLETED' && (
-          <div className="iris-inset-panel mt-3 flex items-start gap-2 border-error/15 bg-error/5 px-3 py-2">
-            <AlertCircle size={13} className="text-error shrink-0 mt-0.5" />
-            <div className="text-[11px] font-mono text-error/80 break-all leading-relaxed">
-              {step.exitDescription}
-            </div>
-          </div>
-        )}
+      <div className="grid gap-2 px-4 py-3 sm:grid-cols-4">
+        <StepStat label="Read" value={step.readCount} />
+        <StepStat label="Write" value={step.writeCount} />
+        <StepStat label="Commit" value={step.commitCount} />
+        <StepStat label="Rollback" value={step.rollbackCount} tone={step.rollbackCount > 0 ? 'error' : 'neutral'} />
       </div>
+
+      {step.filterCount > 0 || totalSkip > 0 ? (
+        <div className="grid gap-2 px-4 pb-3 sm:grid-cols-4">
+          {step.filterCount > 0 ? <StepStat label="Filter" value={step.filterCount} /> : null}
+          {step.readSkipCount > 0 ? <StepStat label="RdSkip" value={step.readSkipCount} tone="warning" /> : null}
+          {step.writeSkipCount > 0 ? <StepStat label="WrSkip" value={step.writeSkipCount} tone="warning" /> : null}
+          {step.processSkipCount > 0 ? <StepStat label="PrSkip" value={step.processSkipCount} tone="warning" /> : null}
+        </div>
+      ) : null}
+
+      {step.exitDescription && step.exitDescription.trim().length > 0 && step.exitCode !== 'COMPLETED' ? (
+        <div className="iris-inset-panel mx-4 mb-4 flex items-start gap-2 border-error/15 bg-error/5 px-3 py-2">
+          <AlertCircle size={13} className="mt-0.5 shrink-0 text-error" />
+          <div className="break-all font-mono text-[11px] leading-relaxed text-error/80">
+            {step.exitDescription}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
 
-// Subcomponents
-
-function ThroughputBar({
+function StepStat({
   label,
   value,
-  max,
-  color,
-  icon,
-  compact = false,
+  tone = 'neutral',
 }: {
   label: string
   value: number
-  max: number
-  color: 'success' | 'primary' | 'error' | 'warning'
-  icon?: string
-  compact?: boolean
+  tone?: 'neutral' | 'warning' | 'error'
 }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0
-  const barMap = { success: 'bg-success', primary: 'bg-primary', error: 'bg-error', warning: 'bg-warning' }
-  const textMap = { success: 'text-success', primary: 'text-primary', error: 'text-error', warning: 'text-warning' }
-
-  if (compact) {
-    return (
-      <div className="flex items-center gap-3 py-1">
-        <span className="text-[10px] uppercase tracking-widest text-base-content/45 w-14 shrink-0">{label}</span>
-        <div className="flex-1 h-1 rounded-full bg-base-300/50 overflow-hidden">
-          <div
-            className={`h-full rounded-full iris-bar-fill ${barMap[color]}`}
-            style={{ '--bar-target-width': `${pct}%` } as React.CSSProperties}
-          />
-        </div>
-        <span className={`text-[10px] font-mono w-16 text-right ${textMap[color]}`}>{value.toLocaleString()}</span>
-      </div>
-    )
-  }
+  const toneClass = tone === 'warning'
+    ? 'text-warning'
+    : tone === 'error'
+      ? 'text-error'
+      : 'text-base-content/82'
 
   return (
-    <div className="iris-section-panel px-4 py-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          {icon && <span className={`text-sm font-bold ${textMap[color]}`}>{icon}</span>}
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/35">{label}</span>
-        </div>
-        <span className={`text-lg font-bold font-mono ${textMap[color]}`}>{value.toLocaleString()}</span>
-      </div>
-      <div className="h-2 w-full rounded-full bg-base-300/50 overflow-hidden">
-        <div
-          className={`h-full rounded-full iris-bar-fill ${barMap[color]}`}
-          style={{ '--bar-target-width': `${pct}%` } as React.CSSProperties}
-        />
-      </div>
-    </div>
-  )
-}
-
-function MiniCounter({
-  label,
-  value,
-  highlight,
-}: {
-  label: string
-  value: number
-  highlight?: 'error' | 'warning' | 'success'
-}) {
-  const colorMap = {
-    error: 'text-error',
-    warning: 'text-warning',
-    success: 'text-success',
-  }
-  return (
-    <div className="text-center">
-      <div className={`text-base font-bold font-mono ${highlight ? colorMap[highlight] : ''}`}>{value.toLocaleString()}</div>
+    <div className="rounded-[var(--iris-radius-inset)] border border-base-300/60 bg-base-100 px-2 py-2 text-center">
+      <div className={`font-mono text-base font-bold ${toneClass}`}>{value.toLocaleString()}</div>
       <div className="text-[9px] font-black uppercase tracking-[0.14em] text-base-content/40">{label}</div>
     </div>
   )
@@ -815,44 +734,14 @@ function MiniCounter({
 
 function AtomicLevelBadge({ level }: { level: AtomicLevel }) {
   return (
-    <span className={`badge badge-sm font-semibold ${
-      level === 'CHUNK'
-        ? 'bg-secondary/10 text-secondary border-secondary/20'
-        : 'bg-primary/10 text-primary border-primary/20'
-    }`}>
+    <span
+      className={`badge badge-sm font-semibold ${
+        level === 'CHUNK'
+          ? 'border-secondary/20 bg-secondary/10 text-secondary'
+          : 'border-primary/20 bg-primary/10 text-primary'
+      }`}
+    >
       {level === 'CHUNK' ? <><SkipForward size={10} className="mr-1" />CHUNK</> : <><Filter size={10} className="mr-1" />JOB</>}
     </span>
   )
 }
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-base-content/45">{children}</div>
-  )
-}
-
-// Shared tiles
-
-function SummaryTile({
-  label,
-  value,
-  mono = false,
-  highlight,
-}: {
-  label: string
-  value: string | number
-  mono?: boolean
-  highlight?: 'success' | 'error' | 'warning'
-}) {
-  const colorMap = { success: 'text-success', error: 'text-error', warning: 'text-warning' }
-  return (
-    <div className="iris-glass-soft px-4 py-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">{label}</div>
-      <div className={`mt-1 text-sm font-semibold ${mono ? 'font-mono' : ''} ${highlight ? colorMap[highlight] : ''}`}>{value}</div>
-    </div>
-  )
-}
-
-// Helpers
-
-

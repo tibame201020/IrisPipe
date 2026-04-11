@@ -545,18 +545,18 @@ function StageLaneJob({
       headerClassName={mode === 'topology' ? 'items-start gap-2 px-3 py-2.5' : ''}
       bodyClassName={mode === 'topology' ? 'mt-1.5 px-3 pb-2.5' : ''}
       interactive={Boolean(job.onClick)}
-      onClick={mode === 'topology' ? job.onClick : undefined}
-      onDoubleClick={mode === 'topology' ? job.onDoubleClick : undefined}
+      onClick={job.onClick}
+      onDoubleClick={job.onDoubleClick}
       onKeyDown={
-        mode === 'topology'
+        job.onClick
           ? (e) => {
               if (e.key === 'Enter') { e.preventDefault(); job.onDoubleClick?.(); return }
               if (e.key === ' ') { e.preventDefault(); job.onClick?.() }
             }
           : undefined
       }
-      role={mode === 'topology' && job.onClick ? 'button' : undefined}
-      tabIndex={mode === 'topology' && job.onClick ? 0 : undefined}
+      role={job.onClick ? 'button' : undefined}
+      tabIndex={job.onClick ? 0 : undefined}
       aria-label={`Job ${job.title}`}
       leading={mode === 'topology' ? <div className={`h-full w-full ${topologyLeadingClass}`} /> : undefined}
       leadingClassName={mode === 'topology' ? 'w-[4px]' : undefined}
