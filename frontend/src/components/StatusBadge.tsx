@@ -8,11 +8,14 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, subtle = false, mode = 'badge' }: StatusBadgeProps) {
   const meta = getPipelineStatusMeta(status)
+  const tone = meta.tone
 
   if (mode === 'text') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'text-xs' : 'text-sm'} ${meta.textClass}`}
+        className={`iris-state-runtime iris-status-tone inline-flex items-center gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'text-xs' : 'text-sm'}`}
+        data-state="runtime"
+        data-tone={tone}
         title={meta.description}
       >
         <span className="size-1.5 rounded-full bg-current opacity-70" />
@@ -23,7 +26,9 @@ export function StatusBadge({ status, subtle = false, mode = 'badge' }: StatusBa
 
   return (
     <span
-      className={`badge gap-1.5 border-0 font-semibold uppercase tracking-[0.18em] ${meta.badgeClass} ${subtle ? 'badge-sm' : ''}`}
+      className={`badge iris-state-runtime iris-status-badge gap-1.5 font-semibold uppercase tracking-[0.18em] ${subtle ? 'badge-sm' : ''}`}
+      data-state="runtime"
+      data-tone={tone}
       title={meta.description}
     >
       <span className="size-1.5 rounded-full bg-current opacity-70" />
