@@ -1,16 +1,16 @@
-import { History, RefreshCw, TimerReset, Zap } from 'lucide-react'
+import { RefreshCw, TimerReset, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
-import { LoadingState } from '../components/LoadingState'
+import { PipelineContextStrip } from '../components/pipeline-family/PipelineContextStrip'
+import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
+import { PipelineRunsLedger } from '../components/pipeline-family/PipelineRunsLedger'
+import { PipelineWorkspaceShell } from '../components/pipeline-family/PipelineWorkspaceShell'
 import { StatusBadge } from '../components/StatusBadge'
 import { ActionButton, ActionLink } from '../components/ui/Action'
-import { SurfaceBox } from '../components/ui/Surface'
 import { executePipeline, getApiErrorMessage, getPipelineRuns, getRunDetail } from '../lib/api'
 import { formatDateTime, formatDuration } from '../lib/date'
 import {
-  findResumeTargetStage,
-  getAttemptKindLabel,
   getPipelineStatusMeta,
   isPipelineStatusActive,
   isPipelineStatusResumable,
@@ -39,6 +39,8 @@ export function PipelineRunsPage() {
   const numericPipelineId = Number(pipelineId)
   const folderId = searchParams.get('folderId')
   const pipeline = workspace.pipeline
+  const pipelineBaseId = pipeline?.id ?? numericPipelineId
+  const folderQuery = pipeline?.folderId ?? folderId
 
   async function loadRuns(reset = false) {
     if (reset) {
@@ -83,7 +85,7 @@ export function PipelineRunsPage() {
   }, [numericPipelineId])
 
   useEffect(() => {
-    const targetRuns = runs.slice(0, 12)
+    const targetRuns = runs.slice(0, 10)
     const missingIds = targetRuns.map((run) => run.id).filter((id) => !runDetailsById[id])
     if (missingIds.length === 0) return
 
@@ -121,7 +123,7 @@ export function PipelineRunsPage() {
 
     try {
       const run = await executePipeline({ pipelineId: pipeline.id, useAsyncLaucher: true })
-      navigate(`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`)
+      navigate(`/pipeline/items/${pipeline.id}/runs/${run.id}${folderQuery ? `?folderId=${folderQuery}` : ''}`)
     } catch (executeError) {
       setError(getApiErrorMessage(executeError, 'Failed to execute pipeline'))
     } finally {
@@ -131,8 +133,6 @@ export function PipelineRunsPage() {
 
   const stats = useMemo(() => summarizePipelineRunHistory(runs), [runs])
   const latestRun = runs[0] ?? null
-  const latestStatusMeta = latestRun ? getPipelineStatusMeta(latestRun.status) : null
-
   const filteredRuns = useMemo(() => {
     switch (filter) {
       case 'active':
@@ -148,7 +148,22 @@ export function PipelineRunsPage() {
     }
   }, [filter, runs])
 
-  if (loading) return <div className="p-12"><LoadingState /></div>
+  const visibleRun = filteredRuns[0] ?? latestRun
+  const visibleRunDetail = visibleRun ? runDetailsById[visibleRun.id] : undefined
+  const visibleAttempts = visibleRunDetail?.attempts ?? []
+  const visibleLatestAttempt = visibleAttempts[visibleAttempts.length - 1] ?? null
+  const visibleRunStatusMeta = visibleRun ? getPipelineStatusMeta(visibleRun.status) : null
+
+  if (!Number.isFinite(numericPipelineId)) {
+    return (
+      <EmptyState
+        icon={TimerReset}
+        title="Run history unavailable"
+        description="Invalid pipeline id"
+        action={<ActionLink to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'} tone="primary">Back to Explorer</ActionLink>}
+      />
+    )
+  }
 
   if (error && runs.length === 0) {
     return (
@@ -161,210 +176,240 @@ export function PipelineRunsPage() {
     )
   }
 
+  const visibleCountLabel = `${filteredRuns.length} visible run${filteredRuns.length === 1 ? '' : 's'}`
+  const activeFilterLabel =
+    filter === 'all'
+      ? 'All runs'
+      : filter === 'active'
+        ? 'In flight'
+        : filter === 'failed'
+          ? 'Failed'
+          : filter === 'completed'
+            ? 'Completed'
+            : 'Resumable'
+
+  const shellDetail = latestRun
+    ? `Latest run #${latestRun.id} · ${stats?.total ?? 0} total records · ${visibleCountLabel}`
+    : 'Execute this pipeline to create the first logical run.'
+
+  const runHref = (run: PipelineRunSummaryInfo) =>
+    `/pipeline/items/${pipelineBaseId}/runs/${run.id}${folderQuery ? `?folderId=${folderQuery}` : ''}`
+
   return (
-    <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="iris-family-shell shrink-0 px-5 py-4">
-        <SurfaceBox variant="section" className="iris-family-hero grid gap-4 px-4 py-4 xl:grid-cols-[minmax(0,1.4fr)_auto]">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs</span>}
-              {latestRun ? <span className="iris-mono-meta">#{latestRun.id}</span> : null}
-              <span className="badge badge-ghost badge-sm">Logical run history</span>
+    <PipelineWorkspaceShell
+      identity={{
+        breadcrumb: pipeline ? `Pipeline / ${pipeline.pipelineName}` : 'Pipeline / Runs',
+        title: 'Runs',
+        detail: shellDetail,
+        chips: latestRun ? (
+          <>
+            <StatusBadge status={latestRun.status} subtle />
+            <span className="badge badge-ghost badge-sm">Logical run history</span>
+            <span className="badge badge-ghost badge-sm">{activeFilterLabel}</span>
+          </>
+        ) : (
+          <span className="badge badge-ghost badge-sm">No runs yet</span>
+        ),
+      }}
+      tabs={[
+        {
+          key: 'config',
+          label: 'Config',
+          href: `/pipeline/items/${pipelineBaseId}${folderQuery ? `?folderId=${folderQuery}` : ''}`,
+        },
+        {
+          key: 'runs',
+          label: 'Runs',
+          active: true,
+        },
+        {
+          key: 'detail',
+          label: 'Run Detail',
+          href: latestRun ? runHref(latestRun) : undefined,
+          disabled: !latestRun,
+        },
+      ]}
+      primaryActions={
+        <>
+          <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          </ActionButton>
+          <ActionButton
+            tone="primary"
+            onClick={() => void handleExecute()}
+            className={executing ? 'iris-execute-ring' : ''}
+            disabled={executing}
+            title="Start a fresh logical run from the current saved pipeline definition."
+          >
+            <Zap size={13} className={executing ? 'animate-pulse' : ''} />
+            {executing ? 'Launching...' : 'Execute'}
+          </ActionButton>
+        </>
+      }
+      contextStrip={
+        <PipelineContextStrip
+          eyebrow="Operations ledger"
+          title="Logical run history"
+          detail="Run rows are the primary surface. Use detail view for attempt timelines, runtime boards, and diagnostics."
+          actions={
+            <div className="text-[10px] iris-copy-soft">
+              {filteredRuns.length} visible {filter === 'all' ? 'of all runs' : `in ${activeFilterLabel.toLowerCase()} view`}
             </div>
-            <div className="mt-3 text-lg font-bold tracking-tight text-base-content">
-              {latestRun ? `Latest run #${latestRun.id}` : 'No run history yet'}
+          }
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
+            {(stats?.active ?? 0) > 0 ? (
+              <FilterChip label="Active" count={stats?.active ?? 0} active={filter === 'active'} onClick={() => setFilter('active')} />
+            ) : null}
+            <FilterChip label="Failed" count={stats?.failed ?? 0} active={filter === 'failed'} onClick={() => setFilter('failed')} variant="error" />
+            <FilterChip label="Completed" count={stats?.completed ?? 0} active={filter === 'completed'} onClick={() => setFilter('completed')} variant="success" />
+            {(stats?.resumable ?? 0) > 0 ? (
+              <FilterChip label="Resumable" count={stats?.resumable ?? 0} active={filter === 'resumable'} onClick={() => setFilter('resumable')} variant="warning" />
+            ) : null}
+          </div>
+        </PipelineContextStrip>
+      }
+      mainClassName="min-h-0"
+      inspector={
+        <PipelineOverviewRail
+          widthClassName="w-[320px]"
+          className="hidden xl:flex"
+          header={
+            <div className="space-y-1">
+              <div className="iris-kicker">Context rail</div>
+              <div className="text-sm font-semibold text-base-content">Selected run context</div>
+              <div className="text-[11px] iris-copy">This panel stays secondary. The ledger remains the main reading surface.</div>
             </div>
-            <div className="mt-1.5 max-w-2xl text-sm iris-copy">
-              {latestStatusMeta ? latestStatusMeta.description : 'Execute this pipeline to create the first logical run and attempt timeline.'}
-            </div>
-            {latestRun ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] iris-copy-soft">
-                <span>Started {formatDateTime(latestRun.startTime ?? latestRun.createdAt)}</span>
-                <span className="iris-copy-faint">|</span>
-                <span>Duration {formatDuration(latestRun.startTime ?? latestRun.createdAt, latestRun.endTime)}</span>
-                {isPipelineStatusResumable(latestRun.status) ? (
-                  <>
-                    <span className="iris-copy-faint">|</span>
-                    <span className="text-warning">This run can create a new resume attempt.</span>
-                  </>
+          }
+          footer={
+            <ActionLink
+              to={folderId ? `/pipeline/folders/${folderId}` : '/pipeline'}
+              tone="ghost"
+              size="xs"
+              className="w-full justify-center"
+            >
+              Back to Explorer
+            </ActionLink>
+          }
+        >
+          <div className="space-y-4">
+            {visibleRun ? (
+              <div className="iris-inset-panel px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="iris-kicker">Focused run</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold tabular-nums text-base-content">#{visibleRun.id}</span>
+                      <StatusBadge status={visibleRunStatusMeta?.status ?? visibleRun.status} subtle />
+                    </div>
+                    <div className="mt-1 text-[11px] iris-copy-soft">{visibleRun.folderPath}</div>
+                  </div>
+                  {visibleRunDetail ? (
+                    <div className="text-right">
+                      <div className="text-[10px] iris-copy-soft">Attempts</div>
+                      <div className="font-mono text-sm font-semibold text-base-content">{visibleRunDetail.attempts.length}</div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 grid gap-2 text-[11px] iris-copy">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Started</span>
+                    <span className="font-mono tabular-nums text-base-content/72">
+                      {formatDateTime(visibleRun.startTime ?? visibleRun.createdAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Duration</span>
+                    <span className="font-mono tabular-nums text-base-content/72">
+                      {formatDuration(visibleRun.startTime ?? visibleRun.createdAt, visibleRun.endTime)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Latest attempt</span>
+                    <span className="font-mono tabular-nums text-base-content/72">
+                      {visibleLatestAttempt ? `#${visibleLatestAttempt.executionNo} ${visibleLatestAttempt.executionKind}` : 'Loading'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Resume posture</span>
+                    <span className="text-right text-warning">
+                      {isPipelineStatusResumable(visibleRun.status) ? 'Resumable' : 'Not resumable'}
+                    </span>
+                  </div>
+                </div>
+
+                {visibleLatestAttempt ? (
+                  <div className="mt-3 border-t border-base-300/60 pt-3 text-[11px] iris-copy-soft">
+                    {visibleLatestAttempt.status === 'STOPPED' || isPipelineStatusResumable(visibleRun.status)
+                      ? 'This run can branch into a resume attempt from the first incomplete stage.'
+                      : 'Open the detail view for the attempt timeline and runtime board.'}
+                  </div>
                 ) : null}
               </div>
             ) : null}
-          </div>
 
-          <div className="flex flex-col justify-between gap-3 xl:items-end">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <CompactHistoryMetric label="History" value={stats?.total ?? 0} />
-              <CompactHistoryMetric label="In Flight" value={stats?.active ?? 0} tone="info" pulse={(stats?.active ?? 0) > 0} />
-              <CompactHistoryMetric label="Resumable" value={stats?.resumable ?? 0} tone="warning" />
-              <CompactHistoryMetric label="Avg Runtime" value={stats?.avgLabel ?? '--'} tone="success" />
+            <div className="space-y-2 text-[11px] iris-copy">
+              <p>Rows are ordered by recency. The latest run is highlighted, but the list is the source of truth.</p>
+              <p>Filter chips only narrow the ledger. They do not replace the history scan.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {stats ? (
-                <div className="hidden items-center gap-3 md:flex">
-                  <span className="text-[10px] tabular-nums iris-copy-soft">
-                    <span className="font-semibold text-base-content/70">{stats.successRate}%</span> success
-                  </span>
-                  <span className="text-[10px] iris-copy-faint">|</span>
-                  <span className="text-[10px] tabular-nums iris-copy-soft">
-                    avg <span className="font-semibold font-mono text-base-content/70">{stats.avgLabel}</span>
-                  </span>
-                </div>
-              ) : null}
+          </div>
+        </PipelineOverviewRail>
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-5 pt-4">
+        {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
 
-              <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
-                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-              </ActionButton>
-
+        {runs.length === 0 ? (
+          loading ? (
+            <PipelineRunsLedger
+              runs={[]}
+              detailsById={runDetailsById}
+              loading
+              buildRunHref={runHref}
+            />
+          ) : (
+            <div className="flex min-h-[56vh] flex-col items-center justify-center py-24 text-center">
+              <div className="iris-inset-panel mb-5 p-7">
+                <TimerReset size={36} className="text-base-content/30" />
+              </div>
+              <h3 className="text-lg font-bold">No runs yet</h3>
+              <p className="mt-1.5 max-w-xs text-sm text-base-content/50">
+                Execute this pipeline to create the first logical run and ledger entry.
+              </p>
               <ActionButton
                 tone="primary"
                 onClick={() => void handleExecute()}
-                className={executing ? 'iris-execute-ring' : ''}
                 disabled={executing}
-                title="Start a fresh logical run from the current saved pipeline definition."
+                className={`mt-5 ${executing ? 'iris-execute-ring' : ''}`}
               >
-                <Zap size={13} className={executing ? 'animate-pulse' : ''} />
-                {executing ? 'Launching...' : 'Execute'}
+                <Zap size={14} />
+                {executing ? 'Launching...' : 'Execute Now'}
               </ActionButton>
             </div>
-          </div>
-        </SurfaceBox>
-      </div>
-
-      <div className="iris-family-context flex shrink-0 items-center justify-between gap-3 px-5 py-2.5">
-        <div className="iris-signal-strip flex items-center gap-1.5 px-2 py-1">
-          <FilterChip label="All" count={runs.length} active={filter === 'all'} onClick={() => setFilter('all')} />
-          {(stats?.active ?? 0) > 0 && (
-            <FilterChip label="Active" count={stats?.active ?? 0} active={filter === 'active'} onClick={() => setFilter('active')} pulse />
-          )}
-          <FilterChip
-            label="Failed"
-            count={stats?.failed ?? 0}
-            active={filter === 'failed'}
-            onClick={() => setFilter('failed')}
-            variant="error"
-          />
-          <FilterChip
-            label="Completed"
-            count={stats?.completed ?? 0}
-            active={filter === 'completed'}
-            onClick={() => setFilter('completed')}
-            variant="success"
-          />
-          {(stats?.resumable ?? 0) > 0 && (
-            <FilterChip
-              label="Resumable"
-              count={stats?.resumable ?? 0}
-              active={filter === 'resumable'}
-              onClick={() => setFilter('resumable')}
-              variant="warning"
-            />
-          )}
-        </div>
-
-        <div className="text-[10px] iris-copy-soft">
-          {filteredRuns.length} visible run{filteredRuns.length === 1 ? '' : 's'}
-        </div>
-      </div>
-
-      {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
-
-      <div className="iris-workspace-shell min-h-0 flex-1 overflow-y-auto">
-        {runs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="iris-inset-panel mb-5 p-7">
-              <TimerReset size={36} className="text-base-content/30" />
-            </div>
-            <h3 className="text-lg font-bold">No runs yet</h3>
-            <p className="mt-1.5 max-w-xs text-sm text-base-content/50">
-              Execute this pipeline to create the first runtime record and stage projection.
-            </p>
-            <ActionButton
-              tone="primary"
-              onClick={() => void handleExecute()}
-              disabled={executing}
-              className={`mt-5 ${executing ? 'iris-execute-ring' : ''}`}
-            >
-              <Zap size={14} />
-              {executing ? 'Launching...' : 'Execute Now'}
+          )
+        ) : filteredRuns.length === 0 ? (
+          <div className="flex min-h-[56vh] flex-col items-center justify-center py-20 text-center">
+            <p className="text-sm text-base-content/45">No runs match this semantic filter.</p>
+            <ActionButton size="xs" tone="ghost" className="mt-3" onClick={() => setFilter('all')}>
+              Show all
             </ActionButton>
           </div>
-        ) : filteredRuns.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-sm text-base-content/45">No runs match this semantic filter.</p>
-            <ActionButton size="xs" tone="ghost" className="mt-3" onClick={() => setFilter('all')}>Show all</ActionButton>
-          </div>
         ) : (
-          <div>
-            <div
-              className="iris-run-ledger-head sticky top-0 z-10 grid items-center px-5 py-2 backdrop-blur-sm"
-              style={{ gridTemplateColumns: '28px minmax(0,1.5fr) minmax(0,1.1fr) 160px 120px 92px' }}
-            >
-              <span />
-              <span className="iris-kicker">Run</span>
-              <span className="iris-kicker">Attempt</span>
-              <span className="iris-kicker">Timeline</span>
-              <span className="iris-kicker">Status</span>
-              <span className="iris-kicker text-right">Action</span>
-            </div>
-
-            <div className="iris-list-panel">
-              {filteredRuns.map((run, index) => (
-                <RunRow
-                  key={run.id}
-                  run={run}
-                  detail={runDetailsById[run.id]}
-                  isLatest={index === 0 && filter === 'all'}
-                  to={`/pipeline/items/${pipeline.id}/runs/${run.id}${pipeline.folderId ? `?folderId=${pipeline.folderId}` : ''}`}
-                />
-              ))}
-            </div>
-
-            {beforeRunId ? (
-              <div className="flex justify-center px-5 py-4">
-                <ActionButton
-                  size="xs"
-                  tone="ghost"
-                  onClick={() => void loadRuns(false)}
-                  className="text-base-content/50"
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? <RefreshCw className="animate-spin" size={12} /> : <History size={12} />}
-                  Load older runs
-                </ActionButton>
-              </div>
-            ) : null}
-          </div>
+          <PipelineRunsLedger
+            runs={filteredRuns}
+            detailsById={runDetailsById}
+            latestRunId={latestRun?.id}
+            buildRunHref={runHref}
+            hasMore={Boolean(beforeRunId)}
+            loadingMore={loadingMore}
+            onLoadMore={() => void loadRuns(false)}
+            footer={<div className="text-[10px] iris-copy-soft">{filteredRuns.length} visible run{filteredRuns.length === 1 ? '' : 's'}</div>}
+          />
         )}
       </div>
-    </div>
-  )
-}
-
-function CompactHistoryMetric({
-  label,
-  value,
-  tone = 'neutral',
-  pulse = false,
-}: {
-  label: string
-  value: string | number
-  tone?: 'neutral' | 'info' | 'warning' | 'success'
-  pulse?: boolean
-}) {
-  const toneMap = {
-    neutral: 'border-base-300 bg-base-100 text-base-content',
-    info: 'border-info/20 bg-info/5 text-info',
-    warning: 'border-warning/20 bg-warning/5 text-warning',
-    success: 'border-success/20 bg-success/5 text-success',
-  }
-
-  return (
-    <SurfaceBox variant="inset" className={`flex items-center gap-2 px-3 py-2 ${toneMap[tone]}`}>
-      {pulse ? <span className="size-1.5 rounded-full bg-current animate-pulse opacity-70" /> : null}
-      <span className="iris-kicker">{label}</span>
-      <span className="font-mono text-[12px] font-semibold">{value}</span>
-    </SurfaceBox>
+    </PipelineWorkspaceShell>
   )
 }
 
@@ -373,14 +418,12 @@ function FilterChip({
   count,
   active,
   onClick,
-  pulse = false,
   variant,
 }: {
   label: string
   count: number
   active: boolean
   onClick: () => void
-  pulse?: boolean
   variant?: 'error' | 'success' | 'warning'
 }) {
   const baseClass = active
@@ -399,7 +442,6 @@ function FilterChip({
       onClick={onClick}
       className={`flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-semibold transition-all ${baseClass}`}
     >
-      {pulse ? <span className="size-1.5 rounded-full bg-info animate-pulse shrink-0" /> : null}
       {label}
       {count > 0 ? (
         <span className={`rounded-sm px-1 py-0 text-[9px] font-bold tabular-nums ${active ? 'bg-current/20' : 'bg-base-200 text-base-content/45'}`}>
@@ -407,103 +449,5 @@ function FilterChip({
         </span>
       ) : null}
     </button>
-  )
-}
-
-function RunRow({
-  run,
-  detail,
-  isLatest,
-  to,
-}: {
-  run: PipelineRunSummaryInfo
-  detail?: PipelineRunDetailInfo
-  isLatest: boolean
-  to: string
-}) {
-  const statusMeta = getPipelineStatusMeta(run.status)
-  const isActive = isPipelineStatusActive(run.status)
-  const isResumable = isPipelineStatusResumable(run.status)
-  const latestAttempt = detail?.attempts[detail.attempts.length - 1] ?? null
-  const resumeTarget = latestAttempt ? findResumeTargetStage(latestAttempt) : null
-
-  const rowBg = statusMeta.tone === 'error'
-    ? 'hover:bg-error/5'
-    : statusMeta.tone === 'info'
-      ? 'hover:bg-info/5'
-      : statusMeta.tone === 'warning'
-        ? 'hover:bg-warning/5'
-        : 'hover:bg-base-200/40'
-
-  return (
-    <Link
-      to={to}
-      className={`iris-list-row group grid items-center gap-4 px-5 py-2.5 transition-colors ${rowBg} ${isLatest ? 'bg-primary/4' : ''}`}
-      style={{ gridTemplateColumns: '28px minmax(0,1.5fr) minmax(0,1.1fr) 160px 120px 92px' }}
-    >
-      <div className="flex justify-center">
-        <span className={`size-1.5 rounded-full ${statusMeta.dotClass} ${isActive ? 'animate-pulse' : ''}`} />
-      </div>
-
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-[12px] font-semibold tabular-nums text-base-content/78">
-            #{run.id}
-          </span>
-          {isLatest ? (
-            <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
-              latest
-            </span>
-          ) : null}
-          {isActive ? (
-            <span className="text-[9px] font-black uppercase tracking-widest text-info/75">
-              live
-            </span>
-          ) : null}
-          {isResumable ? (
-            <span className="text-[9px] font-black uppercase tracking-widest text-warning/80">
-              resumable
-            </span>
-          ) : null}
-        </div>
-        <div className="mt-0.5 truncate text-[11px] iris-copy" title={statusMeta.description}>
-          {statusMeta.description}
-        </div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="truncate text-[11px] font-semibold text-base-content/76">
-          {latestAttempt
-            ? `Attempt #${latestAttempt.executionNo} · ${getAttemptKindLabel(latestAttempt.executionKind)}`
-            : 'Loading attempt context...'}
-        </div>
-        <div className="mt-0.5 truncate text-[10px] iris-copy-soft">
-          {latestAttempt
-            ? resumeTarget && isResumable
-              ? `Resume from ${resumeTarget.stage}`
-              : `${detail?.attempts.length ?? 1} attempt${(detail?.attempts.length ?? 1) === 1 ? '' : 's'} in this run`
-            : 'Runtime summary is loading'}
-        </div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="truncate font-mono text-[11px] tabular-nums text-base-content/68">
-          {formatDateTime(run.startTime ?? run.createdAt)}
-        </div>
-        <div className="mt-0.5 font-mono text-[10px] tabular-nums iris-copy-soft">
-          {formatDuration(run.startTime ?? run.createdAt, run.endTime)}
-        </div>
-      </div>
-
-      <div>
-        <StatusBadge status={run.status} subtle mode="text" />
-      </div>
-
-      <div className="flex justify-end">
-        <span className="rounded-sm border border-base-300 bg-base-100 px-2 py-1 text-[10px] font-semibold text-base-content/60 transition-colors group-hover:border-primary/30 group-hover:text-primary">
-          Open Detail
-        </span>
-      </div>
-    </Link>
   )
 }

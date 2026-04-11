@@ -29,7 +29,8 @@ export type PipelineWorkspaceShellProps = {
   workspaceLabel?: ReactNode
   contextStrip?: ReactNode
   primaryActions?: ReactNode
-  main: ReactNode
+  main?: ReactNode
+  children?: ReactNode
   inspector?: ReactNode
   drawer?: ReactNode
   footer?: ReactNode
@@ -47,6 +48,7 @@ export function PipelineWorkspaceShell({
   contextStrip,
   primaryActions,
   main,
+  children,
   inspector,
   drawer,
   footer,
@@ -82,7 +84,7 @@ export function PipelineWorkspaceShell({
 
       <div className={cn('iris-workspace-shell flex min-h-0 flex-1 flex-row overflow-hidden', bodyClassName)}>
         <main className={cn('min-h-0 min-w-0 flex-1 overflow-hidden', mainClassName)}>
-          {main}
+          {main ?? children}
         </main>
 
         {inspector ? (
