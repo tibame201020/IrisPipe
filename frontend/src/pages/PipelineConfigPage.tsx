@@ -2,12 +2,14 @@
 import { ArrowLeft, ArrowRight, Pencil, X, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { SqlEditor } from '../components/SqlEditor'
 import { PipelineImportDialog } from '../components/PipelineImportDialog'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
+import { PipelineContextStrip } from '../components/pipeline-family/PipelineContextStrip'
+import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
 import { ActionButton, ActionLink } from '../components/ui/Action'
 import { PanelHeader, SummaryTile as SharedSummaryTile, SurfaceBox } from '../components/ui/Surface'
 import {
@@ -701,136 +703,158 @@ export function PipelineConfigPage() {
     value: stage.editorId,
   }))
   const jobWorkspaceActive = Boolean(editingStage && editingJob)
+  const inspectorModeLabel =
+    selectedItem?.kind === 'job'
+      ? 'Job inspector'
+      : selectedItem?.kind === 'stage'
+        ? 'Stage inspector'
+        : 'Pipeline overview'
+  const inspectorTitle =
+    selectedItem?.kind === 'job'
+      ? selectedJob?.jobName || 'Untitled job'
+      : selectedItem?.kind === 'stage'
+        ? selectedStage?.stageName || 'Untitled stage'
+        : draft.pipelineName || (createMode ? 'New pipeline' : 'Pipeline config')
+  const inspectorDetail =
+    selectedItem?.kind === 'job'
+      ? selectedStage
+        ? `Selected job inside ${selectedStage.stageName || 'untitled stage'}.`
+        : 'Selected job context.'
+      : selectedItem?.kind === 'stage'
+        ? 'Selected stage context for lane-level edits.'
+        : draftReadiness.guidance
+  const contextSelectionValue =
+    selectedItem?.kind === 'job'
+      ? selectedJob?.jobName || 'Job'
+      : selectedItem?.kind === 'stage'
+        ? selectedStage?.stageName || 'Stage'
+        : 'Pipeline'
+  const contextSelectionDetail =
+    selectedItem?.kind === 'job'
+      ? 'Selected job'
+      : selectedItem?.kind === 'stage'
+        ? 'Selected stage'
+        : 'No selection'
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
-      {createMode ? (
-        <div className="iris-shell-bar flex shrink-0 items-center justify-between px-6 py-3">
-          <div className="breadcrumbs text-[13px] text-base-content/50">
-            <ul>
-              <li>
-                <Link to="/pipeline">Root</Link>
-              </li>
-              {Number.isFinite(targetFolderId) ? (
-                <li>
-                  <Link to={`/pipeline/folders/${targetFolderId}`}>Folder #{targetFolderId}</Link>
-                </li>
+      <div className="shrink-0 px-5 pt-4">
+        <PipelineContextStrip
+          eyebrow={createMode ? 'Draft config' : 'Config workspace'}
+          title={draft.pipelineName || (createMode ? 'New pipeline' : 'Pipeline config')}
+          detail={
+            selectedItem
+              ? `${inspectorDetail} ${draftReadiness.headline}`
+              : draftReadiness.guidance
+          }
+          metrics={[
+            {
+              label: 'Stages',
+              value: draft.stages.length,
+              detail: 'Topology lanes',
+              tone: 'neutral',
+            },
+            {
+              label: 'Jobs',
+              value: draftJobCount,
+              detail: 'Draft jobs',
+              tone: 'neutral',
+            },
+            {
+              label: 'Issues',
+              value: draftReadiness.issueCount,
+              detail: draftReadiness.issueCount > 0 ? 'Validation findings' : 'Runnable',
+              tone: draftReadiness.issueCount > 0 ? 'warning' : 'success',
+            },
+            {
+              label: 'Context',
+              value: contextSelectionValue,
+              detail: contextSelectionDetail,
+              tone: selectedItem ? 'primary' : 'neutral',
+            },
+          ]}
+          actions={(
+            <>
+              <ActionButton
+                tone="toolbar"
+                onClick={() => {
+                  setImportDialogOpen(true)
+                  setImportError(null)
+                  setError(null)
+                }}
+              >
+                <FileUp size={14} />
+                Import File
+              </ActionButton>
+              <ActionButton
+                tone="ghost"
+                onClick={() => {
+                  insertStageAfter()
+                }}
+              >
+                <Plus size={14} />
+                Add Stage
+              </ActionButton>
+              {!createMode ? (
+                <ActionButton
+                  tone="outline"
+                  className="border-success/30 text-success hover:bg-success/8"
+                  disabled={executing || draftReadiness.issueCount > 0}
+                  title={draftReadiness.issueCount > 0 ? 'Resolve validation blockers before executing this pipeline.' : 'Start a fresh logical run from the current saved pipeline definition.'}
+                  onClick={() => void handleExecute()}
+                >
+                  <Zap size={14} className={executing ? 'animate-pulse' : ''} />
+                  {executing ? 'Launching...' : 'Execute'}
+                </ActionButton>
               ) : null}
-              <li className="font-semibold text-base-content">New Pipeline</li>
-            </ul>
-          </div>
-          <span className="badge badge-ghost badge-sm">Draft</span>
-        </div>
-      ) : null}
-
-      <div className="iris-toolbar-band flex shrink-0 items-center justify-between gap-4 px-5 py-3">
-        <div className="iris-signal-strip flex min-w-0 flex-wrap items-center gap-2 px-3 py-2 text-xs">
-          <span className="badge badge-ghost badge-sm">Topology</span>
-          <span className="badge badge-ghost badge-sm">{draft.stages.length} stages</span>
-          <span className="badge badge-ghost badge-sm">{draftJobCount} jobs</span>
-          <span className={`badge badge-sm ${draftReadiness.issueCount > 0 ? 'badge-warning' : 'badge-success'}`}>
-            {draftReadiness.issueCount > 0 ? `${draftReadiness.issueCount} issues` : 'Runnable'}
-          </span>
-          <span className="text-[11px] iris-copy">
-            {draftReadiness.guidance}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <ActionButton
-            tone="toolbar"
-            onClick={() => {
-              setImportDialogOpen(true)
-              setImportError(null)
-              setError(null)
-            }}
-          >
-            <FileUp size={14} />
-            Import File
-          </ActionButton>
-          <ActionButton
-            tone="ghost"
-            onClick={() => {
-              insertStageAfter()
-            }}
-          >
-            <Plus size={14} />
-            Add Stage
-          </ActionButton>
-          {!createMode ? (
-            <ActionButton
-              tone="outline"
-              className="border-success/30 text-success hover:bg-success/8"
-              disabled={executing || draftReadiness.issueCount > 0}
-              title={draftReadiness.issueCount > 0 ? 'Resolve validation blockers before executing this pipeline.' : 'Start a fresh logical run from the current saved pipeline definition.'}
-              onClick={() => void handleExecute()}
-            >
-              <Zap size={14} className={executing ? 'animate-pulse' : ''} />
-              {executing ? 'Launching...' : 'Execute'}
-            </ActionButton>
-          ) : null}
-          <ActionButton tone="primary" disabled={saving} onClick={() => void handleSave()}>
-            <Save size={14} />
-            {saving ? 'Saving...' : createMode ? 'Create Pipeline' : 'Save Pipeline'}
-          </ActionButton>
-        </div>
+              <ActionButton tone="primary" disabled={saving} onClick={() => void handleSave()}>
+                <Save size={14} />
+                {saving ? 'Saving...' : createMode ? 'Create Pipeline' : 'Save Pipeline'}
+              </ActionButton>
+            </>
+          )}
+        />
       </div>
 
       {error ? <div className="border-b border-base-300 bg-error/8 px-6 py-3 text-sm text-error">{error}</div> : null}
 
       <div className="iris-workspace-shell relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <main className="min-h-0 flex-1 overflow-hidden">
-            <StageLaneBoard
-              mode="topology"
-              stages={stageLanes}
-              emptyTitle="No stages"
-              emptyDescription="Add the first stage to begin defining this pipeline."
-              onMoveStage={moveStageById}
-              onMoveJob={moveJobById}
-            />
-          </main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          <StageLaneBoard
+            mode="topology"
+            stages={stageLanes}
+            emptyTitle="No stages"
+            emptyDescription="Add the first stage to begin defining this pipeline."
+            onMoveStage={moveStageById}
+            onMoveJob={moveJobById}
+          />
+        </main>
 
-          <div
-            className={`iris-workspace-dock shrink-0 overflow-hidden transition-[height] duration-200 ${
-              jobWorkspaceActive && editingStage && editingJob ? 'h-[360px] xl:h-[420px]' : 'h-[56px]'
-            }`}
-          >
-            {jobWorkspaceActive && editingStage && editingJob ? (
-              <JobWorkspacePanel
-                stage={editingStage}
-                job={editingJob}
-                stageOptions={stageOptions}
-                validation={validationSummary}
-                onDismiss={() => setEditingJobTarget(null)}
-                onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
-                onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
-                onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
-                onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
-                onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
-                onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
-                onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
-                onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
-                onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
-                  updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
-                }
-                onRemoveParameter={(stepEditorId, parameterEditorId) =>
-                  removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
-                }
-              />
-            ) : (
-              <CollapsedJobWorkspaceHint
-                selectedStageName={selectedStage?.stageName}
-                selectedJobName={selectedJob?.jobName}
-                onOpenSelectedJob={
-                  selectedStage && selectedJob ? () => openJobEditor(selectedStage.editorId, selectedJob.editorId) : undefined
-                }
-              />
-            )}
-          </div>
-        </div>
-
-        <aside className="iris-inspector-rail flex w-[336px] shrink-0 flex-col border-l">
+        <PipelineOverviewRail
+          widthClassName="w-[300px] xl:w-[316px]"
+          headerClassName="px-4 py-3"
+          bodyClassName="px-4 py-4"
+          header={(
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="iris-kicker">{inspectorModeLabel}</div>
+                  <div className="mt-1 truncate text-sm font-semibold text-base-content">{inspectorTitle}</div>
+                  <div className="mt-1 text-[11px] iris-copy">{inspectorDetail}</div>
+                </div>
+                {selectedItem ? (
+                  <span className="badge badge-primary badge-sm shrink-0">{selectedItem.kind}</span>
+                ) : (
+                  <span className="badge badge-ghost badge-sm shrink-0">Overview</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="badge badge-ghost badge-sm">{draftReadiness.headline}</span>
+                <span className="badge badge-ghost badge-sm">Context only</span>
+              </div>
+            </div>
+          )}
+        >
           {selectedStage && selectedItem?.kind === 'stage' ? (
             <StageEditorPanel
               stage={selectedStage}
@@ -884,7 +908,45 @@ export function PipelineConfigPage() {
               }}
             />
           )}
-        </aside>
+        </PipelineOverviewRail>
+      </div>
+
+      <div
+        className={`iris-workspace-dock shrink-0 overflow-hidden transition-[height] duration-200 ${
+          jobWorkspaceActive && editingStage && editingJob ? 'h-[360px] xl:h-[420px]' : 'h-[56px]'
+        }`}
+      >
+        {jobWorkspaceActive && editingStage && editingJob ? (
+          <JobWorkspacePanel
+            stage={editingStage}
+            job={editingJob}
+            stageOptions={stageOptions}
+            validation={validationSummary}
+            onDismiss={() => setEditingJobTarget(null)}
+            onChange={(recipe) => updateJob(editingStage.editorId, editingJob.editorId, recipe)}
+            onMoveToStage={(targetStageId) => moveJobToStage(editingStage.editorId, editingJob.editorId, targetStageId)}
+            onRemoveJob={() => removeJobFromStage(editingStage.editorId, editingJob.editorId)}
+            onAddStep={() => addStepToJob(editingStage.editorId, editingJob.editorId)}
+            onUpdateStep={(stepEditorId, recipe) => updateStep(editingStage.editorId, editingJob.editorId, stepEditorId, recipe)}
+            onRemoveStep={(stepEditorId) => removeStepFromJob(editingStage.editorId, editingJob.editorId, stepEditorId)}
+            onMoveStep={(stepEditorId, direction) => moveStepInJob(editingStage.editorId, editingJob.editorId, stepEditorId, direction)}
+            onAddParameter={(stepEditorId) => addParameterToStep(editingStage.editorId, editingJob.editorId, stepEditorId)}
+            onUpdateParameter={(stepEditorId, parameterEditorId, recipe) =>
+              updateParameter(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId, recipe)
+            }
+            onRemoveParameter={(stepEditorId, parameterEditorId) =>
+              removeParameterFromStep(editingStage.editorId, editingJob.editorId, stepEditorId, parameterEditorId)
+            }
+          />
+        ) : (
+          <CollapsedJobWorkspaceHint
+            selectedStageName={selectedStage?.stageName}
+            selectedJobName={selectedJob?.jobName}
+            onOpenSelectedJob={
+              selectedStage && selectedJob ? () => openJobEditor(selectedStage.editorId, selectedJob.editorId) : undefined
+            }
+          />
+        )}
       </div>
 
       <PipelineImportDialog
