@@ -168,12 +168,12 @@ export function StageLaneBoard({
         style={{
           backgroundImage:
             mode === 'topology'
-              ? 'linear-gradient(180deg, hsl(var(--bc)/0.018), transparent 20%)'
+              ? 'radial-gradient(circle at 1px 1px, var(--theme-topology-canvas-grid) 1px, transparent 0), linear-gradient(180deg, hsl(var(--bc)/0.03), transparent 24%)'
               : 'radial-gradient(circle, hsl(var(--bc)/0.05) 1px, transparent 1px)',
-          backgroundSize: mode === 'topology' ? 'auto' : '20px 20px',
+          backgroundSize: mode === 'topology' ? '18px 18px, auto' : '20px 20px',
         }}
       >
-        <div className={`h-full ${mode === 'topology' ? 'iris-topology-shell border-base-300/90 bg-base-200/80 px-4 py-4 shadow-[0_10px_24px_hsl(var(--bc)/0.04)]' : 'px-5 py-4'}`}>
+        <div className={`h-full ${mode === 'topology' ? 'iris-topology-shell px-4 py-4' : 'px-5 py-4'}`}>
           <SortableContext items={stages.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
             <div className={`flex h-full min-w-max items-start ${mode === 'topology' ? 'gap-4 pb-2' : 'gap-3.5 pb-2'}`}>
               {stages.map((stage, index) => (

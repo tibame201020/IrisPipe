@@ -6,7 +6,9 @@ import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { PipelineAttemptTimeline } from '../components/pipeline-family/PipelineAttemptTimeline'
 import { PipelineDiagnosticsDrawer } from '../components/pipeline-family/PipelineDiagnosticsDrawer'
+import { PipelineFamilyActions } from '../components/pipeline-family/PipelineFamilyActions'
 import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
+import { PIPELINE_FAMILY_CONTEXT_DETAIL, PIPELINE_FAMILY_RAIL_WIDTH, PIPELINE_FAMILY_TERMS } from '../components/pipeline-family/ui-contract'
 import { StatusBadge } from '../components/StatusBadge'
 import { ActionButton, ActionLink } from '../components/ui/Action'
 import { DialogShell } from '../components/ui/DialogShell'
@@ -217,6 +219,11 @@ export function RunDetailPage() {
     }
   }
 
+  useEffect(() => {
+    setSelectedStageId(null)
+    setSelectedJobId(null)
+  }, [selectedAttemptId, selectedAttempt?.executionId])
+
   if (loading && !detail) {
     return <div className="p-12"><LoadingState /></div>
   }
@@ -261,11 +268,6 @@ export function RunDetailPage() {
         summary: summarizePipelineStage(selectedStage).summary,
       }
     : null
-
-  useEffect(() => {
-    setSelectedStageId(null)
-    setSelectedJobId(null)
-  }, [selectedAttemptId, selectedAttempt?.executionId])
 
   return (
     <div className="iris-page-canvas flex h-full min-h-0 flex-col overflow-hidden">
@@ -319,7 +321,7 @@ export function RunDetailPage() {
 
             <div className="flex w-full max-w-lg flex-col gap-2 sm:w-auto">
               <div className="grid grid-cols-2 gap-2">
-                <SemanticSummaryTile kicker="Attempts" value={String(detail.attempts.length)} detail="Logical run timeline" />
+                <SemanticSummaryTile kicker="Attempts" value={String(detail.attempts.length)} detail={`${PIPELINE_FAMILY_TERMS.run} timeline`} />
                 <SemanticSummaryTile
                   kicker="Stage Progress"
                   value={selectedAttemptProgress ? `${selectedAttemptProgress.completedStages}/${selectedAttemptProgress.totalStages}` : '0/0'}
@@ -339,47 +341,57 @@ export function RunDetailPage() {
                 />
               </div>
 
-              <div className="iris-signal-strip flex flex-wrap items-center gap-1 px-1 py-1">
-                <ActionButton
-                  size="xs"
-                  tone="dangerGhost"
-                  disabled={!actionDescriptors.stop.enabled || !!pendingAction}
-                  title={actionDescriptors.stop.enabled ? actionDescriptors.stop.detail : actionDescriptors.stop.disabledReason}
-                  onClick={() => setConfirmAction('stop')}
-                >
-                  <Square size={12} />Stop
-                </ActionButton>
-                <ActionButton
-                  size="xs"
-                  tone="ghost"
-                  disabled={!actionDescriptors.resume.enabled || !!pendingAction}
-                  title={actionDescriptors.resume.enabled ? actionDescriptors.resume.detail : actionDescriptors.resume.disabledReason}
-                  onClick={() => setConfirmAction('resume')}
-                >
-                  <PlayCircle size={12} />Resume
-                </ActionButton>
-                <ActionButton
-                  size="xs"
-                  tone="ghost"
-                  disabled={!actionDescriptors.rerun.enabled || !!pendingAction}
-                  title={actionDescriptors.rerun.detail}
-                  onClick={() => setConfirmAction('rerun')}
-                >
-                  <RotateCcw size={12} />Rerun
-                </ActionButton>
-                <ActionButton
-                  size="xs"
-                  tone="dangerGhost"
-                  disabled={!actionDescriptors.delete.enabled || !!pendingAction}
-                  title={actionDescriptors.delete.enabled ? actionDescriptors.delete.detail : actionDescriptors.delete.disabledReason}
-                  onClick={() => setConfirmAction('delete')}
-                >
-                  <Trash2 size={12} />
-                </ActionButton>
-                <ActionButton size="xs" tone="icon" square onClick={() => void loadDetail()}>
-                  <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-                </ActionButton>
-              </div>
+              <PipelineFamilyActions
+                secondary={(
+                  <>
+                    <ActionButton
+                      size="xs"
+                      tone="ghost"
+                      disabled={!actionDescriptors.resume.enabled || !!pendingAction}
+                      title={actionDescriptors.resume.enabled ? actionDescriptors.resume.detail : actionDescriptors.resume.disabledReason}
+                      onClick={() => setConfirmAction('resume')}
+                    >
+                      <PlayCircle size={12} />Resume
+                    </ActionButton>
+                    <ActionButton
+                      size="xs"
+                      tone="ghost"
+                      disabled={!actionDescriptors.rerun.enabled || !!pendingAction}
+                      title={actionDescriptors.rerun.detail}
+                      onClick={() => setConfirmAction('rerun')}
+                    >
+                      <RotateCcw size={12} />Rerun
+                    </ActionButton>
+                  </>
+                )}
+                danger={(
+                  <>
+                    <ActionButton
+                      size="xs"
+                      tone="dangerGhost"
+                      disabled={!actionDescriptors.stop.enabled || !!pendingAction}
+                      title={actionDescriptors.stop.enabled ? actionDescriptors.stop.detail : actionDescriptors.stop.disabledReason}
+                      onClick={() => setConfirmAction('stop')}
+                    >
+                      <Square size={12} />Stop
+                    </ActionButton>
+                    <ActionButton
+                      size="xs"
+                      tone="dangerGhost"
+                      disabled={!actionDescriptors.delete.enabled || !!pendingAction}
+                      title={actionDescriptors.delete.enabled ? actionDescriptors.delete.detail : actionDescriptors.delete.disabledReason}
+                      onClick={() => setConfirmAction('delete')}
+                    >
+                      <Trash2 size={12} />
+                    </ActionButton>
+                  </>
+                )}
+                utility={(
+                  <ActionButton size="xs" tone="icon" square onClick={() => void loadDetail()}>
+                    <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+                  </ActionButton>
+                )}
+              />
             </div>
           </div>
 
@@ -405,7 +417,7 @@ export function RunDetailPage() {
                     {selectedAttempt ? `Attempt #${selectedAttempt.executionNo} · ${getAttemptKindLabel(selectedAttempt.executionKind)}` : 'No attempt selected'}
                   </div>
                   <div className="mt-1 text-[11px] iris-copy">
-                    Job selections drive the diagnostics drawer and stay scoped to this attempt snapshot.
+                    {PIPELINE_FAMILY_CONTEXT_DETAIL.runDetail}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-[10px] iris-copy-soft">
@@ -419,14 +431,14 @@ export function RunDetailPage() {
                 <StageLaneBoard
                   stages={stageLanes}
                   emptyTitle="No attempt stages"
-                  emptyDescription="This attempt did not materialize any runtime stage projection."
+                  emptyDescription={`This attempt did not materialize any runtime ${PIPELINE_FAMILY_TERMS.stageProjection}.`}
                 />
               </div>
             </SurfaceBox>
           </div>
 
           <PipelineOverviewRail
-            className="w-full xl:w-[336px]"
+            className={PIPELINE_FAMILY_RAIL_WIDTH.detail}
             header={(
               <div>
                 <div className="iris-header">Run Overview</div>

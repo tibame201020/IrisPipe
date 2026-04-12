@@ -9,7 +9,9 @@ import { PipelineImportDialog } from '../components/PipelineImportDialog'
 import { LoadingState } from '../components/LoadingState'
 import { StageLaneBoard, type StageLaneData } from '../components/StageLaneBoard'
 import { PipelineContextStrip } from '../components/pipeline-family/PipelineContextStrip'
+import { PipelineFamilyActions } from '../components/pipeline-family/PipelineFamilyActions'
 import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
+import { PIPELINE_FAMILY_CONTEXT_DETAIL, PIPELINE_FAMILY_RAIL_WIDTH, PIPELINE_FAMILY_TERMS } from '../components/pipeline-family/ui-contract'
 import { ActionButton, ActionLink } from '../components/ui/Action'
 import { PanelHeader, SummaryTile as SharedSummaryTile, SurfaceBox } from '../components/ui/Surface'
 import {
@@ -771,17 +773,17 @@ export function PipelineConfigPage() {
       <div className="shrink-0 px-5 pt-4">
         <PipelineContextStrip
           eyebrow={createMode ? 'Draft config' : 'Config workspace'}
-          title={draft.pipelineName || (createMode ? 'New pipeline' : 'Pipeline config')}
+          title={draft.pipelineName || (createMode ? 'New pipeline' : `${PIPELINE_FAMILY_TERMS.pipeline} config`)}
           detail={
             selectedItem
               ? `${inspectorDetail} ${draftReadiness.headline}`
-              : draftReadiness.guidance
+              : `${PIPELINE_FAMILY_CONTEXT_DETAIL.config} ${draftReadiness.guidance}`
           }
           metrics={[
             {
               label: 'Stages',
               value: draft.stages.length,
-              detail: 'Topology lanes',
+              detail: `${PIPELINE_FAMILY_TERMS.stageProjection} lanes`,
               tone: 'neutral',
             },
             {
@@ -804,44 +806,52 @@ export function PipelineConfigPage() {
             },
           ]}
           actions={(
-            <>
-              <ActionButton
-                tone="toolbar"
-                onClick={() => {
-                  setImportDialogOpen(true)
-                  setImportError(null)
-                  setError(null)
-                }}
-              >
-                <FileUp size={14} />
-                Import File
-              </ActionButton>
-              <ActionButton
-                tone="ghost"
-                onClick={() => {
-                  insertStageAfter()
-                }}
-              >
-                <Plus size={14} />
-                Add Stage
-              </ActionButton>
-              {!createMode ? (
-                <ActionButton
-                  tone="outline"
-                  className="border-success/30 text-success hover:bg-success/8"
-                  disabled={executing || draftReadiness.issueCount > 0}
-                  title={draftReadiness.issueCount > 0 ? 'Resolve validation blockers before executing this pipeline.' : 'Start a fresh logical run from the current saved pipeline definition.'}
-                  onClick={() => void handleExecute()}
-                >
-                  <Zap size={14} className={executing ? 'animate-pulse' : ''} />
-                  {executing ? 'Launching...' : 'Execute'}
-                </ActionButton>
-              ) : null}
-              <ActionButton tone="primary" disabled={saving} onClick={() => void handleSave()}>
-                <Save size={14} />
-                {saving ? 'Saving...' : createMode ? 'Create Pipeline' : 'Save Pipeline'}
-              </ActionButton>
-            </>
+            <PipelineFamilyActions
+              secondary={(
+                <>
+                  <ActionButton
+                    tone="toolbar"
+                    onClick={() => {
+                      setImportDialogOpen(true)
+                      setImportError(null)
+                      setError(null)
+                    }}
+                  >
+                    <FileUp size={14} />
+                    Import File
+                  </ActionButton>
+                  <ActionButton
+                    tone="ghost"
+                    onClick={() => {
+                      insertStageAfter()
+                    }}
+                  >
+                    <Plus size={14} />
+                    Add Stage
+                  </ActionButton>
+                </>
+              )}
+              primary={(
+                <>
+                  {!createMode ? (
+                    <ActionButton
+                      tone="outline"
+                      className="border-success/30 text-success hover:bg-success/8"
+                      disabled={executing || draftReadiness.issueCount > 0}
+                      title={draftReadiness.issueCount > 0 ? 'Resolve validation blockers before executing this pipeline.' : 'Start a fresh logical run from the current saved pipeline definition.'}
+                      onClick={() => void handleExecute()}
+                    >
+                      <Zap size={14} className={executing ? 'animate-pulse' : ''} />
+                      {executing ? 'Launching...' : 'Execute'}
+                    </ActionButton>
+                  ) : null}
+                  <ActionButton tone="primary" disabled={saving} onClick={() => void handleSave()}>
+                    <Save size={14} />
+                    {saving ? 'Saving...' : createMode ? 'Create Pipeline' : 'Save Pipeline'}
+                  </ActionButton>
+                </>
+              )}
+            />
           )}
         />
       </div>
@@ -901,7 +911,7 @@ export function PipelineConfigPage() {
         </div>
 
         <PipelineOverviewRail
-          widthClassName="w-[300px] xl:w-[316px]"
+          widthClassName={PIPELINE_FAMILY_RAIL_WIDTH.compact}
           headerClassName="px-4 py-3"
           bodyClassName="px-4 py-4"
           header={(
@@ -2163,5 +2173,3 @@ function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number) {
   next.splice(toIndex, 0, item)
   return next
 }
-
-

@@ -36,15 +36,15 @@ export const PipelineOverviewRail = forwardRef<HTMLElement, PipelineOverviewRail
       {...props}
     >
       {header ? (
-        <div className={cn('shrink-0 border-b border-base-300/35 px-5 py-4', headerClassName)}>
+        <div className={cn('sticky top-0 z-10 shrink-0 border-b border-base-300/35 bg-inherit px-5 py-4 backdrop-blur-sm', headerClassName)}>
           {header}
         </div>
       ) : null}
-      <div className={cn('min-h-0 flex-1 overflow-y-auto px-5 py-5', bodyClassName)}>
+      <div className={cn('iris-family-scroll-rail min-h-0 flex-1 overflow-y-auto px-5 py-5', bodyClassName)}>
         {children}
       </div>
       {footer ? (
-        <div className={cn('shrink-0 border-t border-base-300/35 px-5 py-4', footerClassName)}>
+        <div className={cn('sticky bottom-0 z-10 shrink-0 border-t border-base-300/35 bg-inherit px-5 py-4 backdrop-blur-sm', footerClassName)}>
           {footer}
         </div>
       ) : null}
