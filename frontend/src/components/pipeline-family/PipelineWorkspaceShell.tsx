@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '../../lib/cn'
 import { SurfaceBox } from '../ui/Surface'
+import { PIPELINE_FAMILY_WORKSPACE_LABEL } from './ui-contract'
 
 export type PipelineWorkspaceShellTab = {
   key: string
@@ -44,7 +45,7 @@ export type PipelineWorkspaceShellProps = {
 export function PipelineWorkspaceShell({
   identity,
   tabs,
-  workspaceLabel = 'Pipeline family workspace',
+  workspaceLabel = PIPELINE_FAMILY_WORKSPACE_LABEL,
   contextStrip,
   primaryActions,
   main,

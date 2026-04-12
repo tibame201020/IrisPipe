@@ -48,6 +48,10 @@
     --theme-topology-order-copy: hsl(var(--nc) / 0.86);
     --theme-topology-line-highlight: hsl(var(--b1) / 0.08);
     --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.14);
+    --theme-topology-canvas-bg: linear-gradient(180deg, hsl(var(--b2) / 0.36), hsl(var(--b3) / 0.2));
+    --theme-topology-canvas-edge: hsl(var(--bc) / 0.14);
+    --theme-topology-canvas-shadow: inset 0 0 0 1px hsl(var(--b1) / 0.22), 0 12px 28px hsl(var(--bc) / 0.04);
+    --theme-topology-canvas-grid: hsl(var(--bc) / 0.07);
     --iris-radius-shell: 0.375rem;
     --iris-radius-section: 0.5rem;
     --iris-radius-inset: 0.375rem;
@@ -102,6 +106,10 @@
     --theme-topology-order-copy: hsl(var(--nc) / 0.86);
     --theme-topology-line-highlight: hsl(var(--b1) / 0.02);
     --theme-topology-connector-shadow: 0 0 0 1px hsl(var(--b1) / 0.08);
+    --theme-topology-canvas-bg: linear-gradient(180deg, hsl(var(--n) / 0.56), hsl(var(--b2) / 0.9));
+    --theme-topology-canvas-edge: hsl(var(--bc) / 0.24);
+    --theme-topology-canvas-shadow: inset 0 0 0 1px hsl(var(--b1) / 0.08), 0 16px 34px hsl(var(--bc) / 0.14);
+    --theme-topology-canvas-grid: hsl(var(--bc) / 0.13);
   }
 
   [data-theme='light'],
@@ -322,6 +330,12 @@
       linear-gradient(180deg, hsl(var(--b1) / 0.3), hsl(var(--b2) / 0.12));
   }
 
+  .iris-family-scroll-main,
+  .iris-family-scroll-rail {
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
   .iris-inspector-rail {
     border-color: var(--theme-border-default);
     background:
@@ -382,12 +396,12 @@
   }
 
   .iris-topology-shell {
-    border: 1px solid var(--theme-topology-edge);
+    border: 1px solid var(--theme-topology-canvas-edge);
     border-radius: var(--iris-radius-section);
-    background: var(--theme-topology-shell-bg);
-    box-shadow:
-      inset 0 1px 0 var(--theme-topology-shell-highlight),
-      var(--theme-topology-shell-shadow);
+    background: var(--theme-topology-canvas-bg);
+    box-shadow: var(--theme-topology-canvas-shadow);
+    outline: 1px solid hsl(var(--b1) / 0.22);
+    outline-offset: -1px;
   }
 
   .iris-topology-job {

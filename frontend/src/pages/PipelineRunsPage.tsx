@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { PipelineContextStrip } from '../components/pipeline-family/PipelineContextStrip'
+import { PipelineFamilyActions } from '../components/pipeline-family/PipelineFamilyActions'
 import { PipelineOverviewRail } from '../components/pipeline-family/PipelineOverviewRail'
 import { PipelineRunsLedger } from '../components/pipeline-family/PipelineRunsLedger'
-import { PipelineWorkspaceShell } from '../components/pipeline-family/PipelineWorkspaceShell'
+import { PIPELINE_FAMILY_CONTEXT_DETAIL, PIPELINE_FAMILY_RAIL_WIDTH } from '../components/pipeline-family/ui-contract'
 import { StatusBadge } from '../components/StatusBadge'
 import { ActionButton, ActionLink } from '../components/ui/Action'
 import { executePipeline, getApiErrorMessage, getPipelineRuns, getRunDetail } from '../lib/api'
@@ -188,72 +189,42 @@ export function PipelineRunsPage() {
             ? 'Completed'
             : 'Resumable'
 
-  const shellDetail = latestRun
-    ? `Latest run #${latestRun.id} · ${stats?.total ?? 0} total records · ${visibleCountLabel}`
-    : 'Execute this pipeline to create the first logical run.'
-
   const runHref = (run: PipelineRunSummaryInfo) =>
     `/pipeline/items/${pipelineBaseId}/runs/${run.id}${folderQuery ? `?folderId=${folderQuery}` : ''}`
 
   return (
-    <PipelineWorkspaceShell
-      identity={{
-        breadcrumb: pipeline ? `Pipeline / ${pipeline.pipelineName}` : 'Pipeline / Runs',
-        title: 'Runs',
-        detail: shellDetail,
-        chips: latestRun ? (
-          <>
-            <StatusBadge status={latestRun.status} subtle />
-            <span className="badge badge-ghost badge-sm">Logical run history</span>
-            <span className="badge badge-ghost badge-sm">{activeFilterLabel}</span>
-          </>
-        ) : (
-          <span className="badge badge-ghost badge-sm">No runs yet</span>
-        ),
-      }}
-      tabs={[
-        {
-          key: 'config',
-          label: 'Config',
-          href: `/pipeline/items/${pipelineBaseId}${folderQuery ? `?folderId=${folderQuery}` : ''}`,
-        },
-        {
-          key: 'runs',
-          label: 'Runs',
-          active: true,
-        },
-        {
-          key: 'detail',
-          label: 'Run Detail',
-          href: latestRun ? runHref(latestRun) : undefined,
-          disabled: !latestRun,
-        },
-      ]}
-      primaryActions={
-        <>
-          <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          </ActionButton>
-          <ActionButton
-            tone="primary"
-            onClick={() => void handleExecute()}
-            className={executing ? 'iris-execute-ring' : ''}
-            disabled={executing}
-            title="Start a fresh logical run from the current saved pipeline definition."
-          >
-            <Zap size={13} className={executing ? 'animate-pulse' : ''} />
-            {executing ? 'Launching...' : 'Execute'}
-          </ActionButton>
-        </>
-      }
-      contextStrip={
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 px-5 pt-4">
         <PipelineContextStrip
           eyebrow="Operations ledger"
           title="Logical run history"
-          detail="Run rows are the primary surface. Use detail view for attempt timelines, runtime boards, and diagnostics."
+          detail={PIPELINE_FAMILY_CONTEXT_DETAIL.runs}
           actions={
-            <div className="text-[10px] iris-copy-soft">
-              {filteredRuns.length} visible {filter === 'all' ? 'of all runs' : `in ${activeFilterLabel.toLowerCase()} view`}
+            <div className="flex flex-wrap items-center gap-2">
+              {latestRun ? <StatusBadge status={latestRun.status} subtle /> : <span className="badge badge-ghost badge-sm">No runs yet</span>}
+              <PipelineFamilyActions
+                primary={(
+                  <ActionButton
+                    size="xs"
+                    tone="primary"
+                    onClick={() => void handleExecute()}
+                    className={executing ? 'iris-execute-ring' : ''}
+                    disabled={executing}
+                    title="Start a fresh logical run from the current saved pipeline definition."
+                  >
+                    <Zap size={13} className={executing ? 'animate-pulse' : ''} />
+                    {executing ? 'Launching...' : 'Execute'}
+                  </ActionButton>
+                )}
+                utility={(
+                  <ActionButton size="xs" tone="icon" square onClick={() => void loadRuns(true)} aria-label="Refresh run history">
+                    <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+                  </ActionButton>
+                )}
+              />
+              <div className="text-[10px] iris-copy-soft">
+                {filteredRuns.length} visible {filter === 'all' ? 'of all runs' : `in ${activeFilterLabel.toLowerCase()} view`}
+              </div>
             </div>
           }
         >
@@ -269,11 +240,65 @@ export function PipelineRunsPage() {
             ) : null}
           </div>
         </PipelineContextStrip>
-      }
-      mainClassName="min-h-0"
-      inspector={
+      </div>
+
+      <div className="iris-workspace-shell flex min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 min-w-0 flex-1">
+          <div className="iris-family-scroll-main flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-5 pt-4">
+            {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
+
+            {runs.length === 0 ? (
+              loading ? (
+                <PipelineRunsLedger
+                  runs={[]}
+                  detailsById={runDetailsById}
+                  loading
+                  buildRunHref={runHref}
+                />
+              ) : (
+                <div className="flex min-h-[56vh] flex-col items-center justify-center py-24 text-center">
+                  <div className="iris-inset-panel mb-5 p-7">
+                    <TimerReset size={36} className="text-base-content/30" />
+                  </div>
+                  <h3 className="text-lg font-bold">No runs yet</h3>
+                  <p className="mt-1.5 max-w-xs text-sm text-base-content/50">
+                    Execute this pipeline to create the first logical run and ledger entry.
+                  </p>
+                  <ActionButton
+                    tone="primary"
+                    onClick={() => void handleExecute()}
+                    disabled={executing}
+                    className={`mt-5 ${executing ? 'iris-execute-ring' : ''}`}
+                  >
+                    <Zap size={14} />
+                    {executing ? 'Launching...' : 'Execute Now'}
+                  </ActionButton>
+                </div>
+              )
+            ) : filteredRuns.length === 0 ? (
+              <div className="flex min-h-[56vh] flex-col items-center justify-center py-20 text-center">
+                <p className="text-sm text-base-content/45">No runs match this semantic filter.</p>
+                <ActionButton size="xs" tone="ghost" className="mt-3" onClick={() => setFilter('all')}>
+                  Show all
+                </ActionButton>
+              </div>
+            ) : (
+              <PipelineRunsLedger
+                runs={filteredRuns}
+                detailsById={runDetailsById}
+                latestRunId={latestRun?.id}
+                buildRunHref={runHref}
+                hasMore={Boolean(beforeRunId)}
+                loadingMore={loadingMore}
+                onLoadMore={() => void loadRuns(false)}
+                footer={<div className="text-[10px] iris-copy-soft">{filteredRuns.length} visible run{filteredRuns.length === 1 ? '' : 's'}</div>}
+              />
+            )}
+          </div>
+        </div>
+
         <PipelineOverviewRail
-          widthClassName="w-[320px]"
+          widthClassName={PIPELINE_FAMILY_RAIL_WIDTH.ledger}
           className="hidden xl:flex"
           header={
             <div className="space-y-1">
@@ -356,60 +381,8 @@ export function PipelineRunsPage() {
             </div>
           </div>
         </PipelineOverviewRail>
-      }
-    >
-      <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-5 pt-4">
-        {error ? <div className="shrink-0 border-b border-error/20 bg-error/5 px-5 py-2 text-xs text-error">{error}</div> : null}
-
-        {runs.length === 0 ? (
-          loading ? (
-            <PipelineRunsLedger
-              runs={[]}
-              detailsById={runDetailsById}
-              loading
-              buildRunHref={runHref}
-            />
-          ) : (
-            <div className="flex min-h-[56vh] flex-col items-center justify-center py-24 text-center">
-              <div className="iris-inset-panel mb-5 p-7">
-                <TimerReset size={36} className="text-base-content/30" />
-              </div>
-              <h3 className="text-lg font-bold">No runs yet</h3>
-              <p className="mt-1.5 max-w-xs text-sm text-base-content/50">
-                Execute this pipeline to create the first logical run and ledger entry.
-              </p>
-              <ActionButton
-                tone="primary"
-                onClick={() => void handleExecute()}
-                disabled={executing}
-                className={`mt-5 ${executing ? 'iris-execute-ring' : ''}`}
-              >
-                <Zap size={14} />
-                {executing ? 'Launching...' : 'Execute Now'}
-              </ActionButton>
-            </div>
-          )
-        ) : filteredRuns.length === 0 ? (
-          <div className="flex min-h-[56vh] flex-col items-center justify-center py-20 text-center">
-            <p className="text-sm text-base-content/45">No runs match this semantic filter.</p>
-            <ActionButton size="xs" tone="ghost" className="mt-3" onClick={() => setFilter('all')}>
-              Show all
-            </ActionButton>
-          </div>
-        ) : (
-          <PipelineRunsLedger
-            runs={filteredRuns}
-            detailsById={runDetailsById}
-            latestRunId={latestRun?.id}
-            buildRunHref={runHref}
-            hasMore={Boolean(beforeRunId)}
-            loadingMore={loadingMore}
-            onLoadMore={() => void loadRuns(false)}
-            footer={<div className="text-[10px] iris-copy-soft">{filteredRuns.length} visible run{filteredRuns.length === 1 ? '' : 's'}</div>}
-          />
-        )}
       </div>
-    </PipelineWorkspaceShell>
+    </div>
   )
 }
 
