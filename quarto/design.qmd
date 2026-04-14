@@ -3,184 +3,304 @@ title: "Design Philosophy"
 ---
 
 IrisPipe is designed around one question: **what does it mean to re-run a pipeline that previously failed?**
-Most pipeline tools treat re-execution as running the same config again.
-IrisPipe treats it as three distinct operations with different contracts.
+Most pipeline tools treat re-execution as running the same config again from scratch.
+IrisPipe treats it as three distinct operations — each with a different contract, different lineage, and different config source.
 
 ---
 
 ## Pipeline Data Model
 
-The domain model has a strict hierarchy:
+Every pipeline is a strict hierarchy. Resources at each level have their own identity, persistence, and semantics.
 
+```{mermaid}
+graph TD
+  W([Workspace]):::root
+
+  W --> F1(["📁 Folder"])
+  W --> F2(["📁 Folder"])
+  F1 --> P1(["⚡ Pipeline"])
+  F2 --> P2(["⚡ Pipeline"])
+  F2 --> P3(["⚡ Pipeline"])
+
+  P1 --> S1["Stage 1"]
+  P1 --> S2["Stage 2"]
+  P1 --> S3["Stage 3"]
+
+  S1 --- J1A["Job A"]
+  S1 --- J1B["Job B"]
+  S2 --- J2A["Job C"]
+  S3 --- J3A["Job D"]
+  S3 --- J3B["Job E"]
+
+  J1A --> ST1["Step 1 · SELECT"]
+  J1A --> ST2["Step 2 · INSERT"]
+  J1B --> ST3["Step 1 · UPSERT"]
+
+  classDef root fill:#6366f1,color:#fff,stroke:none
+  classDef stage fill:#eef2ff,stroke:#6366f1,color:#3730a3
+  classDef job fill:#f0fdf4,stroke:#16a34a,color:#15803d
+  classDef step fill:#fafafa,stroke:#d1d5db,color:#374151
+
+  class S1,S2,S3 stage
+  class J1A,J1B,J2A,J3A,J3B job
+  class ST1,ST2,ST3 step
 ```
-Workspace
-└── Folder (tree)
-    └── Pipeline
-        └── Stage  (sequential)
-            └── Job  (parallel within stage)
-                └── Step  (sequential within job)
+
+**Workspace** — scopes all resources. Resolved from `X-Iris-Workspace-Key` header; falls back to `default`.
+
+**Folder** — explicit tree node, not a path-string convention. Supports rename, move, and recursive delete with preview.
+
+**Pipeline** — uniquely identified by `(workspace, folder, pipelineName)`. Identity is not tied to file path.
+
+**Stage** — sequential execution barrier. All stages must complete in order. Stages are a first-class concept in both config and runtime APIs.
+
+**Job** — parallel unit within a stage. Jobs in the same stage run concurrently via Spring Batch. Each job owns its own `source → destination` JDBC connection pair.
+
+**Step** — atomic SQL operation within a job. Steps execute sequentially. Types: `INSERT`, `UPDATE`, `UPSERT`, `DELETE`, `EXECUTE`.
+
+---
+
+## Stage Barrier + Parallel Execution
+
+The key scheduling primitive is the **stage barrier**:
+
+```{mermaid}
+flowchart LR
+  subgraph "Stage 1 — parallel"
+    direction TB
+    J1["Job A\n(extract orders)"]
+    J2["Job B\n(extract users)"]
+    J3["Job C\n(extract products)"]
+  end
+
+  subgraph "Stage 2 — parallel"
+    direction TB
+    J4["Job D\n(transform)"]
+  end
+
+  subgraph "Stage 3 — parallel"
+    direction TB
+    J5["Job E\n(load warehouse)"]
+    J6["Job F\n(load reporting)"]
+  end
+
+  Stage1 -- "barrier\n(all must COMPLETE)" --> Stage2
+  Stage2 -- "barrier\n(all must COMPLETE)" --> Stage3
 ```
 
-**Stages** are execution barriers. All jobs in stage N must complete before stage N+1 begins.
-
-**Jobs** within a stage run in parallel. Each job defines its own source → destination connection and a sequence of SQL steps.
-
-**Steps** are the atomic unit of SQL execution. A step is a `(type, SQL)` pair where `type` is one of `INSERT`, `UPDATE`, `UPSERT`, `DELETE`, or `EXECUTE`.
-
-This model maps cleanly to real ETL patterns:
-
-- Stage 1: extract (parallel table reads from source DB)
-- Stage 2: transform (SQL transforms in intermediate H2)
-- Stage 3: load (parallel writes to destination)
+- Jobs within a stage are launched concurrently via Spring Batch `JobLauncher`
+- The engine waits at each barrier until **all** jobs in that stage reach a terminal state
+- If **any** job fails at a barrier, all subsequent stages are projected as `NOT_RUN`
+- If a job is stopped, its stage barrier also fails, and future stages become `NOT_RUN`
 
 ---
 
 ## Three Execution Verbs
 
-The core design decision is explicit separation of three operations that most tools conflate:
+The core design decision: **re-execution is not one thing**. IrisPipe provides three distinct operations:
+
+```{mermaid}
+flowchart TD
+  subgraph execute["execute(pipelineId)"]
+    direction TB
+    E1["Read LIVE stored config"] --> E2["Create new PipelineRun"]
+    E2 --> E3["Materialize snapshot\n(config frozen here)"]
+    E3 --> E4["Launch from Stage 1"]
+  end
+
+  subgraph resume["resume(runId)"]
+    direction TB
+    R1["Load SAME RUN snapshot\n(never reads live config)"] --> R2["Find first incomplete stage\n(FAILED / STOPPED / NOT_RUN)"]
+    R2 --> R3["Create new Execution attempt\n(kind = RESUME)"]
+    R3 --> R4["Mark completed jobs SKIPPED"]
+    R4 --> R5["Launch from resume stage"]
+  end
+
+  subgraph rerun["rerun(runId)"]
+    direction TB
+    RR1["Load SOURCE RUN snapshot\n(never reads live config)"] --> RR2["Create NEW PipelineRun"]
+    RR2 --> RR3["Copy snapshot to new run"]
+    RR3 --> RR4["Launch from Stage 1"]
+  end
+
+  style execute fill:#eef2ff,stroke:#6366f1
+  style resume fill:#f0fdf4,stroke:#16a34a
+  style rerun fill:#fff7ed,stroke:#f59e0b
+```
 
 ### `execute` — Fresh run from live config
 
-```
-execute(pipelineId)
-  → read live stored config
-  → create PipelineRun + snapshot
-  → run from Stage 1
-```
-
-Creates a **new logical run**. Reads the current version of the pipeline config.
-A **config snapshot** is persisted at this moment — the run is now insulated from future config edits.
+Creates a **new logical run**. This is the only operation that reads the current stored pipeline config.
+At execute time, a **config snapshot** is persisted — the run is insulated from all future config edits.
 
 ### `resume` — Continue a failed run
 
-```
-resume(runId)
-  → load persisted snapshot (never reads live config)
-  → find first incomplete stage
-  → create new PipelineRunExecution (kind = RESUME)
-  → mark completed jobs as SKIPPED
-  → relaunch from resume point
-```
+Creates a **new execution attempt** within the same logical run. The run identity, lineage, and snapshot are all preserved.
 
-Creates a **new execution attempt** within the same logical run.
-The run identity, lineage, and snapshot are preserved.
-Completed stages are not replayed — only the failed or not-yet-run stages execute.
+Resume logic:
+1. Load the persisted snapshot for this run
+2. Find the first stage containing `FAILED`, `STOPPED`, or `NOT_RUN` jobs
+3. Mark all jobs in successfully completed stages as `SKIPPED`
+4. Relaunch only from the resume stage
 
-For `atomicLevel = CHUNK` jobs, Spring Batch restart semantics apply:
-the failed chunk restarts at its last commit point, not from the beginning of the job.
+For `atomicLevel = JOB` jobs: replay the failed job as a fresh Spring Batch job instance.
+
+For `atomicLevel = CHUNK` jobs: restart the failed Spring Batch job instance with stable parameters — execution resumes at the last committed chunk, not from the start of the job.
 
 ### `rerun` — Replay from scratch using original config
 
-```
-rerun(runId)
-  → load persisted snapshot (never reads live config)
-  → create brand new PipelineRun
-  → copy snapshot to new run
-  → run from Stage 1
-```
+Creates a **new logical run** from the source run's snapshot. Useful when you want a clean audit record (fresh row counts, new run ID) while preserving the exact config version that was originally used.
 
-Creates a **new logical run** from an existing run's snapshot.
-Useful when you want a clean slate (fresh row counts, new audit trail)
-while keeping the config version that was originally used.
-
-### Why this matters
+### Decision table
 
 | Scenario | Correct verb |
 |---|---|
-| Fixed the SQL in the config, want fresh run | `execute` |
-| Stage 2 failed, Stage 1 succeeded — don't repeat Stage 1 | `resume` |
-| Want a clean historical record of the same run | `rerun` |
-| Stage 1 succeeded, config changed since then, want to retry Stage 2 with original config | `resume` |
+| Fixed a bug in the SQL — want a fresh run with new config | `execute` |
+| Stage 2 failed, Stage 1 succeeded — replay only Stage 2 | `resume` |
+| Config was modified after execute — want to retry with original config | `resume` |
+| Want a clean historical record using the same original config | `rerun` |
+| Scheduled daily run | `execute` |
 
-The snapshot mechanism is the enabling primitive.
-Without it, `resume` and `rerun` would be forced to read live config,
-making it impossible to replay a run whose config has since changed.
+---
+
+## Snapshot Isolation
+
+The snapshot mechanism is the enabling primitive for safe resume and rerun:
+
+```{mermaid}
+sequenceDiagram
+  actor User
+  participant Engine
+  participant DB as Config DB
+  participant Snap as Snapshot Store
+
+  User->>Engine: execute(pipelineId)
+  Engine->>DB: read live config
+  DB-->>Engine: SyncJobDefinition[]
+  Engine->>Snap: persist snapshot JSON
+  Note over Snap: ← config frozen here
+  Engine-->>User: PipelineRun created
+
+  Note over DB: User edits config (rename job, change SQL)
+
+  User->>Engine: resume(runId)
+  Engine->>Snap: load snapshot (same run)
+  Note over Snap: live config never read
+  Engine-->>User: Resume attempt launched
+```
+
+Snapshot payload stores:
+- All `SyncJobDefinition[]` with stage names and ordering
+- Materialized Spring Batch job execution names (stable across attempts)
+- `pipeline_content_hash` for integrity verification
+- `snapshot_schema_version` for future migration
 
 ---
 
 ## Stop Semantics
 
-Stop is cooperative, not force-kill.
+Stop is **cooperative**, not force-kill:
 
-```
-stop(runId)
-  → project execution status to STOPPING
-  → call JobOperator.stop() on in-flight Spring Batch jobs
-  → listener chain converges to STOPPED
-  → future stages projected as NOT_RUN
+```{mermaid}
+flowchart TD
+  A["stop(runId)"] --> B{"Validate execution state"}
+  B -- "STARTING / STARTED / STOPPING" --> C["Project execution → STOPPING"]
+  B -- "other state" --> Z["Reject: not stoppable"]
+
+  C --> D["Call JobOperator.stop()\nfor each in-flight Spring Batch job"]
+  D --> E["Spring Batch sets stop signal\non running step"]
+  E --> F["Step checks stop signal\nat chunk boundary"]
+  F --> G["CustomJobListener\nonJobExecutionStopped"]
+  G --> H["PipelineRunLifecycleService\nproject STOPPED"]
+  H --> I["Future stages → NOT_RUN"]
+
+  style C fill:#fff7ed,stroke:#f59e0b
+  style H fill:#eef2ff,stroke:#6366f1
 ```
 
-Because Spring Batch metadata may still be finalizing after IrisPipe has already projected `STOPPED`,
-the `resume` path includes a **settlement guard** — it waits briefly before launching a new attempt.
-This prevents a race between a just-stopped execution and a new resume attempt.
+**Settlement guard**: Because Spring Batch metadata can still be finalizing after IrisPipe has already projected `STOPPED`, the `resume` path waits briefly before launching a new attempt. This prevents a race between a settling stopped execution and a new resume attempt reading stale Batch state.
 
 ---
 
-## Workspace Scoping
+## AtomicLevel: Two Resume Strategies
 
-Every resource (folder, pipeline, run) is scoped to a workspace.
+Each job declares its `atomicLevel`, which controls what "resume" means at the job level:
 
-- Resolved from request header `X-Iris-Workspace-Key`
-- Missing header falls back to `default`
-- Desktop mode works transparently without ever setting the header
+| `atomicLevel` | Resume behavior | Use case |
+|---|---|---|
+| `JOB` | Replay the whole job as a new Batch job instance | Simple jobs, idempotent SQL |
+| `CHUNK` | Restart the same Batch job instance at the last commit point | Large table reads where replaying from the start is expensive |
 
-The engine does not know or care whether it is running as a desktop tool or a future multi-tenant platform.
-Workspace resolution is a request-scope concern, not a core engine concern.
-
----
-
-## Config Snapshot Design
-
-When `execute` is called:
-
-1. The live config is read and normalized into `SyncJobDefinition[]`
-2. A snapshot JSON is persisted as `iris_pipeline_run_snapshot`
-3. Stable Spring Batch job names are materialized from the snapshot
-4. All subsequent `resume` and `rerun` operations load from this snapshot
-
-This means:
-
-- You can modify a pipeline while it is running — the live run is unaffected
-- You can modify a pipeline after a failure — `resume` still uses the original intent
-- Historical runs always reflect what actually ran, not what the config looks like today
+`JOB` is the default. `CHUNK` requires that the Spring Batch job instance parameters produce a stable identity across resume attempts — IrisPipe materializes these from the snapshot.
 
 ---
 
-## Folder Tree as First-Class Model
+## Runtime Lineage Model
 
-Pipeline organization is not a path-string convention. Folders are explicit entities.
+A single pipeline can have many runs. A single run can have many execution attempts.
 
-Design decisions:
+```{mermaid}
+graph LR
+  subgraph "Logical Run #42"
+    direction TB
+    Snap["Snapshot\n(immutable)"]
+    Job1["RunJob: stage1/jobA"]
+    Job2["RunJob: stage1/jobB"]
+    Job3["RunJob: stage2/jobC"]
 
-- One hidden root row per workspace; exposed as virtual `/` in the API
-- Sibling uniqueness is enforced at the folder level (not globally)
-- Rename and move operations are supported without breaking run lineage
-- Delete requires an explicit preview step; pipelines with run history block deletion
+    Attempt1["Execution #1\nINITIAL · FAILED"]
+    Attempt2["Execution #2\nRESUME · COMPLETED"]
 
-This keeps the data model honest — a pipeline's location is a real relationship, not a derived string.
+    EJob1["ExecJob #1: jobA · COMPLETED"]
+    EJob2["ExecJob #1: jobB · FAILED"]
+    EJob3["ExecJob #1: jobC · NOT_RUN"]
 
----
+    EJob4["ExecJob #2: jobA · SKIPPED"]
+    EJob5["ExecJob #2: jobB · COMPLETED"]
+    EJob6["ExecJob #2: jobC · COMPLETED"]
+  end
 
-## Facade + Collaborator Pattern
-
-Services are split into facades (application boundary) and narrow collaborators:
-
-```
-Config domain:
-  PipelineConfigService            ← facade
-    PipelineConfigCommandService   ← persist / delete
-    PipelineConfigImportService    ← parse YAML / JSON import
-    PipelineConfigReadModelService ← query assembly
-    PipelineConfigRequestPolicy    ← validation
-
-Runtime domain:
-  PipelineExecutionService         ← facade
-    PipelineRunCommandService      ← create run / execution rows
-    PipelineRunLaunchService       ← stage barrier + parallel launch
-    PipelineRunControlPolicy       ← state transition guards
-    PipelineRunSnapshotService     ← snapshot persist / load
+  Snap --- Attempt1
+  Snap --- Attempt2
+  Attempt1 --> EJob1
+  Attempt1 --> EJob2
+  Attempt1 --> EJob3
+  Attempt2 --> EJob4
+  Attempt2 --> EJob5
+  Attempt2 --> EJob6
+  Job1 -. "latest projection" .-> EJob5
+  Job2 -. "latest projection" .-> EJob5
+  Job3 -. "latest projection" .-> EJob6
 ```
 
-This is not interface-heavy SOLID for its own sake.
-It is a deliberate split to reduce coupling between read and write paths,
-and to make domain-slice unit tests feasible without mocking the entire service graph.
+- `PipelineRun` + `PipelineRunJob` = **latest projection** (cheap summary reads)
+- `PipelineRunExecution` + `PipelineRunExecutionJob` = **full attempt history** (detailed audit trail)
+- Both live in the same schema but serve different read paths
+
+---
+
+## Design Principles
+
+### 1. Workspace-scoped, not global
+
+The engine resolves workspace from request scope. Desktop mode works through the `default` fallback without ever setting the header.
+
+### 2. JSON CRUD as the primary contract
+
+Config management is body-driven first, file import second. Import is an adapter, not the identity model.
+
+### 3. Facade + Collaborator, not monolithic services
+
+Services are split into application-boundary facades and narrow collaborators. This reduces coupling between read and write paths and keeps unit-testable slices small.
+
+### 4. Listener-driven runtime truth
+
+Trigger APIs create rows and launch work. They do not own final status. Listeners report actual Batch transitions. The lifecycle service projects truth back into runtime rows.
+
+### 5. Observability from lifecycle, not from controllers
+
+Metrics are published by `PipelineMetricsPublisher` in response to lifecycle events — not from controller logic. Meter code never appears in DTOs or controllers.
+
+### 6. k6 as architectural guardrail
+
+The 10-suite k6 regression harness runs against the real backend on every push. This allows internal refactoring with confidence: change the package structure, restructure service boundaries, split collaborators — the k6 suite will catch any public behavioral regression.

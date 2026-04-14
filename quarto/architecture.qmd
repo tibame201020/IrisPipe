@@ -2,118 +2,368 @@
 title: "Architecture"
 ---
 
-IrisPipe is a **Spring Boot 3 + Spring Batch 5** application backed by an embedded H2 database.
-The frontend is a React 19 single-page application communicating over REST and Server-Sent Events.
+IrisPipe is a **Spring Boot 3 + Spring Batch 5** monolith backed by an embedded H2 database.
+The frontend is a React 19 SPA communicating over REST and Server-Sent Events.
+The entire stack runs locally — no cloud, no agent, no daemon.
 
 ---
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Java 21, Spring Boot 3 |
-| Pipeline execution | Spring Batch 5 |
-| Persistence | H2 (embedded, file-mode), JPA / Hibernate, Flyway |
-| Observability | Micrometer, Prometheus endpoint |
-| Frontend | React 19, React Router v7, TailwindCSS, DaisyUI |
-| Real-time | Server-Sent Events (SSE) |
-| Testing | JUnit 5 (backend), k6 (integration / regression) |
+| Layer | Technology | Notes |
+|---|---|---|
+| Runtime | Java 21, Spring Boot 3 | Embedded Tomcat |
+| Batch engine | Spring Batch 5 | Job/Step/Chunk execution |
+| Persistence | H2 (file-mode), JPA/Hibernate | Flyway migrations |
+| Observability | Micrometer + Prometheus endpoint | Lifecycle-driven metrics |
+| Frontend | React 19, React Router v7 | Vite, TailwindCSS, DaisyUI |
+| Real-time | Server-Sent Events (SSE) | `/api/v1/events/runs` |
+| Integration tests | k6 | 10 suites, black-box regression |
 
 ---
 
-## Backend Package Map
+## Layered Architecture
+
+```{mermaid}
+graph TB
+  subgraph "API Layer"
+    ctrl["api/\nREST Controllers\nRequest binding + validation only"]
+  end
+
+  subgraph "Core Layer"
+    facade["core/service/\nExecution & Query Facades\nApplication boundary"]
+    factory["core/factory/\nJob & Step Assembly\nBuilds Batch jobs from snapshot"]
+  end
+
+  subgraph "Infrastructure Layer"
+    svc["infrastructure/service/\nNarrow Collaborators\n(config / folder / runtime / workspace)"]
+    repo["infrastructure/repo/\nJPA Repositories"]
+    entity["infrastructure/entity/\nJPA Entities\n(config domain / runtime domain)"]
+  end
+
+  subgraph "Cross-cutting"
+    obs["observability/\nMetrics Publisher"]
+    model["model/ + model/dto/\nDomain Records & API DTOs"]
+  end
+
+  ctrl --> facade
+  facade --> factory
+  facade --> svc
+  svc --> repo
+  repo --> entity
+  facade --> obs
+  ctrl --> model
+  svc --> model
+
+  style ctrl fill:#eef2ff,stroke:#6366f1
+  style facade fill:#f0fdf4,stroke:#16a34a
+  style factory fill:#f0fdf4,stroke:#16a34a
+  style svc fill:#fff7ed,stroke:#f59e0b
+  style repo fill:#fdf2f8,stroke:#a855f7
+  style entity fill:#fdf2f8,stroke:#a855f7
+```
+
+**Call direction is enforced**: Controllers call facades only. Facades call collaborators. Collaborators call repositories. No layer skips another.
+
+---
+
+## Package Map
 
 ```
 irispipe/
-├── api/                          REST controllers — request binding only
-├── batch/                        Spring Batch builders, listeners, tasklets, writers
+├── api/                              REST controllers — binding and validation only
+├── batch/                            Spring Batch configuration
+│   ├── builders/                     JobBuilder and StepBuilder wiring
+│   ├── listeners/                    Job/Step lifecycle listeners
+│   ├── tasklets/                     Custom tasklet implementations
+│   └── writers/                      Custom item writers
 ├── core/
-│   ├── factory/                  Runtime job/step assembly from snapshot
-│   └── service/                  Execution and query orchestration facades
+│   ├── factory/                      Assembles Batch jobs from snapshot at runtime
+│   └── service/                      Application-boundary facades
+│       ├── PipelineExecutionService  execute / resume / rerun / stop
+│       └── PipelineRunQueryService   summary / history / detail assembly
 ├── infrastructure/
-│   ├── config/                   Spring bean configuration, mappers
-│   ├── context/                  Runtime DB context objects
-│   ├── entity/                   JPA entities (config vs runtime domains)
-│   ├── repo/                     JPA repositories
+│   ├── config/                       Spring bean config, mappers
+│   ├── context/                      Runtime JDBC context objects
+│   ├── entity/
+│   │   ├── config/                   Pipeline config JPA entities
+│   │   └── runtime/                  Run lineage JPA entities
+│   ├── repo/
+│   │   ├── config/                   Config JPA repositories
+│   │   └── runtime/                  Runtime JPA repositories
 │   └── service/
-│       ├── config/               Config command, import, read-model, policy
-│       ├── folder/               Folder tree command, read-model, structure
-│       ├── runtime/              Run lifecycle, snapshot, watermark, metadata
-│       └── workspace/            Workspace resolution
-├── model/                        Domain records, enums, mutable summaries
-│   └── dto/                      API DTOs
-└── observability/                Metric publishing, lifecycle events
+│       ├── config/                   Config command, import, read-model, policy
+│       ├── folder/                   Folder tree command, read-model, structure
+│       ├── runtime/                  Run lifecycle, snapshot, watermark, metadata
+│       └── workspace/                Workspace resolution and provisioning
+├── model/                            Domain records, enums, mutable summaries
+│   └── dto/                          API DTOs
+└── observability/                    Metric publishing, lifecycle events
 ```
 
-**Controller → Facade → Collaborator** is the enforced call direction.
-Controllers do not call collaborators directly.
-Facades do not implement storage — they delegate to collaborators.
+---
+
+## Facade + Collaborator Pattern
+
+Large mixed-responsibility services are intentionally decomposed into a facade plus narrow collaborators:
+
+```{mermaid}
+graph LR
+  subgraph "Config Domain"
+    CS["PipelineConfigService\n(facade)"]
+    CS --> CC["PipelineConfigCommandService\npersist / delete"]
+    CS --> CI["PipelineConfigImportService\nparse YAML / JSON"]
+    CS --> CR["PipelineConfigReadModelService\nquery assembly"]
+    CS --> CP["PipelineConfigRequestPolicy\nvalidation rules"]
+  end
+
+  subgraph "Folder Domain"
+    FS["PipelineFolderService\n(facade)"]
+    FS --> FC["PipelineFolderCommandService\ncreate / rename / delete"]
+    FS --> FR["PipelineFolderReadModelService\ntree assembly"]
+    FS --> FST["PipelineFolderStructureService\nstructure helpers"]
+  end
+
+  subgraph "Runtime Domain"
+    ES["PipelineExecutionService\n(facade)"]
+    ES --> RC["PipelineRunCommandService\ncreate run / execution rows"]
+    ES --> RL["PipelineRunLaunchService\nstage barrier + parallel launch"]
+    ES --> RCT["PipelineRunControlPolicy\nstate transition guards"]
+    ES --> RS["PipelineRunSnapshotService\nsnapshot persist / load"]
+  end
+
+  style CS fill:#eef2ff,stroke:#6366f1
+  style FS fill:#eef2ff,stroke:#6366f1
+  style ES fill:#eef2ff,stroke:#6366f1
+```
 
 ---
 
 ## Database Schema
 
-Two logical groups of tables:
-
 ### Config tables
 
-```sql
-iris_workspace                    -- workspace registry
-iris_pipeline_folder              -- folder tree nodes
-iris_pipeline                     -- pipeline definition
-iris_pipeline_job                 -- job definition (source, dest, stage)
-iris_pipeline_job_connection      -- named connection library entries
-iris_pipeline_execution           -- execution parameter sets
-iris_pipeline_execution_parameter -- per-execution parameter values
+```{mermaid}
+erDiagram
+  iris_workspace {
+    bigint id PK
+    string workspace_key UK
+    string workspace_name
+    boolean system_default
+  }
+
+  iris_pipeline_folder {
+    bigint id PK
+    bigint workspace_id FK
+    bigint parent_folder_id FK
+    string folder_name
+    string folder_path
+    boolean system_root
+  }
+
+  iris_pipeline {
+    bigint id PK
+    bigint workspace_id FK
+    bigint folder_id FK
+    string pipeline_name
+  }
+
+  iris_pipeline_job {
+    bigint id PK
+    bigint pipeline_id FK
+    string stage_name
+    int stage_sequence_order
+    string job_name
+    string atomic_level
+  }
+
+  iris_pipeline_execution {
+    bigint id PK
+    bigint pipeline_job_id FK
+    string execution_type
+    string sql_content
+  }
+
+  iris_workspace ||--o{ iris_pipeline_folder : "owns"
+  iris_workspace ||--o{ iris_pipeline : "owns"
+  iris_pipeline_folder ||--o{ iris_pipeline : "contains"
+  iris_pipeline ||--o{ iris_pipeline_job : "defines"
+  iris_pipeline_job ||--o{ iris_pipeline_execution : "has steps"
 ```
 
 ### Runtime tables
 
-```sql
-iris_pipeline_run                 -- logical run (has many attempts)
-iris_pipeline_run_snapshot        -- config snapshot JSON at execute time
-iris_pipeline_run_job             -- job-level status for latest projection
-iris_pipeline_run_execution       -- one row per attempt (INITIAL / RESUME / RERUN)
-iris_pipeline_run_execution_job   -- job-level status per attempt
-iris_watermark_record             -- watermark state per job
+```{mermaid}
+erDiagram
+  iris_pipeline_run {
+    bigint id PK
+    bigint pipeline_id FK
+    bigint workspace_id FK
+    bigint latest_execution_id FK
+    string status
+    timestamp created_at
+    timestamp start_time
+    timestamp end_time
+  }
+
+  iris_pipeline_run_snapshot {
+    bigint id PK
+    bigint pipeline_run_id FK
+    string snapshot_schema_version
+    string pipeline_content_hash
+    json materialized_job_json
+  }
+
+  iris_pipeline_run_job {
+    bigint id PK
+    bigint pipeline_run_id FK
+    string stage_name
+    int stage_sequence_order
+    string job_name
+    string atomic_level
+    string status
+    bigint last_job_execution_id
+  }
+
+  iris_pipeline_run_execution {
+    bigint id PK
+    bigint pipeline_run_id FK
+    int execution_no
+    string execution_kind
+    string status
+    timestamp start_time
+    timestamp end_time
+  }
+
+  iris_pipeline_run_execution_job {
+    bigint id PK
+    bigint execution_id FK
+    bigint run_job_id FK
+    string status
+    bigint root_job_instance_id
+    bigint last_job_execution_id
+  }
+
+  iris_watermark_record {
+    bigint id PK
+    string execution_name
+    string table_name
+    string watermark_column
+    string watermark_value
+  }
+
+  iris_pipeline_run ||--|| iris_pipeline_run_snapshot : "owns (immutable)"
+  iris_pipeline_run ||--o{ iris_pipeline_run_job : "latest projection"
+  iris_pipeline_run ||--o{ iris_pipeline_run_execution : "attempt history"
+  iris_pipeline_run_execution ||--o{ iris_pipeline_run_execution_job : "per-attempt jobs"
 ```
 
-Spring Batch metadata tables (`BATCH_*`) are infrastructure detail.
-Product semantics live entirely in the `iris_pipeline_run*` tables.
-
-Migrations are managed by **Flyway** (`backend/src/main/resources/db/migration/`).
+> **Two read paths**: `PipelineRun` + `PipelineRunJob` serve cheap summary reads (latest projection). `PipelineRunExecution` + `PipelineRunExecutionJob` serve the full attempt history. Both are always up-to-date — the lifecycle listener updates both on each state transition.
 
 ---
 
-## Runtime Execution Model
+## Runtime Execution Sequence
 
+```{mermaid}
+sequenceDiagram
+  actor Client
+  participant API as REST Controller
+  participant ExecSvc as PipelineExecutionService
+  participant CmdSvc as PipelineRunCommandService
+  participant SnapSvc as PipelineRunSnapshotService
+  participant LaunchSvc as PipelineRunLaunchService
+  participant Batch as Spring Batch
+
+  Client->>API: POST /api/v1/sync-pipeline
+  API->>ExecSvc: execute(pipelineId)
+
+  ExecSvc->>ExecSvc: reconstruct SyncJobDefinition[]
+  ExecSvc->>CmdSvc: createRun() → PipelineRun + RunJob rows
+  ExecSvc->>SnapSvc: persistSnapshot() → RunSnapshot row
+
+  ExecSvc->>LaunchSvc: launch(snapshot)
+  loop For each stage (sequential)
+    LaunchSvc->>Batch: launch Job A (async)
+    LaunchSvc->>Batch: launch Job B (async)
+    LaunchSvc->>LaunchSvc: await stage barrier
+    Batch-->>LaunchSvc: Job A COMPLETED
+    Batch-->>LaunchSvc: Job B COMPLETED
+  end
+  LaunchSvc-->>ExecSvc: all stages complete
+  ExecSvc-->>API: PipelineRunSummary
+  API-->>Client: 200 OK
 ```
-execute(pipelineId)
-  │
-  ├── PipelineConfigService.reconstruct()   → SyncJobDefinition[]
-  ├── PipelineRunCommandService.create()    → PipelineRun + PipelineRunJob rows
-  ├── PipelineRunSnapshotService.persist()  → snapshot JSON
-  └── PipelineRunLaunchService.launch()
-        │
-        ├── group jobs by stageSequenceOrder
-        └── for each stage:
-              ├── launch all jobs in parallel  (Spring Batch JobLauncher)
-              ├── wait for all jobs to settle  (stage barrier)
-              └── if any job FAILED → project future stages as NOT_RUN, stop
+
+---
+
+## Listener-Driven State Machine
+
+Runtime status is **never set directly by control code**. It is always projected by the listener chain:
+
+```{mermaid}
+flowchart TD
+  SB["Spring Batch\nJobListener / StepListener"]
+  CJL["CustomJobListener\nonJobExecution(event)"]
+  LCS["PipelineRunLifecycleService\nupdateJobStatus(jobName, status)"]
+  EJob["iris_pipeline_run_execution_job\nupdate status + timestamps"]
+  RunJob["iris_pipeline_run_job\nupdate latest projection"]
+  Run["iris_pipeline_run\nupdate status + timestamps"]
+  MP["PipelineMetricsPublisher\npublish(event)"]
+  MC["Micrometer\ncounter.increment()\ngauge.set()"]
+
+  SB --> CJL
+  CJL --> LCS
+  LCS --> EJob
+  LCS --> RunJob
+  LCS --> Run
+  LCS --> MP
+  MP --> MC
+
+  style SB fill:#f8fafc,stroke:#94a3b8
+  style LCS fill:#eef2ff,stroke:#6366f1
+  style MP fill:#f0fdf4,stroke:#16a34a
 ```
 
-### Listener Chain
+This design keeps sync and async execution paths on the same lifecycle model, and keeps meter code out of controllers and DTOs.
 
-State transitions are listener-driven, not polled:
+---
 
+## SSE Real-time Events
+
+```{mermaid}
+sequenceDiagram
+  participant FE as Frontend (RunDetailPage)
+  participant SSE as SSE Endpoint
+  participant Listener as PipelineRunLifecycleService
+  participant Batch as Spring Batch
+
+  FE->>SSE: GET /api/v1/events/runs/:runId
+  Note over FE,SSE: SSE connection held open
+
+  Batch->>Listener: job_started
+  Listener->>SSE: emit "job_started" event
+  SSE-->>FE: data: { type: "job_started", jobName: "..." }
+  FE->>FE: refetch GET /api/v1/sync-pipeline/:runId
+
+  Batch->>Listener: job_finished (COMPLETED)
+  Listener->>SSE: emit "job_finished" event
+  SSE-->>FE: data: { type: "job_finished", jobName: "..." }
+  FE->>FE: refetch run detail
+
+  Batch->>Listener: run_completed
+  Listener->>SSE: emit "run_completed" event
+  SSE-->>FE: data: { type: "run_completed" }
+  FE->>FE: refetch + update action buttons
 ```
-Spring Batch JobListener / StepListener
-  └── CustomJobListener
-        └── PipelineRunLifecycleService    (update iris_pipeline_run_execution_job)
-              └── PipelineMetricsPublisher  (Micrometer counters + gauges)
-```
 
-This keeps the execution engine decoupled from observability concerns.
+Two SSE channels are available:
+
+| Endpoint | Scope | Used by |
+|---|---|---|
+| `/api/v1/events/runs` | Workspace-wide (all runs) | OverviewPage |
+| `/api/v1/events/runs/:runId` | Single run | RunDetailPage |
+
+The frontend uses SSE events as **cache invalidation signals** — each event triggers a full re-fetch of the relevant REST endpoint. There is no client-side state machine.
 
 ---
 
@@ -121,87 +371,77 @@ This keeps the execution engine decoupled from observability concerns.
 
 All endpoints are under `/api/v1/`. Workspace is resolved from `X-Iris-Workspace-Key` (default: `default`).
 
-### Config
+### Config endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/sync-config` | List all pipelines |
-| `GET` | `/sync-config/{id}` | Get pipeline config |
+| `GET` | `/sync-config/{id}` | Get pipeline config with stage-grouped jobs |
 | `POST` | `/sync-config` | Create pipeline |
 | `PUT` | `/sync-config/{id}` | Replace pipeline config |
 | `PATCH` | `/sync-config/{id}` | Partial update |
-| `DELETE` | `/sync-config/{id}` | Delete pipeline |
-| `POST` | `/sync-config/import` | Import from YAML/JSON |
+| `DELETE` | `/sync-config/{id}` | Delete pipeline (blocked if run history exists) |
+| `POST` | `/sync-config/import` | Create from YAML/JSON file |
+| `PUT` | `/sync-config/{id}/import` | Replace from YAML/JSON file |
 
-### Folders
+### Folder endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/pipeline-tree` | Full folder tree with pipelines |
+| `GET` | `/pipeline-tree` | Full folder tree with pipeline summaries |
 | `POST` | `/pipeline-folders` | Create folder |
-| `PUT` | `/pipeline-folders/{id}` | Rename / move folder |
+| `PUT` | `/pipeline-folders/{id}` | Rename or move folder |
 | `GET` | `/pipeline-folders/{id}/delete-preview` | Preview delete impact |
-| `DELETE` | `/pipeline-folders/{id}` | Delete folder |
+| `DELETE` | `/pipeline-folders/{id}?recursive=` | Delete folder |
 
-### Runtime
+### Runtime endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/sync-pipeline` | Execute pipeline |
-| `POST` | `/sync-pipeline/{runId}/resume` | Resume failed run |
+| `POST` | `/sync-pipeline/{runId}/resume` | Resume failed/stopped run |
 | `POST` | `/sync-pipeline/{runId}/rerun` | Rerun from snapshot |
-| `POST` | `/sync-pipeline/{runId}/stop` | Stop in-flight run |
-| `GET` | `/sync-pipeline/{runId}` | Run detail |
-| `GET` | `/sync-pipeline?pipelineId=&limit=&beforeRunId=` | Run history |
-| `GET` | `/sync-pipeline/recent` | Recent runs (workspace) |
-| `DELETE` | `/sync-pipeline/{runId}` | Delete run record |
+| `POST` | `/sync-pipeline/{runId}/stop` | Cooperative stop |
+| `GET` | `/sync-pipeline/{runId}` | Full run detail (latest + attempts) |
+| `GET` | `/sync-pipeline?pipelineId=&limit=&beforeRunId=` | Cursor-paginated run history |
+| `GET` | `/sync-pipeline/recent?limit=&beforeRunId=` | Recent runs (workspace) |
+| `DELETE` | `/sync-pipeline/{runId}` | Delete terminal run |
 
-### Observability
+### Observability endpoints
 
 | Path | Description |
 |---|---|
-| `/actuator/health` | Spring Boot health |
+| `/actuator/health` | Spring Boot health check |
 | `/actuator/metrics` | Micrometer metric names |
 | `/actuator/prometheus` | Prometheus scrape endpoint |
-| `/api/v1/overview/summary` | Dashboard summary |
-
----
-
-## Real-time Events (SSE)
-
-Two SSE channels:
-
-```
-GET /api/v1/events/runs           → workspace-scoped (all runs)
-GET /api/v1/events/runs/{runId}   → run-scoped
-```
-
-Event types: `run_started`, `job_started`, `job_finished`, `run_completed`, `run_failed`, `run_stopped`.
-
-The frontend subscribes to the run-scoped channel on `RunDetailPage` and re-fetches run detail on each event.
-No client-side state machine — every event is a cache invalidation.
+| `/api/v1/overview/summary` | Dashboard aggregate summary |
+| `/api/v1/events/runs` | SSE (workspace-scoped) |
+| `/api/v1/events/runs/:runId` | SSE (run-scoped) |
 
 ---
 
 ## Frontend Structure
 
-```
-frontend/src/
-├── pages/        Route-level components (6 pages)
-├── layout/       Shell layouts (ConsoleLayout, PipelineWorkspaceLayout)
-├── components/   Reusable UI (StageLaneBoard, SqlEditor, etc.)
-├── lib/          api.ts (all axios calls), usePipelineEvents.ts (SSE hook)
-├── types/        Domain types (irispipe.ts)
-└── state/        ThemeProvider, LayoutProvider
+```{mermaid}
+graph LR
+  subgraph "Route Layout"
+    CL["ConsoleLayout\n(sidebar + header)"]
+    CL --> OV["OverviewPage\n/overview"]
+    CL --> PE["PipelineExplorerPage\n/pipeline"]
+    CL --> PW["PipelineWorkspaceLayout\n/pipeline/items/:id"]
+    PW --> PC["PipelineConfigPage\n/config"]
+    PW --> PRL["PipelineRunsLayout\n/runs"]
+    PRL --> PR["PipelineRunsPage"]
+    PRL --> RD["RunDetailPage\n/runs/:runId"]
+    CL --> ST["SettingsPage\n/settings"]
+  end
 ```
 
-Routing mirrors the resource hierarchy:
-
-```
-/overview                              → dashboard + recent runs
-/pipeline                              → folder explorer
-/pipeline/items/:id/config             → pipeline config (kanban board)
-/pipeline/items/:id/runs               → run history
-/pipeline/items/:id/runs/:runId        → run detail
-/settings                              → connection library
-```
+| Directory | Contents |
+|---|---|
+| `pages/` | 6 route-level page components |
+| `layout/` | ConsoleLayout, PipelineWorkspaceLayout, PipelineRunsLayout |
+| `components/` | StageLaneBoard (kanban config), SqlEditor, status components |
+| `lib/api.ts` | All Axios calls — single source of truth |
+| `lib/usePipelineEvents.ts` | SSE subscription hook |
+| `types/irispipe.ts` | Full domain type definitions |

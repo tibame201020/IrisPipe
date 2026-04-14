@@ -2,7 +2,11 @@
 $font-family-sans-serif: "Inter", system-ui, -apple-system, sans-serif;
 $font-family-monospace: "Fira Code", "JetBrains Mono", monospace;
 $headings-font-weight: 600;
-$link-color: #6366f1;
+$link-color: #4f46e5;
+
+/* Override Quarto inline code (prevents dark-bg purple text) */
+$code-color: #374151;
+$code-bg: #f3f4f6;
 
 /*-- scss:rules --*/
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
@@ -88,6 +92,16 @@ $link-color: #6366f1;
 /* Callout override */
 .callout {
   border-radius: 8px;
+}
+
+/* Inline code — readable on white background */
+code:not(pre code) {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.875em;
 }
 
 /* Table */
