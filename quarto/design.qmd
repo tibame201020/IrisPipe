@@ -1,0 +1,186 @@
+---
+title: "Design Philosophy"
+---
+
+IrisPipe is designed around one question: **what does it mean to re-run a pipeline that previously failed?**
+Most pipeline tools treat re-execution as running the same config again.
+IrisPipe treats it as three distinct operations with different contracts.
+
+---
+
+## Pipeline Data Model
+
+The domain model has a strict hierarchy:
+
+```
+Workspace
+└── Folder (tree)
+    └── Pipeline
+        └── Stage  (sequential)
+            └── Job  (parallel within stage)
+                └── Step  (sequential within job)
+```
+
+**Stages** are execution barriers. All jobs in stage N must complete before stage N+1 begins.
+
+**Jobs** within a stage run in parallel. Each job defines its own source → destination connection and a sequence of SQL steps.
+
+**Steps** are the atomic unit of SQL execution. A step is a `(type, SQL)` pair where `type` is one of `INSERT`, `UPDATE`, `UPSERT`, `DELETE`, or `EXECUTE`.
+
+This model maps cleanly to real ETL patterns:
+
+- Stage 1: extract (parallel table reads from source DB)
+- Stage 2: transform (SQL transforms in intermediate H2)
+- Stage 3: load (parallel writes to destination)
+
+---
+
+## Three Execution Verbs
+
+The core design decision is explicit separation of three operations that most tools conflate:
+
+### `execute` — Fresh run from live config
+
+```
+execute(pipelineId)
+  → read live stored config
+  → create PipelineRun + snapshot
+  → run from Stage 1
+```
+
+Creates a **new logical run**. Reads the current version of the pipeline config.
+A **config snapshot** is persisted at this moment — the run is now insulated from future config edits.
+
+### `resume` — Continue a failed run
+
+```
+resume(runId)
+  → load persisted snapshot (never reads live config)
+  → find first incomplete stage
+  → create new PipelineRunExecution (kind = RESUME)
+  → mark completed jobs as SKIPPED
+  → relaunch from resume point
+```
+
+Creates a **new execution attempt** within the same logical run.
+The run identity, lineage, and snapshot are preserved.
+Completed stages are not replayed — only the failed or not-yet-run stages execute.
+
+For `atomicLevel = CHUNK` jobs, Spring Batch restart semantics apply:
+the failed chunk restarts at its last commit point, not from the beginning of the job.
+
+### `rerun` — Replay from scratch using original config
+
+```
+rerun(runId)
+  → load persisted snapshot (never reads live config)
+  → create brand new PipelineRun
+  → copy snapshot to new run
+  → run from Stage 1
+```
+
+Creates a **new logical run** from an existing run's snapshot.
+Useful when you want a clean slate (fresh row counts, new audit trail)
+while keeping the config version that was originally used.
+
+### Why this matters
+
+| Scenario | Correct verb |
+|---|---|
+| Fixed the SQL in the config, want fresh run | `execute` |
+| Stage 2 failed, Stage 1 succeeded — don't repeat Stage 1 | `resume` |
+| Want a clean historical record of the same run | `rerun` |
+| Stage 1 succeeded, config changed since then, want to retry Stage 2 with original config | `resume` |
+
+The snapshot mechanism is the enabling primitive.
+Without it, `resume` and `rerun` would be forced to read live config,
+making it impossible to replay a run whose config has since changed.
+
+---
+
+## Stop Semantics
+
+Stop is cooperative, not force-kill.
+
+```
+stop(runId)
+  → project execution status to STOPPING
+  → call JobOperator.stop() on in-flight Spring Batch jobs
+  → listener chain converges to STOPPED
+  → future stages projected as NOT_RUN
+```
+
+Because Spring Batch metadata may still be finalizing after IrisPipe has already projected `STOPPED`,
+the `resume` path includes a **settlement guard** — it waits briefly before launching a new attempt.
+This prevents a race between a just-stopped execution and a new resume attempt.
+
+---
+
+## Workspace Scoping
+
+Every resource (folder, pipeline, run) is scoped to a workspace.
+
+- Resolved from request header `X-Iris-Workspace-Key`
+- Missing header falls back to `default`
+- Desktop mode works transparently without ever setting the header
+
+The engine does not know or care whether it is running as a desktop tool or a future multi-tenant platform.
+Workspace resolution is a request-scope concern, not a core engine concern.
+
+---
+
+## Config Snapshot Design
+
+When `execute` is called:
+
+1. The live config is read and normalized into `SyncJobDefinition[]`
+2. A snapshot JSON is persisted as `iris_pipeline_run_snapshot`
+3. Stable Spring Batch job names are materialized from the snapshot
+4. All subsequent `resume` and `rerun` operations load from this snapshot
+
+This means:
+
+- You can modify a pipeline while it is running — the live run is unaffected
+- You can modify a pipeline after a failure — `resume` still uses the original intent
+- Historical runs always reflect what actually ran, not what the config looks like today
+
+---
+
+## Folder Tree as First-Class Model
+
+Pipeline organization is not a path-string convention. Folders are explicit entities.
+
+Design decisions:
+
+- One hidden root row per workspace; exposed as virtual `/` in the API
+- Sibling uniqueness is enforced at the folder level (not globally)
+- Rename and move operations are supported without breaking run lineage
+- Delete requires an explicit preview step; pipelines with run history block deletion
+
+This keeps the data model honest — a pipeline's location is a real relationship, not a derived string.
+
+---
+
+## Facade + Collaborator Pattern
+
+Services are split into facades (application boundary) and narrow collaborators:
+
+```
+Config domain:
+  PipelineConfigService            ← facade
+    PipelineConfigCommandService   ← persist / delete
+    PipelineConfigImportService    ← parse YAML / JSON import
+    PipelineConfigReadModelService ← query assembly
+    PipelineConfigRequestPolicy    ← validation
+
+Runtime domain:
+  PipelineExecutionService         ← facade
+    PipelineRunCommandService      ← create run / execution rows
+    PipelineRunLaunchService       ← stage barrier + parallel launch
+    PipelineRunControlPolicy       ← state transition guards
+    PipelineRunSnapshotService     ← snapshot persist / load
+```
+
+This is not interface-heavy SOLID for its own sake.
+It is a deliberate split to reduce coupling between read and write paths,
+and to make domain-slice unit tests feasible without mocking the entire service graph.

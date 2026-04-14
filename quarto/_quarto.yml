@@ -1,0 +1,42 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "IrisPipe"
+  description: "A workspace-scoped pipeline engine built on Spring Boot and Spring Batch."
+  favicon: "assets/favicon.ico"
+  repo-url: https://github.com/tibame201020/IrisPipe
+  repo-actions: [issue]
+
+  navbar:
+    left:
+      - text: "Overview"
+        href: index.qmd
+      - text: "Design"
+        href: design.qmd
+      - text: "Architecture"
+        href: architecture.qmd
+      - text: "Performance"
+        href: performance.qmd
+
+  page-footer:
+    left: "IrisPipe — built by Jeff Hsu"
+    right:
+      - icon: github
+        href: https://github.com/tibame201020/IrisPipe
+
+format:
+  html:
+    theme:
+      - cosmo
+      - custom.scss
+    highlight-style: github-dark
+    code-fold: false
+    toc: true
+    toc-depth: 3
+    link-external-newwindow: true
+    grid:
+      sidebar-width: 0px
+      body-width: 900px
+      margin-width: 200px

@@ -1,0 +1,176 @@
+name: k6 Benchmark
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Monday at 02:00 UTC
+    - cron: "0 2 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: k6-benchmark
+  cancel-in-progress: true
+
+jobs:
+  build-backend:
+    name: Build Backend Jar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build backend without unit tests
+        working-directory: backend
+        run: mvn -B -DskipTests package
+
+      - name: Locate runnable jar
+        id: jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_jar="$(find backend/target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
+
+      - name: Upload runnable jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-runnable-jar
+          path: ${{ steps.jar.outputs.app_jar }}
+          if-no-files-found: error
+
+  benchmark:
+    name: Run k6 Benchmark
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/benchmark.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/benchmark.pid
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Download runnable jar
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-runnable-jar
+          path: backend/target
+
+      - name: Start backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.k6-tmp"
+          app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          nohup java -jar "$app_jar" > "$APP_LOG" 2>&1 &
+          echo $! > "$APP_PID_FILE"
+
+      - name: Wait for backend readiness
+        shell: bash
+        run: |
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config > /dev/null; then
+              echo "Backend ready after $((attempt * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready" >&2
+          tail -n 100 "$APP_LOG" || true
+          exit 1
+
+      - name: Run k6 benchmark
+        working-directory: backend/k6
+        shell: bash
+        run: |
+          k6 run benchmark.js \
+            --out json="${{ github.workspace }}/.k6-tmp/benchmark-output.json" \
+            --summary-export="${{ github.workspace }}/.k6-tmp/benchmark-summary.json"
+
+      - name: Parse and update results
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUMMARY="${{ github.workspace }}/.k6-tmp/benchmark-summary.json"
+
+          p50_execute=$(jq '.metrics.iris_execute_latency.values["p(50)"] // null' "$SUMMARY")
+          p95_execute=$(jq '.metrics.iris_execute_latency.values["p(95)"] // null' "$SUMMARY")
+          p99_execute=$(jq '.metrics.iris_execute_latency.values["p(99)"] // null' "$SUMMARY")
+          p50_api=$(jq '.metrics.iris_api_list_latency.values["p(50)"] // null' "$SUMMARY")
+          p95_api=$(jq '.metrics.iris_api_list_latency.values["p(95)"] // null' "$SUMMARY")
+          rps=$(jq '.metrics.http_reqs.values.rate // null' "$SUMMARY")
+
+          jq \
+            --argjson p50e "$p50_execute" \
+            --argjson p95e "$p95_execute" \
+            --argjson p99e "$p99_execute" \
+            --argjson p50a "$p50_api" \
+            --argjson p95a "$p95_api" \
+            --argjson rps "$rps" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '.benchmark.execute_latency_p50_ms = ($p50e | if . then (. * 10 | round | . / 10) else null end)
+            | .benchmark.execute_latency_p95_ms = ($p95e | if . then (. * 10 | round | . / 10) else null end)
+            | .benchmark.execute_latency_p99_ms = ($p99e | if . then (. * 10 | round | . / 10) else null end)
+            | .benchmark.api_latency_p50_ms = ($p50a | if . then (. * 10 | round | . / 10) else null end)
+            | .benchmark.api_latency_p95_ms = ($p95a | if . then (. * 10 | round | . / 10) else null end)
+            | .benchmark.throughput_rps = ($rps | if . then (. * 10 | round | . / 10) else null end)
+            | .benchmark.note = "Last updated \($ts) by GitHub Actions"
+            | ._meta.generated_at = $ts' \
+            quarto/performance-results.json > /tmp/results-updated.json
+
+          mv /tmp/results-updated.json quarto/performance-results.json
+          echo "Results updated:"
+          cat quarto/performance-results.json
+
+      - name: Commit updated results
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add quarto/performance-results.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "perf: update benchmark results $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Stop backend
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$APP_PID_FILE" ]; then
+            kill "$(cat "$APP_PID_FILE")" || true
+          fi
+
+      - name: Upload benchmark log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-log
+          path: ${{ env.APP_LOG }}
+          if-no-files-found: ignore

@@ -1,0 +1,127 @@
+---
+title: ""
+page-layout: full
+toc: false
+---
+
+::: {.hero}
+# IrisPipe
+
+::: {.subtitle}
+A local pipeline engine for defining and executing multi-stage ETL workflows —
+built on Spring Boot and Spring Batch, designed with clear execution semantics
+and first-class observability.
+:::
+:::
+
+::: {.stat-grid}
+::: {.stat-card}
+::: {.num}3
+:::
+::: {.label}Execution Verbs
+:::
+:::
+
+::: {.stat-card}
+::: {.num}10
+:::
+::: {.label}k6 Test Suites
+:::
+:::
+
+::: {.stat-card}
+::: {.num}∞
+:::
+::: {.label}Parallel Jobs / Stage
+:::
+:::
+
+::: {.stat-card}
+::: {.num}SSE
+:::
+::: {.label}Real-time Events
+:::
+:::
+:::
+
+## What is IrisPipe?
+
+IrisPipe is a **single-user pipeline engine console** that lets you define, execute,
+and monitor multi-stage data pipelines against arbitrary JDBC sources and destinations.
+
+It is intentionally scoped for **local / desktop use** — no cloud dependency, no agent,
+no daemon. You define a pipeline, press Execute, and observe it run step-by-step with
+real-time SSE event push.
+
+## Pipeline Structure
+
+Every pipeline is a directed acyclic sequence of stages.
+Stages run sequentially; jobs within a stage run in parallel.
+
+::: {.concept-row}
+::: {.concept-node}Pipeline
+:::
+::: {.concept-arrow}→
+:::
+::: {.concept-node}Stage 1
+:::
+::: {.concept-arrow}→
+:::
+::: {.concept-node}Stage 2
+:::
+::: {.concept-arrow}→
+:::
+::: {.concept-node}Stage N
+:::
+:::
+
+::: {.concept-row}
+::: {.concept-node}Stage
+:::
+::: {.concept-arrow}‖
+:::
+::: {.concept-node}Job A
+:::
+::: {.concept-arrow}+
+:::
+::: {.concept-node}Job B
+:::
+::: {.concept-arrow}+
+:::
+::: {.concept-node}Job C
+:::
+:::
+
+::: {.concept-row}
+::: {.concept-node}Job
+:::
+::: {.concept-arrow}↓
+:::
+::: {.concept-node}Step 1
+:::
+::: {.concept-arrow}→
+:::
+::: {.concept-node}Step 2
+:::
+::: {.concept-arrow}→
+:::
+::: {.concept-node}Step N
+:::
+:::
+
+## Three Execution Verbs
+
+The key differentiator in IrisPipe's design is how it models **re-execution**:
+
+| Verb | Creates | Reads config from | Starts at |
+|---|---|---|---|
+| `execute` | New logical run | Live stored config | Stage 1 |
+| `resume` | New attempt in existing run | Frozen snapshot | First incomplete stage |
+| `rerun` | New logical run | Frozen snapshot | Stage 1 |
+
+`resume` and `rerun` both operate on a **config snapshot** taken at execute time —
+so a pipeline can be modified without corrupting in-flight or historical runs.
+
+[Read the full design →](design.qmd){.btn .btn-outline-primary}
+[Architecture overview →](architecture.qmd){.btn .btn-outline-secondary}
+[Performance & reliability →](performance.qmd){.btn .btn-outline-secondary}

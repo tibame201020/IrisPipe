@@ -1,0 +1,196 @@
+---
+title: "Performance & Reliability"
+---
+
+IrisPipe's correctness and reliability are validated through a **k6 integration test suite**
+that runs against a real Spring Boot instance on every push to `main`.
+
+[![k6 Regression](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6.yml)
+
+---
+
+## Test Strategy
+
+k6 is used for **integration-level correctness**, not synthetic load generation.
+Each test suite:
+
+1. Boots the real Spring Boot backend (from a compiled jar)
+2. Runs a sequence of API calls that exercise a specific behavioral domain
+3. Asserts on status codes, response shape, and state transitions
+4. Tears down cleanly
+
+This gives stronger coverage guarantees than unit tests for runtime semantics
+because it exercises the full call stack: controller → service → Spring Batch → H2.
+
+---
+
+## Test Suites (10 Parallel Suites)
+
+::: {.suite-grid}
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Config CRUD
+:::
+::: {.suite-desc}
+Create, update, import (YAML/JSON), delete, uniqueness constraints, delete guard with run history.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Workspace
+:::
+::: {.suite-desc}
+Workspace scoping, header resolution, default fallback, cross-workspace isolation.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Pipeline Core
+:::
+::: {.suite-desc}
+Execute flow, stage sequential barrier, intra-stage parallel jobs, run status lifecycle.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Pipeline Resume
+:::
+::: {.suite-desc}
+Resume from FAILED, resume from STOPPED, skip completed stages, CHUNK-level restart semantics.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Pipeline Stop
+:::
+::: {.suite-desc}
+Cooperative stop signal, STOPPING → STOPPED convergence, NOT_RUN projection on future stages.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Operator Safety
+:::
+::: {.suite-desc}
+Double-execute guard, resume on non-terminal run rejection, delete guard on in-flight runs.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Observability
+:::
+::: {.suite-desc}
+Prometheus metric presence, actuator health, overview summary endpoint, run history pagination.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Pipeline Rerun
+:::
+::: {.suite-desc}
+Rerun creates new logical run, copies snapshot, reruns from Stage 1, does not read live config.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Control Loop
+:::
+::: {.suite-desc}
+Execute → fail → resume → stop → rerun end-to-end control flow sequences.
+:::
+:::
+
+::: {.suite-card}
+::: {.suite-name}
+<span class="pass-dot"></span>Runtime
+:::
+::: {.suite-desc}
+Watermark tracking, run lineage, attempt ordering, snapshot isolation across config changes.
+:::
+:::
+:::
+
+---
+
+## CI Pipeline
+
+The k6 suites run in **parallel matrix** on every PR and push to `main`:
+
+```yaml
+# .github/workflows/backend-k6.yml (simplified)
+strategy:
+  matrix:
+    suite: [config, workspace, pipeline-core, pipeline-resume,
+            pipeline-stop, pipeline-operator-safety,
+            pipeline-observability, pipeline-rerun,
+            pipeline-control-loop, runtime]
+```
+
+Each matrix job:
+
+1. Downloads the pre-built backend jar (shared artifact from `build-backend` job)
+2. Starts the backend
+3. Waits for health readiness (`/api/v1/sync-config` returns 200)
+4. Runs the k6 suite with a namespaced prefix to avoid cross-suite state pollution
+5. Uploads the backend log as artifact on failure
+
+---
+
+## Benchmark
+
+```{ojs}
+//| echo: false
+results = FileAttachment("performance-results.json").json()
+
+benchmark = results.benchmark
+hasBenchmark = benchmark.execute_latency_p50_ms !== null
+```
+
+```{ojs}
+//| echo: false
+hasBenchmark
+  ? html`
+    <table class="perf-table table table-sm">
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Execute latency p50</td><td>${benchmark.execute_latency_p50_ms} ms</td></tr>
+        <tr><td>Execute latency p95</td><td>${benchmark.execute_latency_p95_ms} ms</td></tr>
+        <tr><td>Execute latency p99</td><td>${benchmark.execute_latency_p99_ms} ms</td></tr>
+        <tr><td>API latency p50</td><td>${benchmark.api_latency_p50_ms} ms</td></tr>
+        <tr><td>API latency p95</td><td>${benchmark.api_latency_p95_ms} ms</td></tr>
+        <tr><td>Throughput</td><td>${benchmark.throughput_rps} req/s</td></tr>
+      </tbody>
+    </table>`
+  : html`<p style="color:#9ca3af;font-style:italic;">
+      Benchmark results not yet available.
+      Run the <a href="https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml">k6-benchmark workflow</a>
+      to populate this section.
+    </p>`
+```
+
+---
+
+## Benchmark Methodology
+
+The benchmark workflow (`k6-benchmark.yml`, runs on workflow dispatch or weekly schedule):
+
+1. Builds the backend jar
+2. Starts the backend with a clean H2 database
+3. Runs a k6 script (`backend/k6/benchmark.js`) that:
+   - Seeds a multi-stage pipeline definition
+   - Executes the pipeline N times, measuring end-to-end latency
+   - Measures API response times (`/api/v1/sync-config`, `/api/v1/sync-pipeline`)
+   - Calculates throughput (requests/second under concurrency)
+4. Parses k6 JSON output and updates `quarto/performance-results.json`
+5. Commits the updated results file
+6. Triggers a Quarto site rebuild and redeploy
+
+This keeps the performance data live without requiring the backend to be hosted.

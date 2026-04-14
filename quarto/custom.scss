@@ -1,0 +1,138 @@
+/*-- scss:defaults --*/
+$font-family-sans-serif: "Inter", system-ui, -apple-system, sans-serif;
+$font-family-monospace: "Fira Code", "JetBrains Mono", monospace;
+$headings-font-weight: 600;
+$link-color: #6366f1;
+
+/*-- scss:rules --*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+/* Hero */
+.hero {
+  padding: 4rem 0 3rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 3rem;
+}
+.hero h1 {
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+.hero .subtitle {
+  font-size: 1.15rem;
+  color: #6b7280;
+  max-width: 600px;
+  line-height: 1.7;
+}
+
+/* Stat cards */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  margin: 2rem 0;
+}
+.stat-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  background: #fafafa;
+}
+.stat-card .num {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #6366f1;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+.stat-card .label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Concept diagram */
+.concept-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+.concept-node {
+  border: 1.5px solid #6366f1;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4f46e5;
+  background: #eef2ff;
+  white-space: nowrap;
+}
+.concept-arrow {
+  color: #9ca3af;
+  font-size: 1.2rem;
+}
+
+/* Badge strip */
+.badge-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+/* Callout override */
+.callout {
+  border-radius: 8px;
+}
+
+/* Table */
+table {
+  font-size: 0.9rem;
+}
+thead th {
+  font-weight: 600;
+  background: #f9fafb;
+}
+
+/* Perf table */
+.perf-table td:last-child,
+.perf-table th:last-child {
+  text-align: right;
+  font-family: $font-family-monospace;
+}
+
+/* Suite grid */
+.suite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+.suite-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  font-size: 0.85rem;
+}
+.suite-card .suite-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.suite-card .suite-desc {
+  color: #6b7280;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.pass-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  margin-right: 6px;
+}
