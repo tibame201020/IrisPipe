@@ -48,6 +48,66 @@ graph LR
 
 ---
 
+## Job Config Model
+
+Each job within a stage declares its own data movement contract. Below is the full shape of a job and its steps.
+
+```{mermaid}
+graph TD
+  J["Job\n──────\nstage_name\nstage_sequence_order\njob_name\natomic_level\nwatermark_column\nwatermark_type"]
+
+  J --> SRC["Source\n──────────\nconnection_id (FK)\nor inline url/driver\ncredentials"]
+
+  J --> DST["Destination\n──────────\nconnection_id (FK)\nor inline url/driver\ncredentials"]
+
+  J --> E1["Step 1\n─────────────\nexecution_type\nsource_sql\ndestination_table"]
+  J --> E2["Step 2\n─────────────\nexecution_type\ndestination_table"]
+  J --> E3["Step N ..."]
+
+  style J fill:#eef2ff,stroke:#6366f1
+  style SRC fill:#f0fdf4,stroke:#16a34a
+  style DST fill:#fff7ed,stroke:#f59e0b
+  style E1 fill:#fdf2f8,stroke:#a855f7
+  style E2 fill:#fdf2f8,stroke:#a855f7
+  style E3 fill:#fdf2f8,stroke:#a855f7
+```
+
+**Execution types** — controls how each step writes to the destination:
+
+| Type | Behavior |
+|---|---|
+| `INSERT` | `INSERT INTO dest SELECT ...` |
+| `UPDATE` | `UPDATE dest SET ... WHERE ...` |
+| `UPSERT` | Merge — insert or update on conflict |
+| `DELETE` | `DELETE FROM dest WHERE ...` |
+| `EXECUTE` | Arbitrary SQL (DDL, stored procedure) |
+
+Steps within a job execute **sequentially** in their declared order.
+
+---
+
+## Connection Model
+
+A job's source and destination can be configured in two ways:
+
+```{mermaid}
+graph LR
+  J["Job"]
+
+  J -- "named" --> C["iris_connection\n──────────\nconnection_name\ndriver\nurl\ncredentials"]
+
+  J -- "inline" --> I["Inline config\n──────────\ndriver\nurl\nusername / password\n(stored on job row)"]
+
+  style C fill:#eef2ff,stroke:#6366f1
+  style I fill:#fff7ed,stroke:#f59e0b
+```
+
+**Named connections** (`iris_connection` library) are reusable across jobs. A change to the named connection propagates to all jobs referencing it — but only for future `execute` calls. Existing run snapshots are unaffected.
+
+**Inline connections** embed credentials directly on the job config. They are convenient for one-off jobs but cannot be updated globally.
+
+---
+
 ## Stage Barrier + Parallel Execution
 
 The key scheduling primitive is the **stage barrier**:

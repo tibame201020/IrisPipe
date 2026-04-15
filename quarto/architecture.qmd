@@ -155,6 +155,25 @@ erDiagram
 
 > **Two read paths**: `PipelineRun` + `PipelineRunJob` serve cheap summary reads. `PipelineRunExecution` + `PipelineRunExecutionJob` serve the full ordered attempt history.
 
+### Config ownership chain
+
+```{mermaid}
+graph LR
+  WS["iris_workspace"] --> FL["iris_pipeline_folder"]
+  FL --> PL["iris_pipeline"]
+  PL --> JB["iris_pipeline_job\n(one row per stage×job)"]
+  JB --> EX["iris_pipeline_execution\n(one row per step)"]
+  JB --> CN["iris_pipeline_job_connection\n(source / dest refs)"]
+
+  style WS fill:#f8fafc,stroke:#94a3b8
+  style EX fill:#fdf2f8,stroke:#a855f7
+  style CN fill:#f0fdf4,stroke:#16a34a
+```
+
+- `iris_pipeline_job` carries stage ordering and `atomic_level`
+- `iris_pipeline_execution` rows are the ordered steps within a job
+- `iris_pipeline_job_connection` links jobs to named `iris_connection` entries (or stores inline credentials)
+
 ---
 
 ## Runtime Execution Sequence
@@ -211,6 +230,64 @@ flowchart TD
 ```
 
 This design keeps sync and async execution paths on the same lifecycle model, and keeps meter code out of controllers and DTOs.
+
+---
+
+## Run Status Lifecycle
+
+Each `iris_pipeline_run` moves through a well-defined set of states. Status is never set directly by control code — it is always projected by the listener chain described above.
+
+```{mermaid}
+stateDiagram-v2
+  direction LR
+  [*] --> STARTING : execute / resume / rerun
+
+  STARTING --> STARTED : first job launched
+  STARTED --> COMPLETED : all stages pass
+  STARTED --> FAILED : any stage fails
+  STARTED --> STOPPING : stop() called
+
+  STOPPING --> STOPPED : Batch settles
+
+  FAILED --> STARTING : resume()
+  STOPPED --> STARTING : resume()
+
+  COMPLETED --> [*]
+  FAILED --> [*]
+  STOPPED --> [*]
+```
+
+`NOT_RUN` is a **projection**, not a persisted status. Future stages that never launched because an earlier stage failed are shown as `NOT_RUN` in the read model but have no `iris_pipeline_run_execution` row.
+
+---
+
+## Watermark Mechanism
+
+Jobs that declare a watermark field perform **incremental extraction** — only rows newer than the last extracted value are fetched.
+
+```{mermaid}
+sequenceDiagram
+  participant Engine
+  participant WR as iris_watermark_record
+  participant Src as Source DB
+  participant Dst as Destination DB
+
+  Engine->>WR: load last watermark value (or null → full extract)
+  Engine->>Src: SELECT ... WHERE updated_at > {watermark}
+  Src-->>Engine: result set
+  Engine->>Dst: write rows (INSERT / UPSERT)
+  Engine->>WR: update watermark to max(updated_at) in result
+```
+
+Watermark records are keyed by `(workspace, pipeline, job, watermark_field)`. This means different jobs in the same pipeline maintain independent watermarks.
+
+| Field | Meaning |
+|---|---|
+| `watermark_column` | Column name in the source table |
+| `watermark_type` | `DATETIME` or `BIGINT` |
+| Last value | Persisted in `iris_watermark_record` after each successful run |
+
+A run that fails **does not advance the watermark** — the committed value from the last successful run is used on the next attempt.
 
 ---
 
