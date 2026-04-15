@@ -13,37 +13,25 @@ IrisPipe treats it as three distinct operations — each with a different contra
 Every pipeline is a strict hierarchy. Resources at each level have their own identity, persistence, and semantics.
 
 ```{mermaid}
-graph TD
-  W([Workspace]):::root
+graph LR
+  W(["Workspace"]):::root --> S1["Stage 1"]
+  W --> S2["Stage 2"]
+  W --> S3["Stage 3"]
 
-  W --> F1(["📁 Folder"])
-  W --> F2(["📁 Folder"])
-  F1 --> P1(["⚡ Pipeline"])
-  F2 --> P2(["⚡ Pipeline"])
-  F2 --> P3(["⚡ Pipeline"])
+  subgraph "Pipeline"
+    S1 --- J1["Job A"]
+    S1 --- J2["Job B"]
+    S2 --- J3["Job C"]
+    S3 --- J4["Job D"]
+    S3 --- J5["Job E"]
+  end
 
-  P1 --> S1["Stage 1"]
-  P1 --> S2["Stage 2"]
-  P1 --> S3["Stage 3"]
-
-  S1 --- J1A["Job A"]
-  S1 --- J1B["Job B"]
-  S2 --- J2A["Job C"]
-  S3 --- J3A["Job D"]
-  S3 --- J3B["Job E"]
-
-  J1A --> ST1["Step 1 · SELECT"]
-  J1A --> ST2["Step 2 · INSERT"]
-  J1B --> ST3["Step 1 · UPSERT"]
-
-  classDef root fill:#6366f1,color:#fff,stroke:none
+  classDef root fill:#6366f1,color:#fff,stroke:none,rx:8
   classDef stage fill:#eef2ff,stroke:#6366f1,color:#3730a3
   classDef job fill:#f0fdf4,stroke:#16a34a,color:#15803d
-  classDef step fill:#fafafa,stroke:#d1d5db,color:#374151
 
   class S1,S2,S3 stage
-  class J1A,J1B,J2A,J3A,J3B job
-  class ST1,ST2,ST3 step
+  class J1,J2,J3,J4,J5 job
 ```
 
 **Workspace** — scopes all resources. Resolved from `X-Iris-Workspace-Key` header; falls back to `default`.
@@ -97,35 +85,37 @@ flowchart LR
 
 ## Three Execution Verbs
 
-The core design decision: **re-execution is not one thing**. IrisPipe provides three distinct operations:
+The core design decision: **re-execution is not one thing**. IrisPipe provides three distinct operations with different contracts:
+
+```{mermaid}
+flowchart LR
+  E(["execute"]):::blue --> E1["reads live config"]
+  E --> E2["new PipelineRun"]
+  E --> E3["Stage 1 →"]
+
+  R(["resume"]):::green --> R1["reads same snapshot"]
+  R --> R2["new Attempt\nin same Run"]
+  R --> R3["resume stage →"]
+
+  RR(["rerun"]):::amber --> RR1["reads same snapshot"]
+  RR --> RR2["new PipelineRun"]
+  RR --> RR3["Stage 1 →"]
+
+  classDef blue fill:#eef2ff,stroke:#6366f1,color:#3730a3
+  classDef green fill:#f0fdf4,stroke:#16a34a,color:#15803d
+  classDef amber fill:#fff7ed,stroke:#f59e0b,color:#92400e
+```
+
+**Resume** detail — how the engine picks up where it left off:
 
 ```{mermaid}
 flowchart TD
-  subgraph execute["execute(pipelineId)"]
-    direction TB
-    E1["Read LIVE stored config"] --> E2["Create new PipelineRun"]
-    E2 --> E3["Materialize snapshot\n(config frozen here)"]
-    E3 --> E4["Launch from Stage 1"]
-  end
+  A["resume(runId)"] --> B["Load snapshot\n(same run)"]
+  B --> C["Find first incomplete stage"]
+  C --> D["Mark upstream jobs SKIPPED"]
+  D --> E["Launch from that stage"]
 
-  subgraph resume["resume(runId)"]
-    direction TB
-    R1["Load SAME RUN snapshot\n(never reads live config)"] --> R2["Find first incomplete stage\n(FAILED / STOPPED / NOT_RUN)"]
-    R2 --> R3["Create new Execution attempt\n(kind = RESUME)"]
-    R3 --> R4["Mark completed jobs SKIPPED"]
-    R4 --> R5["Launch from resume stage"]
-  end
-
-  subgraph rerun["rerun(runId)"]
-    direction TB
-    RR1["Load SOURCE RUN snapshot\n(never reads live config)"] --> RR2["Create NEW PipelineRun"]
-    RR2 --> RR3["Copy snapshot to new run"]
-    RR3 --> RR4["Launch from Stage 1"]
-  end
-
-  style execute fill:#eef2ff,stroke:#6366f1
-  style resume fill:#f0fdf4,stroke:#16a34a
-  style rerun fill:#fff7ed,stroke:#f59e0b
+  style A fill:#f0fdf4,stroke:#16a34a
 ```
 
 ### `execute` — Fresh run from live config
@@ -240,42 +230,32 @@ Each job declares its `atomicLevel`, which controls what "resume" means at the j
 A single pipeline can have many runs. A single run can have many execution attempts.
 
 ```{mermaid}
-graph LR
-  subgraph "Logical Run #42"
-    direction TB
-    Snap["Snapshot\n(immutable)"]
-    Job1["RunJob: stage1/jobA"]
-    Job2["RunJob: stage1/jobB"]
-    Job3["RunJob: stage2/jobC"]
+flowchart TD
+  Run["PipelineRun\n(logical run)"]
+  Snap["RunSnapshot\n(immutable config)"]
+  RunJob["RunJob ×N\n← latest projection"]
+  Exec1["Execution #1\nINITIAL · FAILED"]
+  Exec2["Execution #2\nRESUME · COMPLETED"]
+  EJ1["ExecJob ×N\n(per attempt)"]
+  EJ2["ExecJob ×N\n(per attempt)"]
 
-    Attempt1["Execution #1\nINITIAL · FAILED"]
-    Attempt2["Execution #2\nRESUME · COMPLETED"]
+  Run --> Snap
+  Run --> RunJob
+  Run --> Exec1
+  Run --> Exec2
+  Exec1 --> EJ1
+  Exec2 --> EJ2
 
-    EJob1["ExecJob #1: jobA · COMPLETED"]
-    EJob2["ExecJob #1: jobB · FAILED"]
-    EJob3["ExecJob #1: jobC · NOT_RUN"]
-
-    EJob4["ExecJob #2: jobA · SKIPPED"]
-    EJob5["ExecJob #2: jobB · COMPLETED"]
-    EJob6["ExecJob #2: jobC · COMPLETED"]
-  end
-
-  Snap --- Attempt1
-  Snap --- Attempt2
-  Attempt1 --> EJob1
-  Attempt1 --> EJob2
-  Attempt1 --> EJob3
-  Attempt2 --> EJob4
-  Attempt2 --> EJob5
-  Attempt2 --> EJob6
-  Job1 -. "latest projection" .-> EJob5
-  Job2 -. "latest projection" .-> EJob5
-  Job3 -. "latest projection" .-> EJob6
+  style Snap fill:#fef9c3,stroke:#ca8a04
+  style RunJob fill:#eef2ff,stroke:#6366f1
+  style Exec1 fill:#fee2e2,stroke:#ef4444
+  style Exec2 fill:#f0fdf4,stroke:#16a34a
 ```
 
-- `PipelineRun` + `PipelineRunJob` = **latest projection** (cheap summary reads)
-- `PipelineRunExecution` + `PipelineRunExecutionJob` = **full attempt history** (detailed audit trail)
-- Both live in the same schema but serve different read paths
+Two read paths coexist in the same schema:
+
+- **`PipelineRun` + `PipelineRunJob`** — latest projection, used for cheap list and summary APIs
+- **`PipelineRunExecution` + `PipelineRunExecutionJob`** — full attempt history, used for run detail and audit
 
 ---
 

@@ -105,37 +105,28 @@ irispipe/
 
 ## Facade + Collaborator Pattern
 
-Large mixed-responsibility services are intentionally decomposed into a facade plus narrow collaborators:
+Large mixed-responsibility services are intentionally decomposed into a facade plus narrow collaborators.
+Example — the Runtime domain:
 
 ```{mermaid}
-graph LR
-  subgraph "Config Domain"
-    CS["PipelineConfigService\n(facade)"]
-    CS --> CC["PipelineConfigCommandService\npersist / delete"]
-    CS --> CI["PipelineConfigImportService\nparse YAML / JSON"]
-    CS --> CR["PipelineConfigReadModelService\nquery assembly"]
-    CS --> CP["PipelineConfigRequestPolicy\nvalidation rules"]
-  end
+flowchart LR
+  ES["PipelineExecutionService\n(facade)"]:::facade
 
-  subgraph "Folder Domain"
-    FS["PipelineFolderService\n(facade)"]
-    FS --> FC["PipelineFolderCommandService\ncreate / rename / delete"]
-    FS --> FR["PipelineFolderReadModelService\ntree assembly"]
-    FS --> FST["PipelineFolderStructureService\nstructure helpers"]
-  end
+  ES --> RC["RunCommandService\ncreate rows"]
+  ES --> RL["RunLaunchService\nstage barrier"]
+  ES --> RCT["RunControlPolicy\nstate guards"]
+  ES --> RS["RunSnapshotService\npersist / load"]
 
-  subgraph "Runtime Domain"
-    ES["PipelineExecutionService\n(facade)"]
-    ES --> RC["PipelineRunCommandService\ncreate run / execution rows"]
-    ES --> RL["PipelineRunLaunchService\nstage barrier + parallel launch"]
-    ES --> RCT["PipelineRunControlPolicy\nstate transition guards"]
-    ES --> RS["PipelineRunSnapshotService\nsnapshot persist / load"]
-  end
-
-  style CS fill:#eef2ff,stroke:#6366f1
-  style FS fill:#eef2ff,stroke:#6366f1
-  style ES fill:#eef2ff,stroke:#6366f1
+  classDef facade fill:#eef2ff,stroke:#6366f1,color:#3730a3
 ```
+
+The same pattern applies across all three domains:
+
+| Domain | Facade | Collaborators |
+|---|---|---|
+| Config | `PipelineConfigService` | Command, Import, ReadModel, RequestPolicy |
+| Folder | `PipelineFolderService` | Command, ReadModel, Structure |
+| Runtime | `PipelineExecutionService` | Command, Launch, ControlPolicy, Snapshot |
 
 ---
 
@@ -145,49 +136,10 @@ graph LR
 
 ```{mermaid}
 erDiagram
-  iris_workspace {
-    bigint id PK
-    string workspace_key UK
-    string workspace_name
-    boolean system_default
-  }
-
-  iris_pipeline_folder {
-    bigint id PK
-    bigint workspace_id FK
-    bigint parent_folder_id FK
-    string folder_name
-    string folder_path
-    boolean system_root
-  }
-
-  iris_pipeline {
-    bigint id PK
-    bigint workspace_id FK
-    bigint folder_id FK
-    string pipeline_name
-  }
-
-  iris_pipeline_job {
-    bigint id PK
-    bigint pipeline_id FK
-    string stage_name
-    int stage_sequence_order
-    string job_name
-    string atomic_level
-  }
-
-  iris_pipeline_execution {
-    bigint id PK
-    bigint pipeline_job_id FK
-    string execution_type
-    string sql_content
-  }
-
-  iris_workspace ||--o{ iris_pipeline_folder : "owns"
-  iris_workspace ||--o{ iris_pipeline : "owns"
-  iris_pipeline_folder ||--o{ iris_pipeline : "contains"
-  iris_pipeline ||--o{ iris_pipeline_job : "defines"
+  iris_workspace ||--o{ iris_pipeline_folder : owns
+  iris_workspace ||--o{ iris_pipeline : owns
+  iris_pipeline_folder ||--o{ iris_pipeline : contains
+  iris_pipeline ||--o{ iris_pipeline_job : defines
   iris_pipeline_job ||--o{ iris_pipeline_execution : "has steps"
 ```
 
@@ -195,70 +147,13 @@ erDiagram
 
 ```{mermaid}
 erDiagram
-  iris_pipeline_run {
-    bigint id PK
-    bigint pipeline_id FK
-    bigint workspace_id FK
-    bigint latest_execution_id FK
-    string status
-    timestamp created_at
-    timestamp start_time
-    timestamp end_time
-  }
-
-  iris_pipeline_run_snapshot {
-    bigint id PK
-    bigint pipeline_run_id FK
-    string snapshot_schema_version
-    string pipeline_content_hash
-    json materialized_job_json
-  }
-
-  iris_pipeline_run_job {
-    bigint id PK
-    bigint pipeline_run_id FK
-    string stage_name
-    int stage_sequence_order
-    string job_name
-    string atomic_level
-    string status
-    bigint last_job_execution_id
-  }
-
-  iris_pipeline_run_execution {
-    bigint id PK
-    bigint pipeline_run_id FK
-    int execution_no
-    string execution_kind
-    string status
-    timestamp start_time
-    timestamp end_time
-  }
-
-  iris_pipeline_run_execution_job {
-    bigint id PK
-    bigint execution_id FK
-    bigint run_job_id FK
-    string status
-    bigint root_job_instance_id
-    bigint last_job_execution_id
-  }
-
-  iris_watermark_record {
-    bigint id PK
-    string execution_name
-    string table_name
-    string watermark_column
-    string watermark_value
-  }
-
-  iris_pipeline_run ||--|| iris_pipeline_run_snapshot : "owns (immutable)"
+  iris_pipeline_run ||--|| iris_pipeline_run_snapshot : "immutable snapshot"
   iris_pipeline_run ||--o{ iris_pipeline_run_job : "latest projection"
   iris_pipeline_run ||--o{ iris_pipeline_run_execution : "attempt history"
   iris_pipeline_run_execution ||--o{ iris_pipeline_run_execution_job : "per-attempt jobs"
 ```
 
-> **Two read paths**: `PipelineRun` + `PipelineRunJob` serve cheap summary reads (latest projection). `PipelineRunExecution` + `PipelineRunExecutionJob` serve the full attempt history. Both are always up-to-date — the lifecycle listener updates both on each state transition.
+> **Two read paths**: `PipelineRun` + `PipelineRunJob` serve cheap summary reads. `PipelineRunExecution` + `PipelineRunExecutionJob` serve the full ordered attempt history.
 
 ---
 
@@ -266,32 +161,23 @@ erDiagram
 
 ```{mermaid}
 sequenceDiagram
-  actor Client
-  participant API as REST Controller
-  participant ExecSvc as PipelineExecutionService
-  participant CmdSvc as PipelineRunCommandService
-  participant SnapSvc as PipelineRunSnapshotService
-  participant LaunchSvc as PipelineRunLaunchService
+  participant Client
+  participant API
+  participant ExecutionService
+  participant LaunchService
   participant Batch as Spring Batch
 
-  Client->>API: POST /api/v1/sync-pipeline
-  API->>ExecSvc: execute(pipelineId)
+  Client->>API: POST /sync-pipeline
+  API->>ExecutionService: execute(pipelineId)
+  ExecutionService->>ExecutionService: read config → create Run + Snapshot
+  ExecutionService->>LaunchService: launch(snapshot)
 
-  ExecSvc->>ExecSvc: reconstruct SyncJobDefinition[]
-  ExecSvc->>CmdSvc: createRun() → PipelineRun + RunJob rows
-  ExecSvc->>SnapSvc: persistSnapshot() → RunSnapshot row
-
-  ExecSvc->>LaunchSvc: launch(snapshot)
-  loop For each stage (sequential)
-    LaunchSvc->>Batch: launch Job A (async)
-    LaunchSvc->>Batch: launch Job B (async)
-    LaunchSvc->>LaunchSvc: await stage barrier
-    Batch-->>LaunchSvc: Job A COMPLETED
-    Batch-->>LaunchSvc: Job B COMPLETED
+  loop each stage
+    LaunchService->>Batch: launch jobs in parallel
+    Batch-->>LaunchService: all jobs settled
   end
-  LaunchSvc-->>ExecSvc: all stages complete
-  ExecSvc-->>API: PipelineRunSummary
-  API-->>Client: 200 OK
+
+  LaunchService-->>Client: 200 OK (runId)
 ```
 
 ---
