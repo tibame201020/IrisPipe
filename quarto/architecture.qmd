@@ -8,6 +8,42 @@ The entire stack runs locally — no cloud, no agent, no daemon.
 
 ---
 
+## Full Stack Overview
+
+```{mermaid}
+graph TB
+  subgraph "Browser"
+    FE["React 19 SPA\nport 4206"]
+  end
+
+  subgraph "Backend  :8080"
+    API["REST Controllers\n/api/v1/..."]
+    SSE["SSE Endpoint\n/api/v1/events/runs"]
+    SVC["Core Services\n+ Spring Batch"]
+    OBS["Observability\n/actuator/prometheus"]
+  end
+
+  subgraph "Storage"
+    H2["H2 File DB\nh2data/data"]
+  end
+
+  FE -- "REST (Axios)" --> API
+  FE -- "SSE stream" --> SSE
+  API --> SVC
+  SSE --> SVC
+  SVC --> H2
+  OBS --> H2
+
+  style FE fill:#eef2ff,stroke:#6366f1
+  style SVC fill:#f0fdf4,stroke:#16a34a
+  style H2 fill:#fef9c3,stroke:#ca8a04
+  style OBS fill:#f8fafc,stroke:#94a3b8
+```
+
+The Vite dev proxy forwards `/api` and `/actuator` to `:8080`, so the frontend can run on any port during development without CORS issues.
+
+---
+
 ## Stack
 
 | Layer | Technology | Notes |

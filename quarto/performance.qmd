@@ -124,14 +124,26 @@ Watermark tracking, run lineage, attempt ordering, snapshot isolation across con
 
 The k6 suites run in **parallel matrix** on every PR and push to `main`:
 
-```yaml
-# .github/workflows/backend-k6.yml (simplified)
-strategy:
-  matrix:
-    suite: [config, workspace, pipeline-core, pipeline-resume,
-            pipeline-stop, pipeline-operator-safety,
-            pipeline-observability, pipeline-rerun,
-            pipeline-control-loop, runtime]
+```{mermaid}
+flowchart TD
+  P["PR / push to main"] --> B["build-backend\n(compile + jar)"]
+  B --> AR["Upload jar artifact"]
+
+  AR --> M1["Suite: config"]
+  AR --> M2["Suite: workspace"]
+  AR --> M3["Suite: pipeline-core"]
+  AR --> M4["Suite: pipeline-resume"]
+  AR --> M5["Suite: pipeline-stop"]
+  AR --> M6["Suite: operator-safety"]
+  AR --> M7["Suite: observability"]
+  AR --> M8["Suite: pipeline-rerun"]
+  AR --> M9["Suite: control-loop"]
+  AR --> M10["Suite: runtime"]
+
+  M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 & M9 & M10 --> DONE["All suites pass ✓"]
+
+  style B fill:#eef2ff,stroke:#6366f1
+  style DONE fill:#f0fdf4,stroke:#16a34a
 ```
 
 Each matrix job:

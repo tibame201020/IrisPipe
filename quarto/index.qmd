@@ -58,56 +58,35 @@ real-time SSE event push.
 Every pipeline is a directed acyclic sequence of stages.
 Stages run sequentially; jobs within a stage run in parallel.
 
-::: {.concept-row}
-::: {.concept-node}Pipeline
-:::
-::: {.concept-arrow}→
-:::
-::: {.concept-node}Stage 1
-:::
-::: {.concept-arrow}→
-:::
-::: {.concept-node}Stage 2
-:::
-::: {.concept-arrow}→
-:::
-::: {.concept-node}Stage N
-:::
-:::
+```{mermaid}
+flowchart LR
+  subgraph "Stage 1 — parallel"
+    J1["Job A\nsrc → dst"]
+    J2["Job B\nsrc → dst"]
+  end
 
-::: {.concept-row}
-::: {.concept-node}Stage
-:::
-::: {.concept-arrow}‖
-:::
-::: {.concept-node}Job A
-:::
-::: {.concept-arrow}+
-:::
-::: {.concept-node}Job B
-:::
-::: {.concept-arrow}+
-:::
-::: {.concept-node}Job C
-:::
-:::
+  subgraph "Stage 2 — parallel"
+    J3["Job C\nsrc → dst"]
+    J4["Job D\nsrc → dst"]
+    J5["Job E\nsrc → dst"]
+  end
 
-::: {.concept-row}
-::: {.concept-node}Job
-:::
-::: {.concept-arrow}↓
-:::
-::: {.concept-node}Step 1
-:::
-::: {.concept-arrow}→
-:::
-::: {.concept-node}Step 2
-:::
-::: {.concept-arrow}→
-:::
-::: {.concept-node}Step N
-:::
-:::
+  subgraph "Stage 3 — parallel"
+    J6["Job F\nsrc → dst"]
+  end
+
+  Stage1 -- "barrier" --> Stage2
+  Stage2 -- "barrier" --> Stage3
+
+  style J1 fill:#eef2ff,stroke:#6366f1
+  style J2 fill:#eef2ff,stroke:#6366f1
+  style J3 fill:#f0fdf4,stroke:#16a34a
+  style J4 fill:#f0fdf4,stroke:#16a34a
+  style J5 fill:#f0fdf4,stroke:#16a34a
+  style J6 fill:#fff7ed,stroke:#f59e0b
+```
+
+Each **Job** executes one or more **Steps** sequentially (INSERT / UPDATE / UPSERT / DELETE / EXECUTE against the destination).
 
 ## Three Execution Verbs
 
