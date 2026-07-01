@@ -10,7 +10,8 @@
  *   k6 run benchmark.js --out json=benchmark-output.json
  *
  * Environment:
- *   BASE_URL  (default: http://127.0.0.1:8080)
+ *   BASE_URL          (default: http://127.0.0.1:8080)
+ *   BENCHMARK_REPORT  optional compact JSON report path for CI parsing
  */
 
 import http from 'k6/http';
@@ -27,6 +28,7 @@ const successCounter = new Counter('iris_pipeline_success');
 const failCounter = new Counter('iris_pipeline_fail');
 
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
   scenarios: {
     api_throughput: {
       executor: 'constant-vus',
@@ -48,6 +50,31 @@ export const options = {
     http_req_failed: ['rate<0.01'],
   },
 };
+
+function trendValue(data, metricName, key) {
+  return data.metrics?.[metricName]?.values?.[key] ?? null;
+}
+
+function round1(value) {
+  return value === null || value === undefined ? null : Math.round(value * 10) / 10;
+}
+
+export function handleSummary(data) {
+  const report = {
+    execute_latency_p50_ms: round1(trendValue(data, 'iris_execute_latency', 'med')),
+    execute_latency_p95_ms: round1(trendValue(data, 'iris_execute_latency', 'p(95)')),
+    execute_latency_p99_ms: round1(trendValue(data, 'iris_execute_latency', 'p(99)')),
+    api_latency_p50_ms: round1(trendValue(data, 'iris_api_list_latency', 'med')),
+    api_latency_p95_ms: round1(trendValue(data, 'iris_api_list_latency', 'p(95)')),
+    throughput_rps: round1(data.metrics?.http_reqs?.values?.rate ?? null),
+  };
+
+  const outputPath = __ENV.BENCHMARK_REPORT || 'benchmark-report.json';
+  return {
+    [outputPath]: JSON.stringify(report, null, 2),
+    stdout: '',
+  };
+}
 
 // ── Setup: seed one pipeline ──────────────────────────────────────────────
 
@@ -176,7 +203,6 @@ export function executeLatencyScenario(data) {
 
   const runId = JSON.parse(execRes.body).id;
 
-  // poll until terminal
   for (let i = 0; i < 60; i++) {
     const detail = http.get(`${BASE_URL}/api/v1/sync-pipeline/${runId}`, { headers: HEADERS });
     const body = JSON.parse(detail.body);

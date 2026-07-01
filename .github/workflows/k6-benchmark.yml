@@ -117,6 +117,7 @@ jobs:
         working-directory: backend/k6
         shell: bash
         run: |
+          BENCHMARK_REPORT="${{ github.workspace }}/.k6-tmp/benchmark-report.json" \
           k6 run benchmark.js \
             --out json="${{ github.workspace }}/.k6-tmp/benchmark-output.json" \
             --summary-export="${{ github.workspace }}/.k6-tmp/benchmark-summary.json"
@@ -125,34 +126,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SUMMARY="${{ github.workspace }}/.k6-tmp/benchmark-summary.json"
-
-          p50_execute=$(jq '.metrics.iris_execute_latency.values["p(50)"] // null' "$SUMMARY")
-          p95_execute=$(jq '.metrics.iris_execute_latency.values["p(95)"] // null' "$SUMMARY")
-          p99_execute=$(jq '.metrics.iris_execute_latency.values["p(99)"] // null' "$SUMMARY")
-          p50_api=$(jq '.metrics.iris_api_list_latency.values["p(50)"] // null' "$SUMMARY")
-          p95_api=$(jq '.metrics.iris_api_list_latency.values["p(95)"] // null' "$SUMMARY")
-          rps=$(jq '.metrics.http_reqs.values.rate // null' "$SUMMARY")
+          REPORT="${{ github.workspace }}/.k6-tmp/benchmark-report.json"
 
           jq \
-            --argjson p50e "$p50_execute" \
-            --argjson p95e "$p95_execute" \
-            --argjson p99e "$p99_execute" \
-            --argjson p50a "$p50_api" \
-            --argjson p95a "$p95_api" \
-            --argjson rps "$rps" \
+            --slurpfile report "$REPORT" \
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '.benchmark.execute_latency_p50_ms = ($p50e | if . then (. * 10 | round | . / 10) else null end)
-            | .benchmark.execute_latency_p95_ms = ($p95e | if . then (. * 10 | round | . / 10) else null end)
-            | .benchmark.execute_latency_p99_ms = ($p99e | if . then (. * 10 | round | . / 10) else null end)
-            | .benchmark.api_latency_p50_ms = ($p50a | if . then (. * 10 | round | . / 10) else null end)
-            | .benchmark.api_latency_p95_ms = ($p95a | if . then (. * 10 | round | . / 10) else null end)
-            | .benchmark.throughput_rps = ($rps | if . then (. * 10 | round | . / 10) else null end)
+            '.benchmark.execute_latency_p50_ms = $report[0].execute_latency_p50_ms
+            | .benchmark.execute_latency_p95_ms = $report[0].execute_latency_p95_ms
+            | .benchmark.execute_latency_p99_ms = $report[0].execute_latency_p99_ms
+            | .benchmark.api_latency_p50_ms = $report[0].api_latency_p50_ms
+            | .benchmark.api_latency_p95_ms = $report[0].api_latency_p95_ms
+            | .benchmark.throughput_rps = $report[0].throughput_rps
             | .benchmark.note = "Last updated \($ts) by GitHub Actions"
             | ._meta.generated_at = $ts' \
             quarto/performance-results.json > /tmp/results-updated.json
 
           mv /tmp/results-updated.json quarto/performance-results.json
+          cat "$REPORT"
           cat quarto/performance-results.json
 
       - name: Stop backend
