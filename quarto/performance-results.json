@@ -1,19 +1,59 @@
 {
   "_meta": {
-    "generated_at": "placeholder",
+    "generated_at": "2026-07-01T14:51:43Z",
     "note": "Updated by GitHub Actions on each benchmark run. See .github/workflows/k6-benchmark.yml"
   },
   "suites": [
-    { "id": "config",                    "name": "Config CRUD",              "status": "pass" },
-    { "id": "workspace",                 "name": "Workspace",                "status": "pass" },
-    { "id": "pipeline-core",             "name": "Pipeline Core",            "status": "pass" },
-    { "id": "pipeline-resume",           "name": "Pipeline Resume",          "status": "pass" },
-    { "id": "pipeline-stop",             "name": "Pipeline Stop",            "status": "pass" },
-    { "id": "pipeline-operator-safety",  "name": "Operator Safety",          "status": "pass" },
-    { "id": "pipeline-observability",    "name": "Observability",            "status": "pass" },
-    { "id": "pipeline-rerun",            "name": "Pipeline Rerun",           "status": "pass" },
-    { "id": "pipeline-control-loop",     "name": "Control Loop",             "status": "pass" },
-    { "id": "runtime",                   "name": "Runtime",                  "status": "pass" }
+    {
+      "id": "config",
+      "name": "Config CRUD",
+      "status": "pass"
+    },
+    {
+      "id": "workspace",
+      "name": "Workspace",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-core",
+      "name": "Pipeline Core",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-resume",
+      "name": "Pipeline Resume",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-stop",
+      "name": "Pipeline Stop",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-operator-safety",
+      "name": "Operator Safety",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-observability",
+      "name": "Observability",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-rerun",
+      "name": "Pipeline Rerun",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-control-loop",
+      "name": "Control Loop",
+      "status": "pass"
+    },
+    {
+      "id": "runtime",
+      "name": "Runtime",
+      "status": "pass"
+    }
   ],
   "benchmark": {
     "execute_latency_p50_ms": null,
@@ -22,6 +62,6 @@
     "api_latency_p50_ms": null,
     "api_latency_p95_ms": null,
     "throughput_rps": null,
-    "note": "Run the benchmark workflow to populate these values."
+    "note": "Last updated 2026-07-01T14:51:43Z by GitHub Actions"
   }
 }
