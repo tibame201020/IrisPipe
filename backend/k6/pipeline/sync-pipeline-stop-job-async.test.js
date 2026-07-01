@@ -52,7 +52,7 @@ export function setup() {
 export default function (data) {
     const { summary } = runPipelineAndGetSummary(data.pipelineId, true);
     const startedSummary = waitForPipelineStatus(summary.id, ['STARTED'], 30, 0.2);
-    sleep(0.4);
+    sleep(0.05);
 
     const { summary: stopRequestedSummary } = stopPipelineRunAndGetSummary(summary.id);
     const stoppedSummary = waitForPipelineStatus(summary.id, ['STOPPED'], 60, 0.5);
