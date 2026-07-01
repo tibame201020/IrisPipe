@@ -1,24 +1,65 @@
 {
-  "status": "pending",
+  "status": "pass",
   "suite_count": 10,
   "workflow": "Backend K6 Checks",
   "workflow_file": "backend-k6-check.yml",
-  "run_id": null,
-  "run_url": "https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml",
-  "commit_sha": null,
+  "run_id": "28525817580",
+  "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/28525817580",
+  "commit_sha": "5fa90be090c7b8ec3fa46f8431acf66585098b74",
+  "commit_short_sha": "5fa90be",
   "branch": "main",
-  "updated_at": null,
-  "note": "This file is updated by the Backend K6 Checks GitHub Actions workflow after a successful regression run.",
+  "updated_at": "2026-07-01T14:44:08Z",
+  "note": "Updated by GitHub Actions after all k6 regression matrix suites passed.",
   "suites": [
-    { "id": "config", "name": "Config", "status": "pending" },
-    { "id": "workspace", "name": "Workspace", "status": "pending" },
-    { "id": "pipeline-core", "name": "Pipeline Core", "status": "pending" },
-    { "id": "pipeline-resume", "name": "Pipeline Resume", "status": "pending" },
-    { "id": "pipeline-stop", "name": "Pipeline Stop", "status": "pending" },
-    { "id": "pipeline-operator-safety", "name": "Pipeline Operator Safety", "status": "pending" },
-    { "id": "pipeline-observability", "name": "Pipeline Observability", "status": "pending" },
-    { "id": "pipeline-rerun", "name": "Pipeline Rerun", "status": "pending" },
-    { "id": "pipeline-control-loop", "name": "Pipeline Control Loop", "status": "pending" },
-    { "id": "runtime", "name": "Runtime", "status": "pending" }
+    {
+      "id": "config",
+      "name": "Config",
+      "status": "pass"
+    },
+    {
+      "id": "workspace",
+      "name": "Workspace",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-core",
+      "name": "Pipeline Core",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-resume",
+      "name": "Pipeline Resume",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-stop",
+      "name": "Pipeline Stop",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-operator-safety",
+      "name": "Pipeline Operator Safety",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-observability",
+      "name": "Pipeline Observability",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-rerun",
+      "name": "Pipeline Rerun",
+      "status": "pass"
+    },
+    {
+      "id": "pipeline-control-loop",
+      "name": "Pipeline Control Loop",
+      "status": "pass"
+    },
+    {
+      "id": "runtime",
+      "name": "Runtime",
+      "status": "pass"
+    }
   ]
 }
