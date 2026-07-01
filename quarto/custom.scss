@@ -58,6 +58,53 @@ $code-bg: #f3f4f6;
   font-weight: 500;
 }
 
+/* CI summary */
+.ci-summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  background: #fafafa;
+  margin: 1.5rem 0;
+}
+.ci-status {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+.ci-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+.ci-meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+.status-pill {
+  display: inline-block;
+  min-width: 4.5rem;
+  text-align: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.status-pill.pass {
+  background: #dcfce7;
+  color: #166534;
+}
+.status-pill.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+.status-pill.failure {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* Concept diagram */
 .concept-row {
   display: flex;

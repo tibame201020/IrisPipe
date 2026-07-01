@@ -1,0 +1,24 @@
+{
+  "status": "pending",
+  "suite_count": 10,
+  "workflow": "Backend K6 Checks",
+  "workflow_file": "backend-k6-check.yml",
+  "run_id": null,
+  "run_url": "https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml",
+  "commit_sha": null,
+  "branch": "main",
+  "updated_at": null,
+  "note": "This file is updated by the Backend K6 Checks GitHub Actions workflow after a successful regression run.",
+  "suites": [
+    { "id": "config", "name": "Config", "status": "pending" },
+    { "id": "workspace", "name": "Workspace", "status": "pending" },
+    { "id": "pipeline-core", "name": "Pipeline Core", "status": "pending" },
+    { "id": "pipeline-resume", "name": "Pipeline Resume", "status": "pending" },
+    { "id": "pipeline-stop", "name": "Pipeline Stop", "status": "pending" },
+    { "id": "pipeline-operator-safety", "name": "Pipeline Operator Safety", "status": "pending" },
+    { "id": "pipeline-observability", "name": "Pipeline Observability", "status": "pending" },
+    { "id": "pipeline-rerun", "name": "Pipeline Rerun", "status": "pending" },
+    { "id": "pipeline-control-loop", "name": "Pipeline Control Loop", "status": "pending" },
+    { "id": "runtime", "name": "Runtime", "status": "pending" }
+  ]
+}

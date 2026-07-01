@@ -7,9 +7,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "quarto/k6-regression-results.json"
 
 permissions:
-  contents: read
+  contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: backend-k6-${{ github.event.pull_request.number || github.ref }}
@@ -174,3 +178,91 @@ jobs:
           if [ -f "$APP_PID_FILE" ]; then
             kill "$(cat "$APP_PID_FILE")" || true
           fi
+
+  publish-k6-summary:
+    name: Publish k6 Results to Quarto
+    needs: k6-regression
+    if: github.event_name == 'push' && needs.k6-regression.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write k6 regression results
+        shell: bash
+        run: |
+          set -euo pipefail
+          ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          short_sha="${GITHUB_SHA:0:7}"
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          jq -n \
+            --arg ts "$ts" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$run_url" \
+            --arg sha "$GITHUB_SHA" \
+            --arg short_sha "$short_sha" \
+            --arg branch "${GITHUB_REF_NAME}" \
+            '{
+              status: "pass",
+              suite_count: 10,
+              workflow: "Backend K6 Checks",
+              workflow_file: "backend-k6-check.yml",
+              run_id: $run_id,
+              run_url: $run_url,
+              commit_sha: $sha,
+              commit_short_sha: $short_sha,
+              branch: $branch,
+              updated_at: $ts,
+              note: "Updated by GitHub Actions after all k6 regression matrix suites passed.",
+              suites: [
+                { id: "config", name: "Config", status: "pass" },
+                { id: "workspace", name: "Workspace", status: "pass" },
+                { id: "pipeline-core", name: "Pipeline Core", status: "pass" },
+                { id: "pipeline-resume", name: "Pipeline Resume", status: "pass" },
+                { id: "pipeline-stop", name: "Pipeline Stop", status: "pass" },
+                { id: "pipeline-operator-safety", name: "Pipeline Operator Safety", status: "pass" },
+                { id: "pipeline-observability", name: "Pipeline Observability", status: "pass" },
+                { id: "pipeline-rerun", name: "Pipeline Rerun", status: "pass" },
+                { id: "pipeline-control-loop", name: "Pipeline Control Loop", status: "pass" },
+                { id: "runtime", name: "Runtime", status: "pass" }
+              ]
+            }' > quarto/k6-regression-results.json
+
+      - name: Commit published k6 results
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add quarto/k6-regression-results.json
+          if git diff --cached --quiet; then
+            echo "No k6 result changes to commit."
+          else
+            git commit -m "test: publish k6 regression results ${GITHUB_RUN_ID}"
+            git pull --ff-only origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render Quarto project
+        working-directory: quarto
+        run: quarto render
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: quarto/_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

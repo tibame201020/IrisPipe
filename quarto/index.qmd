@@ -14,35 +14,24 @@ and first-class observability.
 :::
 :::
 
-::: {.stat-grid}
-::: {.stat-card}
-::: {.num}3
-:::
-::: {.label}Execution Verbs
-:::
-:::
-
-::: {.stat-card}
-::: {.num}10
-:::
-::: {.label}k6 Test Suites
-:::
-:::
-
-::: {.stat-card}
-::: {.num}∞
-:::
-::: {.label}Parallel Jobs / Stage
-:::
-:::
-
-::: {.stat-card}
-::: {.num}SSE
-:::
-::: {.label}Real-time Events
-:::
-:::
-:::
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="num">3</div>
+    <div class="label">Execution Verbs</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">10</div>
+    <div class="label">k6 Test Suites</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">∞</div>
+    <div class="label">Parallel Jobs / Stage</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">SSE</div>
+    <div class="label">Real-time Events</div>
+  </div>
+</div>
 
 ## What is IrisPipe?
 

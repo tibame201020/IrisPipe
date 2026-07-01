@@ -5,7 +5,50 @@ title: "Performance & Reliability"
 IrisPipe's correctness and reliability are validated through a **k6 integration test suite**
 that runs against a real Spring Boot instance on every push to `main`.
 
-[![k6 Regression](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6.yml)
+[![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
+
+---
+
+## Latest GitHub Actions k6 Regression
+
+```{ojs}
+//| echo: false
+k6 = FileAttachment("k6-regression-results.json").json()
+
+statusLabel = k6.status === "pass" ? "PASS" : k6.status.toUpperCase()
+statusColor = k6.status === "pass" ? "#16a34a" : "#f59e0b"
+```
+
+```{ojs}
+//| echo: false
+html`
+<div class="ci-summary-card">
+  <div class="ci-status" style="color:${statusColor};">${statusLabel}</div>
+  <div class="ci-title">Backend k6 regression suites</div>
+  <div class="ci-meta">
+    ${k6.suite_count} suites · ${k6.branch} · ${k6.updated_at ?? "waiting for first published run"}
+  </div>
+  <div class="ci-meta">
+    Commit: ${k6.commit_sha ? k6.commit_sha.substring(0, 7) : "pending"} ·
+    <a href="${k6.run_url}">GitHub Actions run</a>
+  </div>
+</div>`
+```
+
+```{ojs}
+//| echo: false
+html`
+<table class="table table-sm">
+  <thead><tr><th>Suite</th><th>Status</th></tr></thead>
+  <tbody>
+    ${k6.suites.map(s => html`<tr><td>${s.name}</td><td><span class="status-pill ${s.status}">${s.status}</span></td></tr>`)}
+  </tbody>
+</table>`
+```
+
+This section is generated from `quarto/k6-regression-results.json`, which is updated by the
+**Backend K6 Checks** GitHub Actions workflow after the matrix test suites pass. The site can
+therefore show the latest published regression status without requiring the backend to be hosted.
 
 ---
 
@@ -14,7 +57,7 @@ that runs against a real Spring Boot instance on every push to `main`.
 k6 is used for **integration-level correctness**, not synthetic load generation.
 Each test suite:
 
-1. Boots the real Spring Boot backend (from a compiled jar)
+1. Boots the real Spring Boot backend from a compiled jar
 2. Runs a sequence of API calls that exercise a specific behavioral domain
 3. Asserts on status codes, response shape, and state transitions
 4. Tears down cleanly
@@ -24,7 +67,7 @@ because it exercises the full call stack: controller → service → Spring Batc
 
 ---
 
-## Test Suites (10 Parallel Suites)
+## Test Suites
 
 ::: {.suite-grid}
 ::: {.suite-card}
@@ -122,11 +165,11 @@ Watermark tracking, run lineage, attempt ordering, snapshot isolation across con
 
 ## CI Pipeline
 
-The k6 suites run in **parallel matrix** on every PR and push to `main`:
+The k6 suites run in a **parallel matrix** on every PR and push to `main`:
 
 ```{mermaid}
 flowchart TD
-  P["PR / push to main"] --> B["build-backend\n(compile + jar)"]
+  P["PR / push to main"] --> B["build-backend\ncompile + jar"]
   B --> AR["Upload jar artifact"]
 
   AR --> M1["Suite: config"]
@@ -140,17 +183,20 @@ flowchart TD
   AR --> M9["Suite: control-loop"]
   AR --> M10["Suite: runtime"]
 
-  M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 & M9 & M10 --> DONE["All suites pass ✓"]
+  M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 & M9 & M10 --> S["Write regression results JSON"]
+  S --> Q["Render Quarto site"]
+  Q --> D["Deploy GitHub Pages"]
 
   style B fill:#eef2ff,stroke:#6366f1
-  style DONE fill:#f0fdf4,stroke:#16a34a
+  style S fill:#fff7ed,stroke:#f59e0b
+  style D fill:#f0fdf4,stroke:#16a34a
 ```
 
 Each matrix job:
 
-1. Downloads the pre-built backend jar (shared artifact from `build-backend` job)
+1. Downloads the pre-built backend jar
 2. Starts the backend
-3. Waits for health readiness (`/api/v1/sync-config` returns 200)
+3. Waits for health readiness
 4. Runs the k6 suite with a namespaced prefix to avoid cross-suite state pollution
 5. Uploads the backend log as artifact on failure
 
@@ -199,8 +245,8 @@ The benchmark workflow (`k6-benchmark.yml`, runs on workflow dispatch or weekly 
 3. Runs a k6 script (`backend/k6/benchmark.js`) that:
    - Seeds a multi-stage pipeline definition
    - Executes the pipeline N times, measuring end-to-end latency
-   - Measures API response times (`/api/v1/sync-config`, `/api/v1/sync-pipeline`)
-   - Calculates throughput (requests/second under concurrency)
+   - Measures API response times
+   - Calculates throughput under concurrency
 4. Parses k6 JSON output and updates `quarto/performance-results.json`
 5. Commits the updated results file
 6. Triggers a Quarto site rebuild and redeploy
