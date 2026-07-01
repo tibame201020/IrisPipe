@@ -247,7 +247,7 @@ jobs:
             echo "No k6 result changes to commit."
           else
             git commit -m "test: publish k6 regression results ${GITHUB_RUN_ID}"
-            git pull --ff-only origin main
+            git pull --rebase origin main
             git push origin HEAD:main
           fi
 

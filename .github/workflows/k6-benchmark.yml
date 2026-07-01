@@ -163,7 +163,7 @@ jobs:
             echo "No benchmark result changes to commit."
           else
             git commit -m "perf: update benchmark results $(date -u +%Y-%m-%d)"
-            git pull --ff-only origin main
+            git pull --rebase origin main
             git push origin HEAD:main
           fi
 
