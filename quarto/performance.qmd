@@ -14,66 +14,16 @@ IrisPipe is validated by two GitHub Actions workflows:
 
 ## Latest k6 Performance Snapshot
 
-```{ojs}
-//| echo: false
-perf = FileAttachment("performance-results.json").json()
-benchmark = perf.benchmark
-hasBenchmark = benchmark && benchmark.execute_latency_p50_ms !== null
-```
+| Metric | Latest CI value |
+|---|---:|
+| Execute latency p50 | **78 ms** |
+| Execute latency p95 | **176.4 ms** |
+| Execute latency p99 | **191.3 ms** |
+| API latency p50 | **5.6 ms** |
+| API latency p95 | **12.9 ms** |
+| HTTP throughput | **11.8 req/s** |
 
-```{ojs}
-//| echo: false
-hasBenchmark
-  ? html`
-    <div class="metric-grid">
-      <div class="metric-card">
-        <div class="metric-value">${benchmark.execute_latency_p50_ms} ms</div>
-        <div class="metric-label">Execute latency p50</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${benchmark.execute_latency_p95_ms} ms</div>
-        <div class="metric-label">Execute latency p95</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${benchmark.execute_latency_p99_ms} ms</div>
-        <div class="metric-label">Execute latency p99</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${benchmark.api_latency_p95_ms} ms</div>
-        <div class="metric-label">API latency p95</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">${benchmark.throughput_rps}</div>
-        <div class="metric-label">HTTP requests / sec</div>
-      </div>
-    </div>`
-  : html`<p style="color:#9ca3af;font-style:italic;">
-      Benchmark results not yet available. Run the k6 Benchmark workflow to populate this section.
-    </p>`
-```
-
-```{ojs}
-//| echo: false
-hasBenchmark
-  ? html`
-    <table class="perf-table table table-sm">
-      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-      <tbody>
-        <tr><td>Execute latency p50</td><td>${benchmark.execute_latency_p50_ms} ms</td></tr>
-        <tr><td>Execute latency p95</td><td>${benchmark.execute_latency_p95_ms} ms</td></tr>
-        <tr><td>Execute latency p99</td><td>${benchmark.execute_latency_p99_ms} ms</td></tr>
-        <tr><td>API latency p50</td><td>${benchmark.api_latency_p50_ms} ms</td></tr>
-        <tr><td>API latency p95</td><td>${benchmark.api_latency_p95_ms} ms</td></tr>
-        <tr><td>Throughput</td><td>${benchmark.throughput_rps} req/s</td></tr>
-      </tbody>
-    </table>`
-  : html``
-```
-
-```{ojs}
-//| echo: false
-html`<p class="ci-meta">${benchmark?.note ?? "No benchmark note available."}</p>`
-```
+_Source: `quarto/performance-results.json`, updated by the `k6 Benchmark` GitHub Actions workflow on 2026-07-01T15:05:31Z._
 
 ::: {.callout-note}
 These numbers are **CI-runner benchmark results** using the local H2-backed Spring Boot application.
@@ -84,39 +34,20 @@ They are useful for regression tracking and technical demonstration, not a produ
 
 ## Latest k6 Regression Status
 
-```{ojs}
-//| echo: false
-k6 = FileAttachment("k6-regression-results.json").json()
-statusLabel = k6.status === "pass" ? "PASS" : k6.status.toUpperCase()
-statusColor = k6.status === "pass" ? "#16a34a" : "#f59e0b"
-```
+| Suite | Status | Main behavior covered |
+|---|---:|---|
+| Config | PASS | Create, update, import, delete guard, uniqueness constraints |
+| Workspace | PASS | Workspace scoping, default fallback, cross-workspace isolation |
+| Pipeline Core | PASS | Execute flow, stage barrier, run lifecycle |
+| Pipeline Resume | PASS | Resume from failed/stopped runs, skip completed stages |
+| Pipeline Stop | PASS | Cooperative stop, STOPPING → STOPPED convergence |
+| Operator Safety | PASS | Double-execute guard, illegal resume/delete prevention |
+| Observability | PASS | Prometheus metrics, actuator health, overview API |
+| Pipeline Rerun | PASS | New logical run from frozen snapshot |
+| Control Loop | PASS | Execute → fail → resume → stop → rerun sequences |
+| Runtime | PASS | Watermark, lineage, attempts, snapshot isolation |
 
-```{ojs}
-//| echo: false
-html`
-<div class="ci-summary-card compact">
-  <div class="ci-status" style="color:${statusColor};">${statusLabel}</div>
-  <div class="ci-title">Backend k6 regression suites</div>
-  <div class="ci-meta">
-    ${k6.suite_count} suites · ${k6.branch} · ${k6.updated_at ?? "waiting for first published run"}
-  </div>
-  <div class="ci-meta">
-    Commit: ${k6.commit_sha ? k6.commit_sha.substring(0, 7) : "pending"} ·
-    <a href="${k6.run_url}">GitHub Actions run</a>
-  </div>
-</div>`
-```
-
-```{ojs}
-//| echo: false
-html`
-<table class="table table-sm">
-  <thead><tr><th>Suite</th><th>Status</th></tr></thead>
-  <tbody>
-    ${k6.suites.map(s => html`<tr><td>${s.name}</td><td><span class="status-pill ${s.status}">${s.status}</span></td></tr>`)}
-  </tbody>
-</table>`
-```
+_Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks` GitHub Actions workflow. Latest published successful run: 2026-07-01T15:05:26Z._
 
 ---
 
@@ -145,23 +76,6 @@ Each regression suite:
 
 This gives stronger coverage than controller-only tests for runtime semantics because it exercises the stack:
 controller → service → Spring Batch → database.
-
----
-
-## Test Suites
-
-| Suite | Main behavior covered |
-|---|---|
-| Config | Create, update, import, delete guard, uniqueness constraints |
-| Workspace | Workspace scoping, default fallback, cross-workspace isolation |
-| Pipeline Core | Execute flow, stage barrier, run lifecycle |
-| Pipeline Resume | Resume from failed/stopped runs, skip completed stages |
-| Pipeline Stop | Cooperative stop, STOPPING → STOPPED convergence |
-| Operator Safety | Double-execute guard, illegal resume/delete prevention |
-| Observability | Prometheus metrics, actuator health, overview API |
-| Pipeline Rerun | New logical run from frozen snapshot |
-| Control Loop | Execute → fail → resume → stop → rerun sequences |
-| Runtime | Watermark, lineage, attempts, snapshot isolation |
 
 ---
 
