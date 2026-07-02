@@ -14,24 +14,10 @@ and first-class observability.
 :::
 :::
 
-<div class="stat-grid">
-  <div class="stat-card">
-    <div class="num">3</div>
-    <div class="label">Execution Verbs</div>
-  </div>
-  <div class="stat-card">
-    <div class="num">10</div>
-    <div class="label">k6 Test Suites</div>
-  </div>
-  <div class="stat-card">
-    <div class="num">∞</div>
-    <div class="label">Parallel Jobs / Stage</div>
-  </div>
-  <div class="stat-card">
-    <div class="num">SSE</div>
-    <div class="label">Real-time Events</div>
-  </div>
-</div>
+| Runtime semantics | CI coverage | Stage execution | Event delivery |
+|---|---|---|---|
+| **3** execution verbs | **10** k6 suites | **Stage barrier** | **SSE** real-time updates |
+| execute / resume / rerun | GitHub Actions regression | parallel jobs, sequential stages | server-pushed run events |
 
 ## What is IrisPipe?
 

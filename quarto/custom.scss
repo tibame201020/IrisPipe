@@ -105,6 +105,37 @@ $code-bg: #f3f4f6;
   color: #991b1b;
 }
 
+/* Metric cards */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.metric-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  background: #fafafa;
+}
+.metric-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #4f46e5;
+  margin-bottom: 0.35rem;
+}
+.metric-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.ci-summary-card.compact {
+  padding: 1rem 1.25rem;
+}
+
 /* Concept diagram */
 .concept-row {
   display: flex;

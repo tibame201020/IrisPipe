@@ -2,19 +2,91 @@
 title: "Performance & Reliability"
 ---
 
-IrisPipe's correctness and reliability are validated through a **k6 integration test suite**
-that runs against a real Spring Boot instance on every push to `main`.
+IrisPipe is validated by two GitHub Actions workflows:
 
+- **k6 Benchmark** measures runtime latency and API throughput on a CI runner.
+- **Backend K6 Checks** runs regression suites against a real Spring Boot backend.
+
+[![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
 [![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
 
 ---
 
-## Latest GitHub Actions k6 Regression
+## Latest k6 Performance Snapshot
+
+```{ojs}
+//| echo: false
+perf = FileAttachment("performance-results.json").json()
+benchmark = perf.benchmark
+hasBenchmark = benchmark && benchmark.execute_latency_p50_ms !== null
+```
+
+```{ojs}
+//| echo: false
+hasBenchmark
+  ? html`
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-value">${benchmark.execute_latency_p50_ms} ms</div>
+        <div class="metric-label">Execute latency p50</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">${benchmark.execute_latency_p95_ms} ms</div>
+        <div class="metric-label">Execute latency p95</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">${benchmark.execute_latency_p99_ms} ms</div>
+        <div class="metric-label">Execute latency p99</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">${benchmark.api_latency_p95_ms} ms</div>
+        <div class="metric-label">API latency p95</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">${benchmark.throughput_rps}</div>
+        <div class="metric-label">HTTP requests / sec</div>
+      </div>
+    </div>`
+  : html`<p style="color:#9ca3af;font-style:italic;">
+      Benchmark results not yet available. Run the k6 Benchmark workflow to populate this section.
+    </p>`
+```
+
+```{ojs}
+//| echo: false
+hasBenchmark
+  ? html`
+    <table class="perf-table table table-sm">
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Execute latency p50</td><td>${benchmark.execute_latency_p50_ms} ms</td></tr>
+        <tr><td>Execute latency p95</td><td>${benchmark.execute_latency_p95_ms} ms</td></tr>
+        <tr><td>Execute latency p99</td><td>${benchmark.execute_latency_p99_ms} ms</td></tr>
+        <tr><td>API latency p50</td><td>${benchmark.api_latency_p50_ms} ms</td></tr>
+        <tr><td>API latency p95</td><td>${benchmark.api_latency_p95_ms} ms</td></tr>
+        <tr><td>Throughput</td><td>${benchmark.throughput_rps} req/s</td></tr>
+      </tbody>
+    </table>`
+  : html``
+```
+
+```{ojs}
+//| echo: false
+html`<p class="ci-meta">${benchmark?.note ?? "No benchmark note available."}</p>`
+```
+
+::: {.callout-note}
+These numbers are **CI-runner benchmark results** using the local H2-backed Spring Boot application.
+They are useful for regression tracking and technical demonstration, not a production-scale capacity claim.
+:::
+
+---
+
+## Latest k6 Regression Status
 
 ```{ojs}
 //| echo: false
 k6 = FileAttachment("k6-regression-results.json").json()
-
 statusLabel = k6.status === "pass" ? "PASS" : k6.status.toUpperCase()
 statusColor = k6.status === "pass" ? "#16a34a" : "#f59e0b"
 ```
@@ -22,7 +94,7 @@ statusColor = k6.status === "pass" ? "#16a34a" : "#f59e0b"
 ```{ojs}
 //| echo: false
 html`
-<div class="ci-summary-card">
+<div class="ci-summary-card compact">
   <div class="ci-status" style="color:${statusColor};">${statusLabel}</div>
   <div class="ci-title">Backend k6 regression suites</div>
   <div class="ci-meta">
@@ -46,209 +118,84 @@ html`
 </table>`
 ```
 
-This section is generated from `quarto/k6-regression-results.json`, which is updated by the
-**Backend K6 Checks** GitHub Actions workflow after the matrix test suites pass. The site can
-therefore show the latest published regression status without requiring the backend to be hosted.
+---
+
+## What the Benchmark Measures
+
+The benchmark workflow starts the backend and runs `backend/k6/benchmark.js`.
+It measures:
+
+1. End-to-end synchronous pipeline execution latency
+2. API list/recent-run endpoint latency
+3. Light HTTP throughput under small CI concurrency
+
+The benchmark intentionally stays small. Its purpose is to make the documentation verifiable and repeatable in GitHub Actions, not to claim cluster-scale throughput.
 
 ---
 
 ## Test Strategy
 
-k6 is used for **integration-level correctness**, not synthetic load generation.
-Each test suite:
+k6 is used for **integration-level correctness**, not only synthetic load generation.
+Each regression suite:
 
 1. Boots the real Spring Boot backend from a compiled jar
-2. Runs a sequence of API calls that exercise a specific behavioral domain
-3. Asserts on status codes, response shape, and state transitions
+2. Runs API flows that exercise a specific behavioral domain
+3. Asserts on status codes, response shape, persisted state, and runtime transitions
 4. Tears down cleanly
 
-This gives stronger coverage guarantees than unit tests for runtime semantics
-because it exercises the full call stack: controller → service → Spring Batch → H2.
+This gives stronger coverage than controller-only tests for runtime semantics because it exercises the stack:
+controller → service → Spring Batch → database.
 
 ---
 
 ## Test Suites
 
-::: {.suite-grid}
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Config CRUD
-:::
-::: {.suite-desc}
-Create, update, import (YAML/JSON), delete, uniqueness constraints, delete guard with run history.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Workspace
-:::
-::: {.suite-desc}
-Workspace scoping, header resolution, default fallback, cross-workspace isolation.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Pipeline Core
-:::
-::: {.suite-desc}
-Execute flow, stage sequential barrier, intra-stage parallel jobs, run status lifecycle.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Pipeline Resume
-:::
-::: {.suite-desc}
-Resume from FAILED, resume from STOPPED, skip completed stages, CHUNK-level restart semantics.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Pipeline Stop
-:::
-::: {.suite-desc}
-Cooperative stop signal, STOPPING → STOPPED convergence, NOT_RUN projection on future stages.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Operator Safety
-:::
-::: {.suite-desc}
-Double-execute guard, resume on non-terminal run rejection, delete guard on in-flight runs.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Observability
-:::
-::: {.suite-desc}
-Prometheus metric presence, actuator health, overview summary endpoint, run history pagination.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Pipeline Rerun
-:::
-::: {.suite-desc}
-Rerun creates new logical run, copies snapshot, reruns from Stage 1, does not read live config.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Control Loop
-:::
-::: {.suite-desc}
-Execute → fail → resume → stop → rerun end-to-end control flow sequences.
-:::
-:::
-
-::: {.suite-card}
-::: {.suite-name}
-<span class="pass-dot"></span>Runtime
-:::
-::: {.suite-desc}
-Watermark tracking, run lineage, attempt ordering, snapshot isolation across config changes.
-:::
-:::
-:::
+| Suite | Main behavior covered |
+|---|---|
+| Config | Create, update, import, delete guard, uniqueness constraints |
+| Workspace | Workspace scoping, default fallback, cross-workspace isolation |
+| Pipeline Core | Execute flow, stage barrier, run lifecycle |
+| Pipeline Resume | Resume from failed/stopped runs, skip completed stages |
+| Pipeline Stop | Cooperative stop, STOPPING → STOPPED convergence |
+| Operator Safety | Double-execute guard, illegal resume/delete prevention |
+| Observability | Prometheus metrics, actuator health, overview API |
+| Pipeline Rerun | New logical run from frozen snapshot |
+| Control Loop | Execute → fail → resume → stop → rerun sequences |
+| Runtime | Watermark, lineage, attempts, snapshot isolation |
 
 ---
 
 ## CI Pipeline
 
-The k6 suites run in a **parallel matrix** on every PR and push to `main`:
-
 ```{mermaid}
 flowchart TD
-  P["PR / push to main"] --> B["build-backend\ncompile + jar"]
-  B --> AR["Upload jar artifact"]
+  P["Push / workflow dispatch"] --> B["Build backend jar"]
+  B --> K["Run k6 benchmark"]
+  B --> R["Run k6 regression matrix"]
 
-  AR --> M1["Suite: config"]
-  AR --> M2["Suite: workspace"]
-  AR --> M3["Suite: pipeline-core"]
-  AR --> M4["Suite: pipeline-resume"]
-  AR --> M5["Suite: pipeline-stop"]
-  AR --> M6["Suite: operator-safety"]
-  AR --> M7["Suite: observability"]
-  AR --> M8["Suite: pipeline-rerun"]
-  AR --> M9["Suite: control-loop"]
-  AR --> M10["Suite: runtime"]
+  K --> KP["Update performance-results.json"]
+  R --> RP["Update k6-regression-results.json"]
 
-  M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 & M9 & M10 --> S["Write regression results JSON"]
-  S --> Q["Render Quarto site"]
+  KP --> Q["Render Quarto site"]
+  RP --> Q
   Q --> D["Deploy GitHub Pages"]
 
   style B fill:#eef2ff,stroke:#6366f1
-  style S fill:#fff7ed,stroke:#f59e0b
+  style K fill:#fff7ed,stroke:#f59e0b
+  style R fill:#f0fdf4,stroke:#16a34a
   style D fill:#f0fdf4,stroke:#16a34a
-```
-
-Each matrix job:
-
-1. Downloads the pre-built backend jar
-2. Starts the backend
-3. Waits for health readiness
-4. Runs the k6 suite with a namespaced prefix to avoid cross-suite state pollution
-5. Uploads the backend log as artifact on failure
-
----
-
-## Benchmark
-
-```{ojs}
-//| echo: false
-results = FileAttachment("performance-results.json").json()
-
-benchmark = results.benchmark
-hasBenchmark = benchmark.execute_latency_p50_ms !== null
-```
-
-```{ojs}
-//| echo: false
-hasBenchmark
-  ? html`
-    <table class="perf-table table table-sm">
-      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-      <tbody>
-        <tr><td>Execute latency p50</td><td>${benchmark.execute_latency_p50_ms} ms</td></tr>
-        <tr><td>Execute latency p95</td><td>${benchmark.execute_latency_p95_ms} ms</td></tr>
-        <tr><td>Execute latency p99</td><td>${benchmark.execute_latency_p99_ms} ms</td></tr>
-        <tr><td>API latency p50</td><td>${benchmark.api_latency_p50_ms} ms</td></tr>
-        <tr><td>API latency p95</td><td>${benchmark.api_latency_p95_ms} ms</td></tr>
-        <tr><td>Throughput</td><td>${benchmark.throughput_rps} req/s</td></tr>
-      </tbody>
-    </table>`
-  : html`<p style="color:#9ca3af;font-style:italic;">
-      Benchmark results not yet available.
-      Run the <a href="https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml">k6-benchmark workflow</a>
-      to populate this section.
-    </p>`
 ```
 
 ---
 
 ## Benchmark Methodology
 
-The benchmark workflow (`k6-benchmark.yml`, runs on workflow dispatch or weekly schedule):
+The benchmark workflow:
 
 1. Builds the backend jar
 2. Starts the backend with a clean H2 database
-3. Runs a k6 script (`backend/k6/benchmark.js`) that:
-   - Seeds a multi-stage pipeline definition
-   - Executes the pipeline N times, measuring end-to-end latency
-   - Measures API response times
-   - Calculates throughput under concurrency
-4. Parses k6 JSON output and updates `quarto/performance-results.json`
-5. Commits the updated results file
-6. Triggers a Quarto site rebuild and redeploy
-
-This keeps the performance data live without requiring the backend to be hosted.
+3. Seeds a small multi-stage pipeline definition
+4. Executes the pipeline repeatedly and measures end-to-end latency
+5. Measures API response latency and HTTP request rate
+6. Writes results into `quarto/performance-results.json`
+7. Rebuilds and redeploys the Quarto site
