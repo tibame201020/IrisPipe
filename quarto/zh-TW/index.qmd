@@ -1,0 +1,82 @@
+---
+title: "IrisPipe"
+page-layout: full
+toc: false
+---
+
+::: {.hero}
+# IrisPipe
+
+::: {.subtitle}
+一個以 Spring Boot 與 Spring Batch 建構的本機 pipeline engine，用來定義、執行與觀測 multi-stage ETL workflow。設計重點是清楚的執行語意、失敗恢復、歷史一致性與可觀測性。
+:::
+:::
+
+| Runtime semantics | CI coverage | Stage execution | Event delivery |
+|---|---|---|---|
+| **3** 種執行語意 | **10** 組 k6 suites | **Stage barrier** | **SSE** 即時事件 |
+| execute / resume / rerun | GitHub Actions regression | stage 內平行，stage 間循序 | server-pushed run events |
+
+[English version](../index.qmd){.btn .btn-outline-secondary}
+[設計說明](design.qmd){.btn .btn-outline-primary}
+[效能與可靠性](performance.qmd){.btn .btn-outline-secondary}
+
+## IrisPipe 是什麼？
+
+IrisPipe 是一個 **single-user pipeline engine console**，可以定義、執行與監控多階段資料 pipeline，資料來源與目的地透過 JDBC 連線。
+
+它目前刻意定位為 **local-first / desktop-oriented** 工具：不依賴雲端服務、不需要 agent、不需要 daemon。使用者定義 pipeline 後執行，並透過即時事件觀察每個 run、stage、job 的狀態變化。
+
+## Pipeline 結構
+
+IrisPipe 的 pipeline 由多個 stage 組成：
+
+- stage 之間必須依序完成
+- 同一個 stage 內的 jobs 可以平行執行
+- 每個 job 內的 steps 依序執行
+- step 支援 INSERT / UPDATE / UPSERT / DELETE / EXECUTE
+
+```{mermaid}
+flowchart LR
+  subgraph "Stage 1 — parallel"
+    J1["Job A\nsrc → dst"]
+    J2["Job B\nsrc → dst"]
+  end
+
+  subgraph "Stage 2 — parallel"
+    J3["Job C\nsrc → dst"]
+    J4["Job D\nsrc → dst"]
+  end
+
+  subgraph "Stage 3 — parallel"
+    J5["Job E\nsrc → dst"]
+  end
+
+  Stage1 -- "barrier" --> Stage2
+  Stage2 -- "barrier" --> Stage3
+```
+
+## 三種執行語意
+
+IrisPipe 最核心的設計，是把「執行」和「重跑」拆成三個明確語意：
+
+| Verb | 建立什麼 | Config 來源 | 從哪裡開始 |
+|---|---|---|---|
+| `execute` | 新 logical run | live stored config | Stage 1 |
+| `resume` | 同一個 run 的新 attempt | frozen snapshot | 第一個未完成 stage |
+| `rerun` | 新 logical run | frozen snapshot | Stage 1 |
+
+`resume` 與 `rerun` 都讀取執行當下保存的 **config snapshot**，所以 pipeline config 之後即使被修改，也不會污染執行中或歷史上的 run。
+
+## 為什麼這件事重要？
+
+資料 pipeline 真正困難的地方通常不是「跑一次」，而是：
+
+- 失敗後怎麼接續
+- 重跑時怎麼避免語意混亂
+- config 修改後歷史 run 怎麼保持一致
+- stage 內平行與 stage 間順序如何定義
+- 使用者如何看到即時狀態
+- 系統如何被 regression test 與 observability 驗證
+
+IrisPipe 的價值在於把這些行為明確建模，而不是把 pipeline 當成一般 CRUD。

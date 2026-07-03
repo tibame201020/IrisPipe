@@ -1,0 +1,115 @@
+---
+title: "設計說明"
+---
+
+IrisPipe 的設計重點不是單純執行 SQL，而是把 pipeline runtime 的語意拆清楚，讓失敗、接續、重跑與歷史紀錄都可追蹤、可解釋。
+
+[返回中文版首頁](index.qmd){.btn .btn-outline-secondary}
+
+---
+
+## Pipeline Data Model
+
+一個 pipeline 由三層組成：
+
+| Layer | 說明 |
+|---|---|
+| Pipeline | 一個可執行的 workflow 定義 |
+| Stage | pipeline 的階段邊界，stage 之間循序執行 |
+| Job | stage 內可平行執行的工作單元 |
+| Step | job 內依序執行的資料操作 |
+
+Stage 是最重要的 runtime 邊界：同 stage 的 jobs 可以平行，但下一個 stage 必須等前一個 stage 成功後才會開始。
+
+---
+
+## Execute / Resume / Rerun
+
+IrisPipe 不把所有「重跑」都混在一起，而是拆成三種明確行為：
+
+| Verb | 語意 | Config 來源 | Runtime 效果 |
+|---|---|---|---|
+| execute | 用目前設定執行一次 | live config | 建立新的 logical run |
+| resume | 接續失敗或停止的 run | frozen snapshot | 同一個 run 產生新 attempt |
+| rerun | 用原本設定重新跑 | frozen snapshot | 建立新的 logical run |
+
+這個切分可以避免一個常見問題：pipeline config 被修改後，歷史 run 或正在執行中的 run 不應該被新設定污染。
+
+---
+
+## Snapshot Isolation
+
+當使用者 execute 一個 pipeline 時，IrisPipe 會把當下的 pipeline definition materialize 成 snapshot。
+
+snapshot 會保留：
+
+- stage order
+- job definition
+- step definition
+- execution type
+- connection / table / SQL 設定
+- runtime 所需的識別資訊
+
+之後即使 live config 被修改，`resume` 與 `rerun` 都會使用原始 snapshot，而不是重新讀取 live config。
+
+這讓歷史行為具備可重現性，也讓 troubleshooting 比較清楚。
+
+---
+
+## Stage Barrier
+
+Stage barrier 是 pipeline 排程的核心規則：
+
+1. 同一個 stage 內的 jobs 可以平行執行
+2. 下一個 stage 必須等目前 stage 全部成功
+3. 如果目前 stage 有任一 job failed 或 stopped，後續 stage 會標記為 NOT_RUN
+
+這個設計同時保留平行化能力與明確的失敗語意。
+
+---
+
+## Runtime Lineage
+
+IrisPipe 將 runtime 狀態拆開保存：
+
+| Runtime object | 用途 |
+|---|---|
+| Pipeline Run | 一次 logical run |
+| Run Snapshot | 執行當下的 frozen config |
+| Run Execution | 一次 attempt |
+| Run Job | logical job 狀態 |
+| Execution Job | 某次 attempt 中的 job 狀態 |
+
+這個 lineage model 讓 UI 能顯示 run、attempt、job 的歷史，也讓 resume / rerun 不會語意混亂。
+
+---
+
+## Stop Semantics
+
+Stop 不是直接 kill process，而是 cooperative stop：
+
+- API 標記 stop requested
+- runtime 找出正在執行的 batch execution
+- Spring Batch 收到 stop signal
+- listener 觀察 job 結束狀態
+- IrisPipe 將後續未執行 stage 標記為 NOT_RUN
+
+這樣可以避免 runtime state 和 Spring Batch metadata 不一致。
+
+---
+
+## Idempotency 與重跑
+
+Pipeline 重跑一定要考慮 idempotency。
+
+不同 step 類型風險不同：
+
+| Step | 重跑風險 | 常見保護方式 |
+|---|---|---|
+| INSERT | 重複資料 | unique key、清理範圍、checkpoint |
+| UPDATE | 覆蓋資料 | business key、where 條件、version |
+| UPSERT | 相對安全 | business key / merge condition |
+| DELETE | 誤刪 | threshold、preview、明確條件 |
+| EXECUTE | 視 SQL 而定 | 限制語意、人工確認、run log |
+
+IrisPipe 的 execute / resume / rerun 設計，目標就是讓每一種重跑都能被明確描述，而不是只靠「再跑一次」。

@@ -1,0 +1,102 @@
+---
+title: "效能與可靠性"
+---
+
+IrisPipe 透過兩組 GitHub Actions workflow 驗證：
+
+- **k6 Benchmark**：在 CI runner 上量測 runtime latency 與 API throughput
+- **Backend K6 Checks**：啟動實際 Spring Boot backend，執行 k6 regression suites
+
+[![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
+[![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
+
+[返回中文版首頁](index.qmd){.btn .btn-outline-secondary}
+
+---
+
+## 最新 k6 Performance Snapshot
+
+| Metric | Latest CI value |
+|---|---:|
+| Execute latency p50 | **78 ms** |
+| Execute latency p95 | **176.4 ms** |
+| Execute latency p99 | **191.3 ms** |
+| API latency p50 | **5.6 ms** |
+| API latency p95 | **12.9 ms** |
+| HTTP throughput | **11.8 req/s** |
+
+來源：`quarto/performance-results.json`，由 `k6 Benchmark` GitHub Actions workflow 更新。
+
+::: {.callout-note}
+這些數字是 **GitHub Actions CI runner 上的 light benchmark**，使用 local H2-backed Spring Boot application。它們適合用來做 regression tracking 與技術展示，不是 production capacity claim。
+:::
+
+---
+
+## 最新 k6 Regression Status
+
+| Suite | Status | 驗證重點 |
+|---|---:|---|
+| Config | PASS | 建立、更新、匯入、刪除保護、唯一性限制 |
+| Workspace | PASS | Workspace scope、default fallback、cross-workspace isolation |
+| Pipeline Core | PASS | Execute flow、stage barrier、run lifecycle |
+| Pipeline Resume | PASS | 從 failed / stopped run 接續，跳過已完成 stage |
+| Pipeline Stop | PASS | Cooperative stop、STOPPING 到 STOPPED 收斂 |
+| Operator Safety | PASS | double-execute guard、非法 resume / delete 防護 |
+| Observability | PASS | Prometheus metrics、actuator health、overview API |
+| Pipeline Rerun | PASS | 從 frozen snapshot 建立新的 logical run |
+| Control Loop | PASS | execute、fail、resume、stop、rerun 的控制流程 |
+| Runtime | PASS | watermark、lineage、attempts、snapshot isolation |
+
+---
+
+## Benchmark 量測什麼？
+
+benchmark workflow 會啟動 backend，並執行 `backend/k6/benchmark.js`。主要量測：
+
+1. 同步 pipeline execution 的 end-to-end latency
+2. API list / recent-run endpoint latency
+3. 小型 CI concurrency 下的 HTTP request rate
+
+這個 benchmark 刻意維持小規模，目的是讓文件中的數據可以被 GitHub Actions 重複產生，不是要宣稱 cluster-scale throughput。
+
+---
+
+## Test Strategy
+
+k6 在 IrisPipe 裡不是只用來做壓測，也用來做 integration-level correctness 驗證。
+
+每個 regression suite 會：
+
+1. 啟動實際 Spring Boot backend jar
+2. 執行特定 behavioral domain 的 API flow
+3. 驗證 status code、response shape、persisted state、runtime transition
+4. 測試後清理資料
+
+這比只測 controller 或單元測試更能驗證 runtime semantics，因為它會穿過完整呼叫鏈：controller → service → Spring Batch → database。
+
+---
+
+## CI Pipeline
+
+```{mermaid}
+flowchart TD
+  P["Push / workflow dispatch"] --> B["Build backend jar"]
+  B --> K["Run k6 benchmark"]
+  B --> R["Run k6 regression matrix"]
+
+  K --> KP["Update performance-results.json"]
+  R --> RP["Update k6-regression-results.json"]
+
+  KP --> Q["Render Quarto site"]
+  RP --> Q
+  Q --> D["Deploy GitHub Pages"]
+```
+
+---
+
+## 面試時怎麼講
+
+可以這樣說：
+
+> Performance 頁分成兩層。第一層是 k6 benchmark 數字，例如 execute latency p50 / p95 / p99、API latency 和 throughput。第二層是 k6 regression suites，用來證明 execute、resume、rerun、stop、runtime lineage、snapshot isolation 這些行為都有 CI 驗證。這些數字是 CI runner 上的 light benchmark，不是 production capacity claim。

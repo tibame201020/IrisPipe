@@ -1,0 +1,117 @@
+---
+title: "系統架構"
+---
+
+IrisPipe 採用 Spring Boot 3 + Spring Batch 5 作為後端 runtime，前端使用 React + TypeScript 建立 pipeline console。系統目前定位為 local-first pipeline engine prototype。
+
+[返回中文版首頁](index.qmd){.btn .btn-outline-secondary}
+
+---
+
+## Full Stack Overview
+
+| Layer | Technology | 用途 |
+|---|---|---|
+| Frontend | React, TypeScript, Vite | Pipeline console 與 run detail UI |
+| API | Spring Boot MVC | Config / Runtime / Observability API |
+| Batch Runtime | Spring Batch 5 | Job / Step execution lifecycle |
+| Persistence | JPA, Flyway, H2 | Config、snapshot、runtime 狀態保存 |
+| Observability | Actuator, Micrometer, Prometheus | Health、metrics、runtime counters |
+| Real-time | Server-Sent Events | 將 run/job event 推送到前端 |
+| Validation | k6, GitHub Actions | Regression suites 與 benchmark |
+
+---
+
+## Layered Architecture
+
+IrisPipe 後端分層原則：
+
+```{mermaid}
+flowchart TD
+  UI[React Console] --> API[REST Controllers]
+  API --> F[Facades]
+  F --> S[Runtime / Config Services]
+  S --> B[Spring Batch]
+  S --> R[JPA Repositories]
+  B --> L[Batch Listeners]
+  L --> S
+  S --> DB[(H2 / JDBC DB)]
+  S --> SSE[SSE Broadcaster]
+  S --> M[Micrometer Metrics]
+```
+
+Controller 不直接操作 repository，而是透過 facade / service 邊界處理 config、runtime 和 batch orchestration。
+
+---
+
+## Runtime Execution Flow
+
+一次 execute 的流程：
+
+1. 使用者透過 UI 或 API 觸發 pipeline
+2. 後端讀取 live pipeline config
+3. 建立 pipeline run
+4. 產生 run snapshot
+5. 依照 stage order 啟動 Spring Batch jobs
+6. listener 將 job lifecycle 同步回 IrisPipe runtime tables
+7. SSE 將事件推送到前端
+8. Micrometer 發布 metrics
+
+---
+
+## Listener-Driven Runtime State
+
+IrisPipe 不讓 controller 猜測 job 狀態，而是由 Spring Batch listener 驅動 runtime state。
+
+這樣做的理由：
+
+- Spring Batch 才是 job lifecycle 的 source of truth
+- listener 能觀察 job started / completed / failed / stopped
+- runtime tables 可以保存查詢友善的 projection
+- 前端可以透過 SSE 即時更新
+
+---
+
+## Config Tables vs Runtime Tables
+
+| 類型 | 說明 |
+|---|---|
+| Config tables | 保存目前可編輯的 pipeline definition |
+| Snapshot tables | 保存 run 當下 frozen config |
+| Runtime tables | 保存 run、attempt、job 狀態 |
+
+這樣可以避免 live config 與歷史 run 混在一起。
+
+---
+
+## SSE Real-time Events
+
+IrisPipe 使用 SSE 而不是 WebSocket，因為目前需求主要是 server-to-browser 的單向事件推送。
+
+常見事件：
+
+- run started
+- job started
+- job finished
+- run completed
+- run failed
+- run stopped
+
+SSE 的好處是模型簡單、瀏覽器支援足夠、並且具備自動重連能力。
+
+---
+
+## Productionization Notes
+
+IrisPipe 目前不是宣稱 production-ready platform。若要往 production 化，需要補強：
+
+1. Authentication / authorization
+2. Secret management
+3. External DB，例如 PostgreSQL / Oracle
+4. Distributed locking 或 queue-based execution
+5. Multi-instance scheduler safety
+6. SLO / alert / dashboard
+7. 更完整容量測試與 benchmark
+8. Deployment hardening 與 rollback plan
+
+這些是刻意保留的 productionization 邊界，不應該在面試中誇大。

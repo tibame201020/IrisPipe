@@ -19,6 +19,16 @@ website:
         href: architecture.qmd
       - text: "Performance"
         href: performance.qmd
+      - text: "繁體中文"
+        menu:
+          - text: "總覽"
+            href: zh-TW/index.qmd
+          - text: "設計說明"
+            href: zh-TW/design.qmd
+          - text: "系統架構"
+            href: zh-TW/architecture.qmd
+          - text: "效能與可靠性"
+            href: zh-TW/performance.qmd
 
   page-footer:
     left: "IrisPipe — built by Jeff Hsu"
