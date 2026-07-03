@@ -1,5 +1,5 @@
 ---
-title: "IrisPipe"
+title: ""
 page-layout: full
 toc: false
 ---
@@ -16,10 +16,6 @@ toc: false
 |---|---|---|---|
 | **3** 種執行語意 | **10** 組 k6 suites | **Stage barrier** | **SSE** 即時事件 |
 | execute / resume / rerun | GitHub Actions regression | stage 內平行，stage 間循序 | server-pushed run events |
-
-[English version](../index.qmd){.btn .btn-outline-secondary}
-[設計說明](design.qmd){.btn .btn-outline-primary}
-[效能與可靠性](performance.qmd){.btn .btn-outline-secondary}
 
 ## IrisPipe 是什麼？
 

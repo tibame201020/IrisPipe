@@ -2,8 +2,6 @@
 title: "Design Philosophy"
 ---
 
-[繁體中文版本](zh-TW/design.qmd){.btn .btn-outline-primary}
-
 IrisPipe is designed around one question: **what does it mean to re-run a pipeline that previously failed?**
 Most pipeline tools treat re-execution as running the same config again from scratch.
 IrisPipe treats it as three distinct operations — each with a different contract, different lineage, and different config source.

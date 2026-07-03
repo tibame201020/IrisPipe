@@ -1,0 +1,66 @@
+<script>
+(function () {
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+
+  ready(function () {
+    var path = window.location.pathname;
+    var zhPrefix = '/zh-TW/';
+    var zhIndex = path.indexOf(zhPrefix);
+    var isZh = zhIndex !== -1;
+    var siteRoot = isZh ? path.slice(0, zhIndex) : path.replace(/\/[^/]*$/, '');
+    if (siteRoot.endsWith('/zh-TW')) siteRoot = siteRoot.slice(0, -6);
+    if (siteRoot === '') siteRoot = '/IrisPipe';
+
+    var currentFile = path.split('/').pop() || 'index.html';
+    if (currentFile === '') currentFile = 'index.html';
+
+    var englishPages = {
+      'index.html': { label: 'Overview', href: siteRoot + '/' },
+      'design.html': { label: 'Design', href: siteRoot + '/design.html' },
+      'architecture.html': { label: 'Architecture', href: siteRoot + '/architecture.html' },
+      'performance.html': { label: 'Performance', href: siteRoot + '/performance.html' }
+    };
+
+    var zhPages = {
+      'index.html': { label: '總覽', href: siteRoot + '/zh-TW/' },
+      'design.html': { label: '設計說明', href: siteRoot + '/zh-TW/design.html' },
+      'architecture.html': { label: '系統架構', href: siteRoot + '/zh-TW/architecture.html' },
+      'performance.html': { label: '效能與可靠性', href: siteRoot + '/zh-TW/performance.html' }
+    };
+
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.navbar a.nav-link, .navbar a.dropdown-item'));
+
+    function findLinkByText(text) {
+      return navLinks.find(function (a) { return a.textContent.trim() === text; });
+    }
+
+    function setLink(oldText, label, href) {
+      var a = findLinkByText(oldText);
+      if (!a) return;
+      a.textContent = label;
+      a.setAttribute('href', href);
+    }
+
+    if (isZh) {
+      setLink('Overview', zhPages['index.html'].label, zhPages['index.html'].href);
+      setLink('Design', zhPages['design.html'].label, zhPages['design.html'].href);
+      setLink('Architecture', zhPages['architecture.html'].label, zhPages['architecture.html'].href);
+      setLink('Performance', zhPages['performance.html'].label, zhPages['performance.html'].href);
+
+      var lang = findLinkByText('繁體中文');
+      if (lang) {
+        lang.textContent = 'English';
+        lang.setAttribute('href', (englishPages[currentFile] || englishPages['index.html']).href);
+      }
+    } else {
+      var langEn = findLinkByText('繁體中文');
+      if (langEn) {
+        langEn.setAttribute('href', (zhPages[currentFile] || zhPages['index.html']).href);
+      }
+    }
+  });
+})();
+</script>
