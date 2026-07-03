@@ -4,6 +4,7 @@ title: "設計說明"
 
 IrisPipe 的設計重點不是單純執行 SQL，而是把 pipeline runtime 的語意拆清楚，讓失敗、接續、重跑與歷史紀錄都可追蹤、可解釋。
 
+[English version](../design.qmd){.btn .btn-outline-primary}
 [返回中文版首頁](index.qmd){.btn .btn-outline-secondary}
 
 ---

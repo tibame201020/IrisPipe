@@ -4,6 +4,7 @@ title: "系統架構"
 
 IrisPipe 採用 Spring Boot 3 + Spring Batch 5 作為後端 runtime，前端使用 React + TypeScript 建立 pipeline console。系統目前定位為 local-first pipeline engine prototype。
 
+[English version](../architecture.qmd){.btn .btn-outline-primary}
 [返回中文版首頁](index.qmd){.btn .btn-outline-secondary}
 
 ---

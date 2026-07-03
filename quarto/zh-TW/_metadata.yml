@@ -1,0 +1,20 @@
+website:
+  navbar:
+    left:
+      - text: "總覽"
+        href: index.qmd
+      - text: "設計說明"
+        href: design.qmd
+      - text: "系統架構"
+        href: architecture.qmd
+      - text: "效能與可靠性"
+        href: performance.qmd
+    right:
+      - text: "English"
+        href: ../index.qmd
+
+  page-footer:
+    left: "IrisPipe — Jeff Hsu"
+    right:
+      - icon: github
+        href: https://github.com/tibame201020/IrisPipe

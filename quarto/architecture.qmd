@@ -2,6 +2,8 @@
 title: "Architecture"
 ---
 
+[繁體中文版本](zh-TW/architecture.qmd){.btn .btn-outline-primary}
+
 IrisPipe is a **Spring Boot 3 + Spring Batch 5** monolith backed by an embedded H2 database.
 The frontend is a React 19 SPA communicating over REST and Server-Sent Events.
 The entire stack runs locally — no cloud, no agent, no daemon.

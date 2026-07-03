@@ -2,6 +2,8 @@
 title: "Performance & Reliability"
 ---
 
+[繁體中文版本](zh-TW/performance.qmd){.btn .btn-outline-primary}
+
 IrisPipe is validated by two GitHub Actions workflows:
 
 - **k6 Benchmark** measures runtime latency and API throughput on a CI runner.
