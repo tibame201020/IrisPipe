@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated_at": "2026-07-13T05:28:28Z",
+    "generated_at": "2026-07-20T05:33:30Z",
     "note": "Updated by GitHub Actions on each benchmark run. See .github/workflows/k6-benchmark.yml"
   },
   "suites": [
@@ -56,12 +56,12 @@
     }
   ],
   "benchmark": {
-    "execute_latency_p50_ms": 106,
-    "execute_latency_p95_ms": 164.8,
-    "execute_latency_p99_ms": 166.6,
-    "api_latency_p50_ms": 5.2,
-    "api_latency_p95_ms": 12.4,
+    "execute_latency_p50_ms": 77,
+    "execute_latency_p95_ms": 148.6,
+    "execute_latency_p99_ms": 160.1,
+    "api_latency_p50_ms": 5.4,
+    "api_latency_p95_ms": 13.3,
     "throughput_rps": 11.8,
-    "note": "Last updated 2026-07-13T05:28:28Z by GitHub Actions"
+    "note": "Last updated 2026-07-20T05:33:30Z by GitHub Actions"
   }
 }
