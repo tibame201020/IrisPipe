@@ -94,9 +94,14 @@ export default function () {
         rows.push({ scenario: 'conflict_resume', mode, rows: 10000, retained_including_conflict: retained, failure_ms: failureMs, resume_ms: resumeMs, total_processing_ms: failureMs + resumeMs, same_job_instance: sameInstance, verified: true });
     }
     completed = true;
+    // VU globals are isolated from handleSummary; persist the exact report in
+    // this disposable test DB after timing, then read it from the summary hook.
+    sql('CREATE TABLE IF NOT EXISTS matrix_report (id INT PRIMARY KEY, payload CLOB)');
+    sql('DELETE FROM matrix_report');
+    sql("INSERT INTO matrix_report VALUES (1, '" + JSON.stringify(buildReport()).replace(/'/g, "''") + "')");
 }
-export function handleSummary() {
-    return { [__ENV.MATRIX_REPORT || 'atomic-chunk-results.json']: JSON.stringify({
+function buildReport() {
+    return {
         schema_version: 1, completed, generated_at: new Date().toISOString(),
         source_sha: __ENV.GITHUB_SHA || null, run_url: __ENV.MATRIX_RUN_URL || null,
         environment: 'GitHub-hosted ubuntu-latest; Java 21; local file-backed H2; source, destination and metadata share one database; JVM heap 4 GiB',
@@ -104,5 +109,14 @@ export function handleSummary() {
         timing: 'Synchronous execute/resume HTTP wall time; includes orchestration and commit; excludes seed, truncate, validation and repair. Warm cache, alternating paired order.',
         not_tested: ['SIGKILL and post-crash status reconciliation', 'Oracle', 'UPDATE or matched UPSERT', 'network transfer', 'production capacity'],
         assertions, results: rows,
-    }, null, 2) };
+    };
+}
+export function handleSummary() {
+    const response = http.post(base + '/test-support/query', 'SELECT payload FROM matrix_report WHERE id=1', { headers: { 'Content-Type': 'text/plain' } });
+    let report = { completed: false, error: 'Report absent; inspect k6 and backend logs' };
+    if (response.status === 200) {
+        const data = response.json();
+        if (data.length === 1) report = JSON.parse(data[0].PAYLOAD);
+    }
+    return { [__ENV.MATRIX_REPORT || 'atomic-chunk-results.json']: JSON.stringify(report, null, 2) };
 }
