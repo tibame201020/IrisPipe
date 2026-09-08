@@ -153,7 +153,7 @@ SQL
       docker run -d --name "$container" -p 1521:1521 \
         -e ORACLE_PASSWORD=OraclePwd123 -e APP_USER=irispipe -e APP_USER_PASSWORD=IrisPipe123 \
         gvenzl/oracle-free:23-slim-faststart >/dev/null
-      wait_for Oracle docker exec "$container" bash -lc "echo 'select 1 from dual;' | sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 | grep -q 1"
+      wait_for Oracle docker exec "$container" bash -lc "printf \"WHENEVER SQLERROR EXIT FAILURE\nSET HEADING OFF FEEDBACK OFF PAGESIZE 0 ECHO OFF\nSELECT 'READY' FROM dual;\nEXIT;\n\" | sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 | grep -q READY"
       docker exec -i "$container" sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 <<SQL
 WHENEVER SQLERROR EXIT SQL.SQLCODE
 BEGIN EXECUTE IMMEDIATE 'DROP TABLE benchmark_dest PURGE'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -942 THEN RAISE; END IF; END;
@@ -200,6 +200,7 @@ count_dest() {
       ;;
     oracle)
       docker exec -i "$container" sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 <<'SQL' | awk 'NF {line=$0} END {gsub(/[[:space:]]/,"",line); print line}'
+WHENEVER SQLERROR EXIT FAILURE
 SET HEADING OFF FEEDBACK OFF PAGESIZE 0 VERIFY OFF ECHO OFF
 SELECT COUNT(*) FROM benchmark_dest;
 EXIT;
