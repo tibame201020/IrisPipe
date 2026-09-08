@@ -19,7 +19,7 @@ export const options = singleRunOptions;
 const yamlContent = open('../testfiles/job-pipeline-stop-mixed.yml');
 const fileName = 'job-pipeline-stop-mixed.yml';
 const filePath = pipelineNameFor(fileName);
-const middleRows = Number.parseInt(__ENV.IRISPIPE_STOP_MIXED_ROWS || '15000', 10);
+const middleRows = Number.parseInt(__ENV.IRISPIPE_STOP_MIXED_ROWS || '100000', 10);
 const firstRows = 1000;
 const thirdRows = 3;
 
@@ -63,23 +63,22 @@ export default function (data) {
     const { summary } = runPipelineAndGetSummary(data.pipelineId, true);
     waitForPipelineStatus(summary.id, ['STARTED'], 30, 0.2);
 
-    const inFlightDetail = waitForDetailCondition(summary.id, (detail) =>
-        Array.isArray(detail.jobs)
-        && detail.jobs.length === 3
-        && detail.jobs[0].status === 'COMPLETED'
-        && detail.jobs[1].status === 'STARTED', 60, 0.5);
-
+    // Observe committed CHUNK output directly; the STARTED detail state can be shorter than a polling interval on fast H2 runners.
     let partialMiddleCount = 0;
-    for (let attempt = 0; attempt < 120; attempt += 1) {
+    for (let attempt = 0; attempt < 300; attempt += 1) {
         partialMiddleCount = queryScalarOrFail(
             'SELECT COUNT(*) AS CNT FROM test_stop_mixed_dest_b',
             'CNT',
             'mixed middle destination count before stop',
         );
-        if (partialMiddleCount > 0) {
+        if (partialMiddleCount > 0 && partialMiddleCount < middleRows) {
             break;
         }
-        sleep(0.2);
+        sleep(0.1);
+    }
+
+    if (!(partialMiddleCount > 0 && partialMiddleCount < middleRows)) {
+        throw new Error(`Mixed pipeline did not expose a partial CHUNK commit before stop; observed ${partialMiddleCount}/${middleRows} rows`);
     }
 
     const { summary: stopRequestedSummary } = stopPipelineRunAndGetSummary(summary.id);
@@ -96,10 +95,6 @@ export default function (data) {
         'stopped mixed dest c count',
     );
 
-    check(inFlightDetail, {
-        'Mixed pipeline reaches the CHUNK node before stop': (item) =>
-            Array.isArray(item.jobs) && item.jobs.length === 3 && item.jobs[1].status === 'STARTED',
-    });
     check(stopRequestedSummary, {
         'Mixed stop request returns the same pipeline run id': (item) => item.id === summary.id,
     });
@@ -170,17 +165,4 @@ export default function (data) {
 
 export function teardown(data) {
     ensureConfigDeleted(data && data.pipelineId);
-}
-
-function waitForDetailCondition(pipelineRunId, predicate, timeoutSeconds = 30, intervalSeconds = 0.2) {
-    const maxAttempts = Math.ceil(timeoutSeconds / intervalSeconds);
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        const detail = getPipelineRunDetailOrFail(pipelineRunId, 'mixed pipeline detail poll');
-        if (predicate(detail)) {
-            return detail;
-        }
-        sleep(intervalSeconds);
-    }
-
-    throw new Error(`Timed out waiting for mixed pipeline ${pipelineRunId} to reach the expected detail state`);
 }
