@@ -39,9 +39,9 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build backend without unit tests
+      - name: Build backend and run unit tests
         working-directory: backend
-        run: mvn -B -DskipTests package
+        run: mvn -B package
 
       - name: Locate runnable jar
         id: jar

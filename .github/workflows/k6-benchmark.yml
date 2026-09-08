@@ -5,6 +5,22 @@ on:
   schedule:
     # Every Monday at 02:00 UTC
     - cron: "0 2 * * 1"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/k6-benchmark.yml"
+      - "quarto/performance.qmd"
+      - "quarto/zh-TW/performance.qmd"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/k6-benchmark.yml"
+      - "quarto/performance.qmd"
+      - "quarto/zh-TW/performance.qmd"
 
 permissions:
   contents: write
@@ -12,14 +28,14 @@ permissions:
   id-token: write
 
 concurrency:
-  group: k6-benchmark
+  group: k6-benchmark-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-backend:
-    name: Build Backend Jar
+    name: Build Backend Jar + Unit Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
@@ -35,9 +51,9 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build backend without unit tests
+      - name: Build backend and run unit tests
         working-directory: backend
-        run: mvn -B -DskipTests package
+        run: mvn -B package
 
       - name: Locate runnable jar
         id: jar
@@ -45,6 +61,10 @@ jobs:
         run: |
           set -euo pipefail
           app_jar="$(find backend/target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          if [ -z "$app_jar" ]; then
+            echo "No runnable jar found in backend/target" >&2
+            exit 1
+          fi
           echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
 
       - name: Upload runnable jar
@@ -54,25 +74,20 @@ jobs:
           path: ${{ steps.jar.outputs.app_jar }}
           if-no-files-found: error
 
-  benchmark:
-    name: Run k6 Benchmark
+  api-benchmark:
+    name: API / Runtime Benchmark
     needs: build-backend
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     env:
-      APP_LOG: ${{ github.workspace }}/.k6-tmp/benchmark.log
-      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/benchmark.pid
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/api-benchmark.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/api-benchmark.pid
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -102,48 +117,35 @@ jobs:
       - name: Wait for backend readiness
         shell: bash
         run: |
+          set -euo pipefail
           for attempt in {1..60}; do
             if curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config > /dev/null; then
-              echo "Backend ready after $((attempt * 2))s"
               exit 0
             fi
             sleep 2
           done
           echo "Backend did not become ready" >&2
-          tail -n 100 "$APP_LOG" || true
+          tail -n 200 "$APP_LOG" || true
           exit 1
 
-      - name: Run k6 benchmark
+      - name: Run API benchmark
         working-directory: backend/k6
         shell: bash
         run: |
-          BENCHMARK_REPORT="${{ github.workspace }}/.k6-tmp/benchmark-report.json" \
-          k6 run benchmark.js \
-            --out json="${{ github.workspace }}/.k6-tmp/benchmark-output.json" \
-            --summary-export="${{ github.workspace }}/.k6-tmp/benchmark-summary.json"
+          BENCHMARK_REPORT="${{ github.workspace }}/.k6-tmp/api-benchmark-report.json" \
+          k6 run benchmark.js
 
-      - name: Parse and update results
+      - name: Upload API benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-benchmark-report
+          path: ${{ github.workspace }}/.k6-tmp/api-benchmark-report.json
+          if-no-files-found: error
+
+      - name: Print backend log on failure
+        if: failure()
         shell: bash
-        run: |
-          set -euo pipefail
-          REPORT="${{ github.workspace }}/.k6-tmp/benchmark-report.json"
-
-          jq \
-            --slurpfile report "$REPORT" \
-            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '.benchmark.execute_latency_p50_ms = $report[0].execute_latency_p50_ms
-            | .benchmark.execute_latency_p95_ms = $report[0].execute_latency_p95_ms
-            | .benchmark.execute_latency_p99_ms = $report[0].execute_latency_p99_ms
-            | .benchmark.api_latency_p50_ms = $report[0].api_latency_p50_ms
-            | .benchmark.api_latency_p95_ms = $report[0].api_latency_p95_ms
-            | .benchmark.throughput_rps = $report[0].throughput_rps
-            | .benchmark.note = "Last updated \($ts) by GitHub Actions"
-            | ._meta.generated_at = $ts' \
-            quarto/performance-results.json > /tmp/results-updated.json
-
-          mv /tmp/results-updated.json quarto/performance-results.json
-          cat "$REPORT"
-          cat quarto/performance-results.json
+        run: tail -n 200 "$APP_LOG" || true
 
       - name: Stop backend
         if: always()
@@ -153,12 +155,378 @@ jobs:
             kill "$(cat "$APP_PID_FILE")" || true
           fi
 
-      - name: Commit updated benchmark results
+  data-volume-benchmark:
+    name: Data Volume (${{ matrix.atomic }}, ${{ matrix.rows }} rows)
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        atomic: [JOB, CHUNK]
+        rows: [1000, 10000, 100000]
+    env:
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.pid
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Download runnable jar
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-runnable-jar
+          path: backend/target
+
+      - name: Start backend
+        working-directory: backend
         shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.k6-tmp"
+          app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          nohup java -jar "$app_jar" > "$APP_LOG" 2>&1 &
+          echo $! > "$APP_PID_FILE"
+
+      - name: Wait for backend readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready" >&2
+          tail -n 200 "$APP_LOG" || true
+          exit 1
+
+      - name: Run data-volume benchmark
+        working-directory: backend/k6
+        shell: bash
+        env:
+          ATOMIC_LEVEL: ${{ matrix.atomic }}
+          ROW_COUNT: ${{ matrix.rows }}
+          BATCH_SIZE: "1000"
+          BENCHMARK_MODE: success
+          DB_PAIR: h2-h2
+          BENCHMARK_REPORT: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.json
+        run: k6 run data-volume-benchmark.js
+
+      - name: Upload data-volume report
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-benchmark-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.json
+          if-no-files-found: error
+
+      - name: Print backend log on failure
+        if: failure()
+        shell: bash
+        run: tail -n 200 "$APP_LOG" || true
+
+      - name: Stop backend
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$APP_PID_FILE" ]; then
+            kill "$(cat "$APP_PID_FILE")" || true
+          fi
+
+  large-volume-atomicity:
+    name: Atomicity Failure (${{ matrix.atomic }}, 10000 rows)
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        atomic: [JOB, CHUNK]
+    env:
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/atomicity-${{ matrix.atomic }}.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/atomicity-${{ matrix.atomic }}.pid
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Download runnable jar
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-runnable-jar
+          path: backend/target
+
+      - name: Start backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.k6-tmp"
+          app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          nohup java -jar "$app_jar" > "$APP_LOG" 2>&1 &
+          echo $! > "$APP_PID_FILE"
+
+      - name: Wait for backend readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready" >&2
+          tail -n 200 "$APP_LOG" || true
+          exit 1
+
+      - name: Verify large-volume rollback semantics
+        working-directory: backend/k6
+        shell: bash
+        env:
+          ATOMIC_LEVEL: ${{ matrix.atomic }}
+          ROW_COUNT: "10000"
+          BATCH_SIZE: "1000"
+          BENCHMARK_MODE: failure
+          DB_PAIR: h2-h2
+          BENCHMARK_REPORT: ${{ github.workspace }}/.k6-tmp/atomicity-${{ matrix.atomic }}.json
+        run: k6 run data-volume-benchmark.js
+
+      - name: Upload atomicity report
+        uses: actions/upload-artifact@v4
+        with:
+          name: atomicity-benchmark-${{ matrix.atomic }}
+          path: ${{ github.workspace }}/.k6-tmp/atomicity-${{ matrix.atomic }}.json
+          if-no-files-found: error
+
+      - name: Print backend log on failure
+        if: failure()
+        shell: bash
+        run: tail -n 200 "$APP_LOG" || true
+
+      - name: Stop backend
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$APP_PID_FILE" ]; then
+            kill "$(cat "$APP_PID_FILE")" || true
+          fi
+
+  cross-db-benchmark:
+    name: PostgreSQL → H2 (${{ matrix.atomic }}, 10000 rows)
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        atomic: [JOB, CHUNK]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: irispipe_bench
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d irispipe_bench"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/crossdb-${{ matrix.atomic }}.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/crossdb-${{ matrix.atomic }}.pid
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Download runnable jar
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-runnable-jar
+          path: backend/target
+
+      - name: Seed PostgreSQL source
+        shell: bash
+        run: |
+          set -euo pipefail
+          postgres_container="$(docker ps --filter 'ancestor=postgres:16' --format '{{.ID}}' | head -n 1)"
+          if [ -z "$postgres_container" ]; then
+            echo "PostgreSQL service container not found" >&2
+            exit 1
+          fi
+          docker exec -i "$postgres_container" psql -U postgres -d irispipe_bench <<'SQL'
+          DROP TABLE IF EXISTS benchmark_source;
+          CREATE TABLE benchmark_source (id INT PRIMARY KEY, name VARCHAR(255));
+          INSERT INTO benchmark_source (id, name)
+          SELECT g, 'row-' || g FROM generate_series(1, 10000) AS g;
+          SQL
+
+      - name: Start backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.k6-tmp"
+          app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          nohup java -jar "$app_jar" > "$APP_LOG" 2>&1 &
+          echo $! > "$APP_PID_FILE"
+
+      - name: Wait for backend readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become ready" >&2
+          tail -n 200 "$APP_LOG" || true
+          exit 1
+
+      - name: Run cross-database benchmark
+        working-directory: backend/k6
+        shell: bash
+        env:
+          ATOMIC_LEVEL: ${{ matrix.atomic }}
+          ROW_COUNT: "10000"
+          BATCH_SIZE: "1000"
+          BENCHMARK_MODE: success
+          DB_PAIR: postgres-h2
+          POSTGRES_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/irispipe_bench
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          BENCHMARK_REPORT: ${{ github.workspace }}/.k6-tmp/crossdb-${{ matrix.atomic }}.json
+        run: k6 run data-volume-benchmark.js
+
+      - name: Upload cross-database report
+        uses: actions/upload-artifact@v4
+        with:
+          name: crossdb-benchmark-${{ matrix.atomic }}
+          path: ${{ github.workspace }}/.k6-tmp/crossdb-${{ matrix.atomic }}.json
+          if-no-files-found: error
+
+      - name: Print backend log on failure
+        if: failure()
+        shell: bash
+        run: tail -n 200 "$APP_LOG" || true
+
+      - name: Stop backend
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$APP_PID_FILE" ]; then
+            kill "$(cat "$APP_PID_FILE")" || true
+          fi
+
+  publish-results:
+    name: Publish Benchmark Results to Quarto
+    needs:
+      - api-benchmark
+      - data-volume-benchmark
+      - large-volume-atomicity
+      - cross-db-benchmark
+    if: github.event_name != 'pull_request' && always() && needs.api-benchmark.result == 'success' && needs.data-volume-benchmark.result == 'success' && needs.large-volume-atomicity.result == 'success' && needs.cross-db-benchmark.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download API benchmark report
+        uses: actions/download-artifact@v4
+        with:
+          name: api-benchmark-report
+          path: .benchmark-results/api
+
+      - name: Download data-volume reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: data-benchmark-*
+          path: .benchmark-results/data
+          merge-multiple: true
+
+      - name: Download atomicity reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: atomicity-benchmark-*
+          path: .benchmark-results/data
+          merge-multiple: true
+
+      - name: Download cross-database reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: crossdb-benchmark-*
+          path: .benchmark-results/data
+          merge-multiple: true
+
+      - name: Update benchmark JSON and generated Quarto tables
+        shell: bash
+        run: |
+          set -euo pipefail
+          python backend/k6/update-performance-results.py \
+            --results quarto/performance-results.json \
+            --api-report .benchmark-results/api/api-benchmark-report.json \
+            --reports-dir .benchmark-results/data \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --commit-sha "$GITHUB_SHA"
+
+      - name: Commit benchmark results
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add quarto/performance-results.json
+          git add \
+            quarto/performance-results.json \
+            quarto/_generated/performance-results-en.md \
+            quarto/_generated/performance-results-zh.md
           if git diff --cached --quiet; then
             echo "No benchmark result changes to commit."
           else
@@ -182,11 +550,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Upload benchmark log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-log
-          path: ${{ env.APP_LOG }}
-          if-no-files-found: ignore
