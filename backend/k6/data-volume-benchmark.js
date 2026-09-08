@@ -22,6 +22,8 @@ const BENCHMARK_MODE = (__ENV.BENCHMARK_MODE || 'success').toLowerCase();
 const DB_PAIR = (__ENV.DB_PAIR || 'h2-h2').toLowerCase();
 const BATCH_SIZE = Number.parseInt(__ENV.BATCH_SIZE || '1000', 10);
 const REPORT_PATH = __ENV.BENCHMARK_REPORT || 'data-volume-benchmark-report.json';
+const SETUP_TIMEOUT = __ENV.K6_SETUP_TIMEOUT || '2m';
+const SCENARIO_MAX_DURATION = __ENV.K6_MAX_DURATION || '10m';
 
 if (!Number.isInteger(ROW_COUNT) || ROW_COUNT <= 0) {
   throw new Error(`ROW_COUNT must be a positive integer, got: ${__ENV.ROW_COUNT}`);
@@ -47,12 +49,13 @@ const observedRows = new Gauge('iris_data_observed_rows');
 const atomicityOk = new Gauge('iris_data_atomicity_ok');
 
 export const options = {
+  setupTimeout: SETUP_TIMEOUT,
   scenarios: {
     data_volume: {
       executor: 'shared-iterations',
       vus: 1,
       iterations: 1,
-      maxDuration: '10m',
+      maxDuration: SCENARIO_MAX_DURATION,
     },
   },
   thresholds: {
