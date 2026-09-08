@@ -96,7 +96,7 @@ export default function () {
     completed = true;
     // VU globals are isolated from handleSummary; persist the exact report in
     // this disposable test DB after timing, then read it from the summary hook.
-    sql('CREATE TABLE IF NOT EXISTS matrix_report (id INT PRIMARY KEY, payload CLOB)');
+    sql('CREATE TABLE IF NOT EXISTS matrix_report (id INT PRIMARY KEY, payload VARCHAR(1000000))');
     sql('DELETE FROM matrix_report');
     sql("INSERT INTO matrix_report VALUES (1, '" + JSON.stringify(buildReport()).replace(/'/g, "''") + "')");
 }
