@@ -54,6 +54,33 @@ All performance values are repeatable GitHub Actions CI-runner regression benchm
 
 ---
 
+## JOB vs CHUNK: Transaction Boundary
+
+The row count alone does not explain the atomicity trade-off. The benchmark deliberately records both **batch size** and **transaction groups**:
+
+| CI profile | `fetchSize` / `batchSize` | JOB transaction boundary | CHUNK transaction boundary |
+|---|---:|---|---|
+| Regular PR/main benchmark | 1,000 rows | One destination transaction for the whole job | Commit every 1,000 rows |
+| Scheduled/manual deep benchmark | 5,000 rows | One destination transaction for the whole job | Commit every 5,000 rows |
+
+`fetchSize` / `batchSize` still controls JDBC read/write batching in JOB mode, but **does not split the transaction**. In CHUNK mode, the same batch size is also the commit/rollback boundary.
+
+For the deep matrix, this means:
+
+| Source rows | CHUNK transaction groups at 5,000 rows | JOB transaction groups |
+|---:|---:|---:|
+| 100k | 20 | 1 |
+| 1M | 200 | 1 |
+| 10M | 2,000 | 1 |
+| 20M | 4,000 | 1 |
+| 50M | 10,000 | 1 |
+
+This is why both modes matter. **JOB** provides all-or-nothing rollback across the complete migration, but makes the transaction, rollback scope, and database resource pressure grow with the entire dataset. **CHUNK** bounds each transaction and retry scope, but a later failure preserves previously committed chunks and therefore requires explicit resume/recovery semantics.
+
+The regular 10k failure test makes that difference observable. It injects a duplicate key on the final source row with a 1,000-row batch: JOB rolls back all migrated rows and leaves only the pre-existing conflicting row (**1 row**); CHUNK keeps the first nine committed chunks (**9,000 rows**) and rolls back the failing tenth chunk, so together with the pre-existing conflict row the destination contains **9,001 rows**.
+
+---
+
 ## Test Strategy
 
 k6 is used for **integration-level correctness**, not only synthetic load generation.

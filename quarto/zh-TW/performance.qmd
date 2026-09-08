@@ -52,6 +52,33 @@ benchmark workflow 會啟動實際 backend，並透過真正的 JDBC connection 
 
 ---
 
+## JOB / CHUNK 的交易邊界
+
+只有總資料量不足以說明 Atomic JOB / CHUNK 的差異，因此 benchmark 會同時記錄 **每批筆數** 與 **交易群組數**：
+
+| CI 類型 | `fetchSize` / `batchSize` | JOB 交易邊界 | CHUNK 交易邊界 |
+|---|---:|---|---|
+| 一般 PR/main benchmark | 1,000 筆 | 整個 Job 共用一個 destination transaction | 每 1,000 筆 commit 一次 |
+| scheduled/manual deep benchmark | 5,000 筆 | 整個 Job 共用一個 destination transaction | 每 5,000 筆 commit 一次 |
+
+JOB 模式仍以 `fetchSize` / `batchSize` 做 JDBC 分批讀寫，但**不會因此切開 transaction**；CHUNK 模式則把相同的 batch size 同時作為 commit / rollback 邊界。
+
+以 deep benchmark 的 5,000 筆一批計算：
+
+| 總筆數 | CHUNK 交易群組數 | JOB 交易群組數 |
+|---:|---:|---:|
+| 100k | 20 | 1 |
+| 1M | 200 | 1 |
+| 10M | 2,000 | 1 |
+| 20M | 4,000 | 1 |
+| 50M | 10,000 | 1 |
+
+這正是兩種 atomicity 都需要驗證的原因。**JOB** 提供整批 all-or-nothing rollback，但資料量越大，單一 transaction、rollback 範圍與資料庫資源壓力也越大；**CHUNK** 把單次 transaction 與重試範圍限制在固定批次內，但後段失敗時會保留前面已 commit 的 chunks，因此必須有明確的 resume / recovery 語意。
+
+一般 CI 的 10k failure case 會把差異直接驗出來：batch size 為 1,000，並在最後一筆製造 duplicate key。JOB 會回滾全部搬移資料，只留下事先存在的衝突資料（**1 筆**）；CHUNK 已完成的前 9 個批次共 **9,000 筆**會保留，第 10 個失敗批次回滾，再加上事先存在的衝突資料，目的端應為 **9,001 筆**。
+
+---
+
 ## Test Strategy
 
 k6 在 IrisPipe 裡不是只用來做壓測，也用來做 integration-level correctness 驗證。

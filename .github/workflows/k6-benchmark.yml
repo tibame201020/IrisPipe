@@ -227,7 +227,17 @@ jobs:
         run: k6 run data-volume-benchmark.js
 
       - name: Upload data-volume report
-        uses: actions/upload-artifact@v4
+        id: upload_data_volume_report
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: data-benchmark-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.json
+          if-no-files-found: error
+
+      - name: Retry data-volume report upload
+        if: steps.upload_data_volume_report.outcome == 'failure'
+        uses: actions/upload-artifact@v7
         with:
           name: data-benchmark-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.json
