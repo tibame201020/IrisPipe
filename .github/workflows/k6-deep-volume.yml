@@ -452,7 +452,7 @@ jobs:
   publish-deep-results:
     name: Publish Deep Benchmark Results
     needs: [h2-deep-volume, postgres-h2-deep, rdbms-deep-volume]
-    if: always()
+    if: github.ref == 'refs/heads/main' && needs.h2-deep-volume.result == 'success' && needs.postgres-h2-deep.result == 'success' && needs.rdbms-deep-volume.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
