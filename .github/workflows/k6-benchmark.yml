@@ -42,10 +42,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -68,7 +68,8 @@ jobs:
           echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
 
       - name: Upload runnable jar
-        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-runnable-jar
           path: ${{ steps.jar.outputs.app_jar }}
@@ -87,10 +88,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -99,10 +100,17 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -136,7 +144,8 @@ jobs:
           k6 run benchmark.js
 
       - name: Upload API benchmark report
-        uses: actions/upload-artifact@v4
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
         with:
           name: api-benchmark-report
           path: ${{ github.workspace }}/.k6-tmp/api-benchmark-report.json
@@ -173,10 +182,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -185,10 +194,17 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -228,7 +244,7 @@ jobs:
 
       - name: Upload data-volume report
         id: upload_data_volume_report
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v7
         with:
           name: data-benchmark-${{ matrix.atomic }}-${{ matrix.rows }}
@@ -236,6 +252,7 @@ jobs:
           if-no-files-found: error
 
       - name: Retry data-volume report upload
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         if: steps.upload_data_volume_report.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
@@ -273,10 +290,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -285,10 +302,17 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -327,7 +351,8 @@ jobs:
         run: k6 run data-volume-benchmark.js
 
       - name: Upload atomicity report
-        uses: actions/upload-artifact@v4
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
         with:
           name: atomicity-benchmark-${{ matrix.atomic }}
           path: ${{ github.workspace }}/.k6-tmp/atomicity-${{ matrix.atomic }}.json
@@ -377,10 +402,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -389,10 +414,17 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Seed PostgreSQL source
         shell: bash
@@ -450,7 +482,8 @@ jobs:
         run: k6 run data-volume-benchmark.js
 
       - name: Upload cross-database report
-        uses: actions/upload-artifact@v4
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
         with:
           name: crossdb-benchmark-${{ matrix.atomic }}
           path: ${{ github.workspace }}/.k6-tmp/crossdb-${{ matrix.atomic }}.json
@@ -485,32 +518,32 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download API benchmark report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: api-benchmark-report
           path: .benchmark-results/api
 
       - name: Download data-volume reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: data-benchmark-*
           path: .benchmark-results/data
           merge-multiple: true
 
       - name: Download atomicity reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: atomicity-benchmark-*
           path: .benchmark-results/data
           merge-multiple: true
 
       - name: Download cross-database reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: crossdb-benchmark-*
           path: .benchmark-results/data

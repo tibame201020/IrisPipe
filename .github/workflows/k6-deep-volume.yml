@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -38,7 +38,9 @@ jobs:
           app_jar="$(find backend/target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
           test -n "$app_jar"
           echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v4
+      - name: Upload runnable jar
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: deep-benchmark-runnable-jar
           path: ${{ steps.jar.outputs.app_jar }}
@@ -61,16 +63,24 @@ jobs:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: grafana/setup-k6-action@v1
-      - uses: actions/download-artifact@v4
+      - name: Download runnable jar
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: deep-benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
       - name: Start backend
         working-directory: backend
         shell: bash
@@ -103,14 +113,14 @@ jobs:
         run: k6 run data-volume-benchmark.js
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deep-h2-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ github.workspace }}/.k6-tmp/deep-h2-${{ matrix.atomic }}-${{ matrix.rows }}.json
           if-no-files-found: ignore
       - name: Upload backend log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deep-h2-log-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ env.APP_LOG }}
@@ -152,16 +162,24 @@ jobs:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: grafana/setup-k6-action@v1
-      - uses: actions/download-artifact@v4
+      - name: Download runnable jar
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: deep-benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
       - name: Seed PostgreSQL source in-database
         shell: bash
         run: |
@@ -209,7 +227,7 @@ jobs:
         run: k6 run data-volume-benchmark.js
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deep-cross-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ github.workspace }}/.k6-tmp/deep-cross-${{ matrix.atomic }}-${{ matrix.rows }}.json
@@ -265,16 +283,24 @@ jobs:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: sa
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       - uses: grafana/setup-k6-action@v1
-      - uses: actions/download-artifact@v4
+      - name: Download runnable jar
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: deep-benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
       - name: Start and seed ${{ matrix.engine }} in-database
         shell: bash
         run: bash backend/k6/rdbms-deep-harness.sh start "${{ matrix.engine }}" "${{ matrix.rows }}"
@@ -317,14 +343,14 @@ jobs:
           python backend/k6/finalize-external-benchmark.py --report "$REPORT_FILE" --actual-rows "$actual"
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ env.REPORT_FILE }}
           if-no-files-found: ignore
       - name: Upload backend log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deep-${{ matrix.engine }}-log-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ env.APP_LOG }}
@@ -346,11 +372,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Download deep benchmark artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: deep-*
           path: .deep-results

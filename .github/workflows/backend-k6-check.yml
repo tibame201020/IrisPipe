@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -77,7 +77,8 @@ jobs:
           echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
 
       - name: Upload runnable jar
-        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: backend-runnable-jar
           path: ${{ steps.jar.outputs.app_jar }}
@@ -123,10 +124,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -135,10 +136,17 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: backend-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -184,7 +192,7 @@ jobs:
 
       - name: Upload backend log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-k6-log-${{ matrix.suite.id }}
           path: ${{ env.APP_LOG }}
@@ -210,7 +218,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
