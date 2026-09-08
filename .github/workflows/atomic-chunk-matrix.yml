@@ -49,6 +49,11 @@ jobs:
             sleep 2
           done
           exit 1
+      - name: Smoke test the complete reporting and recovery path
+        working-directory: backend/k6
+        run: |
+          MATRIX_SIZES=10000 MATRIX_REPEATS=1 MATRIX_REPORT="${{ github.workspace }}/matrix-results/smoke-results.json" k6 run atomic-chunk-matrix.js
+          jq -e '.completed == true and (.results | length == 4) and all(.assertions[]; .passed == true)' "${{ github.workspace }}/matrix-results/smoke-results.json"
       - name: Measure and verify JOB and CHUNK
         working-directory: backend/k6
         run: k6 run atomic-chunk-matrix.js

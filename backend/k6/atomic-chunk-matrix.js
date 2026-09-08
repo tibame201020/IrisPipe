@@ -3,7 +3,7 @@ import { check } from 'k6';
 import { getPipelineRunDetailOrFail, runPipelineAndGetSummary, resumePipelineRunAndGetSummary } from './utils/test-helpers.js';
 
 // One VU, sequential paired runs; no API load scenario runs concurrently.
-export const options = { vus: 1, iterations: 1, maxDuration: '50m', thresholds: { checks: ['rate==1'] } };
+export const options = { scenarios: { matrix: { executor: 'shared-iterations', vus: 1, iterations: 1, maxDuration: '50m' } }, thresholds: { checks: ['rate==1'] } };
 const base = 'http://127.0.0.1:8080/api/v1';
 const sizes = (__ENV.MATRIX_SIZES || '1000000,10000000').split(',').map(Number);
 const repeats = Number(__ENV.MATRIX_REPEATS || 3);
@@ -45,6 +45,8 @@ function config(mode) {
 }
 export default function () {
     expect('bounded workload', sizes.every(n => Number.isInteger(n) && n > 0 && n <= 10000000) && repeats >= 1 && repeats <= 3);
+    sql('CREATE TABLE IF NOT EXISTS matrix_report (id INT PRIMARY KEY, payload VARCHAR(1000000))');
+    sql('DELETE FROM matrix_report');
     for (const name of ['matrix_src', 'matrix_dest']) sql(`CREATE TABLE IF NOT EXISTS ${name} (id BIGINT PRIMARY KEY, name VARCHAR(64), a BIGINT, b BIGINT, c BIGINT, d VARCHAR(16), e VARCHAR(16), f VARCHAR(16), g VARCHAR(16), h VARCHAR(16), i VARCHAR(16))`);
     const ids = { JOB: config('JOB'), CHUNK: config('CHUNK') };
     // Warm up both paths, excluded from reported timings.
@@ -66,6 +68,7 @@ export default function () {
                 expect('normal completion ' + mode, result.status === 'COMPLETED');
                 verify(n);
                 rows.push({ scenario: 'normal', mode, rows: n, repeat, elapsed_ms: elapsed, rows_per_second: Math.round(n * 1000 / elapsed), verified: true });
+                saveReport();
             }
         }
     }
@@ -92,13 +95,15 @@ export default function () {
         expect('JobInstance recovery semantics ' + mode, mode === 'CHUNK' ? sameInstance : !sameInstance);
         expect('new execution after resume ' + mode, detail.jobs[0].lastJobExecutionId !== resumedDetail.jobs[0].lastJobExecutionId);
         rows.push({ scenario: 'conflict_resume', mode, rows: 10000, retained_including_conflict: retained, failure_ms: failureMs, resume_ms: resumeMs, total_processing_ms: failureMs + resumeMs, same_job_instance: sameInstance, verified: true });
+        saveReport();
     }
     completed = true;
     // VU globals are isolated from handleSummary; persist the exact report in
     // this disposable test DB after timing, then read it from the summary hook.
-    sql('CREATE TABLE IF NOT EXISTS matrix_report (id INT PRIMARY KEY, payload VARCHAR(1000000))');
-    sql('DELETE FROM matrix_report');
-    sql("INSERT INTO matrix_report VALUES (1, '" + JSON.stringify(buildReport()).replace(/'/g, "''") + "')");
+    saveReport();
+}
+function saveReport() {
+    sql("MERGE INTO matrix_report KEY(id) VALUES (1, '" + JSON.stringify(buildReport()).replace(/'/g, "''") + "')");
 }
 function buildReport() {
     return {
