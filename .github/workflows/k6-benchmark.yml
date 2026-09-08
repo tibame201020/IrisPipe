@@ -42,10 +42,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -68,7 +68,8 @@ jobs:
           echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
 
       - name: Upload runnable jar
-        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-runnable-jar
           path: ${{ steps.jar.outputs.app_jar }}
@@ -87,22 +88,57 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Install k6
+        id: setup_k6
+        continue-on-error: true
         uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.7.1'
+
+      - name: Fallback install k6
+        if: steps.setup_k6.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=1.7.1
+          archive="k6-v${version}-linux-amd64.tar.gz"
+          url="https://github.com/grafana/k6/releases/download/v${version}/${archive}"
+          rm -f "$archive"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 180 \
+              --output "$archive" "$url"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to download k6 after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          tar -xzf "$archive"
+          sudo install -m 0755 "k6-v${version}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -136,7 +172,8 @@ jobs:
           k6 run benchmark.js
 
       - name: Upload API benchmark report
-        uses: actions/upload-artifact@v4
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
         with:
           name: api-benchmark-report
           path: ${{ github.workspace }}/.k6-tmp/api-benchmark-report.json
@@ -173,22 +210,57 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Install k6
+        id: setup_k6
+        continue-on-error: true
         uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.7.1'
+
+      - name: Fallback install k6
+        if: steps.setup_k6.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=1.7.1
+          archive="k6-v${version}-linux-amd64.tar.gz"
+          url="https://github.com/grafana/k6/releases/download/v${version}/${archive}"
+          rm -f "$archive"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 180 \
+              --output "$archive" "$url"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to download k6 after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          tar -xzf "$archive"
+          sudo install -m 0755 "k6-v${version}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -227,7 +299,18 @@ jobs:
         run: k6 run data-volume-benchmark.js
 
       - name: Upload data-volume report
-        uses: actions/upload-artifact@v4
+        id: upload_data_volume_report
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: data-benchmark-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.json
+          if-no-files-found: error
+
+      - name: Retry data-volume report upload
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        if: steps.upload_data_volume_report.outcome == 'failure'
+        uses: actions/upload-artifact@v7
         with:
           name: data-benchmark-${{ matrix.atomic }}-${{ matrix.rows }}
           path: ${{ github.workspace }}/.k6-tmp/data-${{ matrix.atomic }}-${{ matrix.rows }}.json
@@ -263,22 +346,57 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Install k6
+        id: setup_k6
+        continue-on-error: true
         uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.7.1'
+
+      - name: Fallback install k6
+        if: steps.setup_k6.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=1.7.1
+          archive="k6-v${version}-linux-amd64.tar.gz"
+          url="https://github.com/grafana/k6/releases/download/v${version}/${archive}"
+          rm -f "$archive"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 180 \
+              --output "$archive" "$url"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to download k6 after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          tar -xzf "$archive"
+          sudo install -m 0755 "k6-v${version}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Start backend
         working-directory: backend
@@ -317,7 +435,8 @@ jobs:
         run: k6 run data-volume-benchmark.js
 
       - name: Upload atomicity report
-        uses: actions/upload-artifact@v4
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
         with:
           name: atomicity-benchmark-${{ matrix.atomic }}
           path: ${{ github.workspace }}/.k6-tmp/atomicity-${{ matrix.atomic }}.json
@@ -367,22 +486,57 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Install k6
+        id: setup_k6
+        continue-on-error: true
         uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.7.1'
+
+      - name: Fallback install k6
+        if: steps.setup_k6.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=1.7.1
+          archive="k6-v${version}-linux-amd64.tar.gz"
+          url="https://github.com/grafana/k6/releases/download/v${version}/${archive}"
+          rm -f "$archive"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 180 \
+              --output "$archive" "$url"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to download k6 after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          tar -xzf "$archive"
+          sudo install -m 0755 "k6-v${version}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
 
       - name: Download runnable jar
-        uses: actions/download-artifact@v4
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
         with:
           name: benchmark-runnable-jar
           path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
 
       - name: Seed PostgreSQL source
         shell: bash
@@ -440,7 +594,8 @@ jobs:
         run: k6 run data-volume-benchmark.js
 
       - name: Upload cross-database report
-        uses: actions/upload-artifact@v4
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v7
         with:
           name: crossdb-benchmark-${{ matrix.atomic }}
           path: ${{ github.workspace }}/.k6-tmp/crossdb-${{ matrix.atomic }}.json
@@ -475,32 +630,32 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download API benchmark report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: api-benchmark-report
           path: .benchmark-results/api
 
       - name: Download data-volume reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: data-benchmark-*
           path: .benchmark-results/data
           merge-multiple: true
 
       - name: Download atomicity reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: atomicity-benchmark-*
           path: .benchmark-results/data
           merge-multiple: true
 
       - name: Download cross-database reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: crossdb-benchmark-*
           path: .benchmark-results/data

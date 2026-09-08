@@ -28,6 +28,16 @@ def db_label(pair: str) -> str:
     }.get(pair, pair)
 
 
+def transaction_groups(case: dict):
+    rows = int(case.get("row_count") or 0)
+    batch = int(case.get("batch_size") or 0)
+    if case.get("atomic_level") == "JOB":
+        return 1
+    if batch <= 0:
+        return None
+    return (rows + batch - 1) // batch
+
+
 def render_fragment(data: dict, language: str) -> str:
     bench = data.get("benchmark", {})
     volume = data.get("data_volume", {})
@@ -61,13 +71,17 @@ def render_fragment(data: dict, language: str) -> str:
         ]
         if success_cases:
             lines += [
-                "| DB path | Atomicity | Rows | Batch | Duration | Throughput |",
-                "|---|---|---:|---:|---:|---:|",
+                "| DB path | Atomicity | Rows | 每批筆數 | 交易群組 | Duration | Throughput |",
+                "|---|---|---:|---:|---:|---:|---:|",
             ]
             for c in success_cases:
+                groups = transaction_groups(c)
+                groups_text = "-" if groups is None else f"{groups:,}"
+                batch = int(c.get("batch_size") or 0)
+                batch_text = "-" if batch <= 0 else f"{batch:,}"
                 lines.append(
                     f"| {db_label(c['db_pair'])} | {c['atomic_level']} | {c['row_count']:,} | "
-                    f"{c['batch_size']:,} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
+                    f"{batch_text} | {groups_text} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
                 )
         else:
             lines.append("尚未產生 data-volume benchmark 結果。")
@@ -123,13 +137,17 @@ def render_fragment(data: dict, language: str) -> str:
         ]
         if success_cases:
             lines += [
-                "| DB path | Atomicity | Rows | Batch | Duration | Throughput |",
-                "|---|---|---:|---:|---:|---:|",
+                "| DB path | Atomicity | Rows | Batch | Txn groups | Duration | Throughput |",
+                "|---|---|---:|---:|---:|---:|---:|",
             ]
             for c in success_cases:
+                groups = transaction_groups(c)
+                groups_text = "-" if groups is None else f"{groups:,}"
+                batch = int(c.get("batch_size") or 0)
+                batch_text = "-" if batch <= 0 else f"{batch:,}"
                 lines.append(
                     f"| {db_label(c['db_pair'])} | {c['atomic_level']} | {c['row_count']:,} | "
-                    f"{c['batch_size']:,} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
+                    f"{batch_text} | {groups_text} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
                 )
         else:
             lines.append("No data-volume benchmark result has been published yet.")

@@ -24,6 +24,17 @@ const BATCH_SIZE = Number.parseInt(__ENV.BATCH_SIZE || '1000', 10);
 const REPORT_PATH = __ENV.BENCHMARK_REPORT || 'data-volume-benchmark-report.json';
 const SETUP_TIMEOUT = __ENV.K6_SETUP_TIMEOUT || '2m';
 const SCENARIO_MAX_DURATION = __ENV.K6_MAX_DURATION || '10m';
+const PIPELINE_HTTP_TIMEOUT = __ENV.PIPELINE_HTTP_TIMEOUT || '10m';
+const SOURCE_JDBC_DRIVER = __ENV.SOURCE_JDBC_DRIVER || '';
+const SOURCE_JDBC_URL = __ENV.SOURCE_JDBC_URL || '';
+const SOURCE_DB_USER = __ENV.SOURCE_DB_USER || '';
+const SOURCE_DB_PASSWORD = __ENV.SOURCE_DB_PASSWORD || '';
+const DEST_JDBC_DRIVER = __ENV.DEST_JDBC_DRIVER || '';
+const DEST_JDBC_URL = __ENV.DEST_JDBC_URL || '';
+const DEST_DB_USER = __ENV.DEST_DB_USER || '';
+const DEST_DB_PASSWORD = __ENV.DEST_DB_PASSWORD || '';
+const EXTERNAL_SOURCE = SOURCE_JDBC_DRIVER.length > 0 || DB_PAIR === 'postgres-h2';
+const EXTERNAL_DESTINATION = DEST_JDBC_DRIVER.length > 0;
 
 if (!Number.isInteger(ROW_COUNT) || ROW_COUNT <= 0) {
   throw new Error(`ROW_COUNT must be a positive integer, got: ${__ENV.ROW_COUNT}`);
@@ -37,8 +48,11 @@ if (!['JOB', 'CHUNK'].includes(ATOMIC_LEVEL)) {
 if (!['success', 'failure'].includes(BENCHMARK_MODE)) {
   throw new Error(`BENCHMARK_MODE must be success or failure, got: ${BENCHMARK_MODE}`);
 }
-if (!['h2-h2', 'postgres-h2'].includes(DB_PAIR)) {
-  throw new Error(`DB_PAIR must be h2-h2 or postgres-h2, got: ${DB_PAIR}`);
+if (!/^[a-z0-9]+-[a-z0-9]+$/.test(DB_PAIR)) {
+  throw new Error(`DB_PAIR must use a source-destination token such as h2-h2 or postgres-postgres, got: ${DB_PAIR}`);
+}
+if (BENCHMARK_MODE === 'failure' && EXTERNAL_DESTINATION) {
+  throw new Error('failure-mode external destinations are not supported by this benchmark harness');
 }
 
 const HEADERS = { 'Content-Type': 'application/json' };
@@ -96,6 +110,14 @@ function sqlScalar(sql, columnName, label) {
 }
 
 function sourceDatabase() {
+  if (SOURCE_JDBC_DRIVER.length > 0) {
+    return {
+      driver: SOURCE_JDBC_DRIVER,
+      url: SOURCE_JDBC_URL,
+      username: SOURCE_DB_USER,
+      password: SOURCE_DB_PASSWORD,
+    };
+  }
   if (DB_PAIR === 'postgres-h2') {
     return {
       driver: 'org.postgresql.Driver',
@@ -114,6 +136,14 @@ function sourceDatabase() {
 }
 
 function destinationDatabase() {
+  if (EXTERNAL_DESTINATION) {
+    return {
+      driver: DEST_JDBC_DRIVER,
+      url: DEST_JDBC_URL,
+      username: DEST_DB_USER,
+      password: DEST_DB_PASSWORD,
+    };
+  }
   return {
     driver: 'org.h2.Driver',
     url: 'jdbc:h2:./h2data/data',
@@ -192,10 +222,12 @@ function createPipeline() {
 }
 
 export function setup() {
-  sqlExecute('DROP TABLE IF EXISTS benchmark_dest', 'drop destination table');
-  sqlExecute('CREATE TABLE benchmark_dest (id INT PRIMARY KEY, name VARCHAR(255))', 'create destination table');
+  if (!EXTERNAL_DESTINATION) {
+    sqlExecute('DROP TABLE IF EXISTS benchmark_dest', 'drop destination table');
+    sqlExecute('CREATE TABLE benchmark_dest (id INT PRIMARY KEY, name VARCHAR(255))', 'create destination table');
+  }
 
-  if (DB_PAIR === 'h2-h2') {
+  if (!EXTERNAL_SOURCE) {
     sqlExecute('DROP TABLE IF EXISTS benchmark_source', 'drop source table');
     sqlExecute('CREATE TABLE benchmark_source (id INT PRIMARY KEY, name VARCHAR(255))', 'create source table');
     sqlExecute(
@@ -211,9 +243,9 @@ export function setup() {
     );
   }
 
-  const sourceCount = DB_PAIR === 'h2-h2'
-    ? sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_source', 'CNT', 'source row count')
-    : ROW_COUNT;
+  const sourceCount = EXTERNAL_SOURCE
+    ? ROW_COUNT
+    : sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_source', 'CNT', 'source row count');
   check(sourceCount, {
     'source contains requested row count': (count) => count === ROW_COUNT,
   });
@@ -226,7 +258,7 @@ export default function (data) {
   const response = http.post(
     `${BASE_URL}/api/v1/sync-pipeline`,
     JSON.stringify({ pipelineId: data.pipelineId, useAsyncLaucher: false }),
-    { headers: HEADERS, timeout: '10m' },
+    { headers: HEADERS, timeout: PIPELINE_HTTP_TIMEOUT },
   );
   const elapsedMs = Date.now() - startedAt;
 
@@ -243,15 +275,21 @@ export default function (data) {
     [`pipeline status is ${expectedStatus}`]: (item) => item && item.status === expectedStatus,
   });
 
-  const actualCount = sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_dest', 'CNT', 'destination row count');
   const expectedCount = expectedDestinationCount();
-  const rowsOk = check(actualCount, {
-    [`destination row count matches ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (count) => count === expectedCount,
-  });
+  let actualCount = null;
+  let rowsOk = true;
+  if (!EXTERNAL_DESTINATION) {
+    actualCount = sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_dest', 'CNT', 'destination row count');
+    rowsOk = check(actualCount, {
+      [`destination row count matches ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (count) => count === expectedCount,
+    });
+  }
 
   const semanticsPassed = statusOk && rowsOk;
   atomicityOk.add(semanticsPassed ? 1 : 0);
-  observedRows.add(actualCount);
+  if (actualCount !== null) {
+    observedRows.add(actualCount);
+  }
   migrationDuration.add(elapsedMs);
 
   if (BENCHMARK_MODE === 'success' && elapsedMs > 0) {

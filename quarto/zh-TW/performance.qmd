@@ -2,13 +2,15 @@
 title: "效能與可靠性"
 ---
 
-IrisPipe 透過兩組 GitHub Actions workflow 驗證：
+IrisPipe 目前透過三組 GitHub Actions workflow 驗證：
 
-- **k6 Benchmark**：在 CI runner 上量測 runtime latency 與 API throughput
-- **Backend K6 Checks**：啟動實際 Spring Boot backend，執行 k6 regression suites
+- **k6 Benchmark**：量測 runtime latency、API throughput、1k / 10k / 100k 資料量行為、失敗交易語意與 PostgreSQL → H2 JDBC 路徑
+- **Backend K6 Checks**：啟動實際 Spring Boot backend，執行 10 組 k6 regression suites
+- **k6 Deep Volume Benchmark**：以排程／手動方式執行大筆資料 JOB / CHUNK benchmark，包含 H2 的 100k / 1M / 10M / 20M / 50M 階梯，以及實際關聯式資料庫矩陣
 
 [![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
 [![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
+[![k6 Deep Volume Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-deep-volume.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-deep-volume.yml)
 
 ---
 
@@ -37,14 +39,43 @@ IrisPipe 透過兩組 GitHub Actions workflow 驗證：
 
 ## Benchmark 量測什麼？
 
-benchmark workflow 會啟動實際 backend，執行 `backend/k6/benchmark.js` 與 `backend/k6/data-volume-benchmark.js`。主要驗證：
+benchmark workflow 會啟動實際 backend，並透過真正的 JDBC connection 執行 `backend/k6/benchmark.js` 與 `backend/k6/data-volume-benchmark.js`。目前主要驗證：
 
 1. 同步 pipeline execution 與 API latency / request rate
-2. H2 → H2 在 1,000 / 10,000 / 100,000 筆下的 JOB 與 CHUNK 執行時間、rows/s
-3. 10,000 筆失敗案例的交易邊界：JOB 全回滾、CHUNK 保留已提交 chunks
-4. PostgreSQL → H2 10,000 筆跨資料庫 JDBC 路徑（JOB / CHUNK）
+2. 一般 CI gate 的 H2 → H2 JOB / CHUNK 1k / 10k / 100k 執行時間與 rows/s
+3. 10k duplicate-key failure 的交易邊界：JOB 全回滾、CHUNK 保留已提交 chunks
+4. PostgreSQL → H2 的跨資料庫 JDBC 路徑（JOB / CHUNK）
+5. 排程／手動 deep benchmark 的 H2 100k / 1M / 10M / 20M / 50M 階梯，以及 PostgreSQL、MySQL、MariaDB、SQL Server、Oracle 實際資料庫矩陣
+6. 實際 RDBMS benchmark 完成後，CI 會直接從目的資料庫再次核對 row count；不能只因 pipeline 回 COMPLETED 就算 PASS
 
 所有效能數字都是 GitHub Actions CI runner 上的可重複 regression benchmark，不是 production capacity claim。
+
+---
+
+## JOB / CHUNK 的交易邊界
+
+只有總資料量不足以說明 Atomic JOB / CHUNK 的差異，因此 benchmark 會同時記錄 **每批筆數** 與 **交易群組數**：
+
+| CI 類型 | `fetchSize` / `batchSize` | JOB 交易邊界 | CHUNK 交易邊界 |
+|---|---:|---|---|
+| 一般 PR/main benchmark | 1,000 筆 | 整個 Job 共用一個 destination transaction | 每 1,000 筆 commit 一次 |
+| scheduled/manual deep benchmark | 5,000 筆 | 整個 Job 共用一個 destination transaction | 每 5,000 筆 commit 一次 |
+
+JOB 模式仍以 `fetchSize` / `batchSize` 做 JDBC 分批讀寫，但**不會因此切開 transaction**；CHUNK 模式則把相同的 batch size 同時作為 commit / rollback 邊界。
+
+以 deep benchmark 的 5,000 筆一批計算：
+
+| 總筆數 | CHUNK 交易群組數 | JOB 交易群組數 |
+|---:|---:|---:|
+| 100k | 20 | 1 |
+| 1M | 200 | 1 |
+| 10M | 2,000 | 1 |
+| 20M | 4,000 | 1 |
+| 50M | 10,000 | 1 |
+
+這正是兩種 atomicity 都需要驗證的原因。**JOB** 提供整批 all-or-nothing rollback，但資料量越大，單一 transaction、rollback 範圍與資料庫資源壓力也越大；**CHUNK** 把單次 transaction 與重試範圍限制在固定批次內，但後段失敗時會保留前面已 commit 的 chunks，因此必須有明確的 resume / recovery 語意。
+
+一般 CI 的 10k failure case 會把差異直接驗出來：batch size 為 1,000，並在最後一筆製造 duplicate key。JOB 會回滾全部搬移資料，只留下事先存在的衝突資料（**1 筆**）；CHUNK 已完成的前 9 個批次共 **9,000 筆**會保留，第 10 個失敗批次回滾，再加上事先存在的衝突資料，目的端應為 **9,001 筆**。
 
 ---
 
@@ -59,7 +90,9 @@ k6 在 IrisPipe 裡不是只用來做壓測，也用來做 integration-level cor
 3. 驗證 status code、response shape、persisted state、runtime transition
 4. 測試後清理資料
 
-這比只測 controller 或單元測試更能驗證 runtime semantics，因為它會穿過完整呼叫鏈：controller → service → Spring Batch → database。
+Deep benchmark 還會在 CI 內啟動目標資料庫、直接在資料庫內產生 source dataset、透過 IrisPipe JDBC 實際搬移，最後再從目的資料庫核對筆數。
+
+因此驗證鏈會穿過：controller → service → Spring Batch → JDBC driver → database。
 
 ---
 
@@ -67,21 +100,28 @@ k6 在 IrisPipe 裡不是只用來做壓測，也用來做 integration-level cor
 
 ```{mermaid}
 flowchart TD
-  P["Push / workflow dispatch"] --> B["mvn package + unit tests"]
+  P["PR / push"] --> B["mvn package + unit tests"]
   B --> A["API / runtime benchmark"]
-  B --> V["Data-volume matrix\nJOB / CHUNK × 1k / 10k / 100k"]
+  B --> V["一般 data-volume\nJOB / CHUNK × 1k / 10k / 100k"]
   B --> F["10k failure semantics\nJOB / CHUNK"]
   B --> X["PostgreSQL → H2\nJOB / CHUNK"]
   B --> R["10-suite k6 regression matrix"]
 
-  A --> KP["Update performance-results.json"]
+  S["Scheduled / manual deep run"] --> DB["Real DB containers + DB 內 seed"]
+  DB --> H["H2 ladder\n100k / 1M / 10M / 20M / 50M"]
+  DB --> M["RDBMS matrix\nPostgreSQL / MySQL / MariaDB / SQL Server / Oracle"]
+  H --> DP["核對 destination + deep-performance-results.json"]
+  M --> DP
+
+  A --> KP["performance-results.json"]
   V --> KP
   F --> KP
   X --> KP
-  R --> RP["Update k6-regression-results.json"]
+  R --> RP["k6-regression-results.json"]
 
   KP --> Q["Render Quarto site"]
   RP --> Q
+  DP --> Q
   Q --> D["Deploy GitHub Pages"]
 ```
 
@@ -91,4 +131,4 @@ flowchart TD
 
 可以這樣說：
 
-> Performance 頁分三層。第一層是 API/runtime latency；第二層用 k6 實際搬 1k、10k、100k 筆，比較 Atomic JOB 與 CHUNK 的時間與 rows/s，並用 10k 筆 duplicate-key failure 驗證交易邊界；另外有 PostgreSQL → H2 的跨資料庫案例。第三層是 10 組 regression suites，驗證 execute、resume、rerun、stop、lineage 與 snapshot isolation。這些都是 CI runner 的 regression benchmark，不是 production capacity claim。
+> Performance 頁現在分成三層。第一層是一般 PR/main CI：跑 unit tests、API/runtime latency、1k／10k／100k 的 JOB／CHUNK data-volume、10k duplicate-key failure semantics，以及 PostgreSQL → H2。第二層是 scheduled/manual deep benchmark：H2 會一路跑到 50M，另外也啟動 PostgreSQL、MySQL、MariaDB、SQL Server、Oracle 實際資料庫做 JDBC 大筆資料驗證，而且完成後會直接向目的資料庫核對 row count。第三層是 10 組 k6 regression suites，驗證 execute、resume、rerun、stop、lineage 與 snapshot isolation。這些數字是 CI runner 的可重複 regression benchmark，不是 production capacity claim。

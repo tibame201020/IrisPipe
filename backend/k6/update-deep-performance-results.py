@@ -27,6 +27,16 @@ def fmt_rows(n):
     return str(n)
 
 
+def transaction_groups(case):
+    rows = int(case.get("row_count") or 0)
+    batch = int(case.get("batch_size") or 0)
+    if case.get("atomic_level") == "JOB":
+        return 1
+    if batch <= 0:
+        return None
+    return (rows + batch - 1) // batch
+
+
 def render(cases, lang):
     zh = lang == "zh"
     title = "## 深度資料量 Benchmark" if zh else "## Deep Data-Volume Benchmark"
@@ -38,13 +48,26 @@ def render(cases, lang):
     if not cases:
         pending = "尚未產生 deep benchmark 結果。" if zh else "Deep benchmark results have not been generated yet."
         return f"{title}\n\n{pending}\n"
-    lines = [title, "", note, "", "| DB | Atomic | Rows | Duration | Rows/s | Status |", "|---|---|---:|---:|---:|---|"]
+    batch_label = "每批筆數" if zh else "Batch"
+    groups_label = "交易群組" if zh else "Txn groups"
+    lines = [
+        title, "", note, "",
+        f"| DB | Atomic | Rows | {batch_label} | {groups_label} | Duration | Rows/s | Status |",
+        "|---|---|---:|---:|---:|---:|---:|---|",
+    ]
     for c in cases:
         duration = c.get("duration_ms")
         rps = c.get("rows_per_second")
+        batch = int(c.get("batch_size") or 0)
+        groups = transaction_groups(c)
         dur = "-" if duration is None else f"{duration/1000:.2f}s"
         rps_text = "-" if rps is None else f"{rps:,.1f}"
-        lines.append(f"| {c['db_pair']} | {c['atomic_level']} | {fmt_rows(c['row_count'])} | {dur} | {rps_text} | {str(c.get('status','')).upper()} |")
+        batch_text = "-" if batch <= 0 else f"{batch:,}"
+        groups_text = "-" if groups is None else f"{groups:,}"
+        lines.append(
+            f"| {c['db_pair']} | {c['atomic_level']} | {fmt_rows(c['row_count'])} | "
+            f"{batch_text} | {groups_text} | {dur} | {rps_text} | {str(c.get('status','')).upper()} |"
+        )
     return "\n".join(lines) + "\n"
 
 
