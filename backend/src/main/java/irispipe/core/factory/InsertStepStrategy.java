@@ -1,7 +1,5 @@
 package irispipe.core.factory;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -69,19 +67,15 @@ public class InsertStepStrategy implements ExecutionStepStrategy {
                         transactionManager)
                 .reader(jdbcCursorItemReader)
                 .processor(item -> {
-                    Map<String, Object> processItem = new HashMap<>(item);
                     if (StringUtils.isNotBlank(execution.watermarkColumn())) {
-                        execution.executionContext()
-                                .put(execution.watermarkColumn(), processItem
-                                        .get(execution.watermarkColumn()));
+                        Object watermark = item.entrySet().stream()
+                                .filter(entry -> entry.getKey().equalsIgnoreCase(execution.watermarkColumn()))
+                                .map(Map.Entry::getValue)
+                                .findFirst()
+                                .orElse(null);
+                        execution.executionContext().put(execution.watermarkColumn(), watermark);
                     }
-                    List<String> columns = sqlSyntaxHelper.columns;
-                    columns.forEach(column -> {
-                        if (!processItem.containsKey(column)) {
-                            processItem.put(column, null);
-                        }
-                    });
-                    return processItem;
+                    return sqlSyntaxHelper.alignToDestinationColumns(item);
                 })
                 .writer(batchInsertWriter)
                 .build();

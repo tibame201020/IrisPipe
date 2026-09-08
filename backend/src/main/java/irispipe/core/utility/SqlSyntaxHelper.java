@@ -3,7 +3,9 @@ package irispipe.core.utility;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
@@ -91,5 +93,29 @@ public class SqlSyntaxHelper {
      */
     public String buildExistsQuery(int chunkSize) {
         return statementBuilder.buildExistsQuery(chunkSize);
+    }
+
+    /**
+     * Aligns source row keys to destination column names case-insensitively.
+     * This is required for cross-database flows where JDBC drivers expose
+     * different identifier casing (for example PostgreSQL lower-case and H2 upper-case).
+     *
+     * @param sourceRow row returned by the source JDBC driver
+     * @return row keyed by destination column names
+     */
+    public Map<String, Object> alignToDestinationColumns(Map<String, Object> sourceRow) {
+        Map<String, Object> aligned = new LinkedHashMap<>();
+        for (String column : columns) {
+            Object value = sourceRow.get(column);
+            if (!sourceRow.containsKey(column)) {
+                value = sourceRow.entrySet().stream()
+                        .filter(entry -> entry.getKey().equalsIgnoreCase(column))
+                        .map(Map.Entry::getValue)
+                        .findFirst()
+                        .orElse(null);
+            }
+            aligned.put(column, value);
+        }
+        return aligned;
     }
 }
