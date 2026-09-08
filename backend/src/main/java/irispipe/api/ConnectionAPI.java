@@ -110,7 +110,7 @@ public class ConnectionAPI {
                         List.of(new DriverPlaceholder("path", "Database Path", "./h2data/mydb")),
                         null, true),
                 new DriverPreset("MySQL", "com.mysql.cj.jdbc.Driver",
-                        "jdbc:mysql://{host}:{port}/{database}",
+                        "jdbc:mysql://{host}:{port}/{database}?useCursorFetch=true&rewriteBatchedStatements=true",
                         List.of(new DriverPlaceholder("host", "Host", "localhost"),
                                 new DriverPlaceholder("port", "Port", "3306"),
                                 new DriverPlaceholder("database", "Database", "mydb")),

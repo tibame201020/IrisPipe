@@ -89,11 +89,11 @@ WHERE n <= ${rows};
 ANALYZE TABLE benchmark_source;
 SQL
       emit_env SOURCE_JDBC_DRIVER com.mysql.cj.jdbc.Driver
-      emit_env SOURCE_JDBC_URL 'jdbc:mysql://127.0.0.1:3306/irispipe_bench?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true'
+      emit_env SOURCE_JDBC_URL 'jdbc:mysql://127.0.0.1:3306/irispipe_bench?useSSL=false&allowPublicKeyRetrieval=true&useCursorFetch=true&rewriteBatchedStatements=true'
       emit_env SOURCE_DB_USER root
       emit_env SOURCE_DB_PASSWORD irispipe
       emit_env DEST_JDBC_DRIVER com.mysql.cj.jdbc.Driver
-      emit_env DEST_JDBC_URL 'jdbc:mysql://127.0.0.1:3306/irispipe_bench?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true'
+      emit_env DEST_JDBC_URL 'jdbc:mysql://127.0.0.1:3306/irispipe_bench?useSSL=false&allowPublicKeyRetrieval=true&useCursorFetch=true&rewriteBatchedStatements=true'
       emit_env DEST_DB_USER root
       emit_env DEST_DB_PASSWORD irispipe
       ;;
