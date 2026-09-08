@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -121,6 +122,20 @@ class SqlSyntaxHelperTest {
         String selectPart = query.substring(0, query.indexOf("FROM"));
         assertThat(selectPart).contains("\"ID\"");
         assertThat(selectPart).doesNotContain("\"NAME\"");
+    }
+
+
+    @Test
+    @DisplayName("??????????????????????")
+    void alignToDestinationColumns_shouldMatchSourceKeysCaseInsensitively() {
+        SqlSyntaxHelper helper = new SqlSyntaxHelper("SINGLE_PK_TABLE", namedJdbc);
+
+        Map<String, Object> aligned = helper.alignToDestinationColumns(
+                Map.of("id", 7, "name", "postgres-row", "status", "READY"));
+
+        assertThat(aligned).containsEntry("ID", 7);
+        assertThat(aligned).containsEntry("NAME", "postgres-row");
+        assertThat(aligned).containsEntry("STATUS", "READY");
     }
 
     private int countOccurrences(String text, String sub) {

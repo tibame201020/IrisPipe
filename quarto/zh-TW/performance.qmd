@@ -12,22 +12,7 @@ IrisPipe 透過兩組 GitHub Actions workflow 驗證：
 
 ---
 
-## 最新 k6 Performance Snapshot
-
-| Metric | Latest CI value |
-|---|---:|
-| Execute latency p50 | **78 ms** |
-| Execute latency p95 | **176.4 ms** |
-| Execute latency p99 | **191.3 ms** |
-| API latency p50 | **5.6 ms** |
-| API latency p95 | **12.9 ms** |
-| HTTP throughput | **11.8 req/s** |
-
-來源：`quarto/performance-results.json`，由 `k6 Benchmark` GitHub Actions workflow 更新。
-
-::: {.callout-note}
-這些數字是 **GitHub Actions CI runner 上的 light benchmark**，使用 local H2-backed Spring Boot application。它們適合用來做 regression tracking 與技術展示，不是 production capacity claim。
-:::
+{{< include ../_generated/performance-results-zh.md >}}
 
 ---
 
@@ -50,13 +35,14 @@ IrisPipe 透過兩組 GitHub Actions workflow 驗證：
 
 ## Benchmark 量測什麼？
 
-benchmark workflow 會啟動 backend，並執行 `backend/k6/benchmark.js`。主要量測：
+benchmark workflow 會啟動實際 backend，執行 `backend/k6/benchmark.js` 與 `backend/k6/data-volume-benchmark.js`。主要驗證：
 
-1. 同步 pipeline execution 的 end-to-end latency
-2. API list / recent-run endpoint latency
-3. 小型 CI concurrency 下的 HTTP request rate
+1. 同步 pipeline execution 與 API latency / request rate
+2. H2 → H2 在 1,000 / 10,000 / 100,000 筆下的 JOB 與 CHUNK 執行時間、rows/s
+3. 10,000 筆失敗案例的交易邊界：JOB 全回滾、CHUNK 保留已提交 chunks
+4. PostgreSQL → H2 10,000 筆跨資料庫 JDBC 路徑（JOB / CHUNK）
 
-這個 benchmark 刻意維持小規模，目的是讓文件中的數據可以被 GitHub Actions 重複產生，不是要宣稱 cluster-scale throughput。
+所有效能數字都是 GitHub Actions CI runner 上的可重複 regression benchmark，不是 production capacity claim。
 
 ---
 
@@ -79,11 +65,17 @@ k6 在 IrisPipe 裡不是只用來做壓測，也用來做 integration-level cor
 
 ```{mermaid}
 flowchart TD
-  P["Push / workflow dispatch"] --> B["Build backend jar"]
-  B --> K["Run k6 benchmark"]
-  B --> R["Run k6 regression matrix"]
+  P["Push / workflow dispatch"] --> B["mvn package + unit tests"]
+  B --> A["API / runtime benchmark"]
+  B --> V["Data-volume matrix\nJOB / CHUNK × 1k / 10k / 100k"]
+  B --> F["10k failure semantics\nJOB / CHUNK"]
+  B --> X["PostgreSQL → H2\nJOB / CHUNK"]
+  B --> R["10-suite k6 regression matrix"]
 
-  K --> KP["Update performance-results.json"]
+  A --> KP["Update performance-results.json"]
+  V --> KP
+  F --> KP
+  X --> KP
   R --> RP["Update k6-regression-results.json"]
 
   KP --> Q["Render Quarto site"]
@@ -97,4 +89,4 @@ flowchart TD
 
 可以這樣說：
 
-> Performance 頁分成兩層。第一層是 k6 benchmark 數字，例如 execute latency p50 / p95 / p99、API latency 和 throughput。第二層是 k6 regression suites，用來證明 execute、resume、rerun、stop、runtime lineage、snapshot isolation 這些行為都有 CI 驗證。這些數字是 CI runner 上的 light benchmark，不是 production capacity claim。
+> Performance 頁分三層。第一層是 API/runtime latency；第二層用 k6 實際搬 1k、10k、100k 筆，比較 Atomic JOB 與 CHUNK 的時間與 rows/s，並用 10k 筆 duplicate-key failure 驗證交易邊界；另外有 PostgreSQL → H2 的跨資料庫案例。第三層是 10 組 regression suites，驗證 execute、resume、rerun、stop、lineage 與 snapshot isolation。這些都是 CI runner 的 regression benchmark，不是 production capacity claim。
