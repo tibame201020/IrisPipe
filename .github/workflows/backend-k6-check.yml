@@ -132,8 +132,36 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Install K6
+      - name: Install k6
+        id: setup_k6
+        continue-on-error: true
         uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.7.1'
+
+      - name: Fallback install k6
+        if: steps.setup_k6.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=1.7.1
+          archive="k6-v${version}-linux-amd64.tar.gz"
+          url="https://github.com/grafana/k6/releases/download/v${version}/${archive}"
+          rm -f "$archive"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 180 \
+              --output "$archive" "$url"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to download k6 after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          tar -xzf "$archive"
+          sudo install -m 0755 "k6-v${version}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
 
       - name: Download runnable jar
         id: download_runnable_jar
