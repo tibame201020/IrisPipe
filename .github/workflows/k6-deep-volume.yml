@@ -2,6 +2,10 @@ name: k6 Deep Volume Benchmark
 
 on:
   workflow_dispatch:
+  # Temporary branch-only trigger used to validate PR #12 while the desktop worker is offline.
+  push:
+    branches:
+      - ci/multi-rdbms-deep
   schedule:
     # Weekly deep-capacity run. Keeps long-running cases out of normal PR CI.
     - cron: "0 18 * * 6"
