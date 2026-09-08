@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated_at": "2026-09-08T12:17:01Z",
+    "generated_at": "2026-09-08T12:27:34Z",
     "note": "Updated by GitHub Actions on each benchmark run. See .github/workflows/k6-benchmark.yml"
   },
   "suites": [
@@ -56,18 +56,18 @@
     }
   ],
   "benchmark": {
-    "execute_latency_p50_ms": 69,
-    "execute_latency_p95_ms": 112.2,
-    "execute_latency_p99_ms": 120,
-    "api_latency_p50_ms": 3,
-    "api_latency_p95_ms": 11,
+    "execute_latency_p50_ms": 70,
+    "execute_latency_p95_ms": 142.4,
+    "execute_latency_p99_ms": 151.7,
+    "api_latency_p50_ms": 4.2,
+    "api_latency_p95_ms": 12.9,
     "throughput_rps": 11.9,
-    "note": "Last updated 2026-09-08T12:17:01Z by GitHub Actions"
+    "note": "Last updated 2026-09-08T12:27:34Z by GitHub Actions"
   },
   "data_volume": {
-    "updated_at": "2026-09-08T12:17:01Z",
-    "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34224963721",
-    "commit_sha": "b1aaea5044fe0ed203d9848641ab8c305fc0139c",
+    "updated_at": "2026-09-08T12:27:34Z",
+    "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34226029514",
+    "commit_sha": "6ffacf2ec85a9599a902b04630cd2d976a723af1",
     "cases": [
       {
         "status": "pass",
@@ -76,7 +76,7 @@
         "mode": "failure",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 555,
+        "duration_ms": 768,
         "rows_per_second": null,
         "expected_destination_rows": 9001,
         "actual_destination_rows": 9001
@@ -88,7 +88,7 @@
         "mode": "failure",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 711,
+        "duration_ms": 610,
         "rows_per_second": null,
         "expected_destination_rows": 1,
         "actual_destination_rows": 1
@@ -100,8 +100,8 @@
         "mode": "success",
         "row_count": 1000,
         "batch_size": 1000,
-        "duration_ms": 380,
-        "rows_per_second": 2631.6,
+        "duration_ms": 471,
+        "rows_per_second": 2123.1,
         "expected_destination_rows": 1000,
         "actual_destination_rows": 1000
       },
@@ -112,8 +112,8 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 527,
-        "rows_per_second": 18975.3,
+        "duration_ms": 687,
+        "rows_per_second": 14556,
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       },
@@ -124,8 +124,8 @@
         "mode": "success",
         "row_count": 100000,
         "batch_size": 1000,
-        "duration_ms": 1758,
-        "rows_per_second": 56882.8,
+        "duration_ms": 1461,
+        "rows_per_second": 68446.3,
         "expected_destination_rows": 100000,
         "actual_destination_rows": 100000
       },
@@ -136,8 +136,8 @@
         "mode": "success",
         "row_count": 1000,
         "batch_size": 1000,
-        "duration_ms": 580,
-        "rows_per_second": 1724.1,
+        "duration_ms": 349,
+        "rows_per_second": 2865.3,
         "expected_destination_rows": 1000,
         "actual_destination_rows": 1000
       },
@@ -148,8 +148,8 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 544,
-        "rows_per_second": 18382.4,
+        "duration_ms": 659,
+        "rows_per_second": 15174.5,
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       },
@@ -160,8 +160,8 @@
         "mode": "success",
         "row_count": 100000,
         "batch_size": 1000,
-        "duration_ms": 1382,
-        "rows_per_second": 72358.9,
+        "duration_ms": 1880,
+        "rows_per_second": 53191.5,
         "expected_destination_rows": 100000,
         "actual_destination_rows": 100000
       },
@@ -172,8 +172,8 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 895,
-        "rows_per_second": 11173.2,
+        "duration_ms": 1074,
+        "rows_per_second": 9311,
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       },
@@ -184,8 +184,8 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 894,
-        "rows_per_second": 11185.7,
+        "duration_ms": 1021,
+        "rows_per_second": 9794.3,
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       }

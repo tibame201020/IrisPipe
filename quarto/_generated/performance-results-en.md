@@ -2,11 +2,11 @@
 
 | Metric | Latest CI value |
 |---|---:|
-| Execute latency p50 | **69 ms** |
-| Execute latency p95 | **112.2 ms** |
-| Execute latency p99 | **120 ms** |
-| API latency p50 | **3 ms** |
-| API latency p95 | **11 ms** |
+| Execute latency p50 | **70 ms** |
+| Execute latency p95 | **142.4 ms** |
+| Execute latency p99 | **151.7 ms** |
+| API latency p50 | **4.2 ms** |
+| API latency p95 | **12.9 ms** |
 | HTTP throughput | **11.9 req/s** |
 
 _Source: `quarto/performance-results.json`, updated by the `k6 Benchmark` GitHub Actions workflow._
@@ -21,14 +21,14 @@ These are repeatable GitHub Actions CI-runner benchmark results for regression t
 
 | DB path | Atomicity | Rows | Batch | Duration | Throughput |
 |---|---|---:|---:|---:|---:|
-| H2 → H2 | CHUNK | 1,000 | 1,000 | 380 ms | 2631.6 rows/s |
-| H2 → H2 | CHUNK | 10,000 | 1,000 | 527 ms | 18975.3 rows/s |
-| H2 → H2 | CHUNK | 100,000 | 1,000 | 1758 ms | 56882.8 rows/s |
-| H2 → H2 | JOB | 1,000 | 1,000 | 580 ms | 1724.1 rows/s |
-| H2 → H2 | JOB | 10,000 | 1,000 | 544 ms | 18382.4 rows/s |
-| H2 → H2 | JOB | 100,000 | 1,000 | 1382 ms | 72358.9 rows/s |
-| PostgreSQL → H2 | CHUNK | 10,000 | 1,000 | 895 ms | 11173.2 rows/s |
-| PostgreSQL → H2 | JOB | 10,000 | 1,000 | 894 ms | 11185.7 rows/s |
+| H2 → H2 | CHUNK | 1,000 | 1,000 | 471 ms | 2123.1 rows/s |
+| H2 → H2 | CHUNK | 10,000 | 1,000 | 687 ms | 14556 rows/s |
+| H2 → H2 | CHUNK | 100,000 | 1,000 | 1461 ms | 68446.3 rows/s |
+| H2 → H2 | JOB | 1,000 | 1,000 | 349 ms | 2865.3 rows/s |
+| H2 → H2 | JOB | 10,000 | 1,000 | 659 ms | 15174.5 rows/s |
+| H2 → H2 | JOB | 100,000 | 1,000 | 1880 ms | 53191.5 rows/s |
+| PostgreSQL → H2 | CHUNK | 10,000 | 1,000 | 1074 ms | 9311 rows/s |
+| PostgreSQL → H2 | JOB | 10,000 | 1,000 | 1021 ms | 9794.3 rows/s |
 
 The matrix compares JOB (one destination transaction for the whole job) and CHUNK (commit per batch) across multiple row counts on the same CI-runner class.
 
