@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -42,7 +43,7 @@ public class TableMetadataReader {
     }
 
     /**
-     * Reads primary-key column names for one table.
+     * Reads primary-key column names for one table in JDBC KEY_SEQ order.
      *
      * @param schemaName normalized schema name, or {@code null}
      * @param tableName normalized table name
@@ -50,12 +51,19 @@ public class TableMetadataReader {
      * @throws SQLException when metadata access fails
      */
     public List<String> getPrimaryKeys(String schemaName, String tableName) throws SQLException {
-        List<String> primaryKeys = new ArrayList<>();
+        List<PrimaryKeyColumn> primaryKeys = new ArrayList<>();
         try (ResultSet rs = metaData.getPrimaryKeys(null, schemaName, tableName)) {
             while (rs.next()) {
-                primaryKeys.add(rs.getString("COLUMN_NAME"));
+                primaryKeys.add(new PrimaryKeyColumn(rs.getShort("KEY_SEQ"), rs.getString("COLUMN_NAME")));
             }
         }
-        return Collections.unmodifiableList(primaryKeys);
+
+        return primaryKeys.stream()
+                .sorted(Comparator.comparingInt(PrimaryKeyColumn::keySequence))
+                .map(PrimaryKeyColumn::columnName)
+                .toList();
+    }
+
+    private record PrimaryKeyColumn(short keySequence, String columnName) {
     }
 }
