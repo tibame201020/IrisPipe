@@ -150,6 +150,9 @@ SQL
       emit_env DEST_DB_PASSWORD "$local_password"
       ;;
     oracle)
+      # A single CONNECT BY LEVEL <= 10M can exhaust Oracle Free's work area.
+      # Build the sequence as bounded 10k blocks so seed memory stays flat as row counts grow.
+      local oracle_outer=$(( (rows + 9999) / 10000 ))
       docker run -d --name "$container" -p 1521:1521 \
         -e ORACLE_PASSWORD=OraclePwd123 -e APP_USER=irispipe -e APP_USER_PASSWORD=IrisPipe123 \
         gvenzl/oracle-free:23-slim-faststart >/dev/null
@@ -163,7 +166,13 @@ BEGIN EXECUTE IMMEDIATE 'DROP TABLE benchmark_source PURGE'; EXCEPTION WHEN OTHE
 CREATE TABLE benchmark_source (id NUMBER(10) PRIMARY KEY, name VARCHAR2(255));
 CREATE TABLE benchmark_dest (id NUMBER(10) PRIMARY KEY, name VARCHAR2(255));
 INSERT /*+ APPEND */ INTO benchmark_source(id,name)
-SELECT LEVEL, 'row-' || LEVEL FROM dual CONNECT BY LEVEL <= ${rows};
+SELECT id, 'row-' || id
+FROM (
+  SELECT 1 + a.n + 10000 * b.n AS id
+  FROM (SELECT LEVEL - 1 AS n FROM dual CONNECT BY LEVEL <= 10000) a
+  CROSS JOIN (SELECT LEVEL - 1 AS n FROM dual CONNECT BY LEVEL <= ${oracle_outer}) b
+)
+WHERE id <= ${rows};
 COMMIT;
 EXIT;
 SQL
