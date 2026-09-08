@@ -97,6 +97,8 @@ jobs:
           BATCH_SIZE: "5000"
           BENCHMARK_MODE: success
           DB_PAIR: h2-h2
+          K6_SETUP_TIMEOUT: "30m"
+          K6_MAX_DURATION: "300m"
           BENCHMARK_REPORT: ${{ github.workspace }}/.k6-tmp/deep-h2-${{ matrix.atomic }}-${{ matrix.rows }}.json
         run: k6 run data-volume-benchmark.js
       - name: Upload report
@@ -198,6 +200,8 @@ jobs:
           BATCH_SIZE: "5000"
           BENCHMARK_MODE: success
           DB_PAIR: postgres-h2
+          K6_SETUP_TIMEOUT: "30m"
+          K6_MAX_DURATION: "300m"
           POSTGRES_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/irispipe_bench
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
