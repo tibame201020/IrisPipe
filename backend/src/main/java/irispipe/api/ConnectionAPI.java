@@ -127,6 +127,18 @@ public class ConnectionAPI {
                                 new DriverPlaceholder("port", "Port", "1433"),
                                 new DriverPlaceholder("database", "Database", "mydb")),
                         1433, true),
+                new DriverPreset("MariaDB", "org.mariadb.jdbc.Driver",
+                        "jdbc:mariadb://{host}:{port}/{database}",
+                        List.of(new DriverPlaceholder("host", "Host", "localhost"),
+                                new DriverPlaceholder("port", "Port", "3306"),
+                                new DriverPlaceholder("database", "Database", "mydb")),
+                        3306, true),
+                new DriverPreset("Oracle", "oracle.jdbc.OracleDriver",
+                        "jdbc:oracle:thin:@//{host}:{port}/{service}",
+                        List.of(new DriverPlaceholder("host", "Host", "localhost"),
+                                new DriverPlaceholder("port", "Port", "1521"),
+                                new DriverPlaceholder("service", "Service Name", "FREEPDB1")),
+                        1521, true),
                 new DriverPreset("Custom", "", "", List.of(), null, true));
     }
 

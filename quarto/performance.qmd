@@ -2,13 +2,15 @@
 title: "Performance & Reliability"
 ---
 
-IrisPipe is validated by two GitHub Actions workflows:
+IrisPipe is validated by three GitHub Actions workflows:
 
-- **k6 Benchmark** measures runtime latency and API throughput on a CI runner.
-- **Backend K6 Checks** runs regression suites against a real Spring Boot backend.
+- **k6 Benchmark** measures runtime latency, API throughput, 1k / 10k / 100k data-volume behavior, failure semantics, and PostgreSQL → H2 JDBC coverage.
+- **Backend K6 Checks** runs 10 regression suites against a real Spring Boot backend.
+- **k6 Deep Volume Benchmark** runs scheduled/manual large-volume JOB / CHUNK benchmarks, including the 100k / 1M / 10M / 20M / 50M H2 ladder plus real relational-database coverage.
 
 [![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
 [![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
+[![k6 Deep Volume Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-deep-volume.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-deep-volume.yml)
 
 ---
 
@@ -33,19 +35,20 @@ IrisPipe is validated by two GitHub Actions workflows:
 | Control Loop | PASS | Execute → fail → resume → stop → rerun sequences |
 | Runtime | PASS | Watermark, lineage, attempts, snapshot isolation |
 
-_Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks` GitHub Actions workflow. Latest published successful run: 2026-07-01T15:05:26Z._
+_Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks` GitHub Actions workflow._
 
 ---
 
 ## What the Benchmark Measures
 
-The benchmark workflow starts the real backend and runs both `backend/k6/benchmark.js` and `backend/k6/data-volume-benchmark.js`.
-It validates:
+The benchmark workflows boot the real backend and execute `backend/k6/benchmark.js` and `backend/k6/data-volume-benchmark.js` against actual JDBC connections. They validate:
 
 1. Synchronous pipeline execution latency plus API latency/request rate
-2. H2 → H2 JOB vs CHUNK timing and rows/s at 1,000 / 10,000 / 100,000 rows
-3. 10,000-row failure semantics: JOB rolls back the whole job while CHUNK preserves previously committed chunks
-4. PostgreSQL → H2 10,000-row cross-database JDBC paths for both JOB and CHUNK
+2. H2 → H2 JOB vs CHUNK timing and rows/s at 1k / 10k / 100k in the regular benchmark gate
+3. 10k failure semantics: JOB rolls back the whole job while CHUNK preserves previously committed chunks
+4. PostgreSQL → H2 cross-database JDBC paths for both JOB and CHUNK
+5. Scheduled/manual deep-volume runs at 100k / 1M / 10M / 20M / 50M for H2, with real RDBMS runs for PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle at the sizes enabled by the deep matrix
+6. External-destination row counts are verified after each real-RDBMS run, so a successful pipeline status alone is not accepted as a benchmark pass
 
 All performance values are repeatable GitHub Actions CI-runner regression benchmarks, not production-capacity claims.
 
@@ -61,8 +64,9 @@ Each regression suite:
 3. Asserts on status codes, response shape, persisted state, and runtime transitions
 4. Tears down cleanly
 
-This gives stronger coverage than controller-only tests for runtime semantics because it exercises the stack:
-controller → service → Spring Batch → database.
+The deep benchmark additionally starts the target database in CI, seeds the source set inside that database, executes IrisPipe through JDBC, and verifies the destination row count from the database itself.
+
+This exercises the stack end-to-end: controller → service → Spring Batch → JDBC driver → database.
 
 ---
 
@@ -70,21 +74,28 @@ controller → service → Spring Batch → database.
 
 ```{mermaid}
 flowchart TD
-  P["Push / workflow dispatch"] --> B["mvn package + unit tests"]
+  P["PR / push"] --> B["mvn package + unit tests"]
   B --> A["API / runtime benchmark"]
-  B --> V["Data-volume matrix\nJOB / CHUNK × 1k / 10k / 100k"]
+  B --> V["Regular data-volume\nJOB / CHUNK × 1k / 10k / 100k"]
   B --> F["10k failure semantics\nJOB / CHUNK"]
   B --> X["PostgreSQL → H2\nJOB / CHUNK"]
   B --> R["10-suite k6 regression matrix"]
 
-  A --> KP["Update performance-results.json"]
+  S["Scheduled / manual deep run"] --> DB["Real DB containers + in-DB seed"]
+  DB --> H["H2 ladder\n100k / 1M / 10M / 20M / 50M"]
+  DB --> M["RDBMS matrix\nPostgreSQL / MySQL / MariaDB / SQL Server / Oracle"]
+  H --> DP["Verify destination + deep-performance-results.json"]
+  M --> DP
+
+  A --> KP["performance-results.json"]
   V --> KP
   F --> KP
   X --> KP
-  R --> RP["Update k6-regression-results.json"]
+  R --> RP["k6-regression-results.json"]
 
   KP --> Q["Render Quarto site"]
   RP --> Q
+  DP --> Q
   Q --> D["Deploy GitHub Pages"]
 ```
 
@@ -92,13 +103,13 @@ flowchart TD
 
 ## Benchmark Methodology
 
-The benchmark workflow:
+The benchmark workflows:
 
-1. Runs `mvn package`, so backend unit tests are part of the gate
-2. Builds one runnable jar and reuses it across benchmark jobs
-3. Runs the API/runtime benchmark
-4. Runs the H2 → H2 data-volume matrix at 1k / 10k / 100k rows for JOB and CHUNK
-5. Injects a duplicate-key failure at 10k rows to verify large-volume transaction boundaries
-6. Runs PostgreSQL → H2 at 10k rows for both atomicity modes
-7. Aggregates JSON artifacts into `quarto/performance-results.json`
-8. Regenerates the Quarto tables and deploys GitHub Pages
+1. Run `mvn package`, so backend unit tests are part of the gate
+2. Build one runnable jar and reuse it across benchmark jobs
+3. Keep the regular PR/main benchmark bounded to API/runtime, 1k / 10k / 100k H2 volume, 10k failure semantics, and PostgreSQL → H2 coverage
+4. Keep 10M+ capacity work out of normal PR latency by using a scheduled/manual deep workflow
+5. Run the H2 deep ladder at 100k / 1M / 10M / 20M / 50M for both JOB and CHUNK
+6. Start real PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle instances for deep JDBC verification; source data is generated inside the database rather than sent row-by-row through k6
+7. Verify the external destination row count after the pipeline completes and mark the report failed if the count differs
+8. Aggregate JSON artifacts into Quarto result files and deploy GitHub Pages

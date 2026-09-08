@@ -220,9 +220,125 @@ jobs:
         run: |
           if [ -f "$APP_PID_FILE" ]; then kill "$(cat "$APP_PID_FILE")" || true; fi
 
+  rdbms-deep-volume:
+    name: ${{ matrix.engine }}→${{ matrix.engine }} (${{ matrix.atomic }}, ${{ matrix.rows }} rows)
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - { engine: postgres, atomic: JOB, rows: 1000000 }
+          - { engine: postgres, atomic: CHUNK, rows: 1000000 }
+          - { engine: postgres, atomic: JOB, rows: 10000000 }
+          - { engine: postgres, atomic: CHUNK, rows: 10000000 }
+          - { engine: postgres, atomic: JOB, rows: 20000000 }
+          - { engine: postgres, atomic: CHUNK, rows: 20000000 }
+          - { engine: postgres, atomic: JOB, rows: 50000000 }
+          - { engine: postgres, atomic: CHUNK, rows: 50000000 }
+          - { engine: mysql, atomic: JOB, rows: 1000000 }
+          - { engine: mysql, atomic: CHUNK, rows: 1000000 }
+          - { engine: mysql, atomic: JOB, rows: 10000000 }
+          - { engine: mysql, atomic: CHUNK, rows: 10000000 }
+          - { engine: mysql, atomic: JOB, rows: 20000000 }
+          - { engine: mysql, atomic: CHUNK, rows: 20000000 }
+          - { engine: mysql, atomic: JOB, rows: 50000000 }
+          - { engine: mysql, atomic: CHUNK, rows: 50000000 }
+          - { engine: mariadb, atomic: JOB, rows: 1000000 }
+          - { engine: mariadb, atomic: CHUNK, rows: 1000000 }
+          - { engine: mariadb, atomic: JOB, rows: 10000000 }
+          - { engine: mariadb, atomic: CHUNK, rows: 10000000 }
+          - { engine: sqlserver, atomic: JOB, rows: 1000000 }
+          - { engine: sqlserver, atomic: CHUNK, rows: 1000000 }
+          - { engine: sqlserver, atomic: JOB, rows: 10000000 }
+          - { engine: sqlserver, atomic: CHUNK, rows: 10000000 }
+          - { engine: oracle, atomic: JOB, rows: 1000000 }
+          - { engine: oracle, atomic: CHUNK, rows: 1000000 }
+          - { engine: oracle, atomic: JOB, rows: 10000000 }
+          - { engine: oracle, atomic: CHUNK, rows: 10000000 }
+    env:
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}.pid
+      REPORT_FILE: ${{ github.workspace }}/.k6-tmp/deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}.json
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: grafana/setup-k6-action@v1
+      - uses: actions/download-artifact@v4
+        with:
+          name: deep-benchmark-runnable-jar
+          path: backend/target
+      - name: Start and seed ${{ matrix.engine }} in-database
+        shell: bash
+        run: bash backend/k6/rdbms-deep-harness.sh start "${{ matrix.engine }}" "${{ matrix.rows }}"
+      - name: Start backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.k6-tmp"
+          app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          nohup java -Xms512m -Xmx2g -jar "$app_jar" > "$APP_LOG" 2>&1 &
+          echo $! > "$APP_PID_FILE"
+      - name: Wait for backend readiness
+        shell: bash
+        run: |
+          for attempt in {1..90}; do
+            curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config >/dev/null && exit 0
+            sleep 2
+          done
+          tail -n 200 "$APP_LOG" || true
+          exit 1
+      - name: Run ${{ matrix.engine }} deep-volume benchmark
+        working-directory: backend/k6
+        env:
+          ATOMIC_LEVEL: ${{ matrix.atomic }}
+          ROW_COUNT: ${{ matrix.rows }}
+          BATCH_SIZE: "5000"
+          BENCHMARK_MODE: success
+          DB_PAIR: ${{ matrix.engine }}-${{ matrix.engine }}
+          K6_SETUP_TIMEOUT: "10m"
+          K6_MAX_DURATION: "300m"
+          PIPELINE_HTTP_TIMEOUT: "300m"
+          BENCHMARK_REPORT: ${{ env.REPORT_FILE }}
+        run: k6 run data-volume-benchmark.js
+      - name: Verify external destination row count
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(bash backend/k6/rdbms-deep-harness.sh count "${{ matrix.engine }}")"
+          python backend/k6/finalize-external-benchmark.py --report "$REPORT_FILE" --actual-rows "$actual"
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ env.REPORT_FILE }}
+          if-no-files-found: ignore
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-${{ matrix.engine }}-log-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ env.APP_LOG }}
+          if-no-files-found: ignore
+      - name: Stop backend and database
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$APP_PID_FILE" ]; then kill "$(cat "$APP_PID_FILE")" || true; fi
+          bash backend/k6/rdbms-deep-harness.sh stop "${{ matrix.engine }}"
+
   publish-deep-results:
     name: Publish Deep Benchmark Results
-    needs: [h2-deep-volume, postgres-h2-deep]
+    needs: [h2-deep-volume, postgres-h2-deep, rdbms-deep-volume]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 20
