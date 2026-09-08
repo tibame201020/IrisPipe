@@ -40,8 +40,27 @@ jobs:
           cache: maven
 
       - name: Build backend and run unit tests
+        id: build
+        continue-on-error: true
         working-directory: backend
         run: mvn -B package
+
+      - name: Report Maven test failures
+        if: steps.build.outcome == 'failure'
+        working-directory: backend
+        shell: bash
+        run: |
+          if compgen -G 'target/surefire-reports/*.txt' > /dev/null; then
+            for report in target/surefire-reports/*.txt; do
+              summary="$(grep -E 'Tests run:|FAILURE|ERROR|<<< FAILURE|<<< ERROR' "$report" | head -n 20 | tr '\n' ' ')"
+              if [ -n "$summary" ]; then
+                echo "::error file=$report::$summary"
+              fi
+            done
+          else
+            echo "::error::Maven build failed before Surefire reports were generated."
+          fi
+          exit 1
 
       - name: Locate runnable jar
         id: jar
