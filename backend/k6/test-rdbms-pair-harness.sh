@@ -12,15 +12,19 @@ cmd="${1:-}"
 shift || true
 case "$cmd" in
   run)
+    printf '%s\n' "$*" >> "${DOCKER_RUN_LOG:?}"
     echo fake-container
+    ;;
+  port)
+    # Docker-assigned ephemeral host port used by the harness after startup.
+    echo '127.0.0.1:49152'
     ;;
   rm|logs)
     ;;
   exec)
     # Health checks and DB clients all succeed. Capture every exec command so
     # target-database readiness probes can be asserted independently from seed SQL.
-    printf '%s
-' "$*" >> "${DOCKER_CMD_LOG:?}"
+    printf '%s\n' "$*" >> "${DOCKER_CMD_LOG:?}"
     if [[ " $* " == *" psql "* && " $* " != *" -Atqc "* ]]; then
       cat >> "${DOCKER_STDIN_LOG:?}" || true
     elif [[ " $* " == *" mysql "* && " $* " != *" -Nse "* ]]; then
@@ -42,11 +46,13 @@ export PATH="$TMP:$PATH"
 export GITHUB_ENV="$TMP/github-env"
 export DOCKER_STDIN_LOG="$TMP/docker-stdin"
 export DOCKER_CMD_LOG="$TMP/docker-cmd"
+export DOCKER_RUN_LOG="$TMP/docker-run"
 
 for source in postgres mysql mariadb; do
   : > "$GITHUB_ENV"
   : > "$DOCKER_STDIN_LOG"
   : > "$DOCKER_CMD_LOG"
+  : > "$DOCKER_RUN_LOG"
   bash "$ROOT/rdbms-pair-harness.sh" start-pair "$source" h2 100000
   grep -q '^SOURCE_JDBC_DRIVER=' "$GITHUB_ENV"
   grep -q '^SOURCE_JDBC_URL=' "$GITHUB_ENV"
@@ -56,17 +62,19 @@ for source in postgres mysql mariadb; do
   # For 100000 total rows: users=24996, user_roles=74988, roles=16.
   grep -q '24996' "$DOCKER_STDIN_LOG"
   grep -q '74988' "$DOCKER_STDIN_LOG"
+  grep -Fq -- '-p 127.0.0.1::' "$DOCKER_RUN_LOG"
+  grep -q '^SOURCE_JDBC_URL=.*127.0.0.1:49152' "$GITHUB_ENV"
   case "$source" in
     postgres)
-      grep -Fq 'psql -U postgres -d irispipe_bench -Atqc SELECT 1' "$DOCKER_CMD_LOG"
+      grep -Fq 'psql -h 127.0.0.1 -U postgres -d irispipe_bench -Atqc SELECT 1' "$DOCKER_CMD_LOG"
       ! grep -q 'pg_isready' "$DOCKER_CMD_LOG"
       ;;
     mysql)
-      grep -Fq 'mysql -uroot -pirispipe -Nse SELECT 1 irispipe_bench' "$DOCKER_CMD_LOG"
+      grep -Fq 'mysql -h 127.0.0.1 -uroot -pirispipe -Nse SELECT 1 irispipe_bench' "$DOCKER_CMD_LOG"
       ! grep -q 'mysqladmin.* ping ' "$DOCKER_CMD_LOG"
       ;;
     mariadb)
-      grep -Fq 'mariadb -uroot -pirispipe -Nse SELECT 1 irispipe_bench' "$DOCKER_CMD_LOG"
+      grep -Fq 'mariadb -h 127.0.0.1 -uroot -pirispipe -Nse SELECT 1 irispipe_bench' "$DOCKER_CMD_LOG"
       ! grep -q 'mariadb-admin.* ping ' "$DOCKER_CMD_LOG"
       ;;
   esac
@@ -76,6 +84,7 @@ done
 
 : > "$GITHUB_ENV"
 : > "$DOCKER_CMD_LOG"
+: > "$DOCKER_RUN_LOG"
 bash "$ROOT/rdbms-pair-harness.sh" start-pair sqlserver h2 100000
 grep -q '^SOURCE_JDBC_DRIVER=com.microsoft.sqlserver.jdbc.SQLServerDriver$' "$GITHUB_ENV"
 grep -q ' -b ' "$DOCKER_CMD_LOG"
@@ -104,11 +113,14 @@ echo "multi-table source-only role succeeds: sqlserver -> h2"
 bash "$ROOT/rdbms-pair-harness.sh" emit-shared-pair h2 postgres
 grep -q '^SOURCE_JDBC_DRIVER=$' "$GITHUB_ENV"
 grep -q '^DEST_JDBC_DRIVER=org.postgresql.Driver$' "$GITHUB_ENV"
-grep -q '^DEST_JDBC_URL=jdbc:postgresql://127.0.0.1:55432/irispipe_bench$' "$GITHUB_ENV"
+grep -q '^DEST_JDBC_URL=jdbc:postgresql://127.0.0.1:49152/irispipe_bench$' "$GITHUB_ENV"
 
 : > "$GITHUB_ENV"
 bash "$ROOT/rdbms-pair-harness.sh" emit-shared-pair sqlserver h2
 grep -q '^SOURCE_JDBC_DRIVER=com.microsoft.sqlserver.jdbc.SQLServerDriver$' "$GITHUB_ENV"
-grep -q 'SOURCE_JDBC_URL=.*127.0.0.1:51433' "$GITHUB_ENV"
+grep -q 'SOURCE_JDBC_URL=.*127.0.0.1:49152' "$GITHUB_ENV"
 grep -q '^DEST_JDBC_DRIVER=$' "$GITHUB_ENV"
 echo "shared compatibility pair endpoints use the reusable :both containers"
+
+! grep -Eq '55432|55433|53306|53307|53316|53317|51433|51434|51521|51522' "$ROOT/rdbms-pair-harness.sh"
+echo "external RDBMS containers use Docker-assigned host ports"

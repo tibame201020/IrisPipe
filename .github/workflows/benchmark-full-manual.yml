@@ -3,8 +3,8 @@ name: Full RDBMS Benchmark - All Sources
 on:
   workflow_dispatch:
   schedule:
-    # 02:15 Asia/Taipei (UTC+8) = 18:15 UTC on the previous calendar day.
-    - cron: "15 18 * * *"
+    - cron: "15 2 * * *"
+      timezone: "Asia/Taipei"
 
 permissions:
   contents: write
