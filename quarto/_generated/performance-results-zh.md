@@ -2,12 +2,12 @@
 
 | Metric | Latest CI value |
 |---|---:|
-| Execute latency p50 | **70 ms** |
-| Execute latency p95 | **202.6 ms** |
-| Execute latency p99 | **214.1 ms** |
-| API latency p50 | **4.3 ms** |
-| API latency p95 | **11.8 ms** |
-| HTTP throughput | **11.9 req/s** |
+| Execute latency p50 | **69 ms** |
+| Execute latency p95 | **141.2 ms** |
+| Execute latency p99 | **151.4 ms** |
+| API latency p50 | **4.2 ms** |
+| API latency p95 | **12.1 ms** |
+| HTTP throughput | **11.8 req/s** |
 
 來源：`quarto/performance-results.json`，由 `k6 Benchmark` GitHub Actions workflow 更新。
 
@@ -21,14 +21,14 @@
 
 | DB path | Atomicity | Rows | 每批筆數 | 交易群組 | Duration | Throughput |
 |---|---|---:|---:|---:|---:|---:|
-| H2 → H2 | CHUNK | 1,000 | 1,000 | 1 | 397 ms | 2518.9 rows/s |
-| H2 → H2 | CHUNK | 10,000 | 1,000 | 10 | 681 ms | 14684.3 rows/s |
-| H2 → H2 | CHUNK | 100,000 | 1,000 | 100 | 1326 ms | 75414.8 rows/s |
-| H2 → H2 | JOB | 1,000 | 1,000 | 1 | 330 ms | 3030.3 rows/s |
-| H2 → H2 | JOB | 10,000 | 1,000 | 1 | 633 ms | 15797.8 rows/s |
-| H2 → H2 | JOB | 100,000 | 1,000 | 1 | 1125 ms | 88888.9 rows/s |
-| PostgreSQL → H2 | CHUNK | 10,000 | 1,000 | 10 | 883 ms | 11325 rows/s |
-| PostgreSQL → H2 | JOB | 10,000 | 1,000 | 1 | 799 ms | 12515.6 rows/s |
+| H2 → H2 | CHUNK | 1,000 | 1,000 | 1 | 378 ms | 2645.5 rows/s |
+| H2 → H2 | CHUNK | 10,000 | 1,000 | 10 | 715 ms | 13986 rows/s |
+| H2 → H2 | CHUNK | 100,000 | 1,000 | 100 | 1530 ms | 65359.5 rows/s |
+| H2 → H2 | JOB | 1,000 | 1,000 | 1 | 434 ms | 2304.1 rows/s |
+| H2 → H2 | JOB | 10,000 | 1,000 | 1 | 654 ms | 15290.5 rows/s |
+| H2 → H2 | JOB | 100,000 | 1,000 | 1 | 1735 ms | 57636.9 rows/s |
+| PostgreSQL → H2 | CHUNK | 10,000 | 1,000 | 10 | 1031 ms | 9699.3 rows/s |
+| PostgreSQL → H2 | JOB | 10,000 | 1,000 | 1 | 934 ms | 10706.6 rows/s |
 
 此矩陣比較不同資料量下 JOB（整個 Job 單一交易）與 CHUNK（逐批提交）的 CI runner 表現。
 
