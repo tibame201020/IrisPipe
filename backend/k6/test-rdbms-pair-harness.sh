@@ -33,9 +33,14 @@ chmod +x "$TMP/docker"
 
 export PATH="$TMP:$PATH"
 
+# GitHub Actions always defines GITHUB_ENV, so validate the same code path used by CI.
+export GITHUB_ENV="$TMP/github-env"
+
 for source in postgres mysql mariadb; do
-  output="$(bash "$ROOT/rdbms-pair-harness.sh" start-pair "$source" h2 100000)"
-  grep -q 'SOURCE_JDBC_DRIVER' <<<"$output"
+  : > "$GITHUB_ENV"
+  bash "$ROOT/rdbms-pair-harness.sh" start-pair "$source" h2 100000
+  grep -q '^SOURCE_JDBC_DRIVER=' "$GITHUB_ENV"
+  grep -q '^SOURCE_JDBC_URL=' "$GITHUB_ENV"
   bash "$ROOT/rdbms-pair-harness.sh" stop-pair "$source" h2
   echo "source-only role succeeds: $source -> h2"
 done
