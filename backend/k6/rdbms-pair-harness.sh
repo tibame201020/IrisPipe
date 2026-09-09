@@ -39,21 +39,16 @@ container_name() {
   printf 'irispipe-bench-%s-%s' "$role" "$engine"
 }
 
-host_port() {
-  local engine="$1" role="$2"
-  case "$engine:$role" in
-    postgres:source|postgres:both) echo 55432 ;;
-    postgres:dest) echo 55433 ;;
-    mysql:source|mysql:both) echo 53306 ;;
-    mysql:dest) echo 53307 ;;
-    mariadb:source|mariadb:both) echo 53316 ;;
-    mariadb:dest) echo 53317 ;;
-    sqlserver:source|sqlserver:both) echo 51433 ;;
-    sqlserver:dest) echo 51434 ;;
-    oracle:source|oracle:both) echo 51521 ;;
-    oracle:dest) echo 51522 ;;
-    *) return 2 ;;
-  esac
+mapped_host_port() {
+  local engine="$1" role="$2" container cport mapping
+  container="$(container_name "$engine" "$role")"
+  cport="$(container_port "$engine")"
+  mapping="$(docker port "$container" "${cport}/tcp" | head -n 1)"
+  [[ "$mapping" =~ :([0-9]+)$ ]] || {
+    echo "Unable to resolve published host port for ${container}:${cport}" >&2
+    return 1
+  }
+  printf '%s\n' "${BASH_REMATCH[1]}"
 }
 
 container_port() {
@@ -153,19 +148,18 @@ start_engine() {
   local engine="$1" role="$2" seed_rows="$3"
   [[ "$engine" == "h2" ]] && return 0
   calculate_workload "$seed_rows"
-  local container port cport
+  local container cport
   container="$(container_name "$engine" "$role")"
-  port="$(host_port "$engine" "$role")"
   cport="$(container_port "$engine")"
   docker rm -f "$container" >/dev/null 2>&1 || true
 
   case "$engine" in
     postgres)
-      docker run -d --name "$container" -p "${port}:${cport}" \
+      docker run -d --name "$container" -p "127.0.0.1::${cport}" \
         -e POSTGRES_DB=irispipe_bench -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
         postgres:16 >/dev/null
       wait_for "$container" 'PostgreSQL target database' \
-        docker exec "$container" psql -U postgres -d irispipe_bench -Atqc 'SELECT 1'
+        docker exec "$container" psql -h 127.0.0.1 -U postgres -d irispipe_bench -Atqc 'SELECT 1'
       {
         if [[ "$role" == "source" || "$role" == "both" ]]; then cat <<SQL
 DROP TABLE IF EXISTS benchmark_src_user_roles;
@@ -205,7 +199,7 @@ CREATE TABLE benchmark_dst_user_roles (user_id BIGINT NOT NULL, role_id INT NOT 
 SQL
         fi
         true
-      } | docker exec -i "$container" psql -v ON_ERROR_STOP=1 -U postgres -d irispipe_bench
+      } | docker exec -i "$container" psql -h 127.0.0.1 -v ON_ERROR_STOP=1 -U postgres -d irispipe_bench
       ;;
     mysql|mariadb)
       local image client db_env pass_env numbers
@@ -214,10 +208,10 @@ SQL
       else
         image=mariadb:11.4; client=mariadb; db_env=MARIADB_DATABASE; pass_env=MARIADB_ROOT_PASSWORD
       fi
-      docker run -d --name "$container" -p "${port}:${cport}" \
+      docker run -d --name "$container" -p "127.0.0.1::${cport}" \
         -e "${db_env}=irispipe_bench" -e "${pass_env}=irispipe" "$image" >/dev/null
       wait_for "$container" "$engine target database" \
-        docker exec "$container" "$client" -uroot -pirispipe -Nse 'SELECT 1' irispipe_bench
+        docker exec "$container" "$client" -h 127.0.0.1 -uroot -pirispipe -Nse 'SELECT 1' irispipe_bench
       numbers="$(mysql_number_source)"
       {
         if [[ "$role" == "source" || "$role" == "both" ]]; then cat <<SQL
@@ -253,11 +247,11 @@ CREATE TABLE benchmark_dst_user_roles (user_id BIGINT NOT NULL, role_id INT NOT 
 SQL
         fi
         true
-      } | docker exec -i "$container" "$client" -uroot -pirispipe irispipe_bench
+      } | docker exec -i "$container" "$client" -h 127.0.0.1 -uroot -pirispipe irispipe_bench
       ;;
     sqlserver)
       local password='IrisPipe!12345'
-      docker run -d --name "$container" -p "${port}:${cport}" \
+      docker run -d --name "$container" -p "127.0.0.1::${cport}" \
         -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$password" \
         mcr.microsoft.com/mssql/server:2022-latest >/dev/null
       wait_for "$container" 'SQL Server' sqlserver_cmd "$container" -S localhost -U sa -P "$password" -Q 'SELECT 1'
@@ -281,7 +275,7 @@ SQL
       local oracle_outer_users oracle_outer_user_roles
       oracle_outer_users=$(( (USER_ROWS + 9999) / 10000 ))
       oracle_outer_user_roles=$(( (USER_ROLE_ROWS + 9999) / 10000 ))
-      docker run -d --name "$container" -p "${port}:${cport}" \
+      docker run -d --name "$container" -p "127.0.0.1::${cport}" \
         -e ORACLE_PASSWORD=OraclePwd123 -e APP_USER=irispipe -e APP_USER_PASSWORD=IrisPipe123 \
         gvenzl/oracle-free:23-slim-faststart >/dev/null
       wait_for "$container" Oracle docker exec "$container" bash -lc "printf \"WHENEVER SQLERROR EXIT FAILURE\\nSET HEADING OFF FEEDBACK OFF PAGESIZE 0 ECHO OFF\\nSELECT 'READY' FROM dual;\\nEXIT;\\n\" | sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 | grep -q READY"
@@ -345,18 +339,18 @@ start_pair() {
   if [[ "$source_engine" == "$dest_engine" && "$source_engine" != "h2" ]]; then
     start_engine "$source_engine" both "$rows"
     local port
-    port="$(host_port "$source_engine" both)"
+    port="$(mapped_host_port "$source_engine" both)"
     emit_role_env source "$source_engine" "$port"
     emit_role_env dest "$dest_engine" "$port"
     return
   fi
   if [[ "$source_engine" != "h2" ]]; then
     start_engine "$source_engine" source "$rows"
-    emit_role_env source "$source_engine" "$(host_port "$source_engine" source)"
+    emit_role_env source "$source_engine" "$(mapped_host_port "$source_engine" source)"
   fi
   if [[ "$dest_engine" != "h2" ]]; then
     start_engine "$dest_engine" dest "$rows"
-    emit_role_env dest "$dest_engine" "$(host_port "$dest_engine" dest)"
+    emit_role_env dest "$dest_engine" "$(mapped_host_port "$dest_engine" dest)"
   fi
 }
 
@@ -365,13 +359,13 @@ count_engine_tables() {
   container="$(container_name "$engine" "$role")"
   case "$engine" in
     postgres)
-      docker exec "$container" psql -U postgres -d irispipe_bench -Atqc "SELECT (SELECT COUNT(*) FROM benchmark_${prefix}_roles) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_users) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_user_roles)" | tr -d '[:space:]'
+      docker exec "$container" psql -h 127.0.0.1 -U postgres -d irispipe_bench -Atqc "SELECT (SELECT COUNT(*) FROM benchmark_${prefix}_roles) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_users) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_user_roles)" | tr -d '[:space:]'
       ;;
     mysql)
-      docker exec "$container" mysql -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT(*) FROM benchmark_${prefix}_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
+      docker exec "$container" mysql -h 127.0.0.1 -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT(*) FROM benchmark_${prefix}_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
       ;;
     mariadb)
-      docker exec "$container" mariadb -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT(*) FROM benchmark_${prefix}_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
+      docker exec "$container" mariadb -h 127.0.0.1 -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT(*) FROM benchmark_${prefix}_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
       ;;
     sqlserver)
       sqlserver_cmd "$container" -S localhost -U sa -P 'IrisPipe!12345' -d irispipe_bench -h -1 -W -Q "SET NOCOUNT ON; SELECT CONCAT((SELECT COUNT_BIG(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT_BIG(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT_BIG(*) FROM benchmark_${prefix}_user_roles))" | tr -d '[:space:]'
@@ -417,10 +411,10 @@ emit_shared_pair() {
   clear_role_env source
   clear_role_env dest
   if [[ "$source_engine" != "h2" ]]; then
-    emit_role_env source "$source_engine" "$(host_port "$source_engine" both)"
+    emit_role_env source "$source_engine" "$(mapped_host_port "$source_engine" both)"
   fi
   if [[ "$dest_engine" != "h2" ]]; then
-    emit_role_env dest "$dest_engine" "$(host_port "$dest_engine" both)"
+    emit_role_env dest "$dest_engine" "$(mapped_host_port "$dest_engine" both)"
   fi
 }
 
