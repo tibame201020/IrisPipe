@@ -2,11 +2,12 @@
 title: "Performance & Reliability"
 ---
 
-IrisPipe is validated by three GitHub Actions workflows:
+IrisPipe separates **merge-gating regression tests** from long-running capacity benchmarks:
 
-- **k6 Benchmark** measures runtime latency, API throughput, 1k / 10k / 100k data-volume behavior, failure semantics, and PostgreSQL → H2 JDBC coverage.
-- **Backend K6 Checks** runs 10 regression suites against a real Spring Boot backend.
-- **k6 Deep Volume Benchmark** runs scheduled/manual large-volume JOB / CHUNK benchmarks, including the 100k / 1M / 10M / 20M / 50M H2 ladder plus real relational-database coverage.
+- **k6 Benchmark** ? API/runtime latency, 1k / 10k / 100k data-volume behavior, failure semantics, and PostgreSQL ? H2 coverage.
+- **Backend K6 Checks** ? 10 regression suites against a real Spring Boot backend.
+- **k6 Deep Volume Benchmark** ? scheduled/manual retained capacity snapshots.
+- **Full RDBMS Matrix** ? six source-specific workflows covering H2, PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle. A full run is 6 sources ? 6 destinations ? JOB/CHUNK ? 100K/1M/10M/20M/50M = **360 cases**.
 
 [![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
 [![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
@@ -28,115 +29,130 @@ IrisPipe is validated by three GitHub Actions workflows:
 | Workspace | PASS | Workspace scoping, default fallback, cross-workspace isolation |
 | Pipeline Core | PASS | Execute flow, stage barrier, run lifecycle |
 | Pipeline Resume | PASS | Resume from failed/stopped runs, skip completed stages |
-| Pipeline Stop | PASS | Cooperative stop, STOPPING → STOPPED convergence |
+| Pipeline Stop | PASS | Cooperative stop, STOPPING ? STOPPED convergence |
 | Operator Safety | PASS | Double-execute guard, illegal resume/delete prevention |
 | Observability | PASS | Prometheus metrics, actuator health, overview API |
 | Pipeline Rerun | PASS | New logical run from frozen snapshot |
-| Control Loop | PASS | Execute → fail → resume → stop → rerun sequences |
+| Control Loop | PASS | Execute ? fail ? resume ? stop ? rerun sequences |
 | Runtime | PASS | Watermark, lineage, attempts, snapshot isolation |
 
-_Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks` GitHub Actions workflow._
+_Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks` workflow._
 
 ---
 
 ## What the Benchmark Measures
 
-The benchmark workflows boot the real backend and execute `backend/k6/benchmark.js` and `backend/k6/data-volume-benchmark.js` against actual JDBC connections. They validate:
+The data-volume benchmark exercises real Spring Batch + JDBC execution and validates both throughput and data correctness:
 
-1. Synchronous pipeline execution latency plus API latency/request rate
-2. H2 → H2 JOB vs CHUNK timing and rows/s at 1k / 10k / 100k in the regular benchmark gate
-3. 10k failure semantics: JOB rolls back the whole job while CHUNK preserves previously committed chunks
-4. PostgreSQL → H2 cross-database JDBC paths for both JOB and CHUNK
-5. Scheduled/manual deep-volume runs at 100k / 1M / 10M / 20M / 50M for H2, with real RDBMS runs for PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle at the sizes enabled by the deep matrix
-6. External-destination row counts are verified after each real-RDBMS run, so a successful pipeline status alone is not accepted as a benchmark pass
+1. Regular PR/main gate: H2 ? H2 JOB/CHUNK at 1k / 10k / 100k.
+2. Failure semantics: a duplicate key on the final row proves the JOB vs CHUNK rollback boundary.
+3. Cross-database correctness: destination row count must equal the expected row count; `COMPLETED` alone is not accepted as a pass.
+4. Full matrix: every source can target every destination across H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle.
+5. Capacity ladder: 100K / 1M / 10M / 20M / 50M for both JOB and CHUNK.
 
-All performance values are repeatable GitHub Actions CI-runner regression benchmarks, not production-capacity claims.
+All numbers are repeatable GitHub-hosted-runner regression benchmarks, **not production-capacity claims**.
 
 ---
 
 ## JOB vs CHUNK: Transaction Boundary
 
-The row count alone does not explain the atomicity trade-off. The benchmark deliberately records both **batch size** and **transaction groups**:
+The same `batchSize` has different transaction semantics:
+
+```{mermaid}
+flowchart LR
+  subgraph JOB["JOB ? 50M rows"]
+    J1["JDBC batches: 5,000 rows"] --> J2["1 destination transaction"] --> J3["Failure: rollback all 50M"]
+  end
+  subgraph CHUNK["CHUNK ? 50M rows"]
+    C1["10,000 chunks ? 5,000 rows"] --> C2["10,000 independent commits"] --> C3["Failure: rollback only failing chunk"]
+  end
+```
 
 | CI profile | `fetchSize` / `batchSize` | JOB transaction boundary | CHUNK transaction boundary |
 |---|---:|---|---|
 | Regular PR/main benchmark | 1,000 rows | One destination transaction for the whole job | Commit every 1,000 rows |
-| Scheduled/manual deep benchmark | 5,000 rows | One destination transaction for the whole job | Commit every 5,000 rows |
+| Deep/full benchmark | 5,000 rows | One destination transaction for the whole job | Commit every 5,000 rows |
 
-`fetchSize` / `batchSize` still controls JDBC read/write batching in JOB mode, but **does not split the transaction**. In CHUNK mode, the same batch size is also the commit/rollback boundary.
-
-For the deep matrix, this means:
-
-| Source rows | CHUNK transaction groups at 5,000 rows | JOB transaction groups |
+| Source rows | CHUNK transaction groups @ 5,000 | JOB transaction groups |
 |---:|---:|---:|
-| 100k | 20 | 1 |
+| 100K | 20 | 1 |
 | 1M | 200 | 1 |
 | 10M | 2,000 | 1 |
 | 20M | 4,000 | 1 |
 | 50M | 10,000 | 1 |
 
-This is why both modes matter. **JOB** provides all-or-nothing rollback across the complete migration, but makes the transaction, rollback scope, and database resource pressure grow with the entire dataset. **CHUNK** bounds each transaction and retry scope, but a later failure preserves previously committed chunks and therefore requires explicit resume/recovery semantics.
+The regular 10k failure test makes the trade-off observable. With a duplicate key on the final row and a 1,000-row batch, **JOB** rolls back all migrated rows and leaves only the pre-existing conflict row (**1 row**). **CHUNK** preserves the first nine committed chunks (**9,000 rows**) and rolls back only the failing tenth chunk, leaving **9,001 rows** including the pre-existing conflict.
 
-The regular 10k failure test makes that difference observable. It injects a duplicate key on the final source row with a 1,000-row batch: JOB rolls back all migrated rows and leaves only the pre-existing conflicting row (**1 row**); CHUNK keeps the first nine committed chunks (**9,000 rows**) and rolls back the failing tenth chunk, so together with the pre-existing conflict row the destination contains **9,001 rows**.
+---
+
+## Benchmark Timing Boundary
+
+Reported `duration_ms` / `rows_per_second` intentionally measure **IrisPipe migration execution**, not environment setup.
+
+```{mermaid}
+flowchart LR
+  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline\nSpring Batch + JDBC + commits"] --> G["STOP TIMER"] --> H["Destination COUNT verification"] --> I["Publish report"]
+```
+
+**Included:** the synchronous `/api/v1/sync-pipeline` call from immediately before the request until the completed/failed response returns.
+
+**Excluded:** database/container startup, source-data generation, backend startup/readiness, pipeline-config creation, post-run destination `COUNT(*)`, artifact aggregation, and Pages deployment.
+
+This is why smaller cases can show lower rows/s: fixed Spring Batch / JDBC / transaction startup cost is amortized over fewer rows.
 
 ---
 
 ## Test Strategy
 
-k6 is used for **integration-level correctness**, not only synthetic load generation.
-Each regression suite:
+k6 is used for **integration-level correctness**, not only synthetic load generation. Each benchmark boots the actual backend, creates a real pipeline, executes JDBC migration, verifies runtime status, and validates persisted destination rows.
 
-1. Boots the real Spring Boot backend from a compiled jar
-2. Runs API flows that exercise a specific behavioral domain
-3. Asserts on status codes, response shape, persisted state, and runtime transitions
-4. Tears down cleanly
-
-The deep benchmark additionally starts the target database in CI, seeds the source set inside that database, executes IrisPipe through JDBC, and verifies the destination row count from the database itself.
-
-This exercises the stack end-to-end: controller → service → Spring Batch → JDBC driver → database.
+For external databases, source data is generated **inside the database before the timer starts**. The full matrix uses separate source and destination containers for cross-engine paths; same-engine paths use separate source/destination tables in the same engine instance.
 
 ---
 
-## CI Pipeline
+## CI / Benchmark Triggering
+
+Long-running 50M tests never block normal PR merges or ordinary `main` Pages deployment.
 
 ```{mermaid}
 flowchart TD
-  P["PR / push"] --> B["mvn package + unit tests"]
-  B --> A["API / runtime benchmark"]
-  B --> V["Regular data-volume\nJOB / CHUNK × 1k / 10k / 100k"]
-  B --> F["10k failure semantics\nJOB / CHUNK"]
-  B --> X["PostgreSQL → H2\nJOB / CHUNK"]
-  B --> R["10-suite k6 regression matrix"]
+  PR["PR / main push"] --> G["Unit tests + regular k6 gates"]
+  G --> P["Deploy Quarto using retained benchmark JSON"]
 
-  S["Scheduled / manual deep run"] --> DB["Real DB containers + in-DB seed"]
-  DB --> H["H2 ladder\n100k / 1M / 10M / 20M / 50M"]
-  DB --> M["RDBMS matrix\nPostgreSQL / MySQL / MariaDB / SQL Server / Oracle"]
-  H --> DP["Verify destination + deep-performance-results.json"]
-  M --> DP
+  T["tag: benchmark-full-*"] --> H2["Source H2 ? 60 cases"]
+  T --> PG["Source PostgreSQL ? 60 cases"]
+  T --> MY["Source MySQL ? 60 cases"]
+  T --> MA["Source MariaDB ? 60 cases"]
+  T --> MS["Source SQL Server ? 60 cases"]
+  T --> OR["Source Oracle ? 60 cases"]
 
-  A --> KP["performance-results.json"]
-  V --> KP
-  F --> KP
-  X --> KP
-  R --> RP["k6-regression-results.json"]
+  M["Manual: Full RDBMS Benchmark - All Sources"] --> H2
+  M --> PG
+  M --> MY
+  M --> MA
+  M --> MS
+  M --> OR
 
-  KP --> Q["Render Quarto site"]
-  RP --> Q
-  DP --> Q
-  Q --> D["Deploy GitHub Pages"]
+  H2 --> R["Serial merge into retained deep-performance-results.json"]
+  PG --> R
+  MY --> R
+  MA --> R
+  MS --> R
+  OR --> R
+  R --> D["repository_dispatch ? GitHub Pages"]
 ```
+
+A source-specific tag such as `benchmark-postgres-*` triggers only that source workflow; `benchmark-full-*` triggers all six source workflows.
+
+The retained result file uses a merge key of `(db_pair, atomic_level, mode, row_count, batch_size)`. A normal merge to `main` **does not regenerate or clear deep results**, and a source-specific benchmark update replaces only the cases it actually measured.
 
 ---
 
 ## Benchmark Methodology
 
-The benchmark workflows:
-
-1. Run `mvn package`, so backend unit tests are part of the gate
-2. Build one runnable jar and reuse it across benchmark jobs
-3. Keep the regular PR/main benchmark bounded to API/runtime, 1k / 10k / 100k H2 volume, 10k failure semantics, and PostgreSQL → H2 coverage
-4. Keep 10M+ capacity work out of normal PR latency by using a scheduled/manual deep workflow
-5. Run the H2 deep ladder at 100k / 1M / 10M / 20M / 50M for both JOB and CHUNK
-6. Start real PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle instances for deep JDBC verification; source data is generated inside the database rather than sent row-by-row through k6
-7. Verify the external destination row count after the pipeline completes and mark the report failed if the count differs
-8. Aggregate JSON artifacts into Quarto result files and deploy GitHub Pages
+1. `mvn package` runs backend unit tests before benchmark execution.
+2. Regular PR/main gates stay bounded; 10M+ capacity work is tag/manual/scheduled only.
+3. Full matrix jobs use `batchSize=5,000` and validate 100K / 1M / 10M / 20M / 50M.
+4. Source seed happens before the migration timer; k6 does not insert the benchmark dataset row-by-row.
+5. External destination row counts are verified after the timer and must equal the expected count.
+6. Benchmark snapshots are merged into retained history instead of replacing unrelated source/destination results.

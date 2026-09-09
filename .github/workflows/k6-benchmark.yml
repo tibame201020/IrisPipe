@@ -55,6 +55,12 @@ jobs:
         working-directory: backend
         run: mvn -B package
 
+      - name: Validate benchmark support scripts
+        shell: bash
+        run: |
+          bash -n backend/k6/rdbms-pair-harness.sh
+          python backend/k6/test_update_deep_performance_results.py
+
       - name: Locate runnable jar
         id: jar
         shell: bash

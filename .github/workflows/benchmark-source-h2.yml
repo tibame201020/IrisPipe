@@ -1,0 +1,17 @@
+name: Full Matrix - Source H2
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "benchmark-full-*"
+      - "benchmark-h2-*"
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: h2

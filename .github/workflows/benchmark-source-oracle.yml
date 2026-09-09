@@ -1,0 +1,17 @@
+name: Full Matrix - Source Oracle
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "benchmark-full-*"
+      - "benchmark-oracle-*"
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: oracle

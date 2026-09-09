@@ -1,0 +1,241 @@
+name: Reusable Full RDBMS Source Benchmark
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        description: Source database engine
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-backend:
+    name: Build Backend Jar + Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build backend and run unit tests
+        working-directory: backend
+        run: mvn -B package
+      - name: Locate runnable jar
+        id: jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_jar="$(find backend/target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          test -n "$app_jar"
+          echo "app_jar=$app_jar" >> "$GITHUB_OUTPUT"
+      - name: Upload runnable jar
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-${{ inputs.source }}-runnable-jar
+          path: ${{ steps.jar.outputs.app_jar }}
+          if-no-files-found: error
+
+  benchmark:
+    name: ${{ inputs.source }}?${{ matrix.dest }} (${{ matrix.atomic }}, ${{ matrix.rows }} rows)
+    needs: build-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        dest: [h2, postgres, mysql, mariadb, sqlserver, oracle]
+        atomic: [JOB, CHUNK]
+        rows: [100000, 1000000, 10000000, 20000000, 50000000]
+    env:
+      APP_LOG: ${{ github.workspace }}/.k6-tmp/full-${{ inputs.source }}-${{ matrix.dest }}-${{ matrix.atomic }}-${{ matrix.rows }}.log
+      APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/full-${{ inputs.source }}-${{ matrix.dest }}-${{ matrix.atomic }}-${{ matrix.rows }}.pid
+      REPORT_FILE: ${{ github.workspace }}/.k6-tmp/full-${{ inputs.source }}-${{ matrix.dest }}-${{ matrix.atomic }}-${{ matrix.rows }}.json
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: sa
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install k6
+        id: setup_k6
+        continue-on-error: true
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.7.1'
+
+      - name: Fallback install k6
+        if: steps.setup_k6.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=1.7.1
+          archive="k6-v${version}-linux-amd64.tar.gz"
+          url="https://github.com/grafana/k6/releases/download/v${version}/${archive}"
+          rm -f "$archive"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --retry 3 --retry-all-errors --connect-timeout 20 --max-time 180 \
+              --output "$archive" "$url"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to download k6 after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          tar -xzf "$archive"
+          sudo install -m 0755 "k6-v${version}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
+
+      - name: Download runnable jar
+        id: download_runnable_jar
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: full-${{ inputs.source }}-runnable-jar
+          path: backend/target
+
+      - name: Fallback build runnable jar
+        if: steps.download_runnable_jar.outcome == 'failure'
+        working-directory: backend
+        run: mvn -B package
+
+      - name: Start and seed source / destination databases
+        shell: bash
+        run: bash backend/k6/rdbms-pair-harness.sh start-pair "${{ inputs.source }}" "${{ matrix.dest }}" "${{ matrix.rows }}"
+
+      - name: Start backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.k6-tmp"
+          app_jar="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | head -n 1)"
+          heap=2g
+          if [ "${{ inputs.source }}" = "h2" ] || [ "${{ matrix.dest }}" = "h2" ]; then heap=4g; fi
+          nohup java -Xms512m -Xmx"$heap" -jar "$app_jar" > "$APP_LOG" 2>&1 &
+          echo $! > "$APP_PID_FILE"
+
+      - name: Wait for backend readiness
+        shell: bash
+        run: |
+          for attempt in {1..120}; do
+            curl --fail --silent http://127.0.0.1:8080/api/v1/sync-config >/dev/null && exit 0
+            sleep 2
+          done
+          tail -n 200 "$APP_LOG" || true
+          exit 1
+
+      - name: Run full-pair deep benchmark
+        working-directory: backend/k6
+        env:
+          ATOMIC_LEVEL: ${{ matrix.atomic }}
+          ROW_COUNT: ${{ matrix.rows }}
+          BATCH_SIZE: "5000"
+          BENCHMARK_MODE: success
+          DB_PAIR: ${{ inputs.source }}-${{ matrix.dest }}
+          K6_SETUP_TIMEOUT: "60m"
+          K6_MAX_DURATION: "300m"
+          PIPELINE_HTTP_TIMEOUT: "300m"
+          BENCHMARK_REPORT: ${{ env.REPORT_FILE }}
+        run: k6 run data-volume-benchmark.js
+
+      - name: Verify external destination row count
+        if: matrix.dest != 'h2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(bash backend/k6/rdbms-pair-harness.sh count-pair "${{ inputs.source }}" "${{ matrix.dest }}")"
+          python backend/k6/finalize-external-benchmark.py --report "$REPORT_FILE" --actual-rows "$actual"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-${{ inputs.source }}-${{ matrix.dest }}-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ env.REPORT_FILE }}
+          if-no-files-found: ignore
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-${{ inputs.source }}-${{ matrix.dest }}-log-${{ matrix.atomic }}-${{ matrix.rows }}
+          path: ${{ env.APP_LOG }}
+          if-no-files-found: ignore
+
+      - name: Stop backend and databases
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$APP_PID_FILE" ]; then kill "$(cat "$APP_PID_FILE")" || true; fi
+          bash backend/k6/rdbms-pair-harness.sh stop-pair "${{ inputs.source }}" "${{ matrix.dest }}"
+
+  publish:
+    name: Merge ${{ inputs.source }} benchmark results
+    needs: benchmark
+    if: needs.benchmark.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: benchmark-results-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download source benchmark reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: full-${{ inputs.source }}-*
+          path: .full-results
+          merge-multiple: true
+      - name: Merge reports with retained benchmark history
+        shell: bash
+        run: |
+          python backend/k6/update-deep-performance-results.py \
+            --reports-dir .full-results \
+            --results quarto/deep-performance-results.json \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --commit-sha "$GITHUB_SHA"
+      - name: Commit retained benchmark snapshot
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add quarto/deep-performance-results.json quarto/_generated/deep-performance-results-en.md quarto/_generated/deep-performance-results-zh.md
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "perf: update ${{ inputs.source }} full matrix ${GITHUB_RUN_ID}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Trigger Pages deployment
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          curl --fail-with-body -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches" \
+            -d '{"event_type":"benchmark-results-updated"}'

@@ -1,0 +1,17 @@
+name: Full Matrix - Source PostgreSQL
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "benchmark-full-*"
+      - "benchmark-postgres-*"
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: postgres

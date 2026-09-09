@@ -1,12 +1,13 @@
 ---
-title: "效能與可靠性"
+title: "??????"
 ---
 
-IrisPipe 目前透過三組 GitHub Actions workflow 驗證：
+IrisPipe ? **PR ????** ???????? benchmark ???
 
-- **k6 Benchmark**：量測 runtime latency、API throughput、1k / 10k / 100k 資料量行為、失敗交易語意與 PostgreSQL → H2 JDBC 路徑
-- **Backend K6 Checks**：啟動實際 Spring Boot backend，執行 10 組 k6 regression suites
-- **k6 Deep Volume Benchmark**：以排程／手動方式執行大筆資料 JOB / CHUNK benchmark，包含 H2 的 100k / 1M / 10M / 20M / 50M 階梯，以及實際關聯式資料庫矩陣
+- **k6 Benchmark**?API/runtime latency?1k / 10k / 100k data-volume?failure semantics??? PostgreSQL ? H2?
+- **Backend K6 Checks**???? Spring Boot backend ?? 10 ? regression suites?
+- **k6 Deep Volume Benchmark**?scheduled/manual ??????????
+- **Full RDBMS Matrix**?? source ?? 6 ? workflow??? H2?PostgreSQL?MySQL?MariaDB?SQL Server?Oracle?????? 6 sources ? 6 destinations ? JOB/CHUNK ? 100K/1M/10M/20M/50M?? **360 cases**?
 
 [![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
 [![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
@@ -20,115 +21,136 @@ IrisPipe 目前透過三組 GitHub Actions workflow 驗證：
 
 ---
 
-## 最新 k6 Regression Status
+## ?? k6 Regression Status
 
-| Suite | Status | 驗證重點 |
+| Suite | Status | ???? |
 |---|---:|---|
-| Config | PASS | 建立、更新、匯入、刪除保護、唯一性限制 |
-| Workspace | PASS | Workspace scope、default fallback、cross-workspace isolation |
-| Pipeline Core | PASS | Execute flow、stage barrier、run lifecycle |
-| Pipeline Resume | PASS | 從 failed / stopped run 接續，跳過已完成 stage |
-| Pipeline Stop | PASS | Cooperative stop、STOPPING 到 STOPPED 收斂 |
-| Operator Safety | PASS | double-execute guard、非法 resume / delete 防護 |
-| Observability | PASS | Prometheus metrics、actuator health、overview API |
-| Pipeline Rerun | PASS | 從 frozen snapshot 建立新的 logical run |
-| Control Loop | PASS | execute、fail、resume、stop、rerun 的控制流程 |
-| Runtime | PASS | watermark、lineage、attempts、snapshot isolation |
+| Config | PASS | Create / update / import / delete guard / uniqueness |
+| Workspace | PASS | Workspace scoping?default fallback?cross-workspace isolation |
+| Pipeline Core | PASS | Execute flow?stage barrier?run lifecycle |
+| Pipeline Resume | PASS | failed / stopped run resume?skip completed stages |
+| Pipeline Stop | PASS | Cooperative stop?STOPPING ? STOPPED |
+| Operator Safety | PASS | double-execute guard??? resume/delete ?? |
+| Observability | PASS | Prometheus metrics?actuator health?overview API |
+| Pipeline Rerun | PASS | ? frozen snapshot ??? logical run |
+| Control Loop | PASS | execute ? fail ? resume ? stop ? rerun |
+| Runtime | PASS | watermark?lineage?attempts?snapshot isolation |
 
 ---
 
-## Benchmark 量測什麼？
+## Benchmark ?????
 
-benchmark workflow 會啟動實際 backend，並透過真正的 JDBC connection 執行 `backend/k6/benchmark.js` 與 `backend/k6/data-volume-benchmark.js`。目前主要驗證：
+Data-volume benchmark ???? Spring Batch + JDBC???????????????
 
-1. 同步 pipeline execution 與 API latency / request rate
-2. 一般 CI gate 的 H2 → H2 JOB / CHUNK 1k / 10k / 100k 執行時間與 rows/s
-3. 10k duplicate-key failure 的交易邊界：JOB 全回滾、CHUNK 保留已提交 chunks
-4. PostgreSQL → H2 的跨資料庫 JDBC 路徑（JOB / CHUNK）
-5. 排程／手動 deep benchmark 的 H2 100k / 1M / 10M / 20M / 50M 階梯，以及 PostgreSQL、MySQL、MariaDB、SQL Server、Oracle 實際資料庫矩陣
-6. 實際 RDBMS benchmark 完成後，CI 會直接從目的資料庫再次核對 row count；不能只因 pipeline 回 COMPLETED 就算 PASS
+1. ?? PR/main gate?H2 ? H2 JOB/CHUNK?1k / 10k / 100k?
+2. Failure semantics???????? duplicate key????? JOB / CHUNK rollback ???
+3. Cross-database correctness?destination row count ????????????? pipeline `COMPLETED`?
+4. Full matrix?H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle ?? source ????? destination ???
+5. Capacity ladder?JOB / CHUNK ?? 100K / 1M / 10M / 20M / 50M?
 
-所有效能數字都是 GitHub Actions CI runner 上的可重複 regression benchmark，不是 production capacity claim。
+?????? GitHub-hosted runner ????? regression benchmark?**?? production-capacity claim**?
 
 ---
 
-## JOB / CHUNK 的交易邊界
+## JOB / CHUNK?Transaction Boundary
 
-只有總資料量不足以說明 Atomic JOB / CHUNK 的差異，因此 benchmark 會同時記錄 **每批筆數** 與 **交易群組數**：
+??? `batchSize`????????
 
-| CI 類型 | `fetchSize` / `batchSize` | JOB 交易邊界 | CHUNK 交易邊界 |
+```{mermaid}
+flowchart LR
+  subgraph JOB["JOB ? 50M rows"]
+    J1["JDBC batches?5,000 rows"] --> J2["?? Job = 1 transaction"] --> J3["???50M ?? rollback"]
+  end
+  subgraph CHUNK["CHUNK ? 50M rows"]
+    C1["10,000 chunks ? 5,000 rows"] --> C2["10,000 ??? commit"] --> C3["???? rollback ?? chunk"]
+  end
+```
+
+| CI ?? | `fetchSize` / `batchSize` | JOB ???? | CHUNK ???? |
 |---|---:|---|---|
-| 一般 PR/main benchmark | 1,000 筆 | 整個 Job 共用一個 destination transaction | 每 1,000 筆 commit 一次 |
-| scheduled/manual deep benchmark | 5,000 筆 | 整個 Job 共用一個 destination transaction | 每 5,000 筆 commit 一次 |
+| ?? PR/main benchmark | 1,000 rows | ?? Job ?? destination transaction | ? 1,000 rows commit |
+| Deep/full benchmark | 5,000 rows | ?? Job ?? destination transaction | ? 5,000 rows commit |
 
-JOB 模式仍以 `fetchSize` / `batchSize` 做 JDBC 分批讀寫，但**不會因此切開 transaction**；CHUNK 模式則把相同的 batch size 同時作為 commit / rollback 邊界。
-
-以 deep benchmark 的 5,000 筆一批計算：
-
-| 總筆數 | CHUNK 交易群組數 | JOB 交易群組數 |
+| Source rows | CHUNK transaction groups @ 5,000 | JOB transaction groups |
 |---:|---:|---:|
-| 100k | 20 | 1 |
+| 100K | 20 | 1 |
 | 1M | 200 | 1 |
 | 10M | 2,000 | 1 |
 | 20M | 4,000 | 1 |
 | 50M | 10,000 | 1 |
 
-這正是兩種 atomicity 都需要驗證的原因。**JOB** 提供整批 all-or-nothing rollback，但資料量越大，單一 transaction、rollback 範圍與資料庫資源壓力也越大；**CHUNK** 把單次 transaction 與重試範圍限制在固定批次內，但後段失敗時會保留前面已 commit 的 chunks，因此必須有明確的 resume / recovery 語意。
+10k failure case ?????????????? duplicate key?batch=1,000 ??**JOB** ? rollback ??????????????? **1 row**?**CHUNK** ???? 9 ?? commit chunks?9,000 rows??? rollback ? 10 ??? chunk??? destination ??? **9,001 rows**?
 
-一般 CI 的 10k failure case 會把差異直接驗出來：batch size 為 1,000，並在最後一筆製造 duplicate key。JOB 會回滾全部搬移資料，只留下事先存在的衝突資料（**1 筆**）；CHUNK 已完成的前 9 個批次共 **9,000 筆**會保留，第 10 個失敗批次回滾，再加上事先存在的衝突資料，目的端應為 **9,001 筆**。
+---
+
+## Benchmark ????
+
+`duration_ms` / `rows_per_second` ???? **IrisPipe migration execution**??????????????
+
+```{mermaid}
+flowchart LR
+  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline\nSpring Batch + JDBC + commits"] --> G["STOP TIMER"] --> H["Destination COUNT ??"] --> I["Publish report"]
+```
+
+**????** ????? `/api/v1/sync-pipeline` ????? completed/failed response ???
+
+**????** DB/container ???source initial data ???backend startup/readiness?pipeline config ?????? destination `COUNT(*)`?artifact aggregation?Pages deployment?
+
+????? rows/s ??????????Spring Batch / JDBC / transaction ??????????????????
 
 ---
 
 ## Test Strategy
 
-k6 在 IrisPipe 裡不是只用來做壓測，也用來做 integration-level correctness 驗證。
+k6 ? IrisPipe ??? synthetic load generation???? **integration-level correctness**??? benchmark ????? backend????? pipeline??? JDBC migration??? runtime status???? destination ?????
 
-每個 regression suite 會：
-
-1. 啟動實際 Spring Boot backend jar
-2. 執行特定 behavioral domain 的 API flow
-3. 驗證 status code、response shape、persisted state、runtime transition
-4. 測試後清理資料
-
-Deep benchmark 還會在 CI 內啟動目標資料庫、直接在資料庫內產生 source dataset、透過 IrisPipe JDBC 實際搬移，最後再從目的資料庫核對筆數。
-
-因此驗證鏈會穿過：controller → service → Spring Batch → JDBC driver → database。
+External DB ? source data ? **? timer ?????? DB ???**?? engine pair ???? source / destination containers?? engine pair ???? engine instance ????? source / destination tables?
 
 ---
 
-## CI Pipeline
+## CI / Benchmark Trigger
+
+50M ????????? PR merge???????? `main` GitHub Pages deployment?
 
 ```{mermaid}
 flowchart TD
-  P["PR / push"] --> B["mvn package + unit tests"]
-  B --> A["API / runtime benchmark"]
-  B --> V["一般 data-volume\nJOB / CHUNK × 1k / 10k / 100k"]
-  B --> F["10k failure semantics\nJOB / CHUNK"]
-  B --> X["PostgreSQL → H2\nJOB / CHUNK"]
-  B --> R["10-suite k6 regression matrix"]
+  PR["PR / main push"] --> G["Unit tests + regular k6 gates"]
+  G --> P["????? benchmark JSON ?? Quarto"]
 
-  S["Scheduled / manual deep run"] --> DB["Real DB containers + DB 內 seed"]
-  DB --> H["H2 ladder\n100k / 1M / 10M / 20M / 50M"]
-  DB --> M["RDBMS matrix\nPostgreSQL / MySQL / MariaDB / SQL Server / Oracle"]
-  H --> DP["核對 destination + deep-performance-results.json"]
-  M --> DP
+  T["tag?benchmark-full-*"] --> H2["Source H2 ? 60 cases"]
+  T --> PG["Source PostgreSQL ? 60 cases"]
+  T --> MY["Source MySQL ? 60 cases"]
+  T --> MA["Source MariaDB ? 60 cases"]
+  T --> MS["Source SQL Server ? 60 cases"]
+  T --> OR["Source Oracle ? 60 cases"]
 
-  A --> KP["performance-results.json"]
-  V --> KP
-  F --> KP
-  X --> KP
-  R --> RP["k6-regression-results.json"]
+  M["Manual?Full RDBMS Benchmark - All Sources"] --> H2
+  M --> PG
+  M --> MY
+  M --> MA
+  M --> MS
+  M --> OR
 
-  KP --> Q["Render Quarto site"]
-  RP --> Q
-  DP --> Q
-  Q --> D["Deploy GitHub Pages"]
+  H2 --> R["?? merge ? retained deep-performance-results.json"]
+  PG --> R
+  MY --> R
+  MA --> R
+  MS --> R
+  OR --> R
+  R --> D["repository_dispatch ? GitHub Pages"]
 ```
+
+`benchmark-postgres-*` ?? source-specific tag ???? source?`benchmark-full-*` ??????? 6 ? source workflows?
+
+?????? `(db_pair, atomic_level, mode, row_count, batch_size)` ?? merge key??? merge ? `main` **??????? deep results**??? source benchmark ????????????????? cases?
 
 ---
 
-## 面試時怎麼講
+## Benchmark Methodology
 
-可以這樣說：
-
-> Performance 頁現在分成三層。第一層是一般 PR/main CI：跑 unit tests、API/runtime latency、1k／10k／100k 的 JOB／CHUNK data-volume、10k duplicate-key failure semantics，以及 PostgreSQL → H2。第二層是 scheduled/manual deep benchmark：H2 會一路跑到 50M，另外也啟動 PostgreSQL、MySQL、MariaDB、SQL Server、Oracle 實際資料庫做 JDBC 大筆資料驗證，而且完成後會直接向目的資料庫核對 row count。第三層是 10 組 k6 regression suites，驗證 execute、resume、rerun、stop、lineage 與 snapshot isolation。這些數字是 CI runner 的可重複 regression benchmark，不是 production capacity claim。
+1. `mvn package` ?? backend unit tests?
+2. PR/main gate ?????10M+ ?? tag/manual/scheduled benchmark ???
+3. Full matrix ?? `batchSize=5,000`??? 100K / 1M / 10M / 20M / 50M?
+4. Source seed ? migration timer ??????k6 ?????? 50M initial data?
+5. External destination ? row count ? timer ?????????????????
+6. ??? merge ? retained history?????? source/destination ???????????
