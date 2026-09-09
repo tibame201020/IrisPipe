@@ -4,7 +4,7 @@ title: "效能與可靠性"
 
 IrisPipe 將 **PR 合併門檻的回歸測試** 與長時間容量 Benchmark 分開：
 
-- **k6 Benchmark：** API/runtime latency、1k / 10k / 100k 資料量行為、failure semantics，以及 PostgreSQL-to-H2 驗證。
+- **k6 Benchmark：** API/runtime latency、有限資料量行為、failure semantics，以及 PostgreSQL-to-H2 驗證。
 - **Backend K6 Checks：** 對真實 Spring Boot backend 執行 10 組 regression suites。
 - **k6 Deep Volume Benchmark：** scheduled/manual 的容量快照，結果會保留。
 - **Full RDBMS Matrix：** 依 source 拆成 6 個 workflow，涵蓋 H2、PostgreSQL、MySQL、MariaDB、SQL Server、Oracle。完整一輪為 6 sources x 6 destinations x JOB/CHUNK x 1M/10M/50M = **216 cases**。
@@ -40,13 +40,14 @@ IrisPipe 將 **PR 合併門檻的回歸測試** 與長時間容量 Benchmark 分
 
 ## Benchmark 驗證內容
 
-Data-volume benchmark 直接跑真實 Spring Batch + JDBC，並同時驗證吞吐量與資料正確性：
+目前 Benchmark profile 是 **`identity-relations-v2`**，不再使用只有 `id/name` 的合成單表，而是實際跑 users / roles / user_roles 三表 workload：
 
-1. 一般 PR/main gate：H2-to-H2 JOB/CHUNK，資料量 1k / 10k / 100k。
-2. Failure semantics：最後一筆製造 duplicate key，驗證 JOB / CHUNK rollback 邊界。
-3. Cross-database correctness：destination row count 必須符合預期，不能只因 pipeline 回 `COMPLETED` 就算通過。
-4. Full matrix：H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle 任一 source 都能對任一 destination。
-5. Capacity ladder：JOB / CHUNK 都跑 1M / 10M / 50M，分別代表 baseline、穩態吞吐與容量壓力。
+1. 一個 IrisPipe SyncJob 內有 **3 個 INSERT executions**：先 roles、再 users、最後 user_roles。
+2. 這 3 個 execution 會變成同一個 Spring Batch Job 內的連續 Steps，因此每一筆 benchmark 都同時驗證 IrisPipe 的 multi-task orchestration。
+3. 一般 PR/main gate 驗證有限規模的 H2-to-H2 JOB/CHUNK 與 failure semantics。
+4. Full matrix 讓 H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle 任一 source 都能對任一 destination。
+5. JOB / CHUNK 都跑 1M / 10M / 50M **總搬移筆數**。
+6. Destination 不只看 pipeline `COMPLETED`，而是逐表與總筆數都必須符合預期。
 
 這些數字是可重複的 GitHub-hosted runner regression benchmark，**不是 production-capacity claim**。
 
@@ -54,95 +55,139 @@ Data-volume benchmark 直接跑真實 Spring Batch + JDBC，並同時驗證吞�
 
 ## Benchmark 實際資料 Schema
 
-Full/deep case 都使用相同的邏輯資料格式，讓主要變因集中在資料庫引擎、JDBC read/write、batch 與 transaction boundary。
+Benchmark 模擬一般的 users / roles / user-role 關係。實體測試 table 使用 `benchmark_src_*` / `benchmark_dst_*` 前綴，讓同一資料庫引擎 instance 也能同時存在 source 與 destination。
 
 ```text
-benchmark_source
-  id    PRIMARY KEY    值為 1..N
-  name                 "row-<id>"
+users
+  id            primary key
+  username      varchar
+  email         varchar
+  display_name  varchar
+  status        varchar   # ACTIVE / INVITED / SUSPENDED
+  locale        varchar   # en-US / zh-TW / ja-JP
+  created_at    timestamp/datetime
+  updated_at    timestamp/datetime
 
-source query
-  SELECT id, name FROM benchmark_source ORDER BY id
+roles
+  id            primary key
+  code          varchar
+  name          varchar
+  created_at    timestamp/datetime
+  updated_at    timestamp/datetime
 
-destination
-  benchmark_dest       邏輯欄位相同；success case 執行前為空表
+user_roles
+  user_id       composite primary key 的一部分
+  role_id       composite primary key 的一部分
+  created_at    timestamp/datetime
+  updated_at    timestamp/datetime
 ```
 
-| Database | `id` 實體型別 | `name` 實體型別 | DB-side source seed 方法 |
-|---|---|---|---|
-| H2 | `INT PRIMARY KEY` | `VARCHAR(255)` | `SYSTEM_RANGE(1, N)` |
-| PostgreSQL | `INT PRIMARY KEY` | `VARCHAR(255)` | `generate_series(1, N)` |
-| MySQL | `INT PRIMARY KEY` | `VARCHAR(255)` | 多組 0-9 digit set 做 Cartesian product，再篩到 `N` |
-| MariaDB | `INT PRIMARY KEY` | `VARCHAR(255)` | 多組 0-9 digit set 做 Cartesian product，再篩到 `N` |
-| SQL Server | `INT PRIMARY KEY` | `VARCHAR(255)` | digit CTE Cartesian product + `TOP (N)` + `ROW_NUMBER()` |
-| Oracle | `NUMBER(10) PRIMARY KEY` | `VARCHAR2(255)` | 10k bounded `CONNECT BY` block x `ceil(N/10k)`，再篩到 `N` |
+Benchmark **刻意不建立 DB-level foreign key constraint**。user_roles 的 logical relation 與 composite PK 都是真實的，但這裡希望主要量測 IrisPipe orchestration、JDBC transfer、batching 與 transaction boundary，而不是讓不同 DB 的 FK enforcement 成本成為主要變因。
 
-Payload 是 deterministic：第 123 筆就是 `{id: 123, name: "row-123"}`。Source data 會在 **timer 開始前直接於 DB 內用 set-based SQL 產生**，k6 不會逐筆送出 N 次 INSERT。同引擎的 external case 使用同一個 engine instance 內不同的 `benchmark_source` / `benchmark_dest` table；跨引擎 case 則使用獨立 source / destination container。
+### 資料量分配
+
+`ROW_COUNT` 就是 **3 個 tasks 加總後實際搬移的總筆數**。Roles 固定 16 筆，其餘資料以 1:3 分成 users 與 user_roles，因此每個 user 固定有 3 筆 role assignment。
+
+| Benchmark 點 | Users | Roles | User-role rows | 總搬移筆數 |
+|---:|---:|---:|---:|---:|
+| 1M | 249,996 | 16 | 749,988 | 1,000,000 |
+| 10M | 2,499,996 | 16 | 7,499,988 | 10,000,000 |
+| 50M | 12,499,996 | 16 | 37,499,988 | 50,000,000 |
+
+User payload 是 deterministic，例如 `{id: 123, username: "user_123", email: "user123@example.test", display_name: "User 123", ...}`。user_roles 同樣是 deterministic，每位 user 會從 16 個 roles 中分配 3 個不同角色。
+
+### 各 DB 實體型別與 DB-side seed
+
+| Database | User id | Role id | Datetime type | DB-side seed 方法 |
+|---|---|---|---|---|
+| H2 | `BIGINT` | `INT` | `TIMESTAMP` | `SYSTEM_RANGE` |
+| PostgreSQL | `BIGINT` | `INT` | `TIMESTAMP` | `generate_series` |
+| MySQL | `BIGINT` | `INT` | `DATETIME(6)` | 多組 decimal digit set 做 set-based Cartesian product |
+| MariaDB | `BIGINT` | `INT` | `DATETIME(6)` | 多組 decimal digit set 做 set-based Cartesian product |
+| SQL Server | `BIGINT` | `INT` | `DATETIME2(6)` | digit CTE + `ROW_NUMBER()` |
+| Oracle | `NUMBER(19)` | `NUMBER(10)` | `TIMESTAMP(6)` | bounded 10k `CONNECT BY` blocks |
+
+Source data 會在 **timer 開始前直接於 DB 內產生**；k6 不會逐筆送出幾百萬次 INSERT。
+
+---
+
+## Multi-Task Pipeline 結構
+
+每個 benchmark case 都是一個 SyncJob、3 個 executions：
+
+```{mermaid}
+flowchart LR
+  S["Source DB"] --> R["Execution 1: roles"] --> U["Execution 2: users"] --> UR["Execution 3: user_roles"] --> D["Destination DB"]
+```
+
+這 3 個 task 刻意分開，而不是合成一條 join query。如此可直接驗證 IrisPipe 能在同一個 job 裡協調多個相關 migration tasks，並保留 JOB / CHUNK 的 transaction semantics。
 
 ---
 
 ## Fetch 與 Batch 的差異
 
-IrisPipe 有兩個不同的 tuning 設定；目前 benchmark 為了控制變因，刻意把它們設成相同值：
+IrisPipe 有兩個不同 tuning 設定；目前 benchmark 為了控制變因，刻意設成相同值：
 
-- `fetchSize`：**source-side JDBC reader** 的 fetch window/hint，影響讀取 round trip、driver buffering 與記憶體行為；它**不是 transaction boundary**。
-- `batchSize`：**destination-side writer** 的 batch/chunk 大小。CHUNK atomic mode 下它同時形成 commit boundary；JOB atomic mode 雖仍分 batch 寫入，但整個 Job 共用一個 destination transaction。
+- **`fetchSize`**：source-side JDBC reader 的 fetch window/hint，影響 round trip、driver buffering 與 memory；它**不是 transaction boundary**。
+- **`batchSize`**：destination-side writer 的 batch/chunk 大小。CHUNK 下它同時形成 commit boundary；JOB 下雖然仍以 batch 寫入，但 3 個 executions 共用同一個 destination transaction。
 
 | CI profile | Source `fetchSize` | Destination `batchSize` |
 |---|---:|---:|
 | 一般 PR/main benchmark | 1,000 | 1,000 |
 | Deep/full benchmark | 5,000 | 5,000 |
 
-Full/deep raw table 會把 Fetch 與 Batch 分開顯示。較早的 retained snapshot 尚未把 `fetch_size` 寫入 JSON，但當時 harness 明確設定 `fetchSize = batchSize`，因此 renderer 可以由當時的 Batch 值還原歷史 Fetch，而不是猜測。
+Full/deep raw table 會把 Fetch 與 Batch 分開顯示。
 
 ---
 
 ## JOB / CHUNK：Transaction Boundary
 
-相同 `batchSize` 在兩種 atomic level 下有不同 transaction semantics：
+有 3 個 executions 之後，CHUNK 的 transaction groups 不能再單純用 `ceil(totalRows / batchSize)`：
 
 ```{mermaid}
 flowchart LR
-  subgraph JOB["JOB / 50M rows"]
-    J1["JDBC batches: 5,000 rows"] --> J2["整個 Job = 1 destination transaction"] --> J3["失敗時 rollback 全部 50M"]
+  subgraph JOB["JOB / 50M total rows"]
+    J1["roles step"] --> J2["users step"] --> J3["user_roles step"] --> J4["1 destination transaction"]
   end
-  subgraph CHUNK["CHUNK / 50M rows"]
-    C1["10,000 chunks x 5,000 rows"] --> C2["10,000 次獨立 commit"] --> C3["失敗只 rollback 當下 chunk"]
+  subgraph CHUNK["CHUNK / 50M total rows"]
+    C1["roles chunks"] --> C2["users chunks"] --> C3["user_roles chunks"] --> C4["每個 chunk commit"]
   end
 ```
 
-| Source rows | CHUNK transaction groups @ 5,000 | JOB transaction groups |
-|---:|---:|---:|
-| 1M | 200 | 1 |
-| 10M | 2,000 | 1 |
-| 50M | 10,000 | 1 |
+`batchSize=5,000` 時，CHUNK transaction groups 是三個 execution 各自 chunk 數的加總：
 
-一般 10k failure case 會直接呈現差異：最後一筆製造 duplicate key、batch=1,000 時，**JOB** 會 rollback 所有已搬移資料，只留下原本預先建立的 conflict row，最後為 **1 row**；**CHUNK** 會保留前 9 個已 commit chunk，也就是 9,000 rows，只 rollback 第 10 個失敗 chunk，加上原本 conflict row，最後為 **9,001 rows**。
+| 總筆數 | Roles chunks | Users chunks | User-role chunks | CHUNK transaction groups | JOB transaction groups |
+|---:|---:|---:|---:|---:|---:|
+| 1M | 1 | 50 | 150 | **201** | **1** |
+| 10M | 1 | 500 | 1,500 | **2,001** | **1** |
+| 50M | 1 | 2,500 | 7,500 | **10,001** | **1** |
+
+一般 10k failure case 會在 **最後一筆 user_role** 預先放入相同 composite key。JOB 下第 3 個 execution 失敗會連第 1、2 個 execution 一起 rollback，最後只留下預先存在的 conflict row，總共 **1 row**。CHUNK 下 roles、users 與前 7 個完整 user_role chunks 已 commit，因此最後剩 **9,513 rows**（16 roles + 2,496 users + 7,001 user_roles，其中包含預先存在的 conflict row）。
 
 ---
 
 ## Benchmark 計時邊界
 
-`duration_ms` / `rows_per_second` 刻意只量測 **IrisPipe migration execution**，不把環境初始化算入效能。
+`duration_ms` / `rows_per_second` 刻意只量測 **IrisPipe migration execution**，不把環境初始化算進效能。
 
 ```{mermaid}
 flowchart LR
-  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline<br/>Spring Batch + JDBC + commits"] --> G["STOP TIMER"] --> H["Destination COUNT verification"] --> I["Publish report"]
+  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline\n3 Spring Batch steps + JDBC + commits"] --> G["STOP TIMER"] --> H["逐表 destination COUNT 驗證"] --> I["Publish report"]
 ```
 
 **計入：** `/api/v1/sync-pipeline` 同步呼叫，從 request 前一刻開始，到 completed/failed response 回來為止。
 
-**排除：** DB/container startup、source initial data 產生、backend startup/readiness、pipeline config 建立、執行後 destination `COUNT(*)`、artifact aggregation、Pages deployment。
+**排除：** DB/container startup、source initial data 產生、backend startup/readiness、pipeline config 建立、執行後各 destination `COUNT(*)`、artifact aggregation、Pages deployment。
 
-因此較小資料量有可能呈現較低 rows/s：Spring Batch / JDBC / transaction 的固定啟動成本，在資料量變大後才會被攤薄。
+`rows_per_second` 的分子是 **roles + users + user_roles 的總搬移筆數**。
 
 ---
 
 ## 吞吐量圖表怎麼看
 
-圖表採 **X 軸 = source row count（log scale）**、**Y 軸 = 實測 rows/second**。外層 tab 是 source database，每條 curve 是 destination database，JOB / CHUNK 再分開成內層 tab。這樣可以直接看出資料量增加後 throughput 是成長、飽和或下降。
+圖表採 **X 軸 = 總搬移 row count（log scale）**、**Y 軸 = 實測 rows/second**。外層 tab 是 source database，每條 line 是 destination database，JOB / CHUNK 分開成內層 tab。
 
-每個圓點都是 1M / 10M / 50M 的真實量測值。平滑線只使用 shape-preserving cubic interpolation 作視覺導引，曲線一定穿過量測點，不代表中間存在額外 benchmark sample。
+目前只有 **1M / 10M / 50M 三個實測點**，因此圖上只用**直線連接實際量測點**並保留圓點；不再做 smoothing、regression 或 interpolation，避免視覺上暗示不存在的中間量測資料。
 
 ---
 
@@ -178,17 +223,15 @@ flowchart TD
   R --> D["repository_dispatch 到 GitHub Pages"]
 ```
 
-`benchmark-postgres-*` 這類 source-specific tag 只觸發單一 source；`benchmark-full-*` 則觸發全部 6 個 source workflows。
-
-Retained result 使用 `(db_pair, atomic_level, mode, row_count, fetch_size, batch_size)` 作 merge key。一般 merge 到 `main` **不會清掉或重建 deep results**；某一 source benchmark 更新時，也只會覆蓋它實際重新量測的 cases。
+Retained result 的 merge key 現在包含 **benchmark profile**。因此舊單表結果仍可追溯，但不會被當成目前 multi-table schema 的量測結果。
 
 ---
 
 ## Benchmark Methodology
 
 1. `mvn package` 會先執行 backend unit tests。
-2. PR/main gate 維持有限規模；10M+ 容量測試只由 tag/manual/scheduled benchmark 執行。
-3. Full matrix 使用 `fetchSize=5,000`、`batchSize=5,000`，驗證 1M / 10M / 50M；每個 source workflow 有 36 cases，`max-parallel=4`。
-4. Source seed 在 migration timer 開始前完成；k6 不會逐筆插入 benchmark dataset。
-5. External destination 的 row count 在 timer 結束後驗證，且必須等於預期值。
-6. Benchmark snapshot 以 merge 方式保留歷史資料，不會因某次未重跑其他 source/destination 就把既有結果清掉；舊的 100K / 20M measurement 仍保留，但已不屬於目前 active ladder。
+2. PR/main gate 維持有限規模；10M+ 容量測試只放在 tag/manual/scheduled benchmark。
+3. Full matrix 使用 `fetchSize=5,000`、`batchSize=5,000`、3 個 INSERT executions，測 1M / 10M / 50M 總 row count。
+4. Source seed 在 migration timer 開始前完成。
+5. Destination 在 timer 結束後逐表驗證 roles / users / user_roles 以及總筆數。
+6. Benchmark snapshot 依 **benchmark profile** merge 到 retained history；舊單表 measurement 仍保留供追溯，但不列入目前 schema 的圖表與 coverage。

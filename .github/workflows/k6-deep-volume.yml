@@ -56,7 +56,7 @@ jobs:
       max-parallel: 2
       matrix:
         atomic: [JOB, CHUNK]
-        rows: [100000, 1000000, 10000000, 20000000, 50000000]
+        rows: [1000000, 10000000, 50000000]
     env:
       APP_LOG: ${{ github.workspace }}/.k6-tmp/deep-h2-${{ matrix.atomic }}-${{ matrix.rows }}.log
       APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/deep-h2-${{ matrix.atomic }}-${{ matrix.rows }}.pid
@@ -133,11 +133,13 @@ jobs:
         env:
           ATOMIC_LEVEL: ${{ matrix.atomic }}
           ROW_COUNT: ${{ matrix.rows }}
+          FETCH_SIZE: "5000"
           BATCH_SIZE: "5000"
           BENCHMARK_MODE: success
           DB_PAIR: h2-h2
           K6_SETUP_TIMEOUT: "30m"
           K6_MAX_DURATION: "300m"
+          PIPELINE_HTTP_TIMEOUT: "300m"
           BENCHMARK_REPORT: ${{ github.workspace }}/.k6-tmp/deep-h2-${{ matrix.atomic }}-${{ matrix.rows }}.json
         run: k6 run data-volume-benchmark.js
       - name: Upload report
@@ -170,7 +172,7 @@ jobs:
       max-parallel: 2
       matrix:
         atomic: [JOB, CHUNK]
-        rows: [1000000, 10000000]
+        rows: [1000000, 10000000, 50000000]
     services:
       postgres:
         image: postgres:16
@@ -242,14 +244,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          total=${{ matrix.rows }}
+          roles=16
+          users=$(( (total - roles) / 4 ))
+          user_roles=$(( total - roles - users ))
           postgres_container="$(docker ps --filter 'ancestor=postgres:16' --format '{{.ID}}' | head -n 1)"
-          docker exec -i "$postgres_container" psql -U postgres -d irispipe_bench <<SQL
-          DROP TABLE IF EXISTS benchmark_source;
-          CREATE TABLE benchmark_source (id INT PRIMARY KEY, name VARCHAR(255));
-          INSERT INTO benchmark_source (id, name)
-          SELECT g, 'row-' || g FROM generate_series(1, ${{ matrix.rows }}) AS g;
-          ANALYZE benchmark_source;
+          docker exec -i "$postgres_container" psql -v ON_ERROR_STOP=1 -U postgres -d irispipe_bench <<SQL
+          DROP TABLE IF EXISTS benchmark_src_user_roles;
+          DROP TABLE IF EXISTS benchmark_src_users;
+          DROP TABLE IF EXISTS benchmark_src_roles;
+          CREATE TABLE benchmark_src_roles (id INT PRIMARY KEY, code VARCHAR(64) NOT NULL, name VARCHAR(128) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+          CREATE TABLE benchmark_src_users (id BIGINT PRIMARY KEY, username VARCHAR(64) NOT NULL, email VARCHAR(160) NOT NULL, display_name VARCHAR(128) NOT NULL, status VARCHAR(16) NOT NULL, locale VARCHAR(16) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+          CREATE TABLE benchmark_src_user_roles (user_id BIGINT NOT NULL, role_id INT NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL, PRIMARY KEY (user_id, role_id));
+          INSERT INTO benchmark_src_roles
+          SELECT g, 'ROLE_' || g, 'Role ' || g, TIMESTAMP '2025-01-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00' FROM generate_series(1, 16) AS g;
+          INSERT INTO benchmark_src_users
+          SELECT g, 'user_' || g, 'user' || g || '@example.test', 'User ' || g,
+                 CASE WHEN g % 10 = 0 THEN 'SUSPENDED' WHEN g % 10 = 1 THEN 'INVITED' ELSE 'ACTIVE' END,
+                 CASE g % 3 WHEN 0 THEN 'zh-TW' WHEN 1 THEN 'en-US' ELSE 'ja-JP' END,
+                 TIMESTAMP '2025-01-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00'
+          FROM generate_series(1, ${users}) AS g;
+          INSERT INTO benchmark_src_user_roles
+          SELECT ((g - 1) / 3) + 1,
+                 ((((g - 1) / 3) + 1 + ((g - 1) % 3) * 5 - 1) % 16) + 1,
+                 TIMESTAMP '2025-02-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00'
+          FROM generate_series(1, ${user_roles}) AS g;
+          ANALYZE benchmark_src_roles;
+          ANALYZE benchmark_src_users;
+          ANALYZE benchmark_src_user_roles;
           SQL
+
       - name: Start backend
         working-directory: backend
         shell: bash
@@ -273,11 +297,13 @@ jobs:
         env:
           ATOMIC_LEVEL: ${{ matrix.atomic }}
           ROW_COUNT: ${{ matrix.rows }}
+          FETCH_SIZE: "5000"
           BATCH_SIZE: "5000"
           BENCHMARK_MODE: success
           DB_PAIR: postgres-h2
           K6_SETUP_TIMEOUT: "30m"
           K6_MAX_DURATION: "300m"
+          PIPELINE_HTTP_TIMEOUT: "300m"
           POSTGRES_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/irispipe_bench
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -305,35 +331,9 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        include:
-          - { engine: postgres, atomic: JOB, rows: 1000000 }
-          - { engine: postgres, atomic: CHUNK, rows: 1000000 }
-          - { engine: postgres, atomic: JOB, rows: 10000000 }
-          - { engine: postgres, atomic: CHUNK, rows: 10000000 }
-          - { engine: postgres, atomic: JOB, rows: 20000000 }
-          - { engine: postgres, atomic: CHUNK, rows: 20000000 }
-          - { engine: postgres, atomic: JOB, rows: 50000000 }
-          - { engine: postgres, atomic: CHUNK, rows: 50000000 }
-          - { engine: mysql, atomic: JOB, rows: 1000000 }
-          - { engine: mysql, atomic: CHUNK, rows: 1000000 }
-          - { engine: mysql, atomic: JOB, rows: 10000000 }
-          - { engine: mysql, atomic: CHUNK, rows: 10000000 }
-          - { engine: mysql, atomic: JOB, rows: 20000000 }
-          - { engine: mysql, atomic: CHUNK, rows: 20000000 }
-          - { engine: mysql, atomic: JOB, rows: 50000000 }
-          - { engine: mysql, atomic: CHUNK, rows: 50000000 }
-          - { engine: mariadb, atomic: JOB, rows: 1000000 }
-          - { engine: mariadb, atomic: CHUNK, rows: 1000000 }
-          - { engine: mariadb, atomic: JOB, rows: 10000000 }
-          - { engine: mariadb, atomic: CHUNK, rows: 10000000 }
-          - { engine: sqlserver, atomic: JOB, rows: 1000000 }
-          - { engine: sqlserver, atomic: CHUNK, rows: 1000000 }
-          - { engine: sqlserver, atomic: JOB, rows: 10000000 }
-          - { engine: sqlserver, atomic: CHUNK, rows: 10000000 }
-          - { engine: oracle, atomic: JOB, rows: 1000000 }
-          - { engine: oracle, atomic: CHUNK, rows: 1000000 }
-          - { engine: oracle, atomic: JOB, rows: 10000000 }
-          - { engine: oracle, atomic: CHUNK, rows: 10000000 }
+        engine: [postgres, mysql, mariadb, sqlserver, oracle]
+        atomic: [JOB, CHUNK]
+        rows: [1000000, 10000000, 50000000]
     env:
       APP_LOG: ${{ github.workspace }}/.k6-tmp/deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}.log
       APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/deep-${{ matrix.engine }}-${{ matrix.atomic }}-${{ matrix.rows }}.pid
@@ -390,7 +390,7 @@ jobs:
         run: mvn -B package
       - name: Start and seed ${{ matrix.engine }} in-database
         shell: bash
-        run: bash backend/k6/rdbms-deep-harness.sh start "${{ matrix.engine }}" "${{ matrix.rows }}"
+        run: bash backend/k6/rdbms-pair-harness.sh start-pair "${{ matrix.engine }}" "${{ matrix.engine }}" "${{ matrix.rows }}"
       - name: Start backend
         working-directory: backend
         shell: bash
@@ -414,6 +414,7 @@ jobs:
         env:
           ATOMIC_LEVEL: ${{ matrix.atomic }}
           ROW_COUNT: ${{ matrix.rows }}
+          FETCH_SIZE: "5000"
           BATCH_SIZE: "5000"
           BENCHMARK_MODE: success
           DB_PAIR: ${{ matrix.engine }}-${{ matrix.engine }}
@@ -426,8 +427,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          actual="$(bash backend/k6/rdbms-deep-harness.sh count "${{ matrix.engine }}")"
-          python backend/k6/finalize-external-benchmark.py --report "$REPORT_FILE" --actual-rows "$actual"
+          actual="$(bash backend/k6/rdbms-pair-harness.sh count-pair "${{ matrix.engine }}" "${{ matrix.engine }}")"
+          python backend/k6/finalize-external-benchmark.py --report "$REPORT_FILE" --actual-counts "$actual"
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v7
@@ -447,7 +448,7 @@ jobs:
         shell: bash
         run: |
           if [ -f "$APP_PID_FILE" ]; then kill "$(cat "$APP_PID_FILE")" || true; fi
-          bash backend/k6/rdbms-deep-harness.sh stop "${{ matrix.engine }}"
+          bash backend/k6/rdbms-pair-harness.sh stop-pair "${{ matrix.engine }}" "${{ matrix.engine }}"
 
   publish-deep-results:
     name: Publish Deep Benchmark Results

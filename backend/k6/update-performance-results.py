@@ -29,12 +29,15 @@ def db_label(pair: str) -> str:
 
 
 def transaction_groups(case: dict):
-    rows = int(case.get("row_count") or 0)
     batch = int(case.get("batch_size") or 0)
     if case.get("atomic_level") == "JOB":
         return 1
     if batch <= 0:
         return None
+    table_rows = case.get("table_rows")
+    if isinstance(table_rows, dict) and table_rows:
+        return sum((int(rows) + batch - 1) // batch for rows in table_rows.values() if int(rows) > 0)
+    rows = int(case.get("row_count") or 0)
     return (rows + batch - 1) // batch
 
 
@@ -42,8 +45,10 @@ def render_fragment(data: dict, language: str) -> str:
     bench = data.get("benchmark", {})
     volume = data.get("data_volume", {})
     cases = volume.get("cases", [])
-    success_cases = [c for c in cases if c.get("mode") == "success"]
-    failure_cases = [c for c in cases if c.get("mode") == "failure"]
+    current_profile = "identity-relations-v2"
+    current_cases = [c for c in cases if c.get("benchmark_profile") == current_profile]
+    success_cases = [c for c in current_cases if c.get("mode") == "success"]
+    failure_cases = [c for c in current_cases if c.get("mode") == "failure"]
 
     if language == "zh":
         lines = [
@@ -71,8 +76,8 @@ def render_fragment(data: dict, language: str) -> str:
         ]
         if success_cases:
             lines += [
-                "| DB path | Atomicity | Rows | 每批筆數 | 交易群組 | Duration | Throughput |",
-                "|---|---|---:|---:|---:|---:|---:|",
+                "| DB path | Atomicity | Rows | Fetch | Batch | 交易群組 | Duration | Throughput |",
+                "|---|---|---:|---:|---:|---:|---:|---:|",
             ]
             for c in success_cases:
                 groups = transaction_groups(c)
@@ -81,10 +86,10 @@ def render_fragment(data: dict, language: str) -> str:
                 batch_text = "-" if batch <= 0 else f"{batch:,}"
                 lines.append(
                     f"| {db_label(c['db_pair'])} | {c['atomic_level']} | {c['row_count']:,} | "
-                    f"{batch_text} | {groups_text} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
+                    f"{int(c.get('fetch_size') or c.get('batch_size') or 0):,} | {batch_text} | {groups_text} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
                 )
         else:
-            lines.append("尚未產生 data-volume benchmark 結果。")
+            lines.append("目前 identity-relations-v2 尚未產生 data-volume benchmark 結果；舊單表結果不會混入目前數字。")
 
         lines += [
             "",
@@ -105,11 +110,11 @@ def render_fragment(data: dict, language: str) -> str:
                     f"{c['expected_destination_rows']:,} | {int(c['actual_destination_rows']):,} | **{result}** |"
                 )
         else:
-            lines.append("尚未產生 large-volume failure semantics 結果。")
+            lines.append("目前 identity-relations-v2 尚未產生 failure-semantics 結果。")
 
         lines += [
             "",
-            "失敗案例會在最後一筆製造 duplicate key：JOB 應回滾整個 Job；CHUNK 應保留先前已提交的 chunks，並只回滾失敗 chunk。",
+            "失敗案例會在最後一筆 user_role 預先建立相同 composite key：JOB 應回滾 roles/users/user_roles 三個 executions；CHUNK 則保留先前完成的 tasks 與已提交 chunks，只回滾失敗 chunk。",
         ]
     else:
         lines = [
@@ -137,8 +142,8 @@ def render_fragment(data: dict, language: str) -> str:
         ]
         if success_cases:
             lines += [
-                "| DB path | Atomicity | Rows | Batch | Txn groups | Duration | Throughput |",
-                "|---|---|---:|---:|---:|---:|---:|",
+                "| DB path | Atomicity | Rows | Fetch | Batch | Txn groups | Duration | Throughput |",
+                "|---|---|---:|---:|---:|---:|---:|---:|",
             ]
             for c in success_cases:
                 groups = transaction_groups(c)
@@ -147,10 +152,10 @@ def render_fragment(data: dict, language: str) -> str:
                 batch_text = "-" if batch <= 0 else f"{batch:,}"
                 lines.append(
                     f"| {db_label(c['db_pair'])} | {c['atomic_level']} | {c['row_count']:,} | "
-                    f"{batch_text} | {groups_text} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
+                    f"{int(c.get('fetch_size') or c.get('batch_size') or 0):,} | {batch_text} | {groups_text} | {fmt_ms(c.get('duration_ms'))} | {fmt_rps(c.get('rows_per_second'))} |"
                 )
         else:
-            lines.append("No data-volume benchmark result has been published yet.")
+            lines.append("No identity-relations-v2 data-volume result has been published yet; legacy single-table results are not mixed into the current numbers.")
 
         lines += [
             "",
@@ -171,11 +176,11 @@ def render_fragment(data: dict, language: str) -> str:
                     f"{c['expected_destination_rows']:,} | {int(c['actual_destination_rows']):,} | **{result}** |"
                 )
         else:
-            lines.append("No large-volume failure-semantics result has been published yet.")
+            lines.append("No identity-relations-v2 failure-semantics result has been published yet.")
 
         lines += [
             "",
-            "The failure case injects a duplicate key on the final row: JOB must roll back the whole job; CHUNK must preserve previously committed chunks and roll back only the failing chunk.",
+            "The failure case pre-seeds the composite key of the final user_role row: JOB must roll back all three roles/users/user_roles executions; CHUNK preserves completed tasks and committed chunks and rolls back only the failing chunk.",
         ]
 
     return "\n".join(lines) + "\n"
