@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated_at": "2026-09-08T21:40:58Z",
+    "generated_at": "2026-09-09T00:51:05Z",
     "note": "Updated by GitHub Actions on each benchmark run. See .github/workflows/k6-benchmark.yml"
   },
   "suites": [
@@ -56,18 +56,18 @@
     }
   ],
   "benchmark": {
-    "execute_latency_p50_ms": 80,
-    "execute_latency_p95_ms": 137.6,
-    "execute_latency_p99_ms": 144.3,
-    "api_latency_p50_ms": 4.8,
-    "api_latency_p95_ms": 10.2,
-    "throughput_rps": 11.9,
-    "note": "Last updated 2026-09-08T21:40:58Z by GitHub Actions"
+    "execute_latency_p50_ms": 86,
+    "execute_latency_p95_ms": 160.4,
+    "execute_latency_p99_ms": 174.5,
+    "api_latency_p50_ms": 5.1,
+    "api_latency_p95_ms": 12.3,
+    "throughput_rps": 11.8,
+    "note": "Last updated 2026-09-09T00:51:05Z by GitHub Actions"
   },
   "data_volume": {
-    "updated_at": "2026-09-08T21:40:58Z",
-    "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34281785131",
-    "commit_sha": "d31eb49bc7cf923cbe6f4e399d9a84d1117d4499",
+    "updated_at": "2026-09-09T00:51:05Z",
+    "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34296622623",
+    "commit_sha": "33328b8b48603ddc4e77c72ad21c6ca220766e4e",
     "cases": [
       {
         "status": "pass",
@@ -76,8 +76,17 @@
         "mode": "failure",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 637,
+        "duration_ms": 587,
         "rows_per_second": null,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 9001,
         "actual_destination_rows": 9001
       },
@@ -88,8 +97,17 @@
         "mode": "failure",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 667,
+        "duration_ms": 613,
         "rows_per_second": null,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 1,
         "actual_destination_rows": 1
       },
@@ -100,8 +118,17 @@
         "mode": "success",
         "row_count": 1000,
         "batch_size": 1000,
-        "duration_ms": 451,
-        "rows_per_second": 2217.3,
+        "duration_ms": 318,
+        "rows_per_second": 3144.7,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 1000,
         "actual_destination_rows": 1000
       },
@@ -112,8 +139,17 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 640,
-        "rows_per_second": 15625,
+        "duration_ms": 676,
+        "rows_per_second": 14792.9,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       },
@@ -124,8 +160,17 @@
         "mode": "success",
         "row_count": 100000,
         "batch_size": 1000,
-        "duration_ms": 1643,
-        "rows_per_second": 60864.3,
+        "duration_ms": 1565,
+        "rows_per_second": 63897.8,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 100000,
         "actual_destination_rows": 100000
       },
@@ -136,8 +181,17 @@
         "mode": "success",
         "row_count": 1000,
         "batch_size": 1000,
-        "duration_ms": 376,
-        "rows_per_second": 2659.6,
+        "duration_ms": 442,
+        "rows_per_second": 2262.4,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 1000,
         "actual_destination_rows": 1000
       },
@@ -148,8 +202,17 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 696,
-        "rows_per_second": 14367.8,
+        "duration_ms": 624,
+        "rows_per_second": 16025.6,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       },
@@ -160,8 +223,17 @@
         "mode": "success",
         "row_count": 100000,
         "batch_size": 1000,
-        "duration_ms": 1683,
-        "rows_per_second": 59417.7,
+        "duration_ms": 1771,
+        "rows_per_second": 56465.3,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 100000,
         "actual_destination_rows": 100000
       },
@@ -172,8 +244,17 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 1096,
-        "rows_per_second": 9124.1,
+        "duration_ms": 812,
+        "rows_per_second": 12315.3,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       },
@@ -184,8 +265,17 @@
         "mode": "success",
         "row_count": 10000,
         "batch_size": 1000,
-        "duration_ms": 1138,
-        "rows_per_second": 8787.3,
+        "duration_ms": 1094,
+        "rows_per_second": 9140.8,
+        "measurement_scope": "sync_pipeline_http_call_only",
+        "excluded_from_duration": [
+          "database_container_startup",
+          "source_seed",
+          "backend_startup",
+          "pipeline_config_creation",
+          "destination_count_verification",
+          "report_publishing"
+        ],
         "expected_destination_rows": 10000,
         "actual_destination_rows": 10000
       }
