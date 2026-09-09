@@ -1,0 +1,33 @@
+name: Full RDBMS Benchmark - All Sources
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  h2:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: h2
+  postgres:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: postgres
+  mysql:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: mysql
+  mariadb:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: mariadb
+  sqlserver:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: sqlserver
+  oracle:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: oracle

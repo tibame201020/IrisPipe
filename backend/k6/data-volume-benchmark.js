@@ -322,6 +322,15 @@ export function handleSummary(data) {
     batch_size: BATCH_SIZE,
     duration_ms: durationMs,
     rows_per_second: BENCHMARK_MODE === 'success' ? throughput : null,
+    measurement_scope: 'sync_pipeline_http_call_only',
+    excluded_from_duration: [
+      'database_container_startup',
+      'source_seed',
+      'backend_startup',
+      'pipeline_config_creation',
+      'destination_count_verification',
+      'report_publishing',
+    ],
     expected_destination_rows: expectedDestinationCount(),
     actual_destination_rows: actualRows,
   };

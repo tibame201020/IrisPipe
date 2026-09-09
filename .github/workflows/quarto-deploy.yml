@@ -1,6 +1,8 @@
 name: Deploy Quarto Site
 
 on:
+  repository_dispatch:
+    types: [benchmark-results-updated]
   push:
     branches:
       - main

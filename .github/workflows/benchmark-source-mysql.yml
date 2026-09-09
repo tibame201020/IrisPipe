@@ -1,0 +1,17 @@
+name: Full Matrix - Source MySQL
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "benchmark-full-*"
+      - "benchmark-mysql-*"
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: mysql

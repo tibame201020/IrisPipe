@@ -3,6 +3,7 @@
   "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
   "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
   "case_count": 42,
+  "retention_policy": "merge-by-db-pair-atomic-mode-row-count-batch-size",
   "cases": [
     {
       "status": "pass",
@@ -14,7 +15,10 @@
       "duration_ms": 1434,
       "rows_per_second": 69735,
       "expected_destination_rows": 100000,
-      "actual_destination_rows": 100000
+      "actual_destination_rows": 100000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -26,7 +30,10 @@
       "duration_ms": 5491,
       "rows_per_second": 182116.2,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -38,7 +45,10 @@
       "duration_ms": 42095,
       "rows_per_second": 237557.9,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -50,7 +60,10 @@
       "duration_ms": 79989,
       "rows_per_second": 250034.4,
       "expected_destination_rows": 20000000,
-      "actual_destination_rows": 20000000
+      "actual_destination_rows": 20000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -62,7 +75,10 @@
       "duration_ms": 151974,
       "rows_per_second": 329003.6,
       "expected_destination_rows": 50000000,
-      "actual_destination_rows": 50000000
+      "actual_destination_rows": 50000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -74,7 +90,10 @@
       "duration_ms": 1432,
       "rows_per_second": 69832.4,
       "expected_destination_rows": 100000,
-      "actual_destination_rows": 100000
+      "actual_destination_rows": 100000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -86,7 +105,10 @@
       "duration_ms": 5126,
       "rows_per_second": 195083.9,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -98,7 +120,10 @@
       "duration_ms": 42541,
       "rows_per_second": 235067.3,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -110,7 +135,10 @@
       "duration_ms": 83722,
       "rows_per_second": 238885.8,
       "expected_destination_rows": 20000000,
-      "actual_destination_rows": 20000000
+      "actual_destination_rows": 20000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -122,7 +150,10 @@
       "duration_ms": 204248,
       "rows_per_second": 244800.4,
       "expected_destination_rows": 50000000,
-      "actual_destination_rows": 50000000
+      "actual_destination_rows": 50000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -134,7 +165,10 @@
       "duration_ms": 4455,
       "rows_per_second": 224466.9,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -146,7 +180,10 @@
       "duration_ms": 40396,
       "rows_per_second": 247549.3,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -158,7 +195,10 @@
       "duration_ms": 5289,
       "rows_per_second": 189071.7,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -170,7 +210,10 @@
       "duration_ms": 51723,
       "rows_per_second": 193337.6,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -182,7 +225,10 @@
       "duration_ms": 13530,
       "rows_per_second": 73909.8,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -194,7 +240,10 @@
       "duration_ms": 107979,
       "rows_per_second": 92610.6,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -206,7 +255,10 @@
       "duration_ms": 234218,
       "rows_per_second": 85390.5,
       "expected_destination_rows": 20000000,
-      "actual_destination_rows": 20000000
+      "actual_destination_rows": 20000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -218,7 +270,10 @@
       "duration_ms": 482841,
       "rows_per_second": 103553.8,
       "expected_destination_rows": 50000000,
-      "actual_destination_rows": 50000000
+      "actual_destination_rows": 50000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -230,7 +285,10 @@
       "duration_ms": 11755,
       "rows_per_second": 85070.2,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -242,7 +300,10 @@
       "duration_ms": 91295,
       "rows_per_second": 109535,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -254,7 +315,10 @@
       "duration_ms": 182500,
       "rows_per_second": 109589,
       "expected_destination_rows": 20000000,
-      "actual_destination_rows": 20000000
+      "actual_destination_rows": 20000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -266,7 +330,10 @@
       "duration_ms": 516653,
       "rows_per_second": 96776.8,
       "expected_destination_rows": 50000000,
-      "actual_destination_rows": 50000000
+      "actual_destination_rows": 50000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -278,7 +345,10 @@
       "duration_ms": 8820,
       "rows_per_second": 113378.7,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -290,7 +360,10 @@
       "duration_ms": 52156,
       "rows_per_second": 191732.5,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -302,7 +375,10 @@
       "duration_ms": 7372,
       "rows_per_second": 135648.4,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -314,7 +390,10 @@
       "duration_ms": 81545,
       "rows_per_second": 122631.7,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -326,7 +405,10 @@
       "duration_ms": 5527,
       "rows_per_second": 180930,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -338,7 +420,10 @@
       "duration_ms": 42037,
       "rows_per_second": 237885.7,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -350,7 +435,10 @@
       "duration_ms": 5324,
       "rows_per_second": 187828.7,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -362,7 +450,10 @@
       "duration_ms": 40362,
       "rows_per_second": 247757.8,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -374,7 +465,10 @@
       "duration_ms": 9853,
       "rows_per_second": 101491.9,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -386,7 +480,10 @@
       "duration_ms": 90673,
       "rows_per_second": 110286.4,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -398,7 +495,10 @@
       "duration_ms": 189967,
       "rows_per_second": 105281.4,
       "expected_destination_rows": 20000000,
-      "actual_destination_rows": 20000000
+      "actual_destination_rows": 20000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -410,7 +510,10 @@
       "duration_ms": 436483,
       "rows_per_second": 114552,
       "expected_destination_rows": 50000000,
-      "actual_destination_rows": 50000000
+      "actual_destination_rows": 50000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -422,7 +525,10 @@
       "duration_ms": 8583,
       "rows_per_second": 116509.4,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -434,7 +540,10 @@
       "duration_ms": 86469,
       "rows_per_second": 115648.4,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -446,7 +555,10 @@
       "duration_ms": 174808,
       "rows_per_second": 114411.2,
       "expected_destination_rows": 20000000,
-      "actual_destination_rows": 20000000
+      "actual_destination_rows": 20000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -458,7 +570,10 @@
       "duration_ms": 384489,
       "rows_per_second": 130042.7,
       "expected_destination_rows": 50000000,
-      "actual_destination_rows": 50000000
+      "actual_destination_rows": 50000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -470,7 +585,10 @@
       "duration_ms": 15675,
       "rows_per_second": 63795.9,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -482,7 +600,10 @@
       "duration_ms": 127614,
       "rows_per_second": 78361.3,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -494,7 +615,10 @@
       "duration_ms": 13916,
       "rows_per_second": 71859.7,
       "expected_destination_rows": 1000000,
-      "actual_destination_rows": 1000000
+      "actual_destination_rows": 1000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     },
     {
       "status": "pass",
@@ -506,7 +630,10 @@
       "duration_ms": 129583,
       "rows_per_second": 77170.6,
       "expected_destination_rows": 10000000,
-      "actual_destination_rows": 10000000
+      "actual_destination_rows": 10000000,
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34288630518",
+      "commit_sha": "227e71e86c2ef0342ae1e7c9c02639297813ab75",
+      "measured_at": "2026-09-08T23:56:49Z"
     }
   ]
 }

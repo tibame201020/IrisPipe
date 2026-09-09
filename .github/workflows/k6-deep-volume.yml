@@ -451,6 +451,9 @@ jobs:
 
   publish-deep-results:
     name: Publish Deep Benchmark Results
+    concurrency:
+      group: benchmark-results-publish
+      cancel-in-progress: false
     needs: [h2-deep-volume, postgres-h2-deep, rdbms-deep-volume]
     if: github.ref == 'refs/heads/main' && needs.h2-deep-volume.result == 'success' && needs.postgres-h2-deep.result == 'success' && needs.rdbms-deep-volume.result == 'success'
     runs-on: ubuntu-latest

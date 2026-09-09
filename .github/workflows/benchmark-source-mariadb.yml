@@ -1,0 +1,17 @@
+name: Full Matrix - Source MariaDB
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "benchmark-full-*"
+      - "benchmark-mariadb-*"
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    uses: ./.github/workflows/benchmark-source-matrix.yml
+    with:
+      source: mariadb
