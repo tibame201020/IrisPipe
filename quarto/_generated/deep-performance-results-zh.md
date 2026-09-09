@@ -9,20 +9,59 @@ _歷史單表結果仍保留 224 cases，供追溯但不列入目前 coverage。
 ::: {.panel-tabset}
 ## H2
 
-**目前 schema 覆蓋率：** 0/36 cases
+**目前 schema 覆蓋率：** 36/36 cases
+  **最新量測：** `2026-09-09T10:44:00Z`
 
 ::: {.panel-tabset}
 ### JOB
 
-_目前 schema 尚無吞吐量量測資料。_
+<div class="benchmark-chart-wrap"><svg class="benchmark-throughput-chart" viewBox="0 0 900 430" role="img" aria-label="H2 來源 / JOB throughput chart" style="width:100%;height:auto;max-width:900px"><rect x="0" y="0" width="900" height="430" fill="white"/><text x="80" y="20" font-size="16" font-weight="600">H2 來源 / JOB</text><text x="16" y="180" font-size="12" transform="rotate(-90 16 180)">每秒搬移筆數</text><line x1="80" y1="35" x2="80" y2="335" stroke="#666"/><line x1="80" y1="335" x2="700" y2="335" stroke="#666"/><line x1="80" y1="335.0" x2="700" y2="335.0" stroke="#e5e7eb"/><text x="72" y="339.0" text-anchor="end" font-size="11">0k</text><line x1="80" y1="260.0" x2="700" y2="260.0" stroke="#e5e7eb"/><text x="72" y="264.0" text-anchor="end" font-size="11">38k</text><line x1="80" y1="185.0" x2="700" y2="185.0" stroke="#e5e7eb"/><text x="72" y="189.0" text-anchor="end" font-size="11">76k</text><line x1="80" y1="110.0" x2="700" y2="110.0" stroke="#e5e7eb"/><text x="72" y="114.0" text-anchor="end" font-size="11">114k</text><line x1="80" y1="35.0" x2="700" y2="35.0" stroke="#e5e7eb"/><text x="72" y="39.0" text-anchor="end" font-size="11">153k</text><line x1="80.0" y1="35" x2="80.0" y2="335" stroke="#f2f2f2"/><text x="80.0" y="355" text-anchor="middle" font-size="11">1M</text><line x1="444.9" y1="35" x2="444.9" y2="335" stroke="#f2f2f2"/><text x="444.9" y="355" text-anchor="middle" font-size="11">10M</text><line x1="700.0" y1="35" x2="700.0" y2="335" stroke="#f2f2f2"/><text x="700.0" y="355" text-anchor="middle" font-size="11">50M</text><text x="390.0" y="379" text-anchor="middle" font-size="12">總搬移筆數（對數刻度）</text><polyline points="80.0,62.3 444.9,83.2 700.0,103.5" fill="none" stroke="#0d6efd" stroke-width="2.5"/><circle cx="80.0" cy="62.3" r="4" fill="#0d6efd"/><circle cx="444.9" cy="83.2" r="4" fill="#0d6efd"/><circle cx="700.0" cy="103.5" r="4" fill="#0d6efd"/><line x1="725" y1="55" x2="749" y2="55" stroke="#0d6efd" stroke-width="3"/><circle cx="737" cy="55" r="3.5" fill="#0d6efd"/><text x="757" y="59" font-size="12">H2</text><polyline points="80.0,197.4 444.9,117.0 700.0,156.5" fill="none" stroke="#198754" stroke-width="2.5"/><circle cx="80.0" cy="197.4" r="4" fill="#198754"/><circle cx="444.9" cy="117.0" r="4" fill="#198754"/><circle cx="700.0" cy="156.5" r="4" fill="#198754"/><line x1="725" y1="83" x2="749" y2="83" stroke="#198754" stroke-width="3"/><circle cx="737" cy="83" r="3.5" fill="#198754"/><text x="757" y="87" font-size="12">PostgreSQL</text><polyline points="80.0,229.4 444.9,229.6 700.0,191.8" fill="none" stroke="#dc3545" stroke-width="2.5"/><circle cx="80.0" cy="229.4" r="4" fill="#dc3545"/><circle cx="444.9" cy="229.6" r="4" fill="#dc3545"/><circle cx="700.0" cy="191.8" r="4" fill="#dc3545"/><line x1="725" y1="111" x2="749" y2="111" stroke="#dc3545" stroke-width="3"/><circle cx="737" cy="111" r="3.5" fill="#dc3545"/><text x="757" y="115" font-size="12">MySQL</text><polyline points="80.0,116.1 444.9,115.6 700.0,95.7" fill="none" stroke="#6f42c1" stroke-width="2.5"/><circle cx="80.0" cy="116.1" r="4" fill="#6f42c1"/><circle cx="444.9" cy="115.6" r="4" fill="#6f42c1"/><circle cx="700.0" cy="95.7" r="4" fill="#6f42c1"/><line x1="725" y1="139" x2="749" y2="139" stroke="#6f42c1" stroke-width="3"/><circle cx="737" cy="139" r="3.5" fill="#6f42c1"/><text x="757" y="143" font-size="12">MariaDB</text><polyline points="80.0,234.0 444.9,227.4 700.0,215.2" fill="none" stroke="#fd7e14" stroke-width="2.5"/><circle cx="80.0" cy="234.0" r="4" fill="#fd7e14"/><circle cx="444.9" cy="227.4" r="4" fill="#fd7e14"/><circle cx="700.0" cy="215.2" r="4" fill="#fd7e14"/><line x1="725" y1="167" x2="749" y2="167" stroke="#fd7e14" stroke-width="3"/><circle cx="737" cy="167" r="3.5" fill="#fd7e14"/><text x="757" y="171" font-size="12">SQL Server</text><polyline points="80.0,208.4 444.9,95.8 700.0,77.9" fill="none" stroke="#20c997" stroke-width="2.5"/><circle cx="80.0" cy="208.4" r="4" fill="#20c997"/><circle cx="444.9" cy="95.8" r="4" fill="#20c997"/><circle cx="700.0" cy="77.9" r="4" fill="#20c997"/><line x1="725" y1="195" x2="749" y2="195" stroke="#20c997" stroke-width="3"/><circle cx="737" cy="195" r="3.5" fill="#20c997"/><text x="757" y="199" font-size="12">Oracle</text></svg></div>
 
-_目前 schema 尚無保留結果。_
+| 目的資料庫 | Rows | Fetch | Batch | 交易組數 | Duration | Rows/s | Status |
+|---|---:|---:|---:|---:|---:|---:|---|
+| H2 | 1M | 5,000 | 5,000 | 1 | 7.21s | 138,754.0 | PASS |
+| H2 | 10M | 5,000 | 5,000 | 1 | 78.05s | 128,118.1 | PASS |
+| H2 | 50M | 5,000 | 5,000 | 1 | 424.60s | 117,758.7 | PASS |
+| PostgreSQL | 1M | 5,000 | 5,000 | 1 | 14.29s | 70,003.5 | PASS |
+| PostgreSQL | 10M | 5,000 | 5,000 | 1 | 90.16s | 110,920.1 | PASS |
+| PostgreSQL | 50M | 5,000 | 5,000 | 1 | 550.72s | 90,791.1 | PASS |
+| MySQL | 1M | 5,000 | 5,000 | 1 | 18.62s | 53,702.8 | PASS |
+| MySQL | 10M | 5,000 | 5,000 | 1 | 186.56s | 53,600.6 | PASS |
+| MySQL | 50M | 5,000 | 5,000 | 1 | 686.14s | 72,871.9 | PASS |
+| MariaDB | 1M | 5,000 | 5,000 | 1 | 8.98s | 111,358.6 | PASS |
+| MariaDB | 10M | 5,000 | 5,000 | 1 | 89.61s | 111,598.4 | PASS |
+| MariaDB | 50M | 5,000 | 5,000 | 1 | 410.62s | 121,767.7 | PASS |
+| SQL Server | 1M | 5,000 | 5,000 | 1 | 19.47s | 51,363.7 | PASS |
+| SQL Server | 10M | 5,000 | 5,000 | 1 | 182.62s | 54,757.6 | PASS |
+| SQL Server | 50M | 5,000 | 5,000 | 1 | 820.22s | 60,959.5 | PASS |
+| Oracle | 1M | 5,000 | 5,000 | 1 | 15.53s | 64,391.5 | PASS |
+| Oracle | 10M | 5,000 | 5,000 | 1 | 82.18s | 121,684.1 | PASS |
+| Oracle | 50M | 5,000 | 5,000 | 1 | 382.24s | 130,808.9 | PASS |
 
 ### CHUNK
 
-_目前 schema 尚無吞吐量量測資料。_
+<div class="benchmark-chart-wrap"><svg class="benchmark-throughput-chart" viewBox="0 0 900 430" role="img" aria-label="H2 來源 / CHUNK throughput chart" style="width:100%;height:auto;max-width:900px"><rect x="0" y="0" width="900" height="430" fill="white"/><text x="80" y="20" font-size="16" font-weight="600">H2 來源 / CHUNK</text><text x="16" y="180" font-size="12" transform="rotate(-90 16 180)">每秒搬移筆數</text><line x1="80" y1="35" x2="80" y2="335" stroke="#666"/><line x1="80" y1="335" x2="700" y2="335" stroke="#666"/><line x1="80" y1="335.0" x2="700" y2="335.0" stroke="#e5e7eb"/><text x="72" y="339.0" text-anchor="end" font-size="11">0k</text><line x1="80" y1="260.0" x2="700" y2="260.0" stroke="#e5e7eb"/><text x="72" y="264.0" text-anchor="end" font-size="11">44k</text><line x1="80" y1="185.0" x2="700" y2="185.0" stroke="#e5e7eb"/><text x="72" y="189.0" text-anchor="end" font-size="11">87k</text><line x1="80" y1="110.0" x2="700" y2="110.0" stroke="#e5e7eb"/><text x="72" y="114.0" text-anchor="end" font-size="11">131k</text><line x1="80" y1="35.0" x2="700" y2="35.0" stroke="#e5e7eb"/><text x="72" y="39.0" text-anchor="end" font-size="11">175k</text><line x1="80.0" y1="35" x2="80.0" y2="335" stroke="#f2f2f2"/><text x="80.0" y="355" text-anchor="middle" font-size="11">1M</text><line x1="444.9" y1="35" x2="444.9" y2="335" stroke="#f2f2f2"/><text x="444.9" y="355" text-anchor="middle" font-size="11">10M</text><line x1="700.0" y1="35" x2="700.0" y2="335" stroke="#f2f2f2"/><text x="700.0" y="355" text-anchor="middle" font-size="11">50M</text><text x="390.0" y="379" text-anchor="middle" font-size="12">總搬移筆數（對數刻度）</text><polyline points="80.0,146.3 444.9,109.5 700.0,62.3" fill="none" stroke="#0d6efd" stroke-width="2.5"/><circle cx="80.0" cy="146.3" r="4" fill="#0d6efd"/><circle cx="444.9" cy="109.5" r="4" fill="#0d6efd"/><circle cx="700.0" cy="62.3" r="4" fill="#0d6efd"/><line x1="725" y1="55" x2="749" y2="55" stroke="#0d6efd" stroke-width="3"/><circle cx="737" cy="55" r="3.5" fill="#0d6efd"/><text x="757" y="59" font-size="12">H2</text><polyline points="80.0,225.0 444.9,193.7 700.0,192.2" fill="none" stroke="#198754" stroke-width="2.5"/><circle cx="80.0" cy="225.0" r="4" fill="#198754"/><circle cx="444.9" cy="193.7" r="4" fill="#198754"/><circle cx="700.0" cy="192.2" r="4" fill="#198754"/><line x1="725" y1="83" x2="749" y2="83" stroke="#198754" stroke-width="3"/><circle cx="737" cy="83" r="3.5" fill="#198754"/><text x="757" y="87" font-size="12">PostgreSQL</text><polyline points="80.0,253.9 444.9,238.9 700.0,273.1" fill="none" stroke="#dc3545" stroke-width="2.5"/><circle cx="80.0" cy="253.9" r="4" fill="#dc3545"/><circle cx="444.9" cy="238.9" r="4" fill="#dc3545"/><circle cx="700.0" cy="273.1" r="4" fill="#dc3545"/><line x1="725" y1="111" x2="749" y2="111" stroke="#dc3545" stroke-width="3"/><circle cx="737" cy="111" r="3.5" fill="#dc3545"/><text x="757" y="115" font-size="12">MySQL</text><polyline points="80.0,154.5 444.9,133.1 700.0,140.9" fill="none" stroke="#6f42c1" stroke-width="2.5"/><circle cx="80.0" cy="154.5" r="4" fill="#6f42c1"/><circle cx="444.9" cy="133.1" r="4" fill="#6f42c1"/><circle cx="700.0" cy="140.9" r="4" fill="#6f42c1"/><line x1="725" y1="139" x2="749" y2="139" stroke="#6f42c1" stroke-width="3"/><circle cx="737" cy="139" r="3.5" fill="#6f42c1"/><text x="757" y="143" font-size="12">MariaDB</text><polyline points="80.0,247.7 444.9,262.8 700.0,233.5" fill="none" stroke="#fd7e14" stroke-width="2.5"/><circle cx="80.0" cy="247.7" r="4" fill="#fd7e14"/><circle cx="444.9" cy="262.8" r="4" fill="#fd7e14"/><circle cx="700.0" cy="233.5" r="4" fill="#fd7e14"/><line x1="725" y1="167" x2="749" y2="167" stroke="#fd7e14" stroke-width="3"/><circle cx="737" cy="167" r="3.5" fill="#fd7e14"/><text x="757" y="171" font-size="12">SQL Server</text><polyline points="80.0,203.0 444.9,130.0 700.0,115.3" fill="none" stroke="#20c997" stroke-width="2.5"/><circle cx="80.0" cy="203.0" r="4" fill="#20c997"/><circle cx="444.9" cy="130.0" r="4" fill="#20c997"/><circle cx="700.0" cy="115.3" r="4" fill="#20c997"/><line x1="725" y1="195" x2="749" y2="195" stroke="#20c997" stroke-width="3"/><circle cx="737" cy="195" r="3.5" fill="#20c997"/><text x="757" y="199" font-size="12">Oracle</text></svg></div>
 
-_目前 schema 尚無保留結果。_
+| 目的資料庫 | Rows | Fetch | Batch | 交易組數 | Duration | Rows/s | Status |
+|---|---:|---:|---:|---:|---:|---:|---|
+| H2 | 1M | 5,000 | 5,000 | 201 | 9.09s | 110,071.5 | PASS |
+| H2 | 10M | 5,000 | 5,000 | 2,001 | 76.03s | 131,527.0 | PASS |
+| H2 | 50M | 5,000 | 5,000 | 10,001 | 314.33s | 159,066.5 | PASS |
+| PostgreSQL | 1M | 5,000 | 5,000 | 201 | 15.58s | 64,180.7 | PASS |
+| PostgreSQL | 10M | 5,000 | 5,000 | 2,001 | 121.37s | 82,395.4 | PASS |
+| PostgreSQL | 50M | 5,000 | 5,000 | 10,001 | 600.28s | 83,294.6 | PASS |
+| MySQL | 1M | 5,000 | 5,000 | 201 | 21.14s | 47,292.5 | PASS |
+| MySQL | 10M | 5,000 | 5,000 | 2,001 | 178.36s | 56,066.7 | PASS |
+| MySQL | 50M | 5,000 | 5,000 | 10,001 | 1383.85s | 36,131.2 | PASS |
+| MariaDB | 1M | 5,000 | 5,000 | 201 | 9.50s | 105,296.4 | PASS |
+| MariaDB | 10M | 5,000 | 5,000 | 2,001 | 84.91s | 117,770.4 | PASS |
+| MariaDB | 50M | 5,000 | 5,000 | 10,001 | 441.62s | 113,220.8 | PASS |
+| SQL Server | 1M | 5,000 | 5,000 | 201 | 19.65s | 50,893.2 | PASS |
+| SQL Server | 10M | 5,000 | 5,000 | 2,001 | 237.54s | 42,098.7 | PASS |
+| SQL Server | 50M | 5,000 | 5,000 | 10,001 | 844.52s | 59,205.0 | PASS |
+| Oracle | 1M | 5,000 | 5,000 | 201 | 12.99s | 76,964.5 | PASS |
+| Oracle | 10M | 5,000 | 5,000 | 2,001 | 83.66s | 119,538.6 | PASS |
+| Oracle | 50M | 5,000 | 5,000 | 10,001 | 390.21s | 128,135.5 | PASS |
 
 :::
 
