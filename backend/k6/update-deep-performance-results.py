@@ -47,12 +47,18 @@ def load_existing(path: Path):
         return {"cases": []}
 
 
+def effective_fetch_size(case):
+    """Historical benchmark reports used fetchSize=batchSize but did not persist it."""
+    return int(case.get("fetch_size") or case.get("batch_size") or 0)
+
+
 def case_key(case):
     return (
         str(case.get("db_pair", "")),
         str(case.get("atomic_level", "")),
         str(case.get("mode", "")),
         int(case.get("row_count") or 0),
+        effective_fetch_size(case),
         int(case.get("batch_size") or 0),
     )
 
@@ -93,13 +99,13 @@ def fmt_rows(n):
 
 def fmt_duration(ms):
     if ms is None:
-        return "?"
+        return "n/a"
     return f"{float(ms)/1000:.2f}s"
 
 
 def fmt_rps(value):
     if value is None:
-        return "?"
+        return "n/a"
     return f"{float(value):,.1f}"
 
 
@@ -135,6 +141,53 @@ def standard_cases(cases, source, atomic):
     return result
 
 
+def monotone_path(points):
+    """Return a shape-preserving cubic path through measured screen-space points."""
+    if len(points) < 2:
+        return ""
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    h = [xs[i + 1] - xs[i] for i in range(len(points) - 1)]
+    delta = [(ys[i + 1] - ys[i]) / h[i] for i in range(len(h))]
+
+    if len(points) == 2:
+        slopes = [delta[0], delta[0]]
+    else:
+        slopes = [0.0] * len(points)
+        # PCHIP endpoint slope, constrained to preserve the first segment shape.
+        slopes[0] = ((2 * h[0] + h[1]) * delta[0] - h[0] * delta[1]) / (h[0] + h[1])
+        if slopes[0] * delta[0] <= 0:
+            slopes[0] = 0.0
+        elif delta[0] * delta[1] < 0 and abs(slopes[0]) > abs(3 * delta[0]):
+            slopes[0] = 3 * delta[0]
+
+        for i in range(1, len(points) - 1):
+            if delta[i - 1] * delta[i] <= 0:
+                slopes[i] = 0.0
+            else:
+                w1 = 2 * h[i] + h[i - 1]
+                w2 = h[i] + 2 * h[i - 1]
+                slopes[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i])
+
+        slopes[-1] = ((2 * h[-1] + h[-2]) * delta[-1] - h[-1] * delta[-2]) / (h[-1] + h[-2])
+        if slopes[-1] * delta[-1] <= 0:
+            slopes[-1] = 0.0
+        elif delta[-1] * delta[-2] < 0 and abs(slopes[-1]) > abs(3 * delta[-1]):
+            slopes[-1] = 3 * delta[-1]
+
+    commands = [f"M {xs[0]:.1f},{ys[0]:.1f}"]
+    for i in range(len(points) - 1):
+        dx = h[i] / 3
+        c1x = xs[i] + dx
+        c1y = ys[i] + slopes[i] * dx
+        c2x = xs[i + 1] - dx
+        c2y = ys[i + 1] - slopes[i + 1] * dx
+        commands.append(
+            f"C {c1x:.1f},{c1y:.1f} {c2x:.1f},{c2y:.1f} {xs[i + 1]:.1f},{ys[i + 1]:.1f}"
+        )
+    return " ".join(commands)
+
+
 def chart_svg(cases, source, atomic, lang):
     selected = standard_cases(cases, source, atomic)
     points_by_dest = {engine: [] for engine in ENGINES}
@@ -150,7 +203,7 @@ def chart_svg(cases, source, atomic, lang):
         max_y = max(max_y, y)
 
     if max_y <= 0:
-        return "_??????????_" if lang == "zh" else "_No retained throughput data yet._"
+        return "_尚無保留的吞吐量資料。_" if lang == "zh" else "_No retained throughput data yet._"
 
     width, height = 900, 430
     left, top, plot_w, plot_h = 80, 35, 620, 300
@@ -165,8 +218,15 @@ def chart_svg(cases, source, atomic, lang):
     def y_pos(value):
         return top + plot_h - (value / y_max) * plot_h
 
-    title = f"{DISPLAY[source]} source ? {atomic}"
-    y_label = "? / ?" if lang == "zh" else "rows / second"
+    if lang == "zh":
+        title = f"{DISPLAY[source]} 來源 / {atomic}"
+        y_label = "每秒筆數"
+        x_label = "資料筆數（對數刻度）"
+    else:
+        title = f"{DISPLAY[source]} source / {atomic}"
+        y_label = "rows / second"
+        x_label = "Rows (log scale)"
+
     chunks = [
         f'<svg class="benchmark-throughput-chart" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(title)} throughput chart" style="width:100%;height:auto;max-width:900px">',
         '<rect x="0" y="0" width="900" height="430" fill="white"/>',
@@ -186,16 +246,17 @@ def chart_svg(cases, source, atomic, lang):
         x = x_pos(rows)
         chunks.append(f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top+plot_h}" stroke="#f2f2f2"/>')
         chunks.append(f'<text x="{x:.1f}" y="{top+plot_h+20}" text-anchor="middle" font-size="11">{fmt_rows(rows)}</text>')
-    chunks.append(f'<text x="{left+plot_w/2:.1f}" y="{top+plot_h+44}" text-anchor="middle" font-size="12">Rows (log scale)</text>')
+    chunks.append(f'<text x="{left+plot_w/2:.1f}" y="{top+plot_h+44}" text-anchor="middle" font-size="12">{html.escape(x_label)}</text>')
 
     legend_row = 0
     for dest_index, dest in enumerate(ENGINES):
         pts = sorted(points_by_dest[dest])
         color = PALETTE[dest_index]
         if pts:
-            coords = " ".join(f"{x_pos(x):.1f},{y_pos(y):.1f}" for x, y in pts)
-            if len(pts) > 1:
-                chunks.append(f'<polyline points="{coords}" fill="none" stroke="{color}" stroke-width="2.5"/>')
+            screen_pts = [(x_pos(x), y_pos(y)) for x, y in pts]
+            if len(screen_pts) > 1:
+                path = monotone_path(screen_pts)
+                chunks.append(f'<path d="{path}" fill="none" stroke="{color}" stroke-width="2.5"/>')
             for x, y in pts:
                 chunks.append(f'<circle cx="{x_pos(x):.1f}" cy="{y_pos(y):.1f}" r="4" fill="{color}"/>')
         ly = 55 + legend_row * 28
@@ -210,51 +271,54 @@ def chart_svg(cases, source, atomic, lang):
 def detail_table(cases, source, atomic, lang):
     selected = standard_cases(cases, source, atomic)
     if not selected:
-        return "_???????_" if lang == "zh" else "_No retained results yet._"
-    dest_label = "???" if lang == "zh" else "Destination"
-    batch_label = "??" if lang == "zh" else "Batch"
-    groups_label = "????" if lang == "zh" else "Txn groups"
+        return "_尚無保留結果。_" if lang == "zh" else "_No retained results yet._"
+    if lang == "zh":
+        dest_label = "目的資料庫"
+        fetch_label = "Fetch"
+        batch_label = "Batch"
+        groups_label = "交易組數"
+    else:
+        dest_label = "Destination"
+        fetch_label = "Fetch"
+        batch_label = "Batch"
+        groups_label = "Txn groups"
     lines = [
-        f"| {dest_label} | Rows | {batch_label} | {groups_label} | Duration | Rows/s | Status |",
-        "|---|---:|---:|---:|---:|---:|---|",
+        f"| {dest_label} | Rows | {fetch_label} | {batch_label} | {groups_label} | Duration | Rows/s | Status |",
+        "|---|---:|---:|---:|---:|---:|---:|---|",
     ]
     for case in selected:
         _, dest = split_pair(case["db_pair"])
+        fetch = effective_fetch_size(case)
         batch = int(case.get("batch_size") or 0)
         groups = transaction_groups(case)
+        groups_text = f"{groups:,}" if groups is not None else "n/a"
         lines.append(
             f"| {DISPLAY.get(dest, dest)} | {fmt_rows(case['row_count'])} | "
-            f"{batch:,} | {groups:,} | {fmt_duration(case.get('duration_ms'))} | "
+            f"{fetch:,} | {batch:,} | {groups_text} | {fmt_duration(case.get('duration_ms'))} | "
             f"{fmt_rps(case.get('rows_per_second'))} | {str(case.get('status','')).upper()} |"
         )
     return "\n".join(lines)
 
 
-def source_last_measured(cases, source):
-    values = []
-    for case in cases:
-        src, _ = split_pair(case.get("db_pair"))
-        if src == source and case.get("measured_at"):
-            values.append(str(case["measured_at"]))
-    return max(values) if values else None
-
-
 def render(cases, lang):
     zh = lang == "zh"
-    title = "## ????? Benchmark" if zh else "## Deep Data-Volume Benchmark"
+    title = "## 深度資料量 Benchmark" if zh else "## Deep Data-Volume Benchmark"
     note = (
-        "????? GitHub-hosted runner ???? regression benchmark?**Duration ???? pipeline execution**?DB/container ???source seed?backend ???pipeline config ?????? destination COUNT ???????"
+        "以下保留結果來自 GitHub-hosted runner 的回歸基準。**Duration 只量測同步 pipeline execution**；DB/container 啟動、source seed、backend 啟動、pipeline config 建立，以及執行後的 destination COUNT 驗證都排除在計時之外。"
         if zh else
         "The retained results below are regression benchmarks from GitHub-hosted runners. **Duration measures only synchronous pipeline execution**; DB/container startup, source seeding, backend startup, pipeline-config creation, and post-run destination COUNT verification are excluded."
     )
-    lines = [title, "", note, ""]
+    curve_note = (
+        "圖上的圓點是實際量測值；平滑曲線只使用 shape-preserving interpolation 作為視覺導引，不代表額外量測點。"
+        if zh else
+        "Circles are measured values. The smooth curve is a shape-preserving visual guide through those points, not additional measurements."
+    )
+    lines = [title, "", note, "", curve_note, ""]
     if not cases:
-        lines.append("_???? deep benchmark ???_" if zh else "_Deep benchmark results have not been generated yet._")
+        lines.append("_尚未產生 deep benchmark 結果。_" if zh else "_Deep benchmark results have not been generated yet._")
         return "\n".join(lines) + "\n"
 
-    lines += [
-        "::: {.panel-tabset}",
-    ]
+    lines += ["::: {.panel-tabset}"]
     for source in ENGINES:
         retained = sum(len(standard_cases(cases, source, atomic)) for atomic in ("JOB", "CHUNK"))
         expected = len(ENGINES) * 2 * len(ROW_STEPS)
@@ -263,10 +327,10 @@ def render(cases, lang):
         lines += [
             f"## {DISPLAY[source]}",
             "",
-            (f"**?????** {retained}/{expected} cases" if zh else f"**Retained coverage:** {retained}/{expected} cases"),
+            (f"**保留覆蓋率：** {retained}/{expected} cases" if zh else f"**Retained coverage:** {retained}/{expected} cases"),
         ]
         if last:
-            lines.append((f"?**?????** `{last}`" if zh else f"  **Latest measurement:** `{last}`"))
+            lines.append((f"  **最新量測：** `{last}`" if zh else f"  **Latest measurement:** `{last}`"))
         lines += ["", "::: {.panel-tabset}"]
         for atomic in ("JOB", "CHUNK"):
             lines += [
@@ -310,7 +374,7 @@ def main():
         "run_url": run_url,
         "commit_sha": commit_sha,
         "case_count": len(cases),
-        "retention_policy": "merge-by-db-pair-atomic-mode-row-count-batch-size",
+        "retention_policy": "merge-by-db-pair-atomic-mode-row-count-fetch-size-batch-size",
         "cases": cases,
     }
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

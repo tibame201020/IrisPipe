@@ -142,6 +142,7 @@ jobs:
         env:
           ATOMIC_LEVEL: ${{ matrix.atomic }}
           ROW_COUNT: ${{ matrix.rows }}
+          FETCH_SIZE: "5000"
           BATCH_SIZE: "5000"
           BENCHMARK_MODE: success
           DB_PAIR: ${{ inputs.source }}-${{ matrix.dest }}

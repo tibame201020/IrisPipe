@@ -21,6 +21,7 @@ const ATOMIC_LEVEL = (__ENV.ATOMIC_LEVEL || 'JOB').toUpperCase();
 const BENCHMARK_MODE = (__ENV.BENCHMARK_MODE || 'success').toLowerCase();
 const DB_PAIR = (__ENV.DB_PAIR || 'h2-h2').toLowerCase();
 const BATCH_SIZE = Number.parseInt(__ENV.BATCH_SIZE || '1000', 10);
+const FETCH_SIZE = Number.parseInt(__ENV.FETCH_SIZE || __ENV.BATCH_SIZE || '1000', 10);
 const REPORT_PATH = __ENV.BENCHMARK_REPORT || 'data-volume-benchmark-report.json';
 const SETUP_TIMEOUT = __ENV.K6_SETUP_TIMEOUT || '2m';
 const SCENARIO_MAX_DURATION = __ENV.K6_MAX_DURATION || '10m';
@@ -41,6 +42,9 @@ if (!Number.isInteger(ROW_COUNT) || ROW_COUNT <= 0) {
 }
 if (!Number.isInteger(BATCH_SIZE) || BATCH_SIZE <= 0) {
   throw new Error(`BATCH_SIZE must be a positive integer, got: ${__ENV.BATCH_SIZE}`);
+}
+if (!Number.isInteger(FETCH_SIZE) || FETCH_SIZE <= 0) {
+  throw new Error(`FETCH_SIZE must be a positive integer, got: ${__ENV.FETCH_SIZE}`);
 }
 if (!['JOB', 'CHUNK'].includes(ATOMIC_LEVEL)) {
   throw new Error(`ATOMIC_LEVEL must be JOB or CHUNK, got: ${ATOMIC_LEVEL}`);
@@ -194,7 +198,7 @@ function createPipeline() {
           },
         ],
         setting: {
-          fetchSize: BATCH_SIZE,
+          fetchSize: FETCH_SIZE,
           batchSize: BATCH_SIZE,
           deleteThreshold: null,
           atomicLevel: ATOMIC_LEVEL,
@@ -319,6 +323,7 @@ export function handleSummary(data) {
     atomic_level: ATOMIC_LEVEL,
     mode: BENCHMARK_MODE,
     row_count: ROW_COUNT,
+    fetch_size: FETCH_SIZE,
     batch_size: BATCH_SIZE,
     duration_ms: durationMs,
     rows_per_second: BENCHMARK_MODE === 'success' ? throughput : null,

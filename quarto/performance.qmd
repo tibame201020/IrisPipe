@@ -4,10 +4,10 @@ title: "Performance & Reliability"
 
 IrisPipe separates **merge-gating regression tests** from long-running capacity benchmarks:
 
-- **k6 Benchmark** ? API/runtime latency, 1k / 10k / 100k data-volume behavior, failure semantics, and PostgreSQL ? H2 coverage.
-- **Backend K6 Checks** ? 10 regression suites against a real Spring Boot backend.
-- **k6 Deep Volume Benchmark** ? scheduled/manual retained capacity snapshots.
-- **Full RDBMS Matrix** ? six source-specific workflows covering H2, PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle. A full run is 6 sources ? 6 destinations ? JOB/CHUNK ? 1M/10M/50M = **216 cases**.
+- **k6 Benchmark:** API/runtime latency, 1k / 10k / 100k data-volume behavior, failure semantics, and PostgreSQL-to-H2 coverage.
+- **Backend K6 Checks:** 10 regression suites against a real Spring Boot backend.
+- **k6 Deep Volume Benchmark:** scheduled/manual retained capacity snapshots.
+- **Full RDBMS Matrix:** six source-specific workflows covering H2, PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle. A full run is 6 sources x 6 destinations x JOB/CHUNK x 1M/10M/50M = **216 cases**.
 
 [![k6 Benchmark](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/k6-benchmark.yml)
 [![Backend K6 Checks](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml/badge.svg?branch=main)](https://github.com/tibame201020/IrisPipe/actions/workflows/backend-k6-check.yml)
@@ -29,11 +29,11 @@ IrisPipe separates **merge-gating regression tests** from long-running capacity 
 | Workspace | PASS | Workspace scoping, default fallback, cross-workspace isolation |
 | Pipeline Core | PASS | Execute flow, stage barrier, run lifecycle |
 | Pipeline Resume | PASS | Resume from failed/stopped runs, skip completed stages |
-| Pipeline Stop | PASS | Cooperative stop, STOPPING ? STOPPED convergence |
+| Pipeline Stop | PASS | Cooperative stop, STOPPING to STOPPED convergence |
 | Operator Safety | PASS | Double-execute guard, illegal resume/delete prevention |
 | Observability | PASS | Prometheus metrics, actuator health, overview API |
 | Pipeline Rerun | PASS | New logical run from frozen snapshot |
-| Control Loop | PASS | Execute ? fail ? resume ? stop ? rerun sequences |
+| Control Loop | PASS | Execute, fail, resume, stop, and rerun sequences |
 | Runtime | PASS | Watermark, lineage, attempts, snapshot isolation |
 
 _Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks` workflow._
@@ -44,13 +44,58 @@ _Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks`
 
 The data-volume benchmark exercises real Spring Batch + JDBC execution and validates both throughput and data correctness:
 
-1. Regular PR/main gate: H2 ? H2 JOB/CHUNK at 1k / 10k / 100k.
+1. Regular PR/main gate: H2-to-H2 JOB/CHUNK at 1k / 10k / 100k.
 2. Failure semantics: a duplicate key on the final row proves the JOB vs CHUNK rollback boundary.
 3. Cross-database correctness: destination row count must equal the expected row count; `COMPLETED` alone is not accepted as a pass.
 4. Full matrix: every source can target every destination across H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle.
-5. Capacity ladder: 1M / 10M / 50M for both JOB and CHUNK (baseline ? sustained throughput ? capacity stress).
+5. Capacity ladder: 1M / 10M / 50M for both JOB and CHUNK (baseline, sustained throughput, capacity stress).
 
 All numbers are repeatable GitHub-hosted-runner regression benchmarks, **not production-capacity claims**.
+
+---
+
+## Benchmark Dataset Schema
+
+Every full/deep case migrates the same simple logical row shape so database-engine behavior, JDBC reading, writing, batching, and transaction boundaries remain the variables under test.
+
+```text
+benchmark_source
+  id    PRIMARY KEY    values 1..N
+  name                 "row-<id>"
+
+source query
+  SELECT id, name FROM benchmark_source ORDER BY id
+
+destination
+  benchmark_dest       same logical columns, empty before a success run
+```
+
+| Database | `id` physical type | `name` physical type | DB-side source seed method |
+|---|---|---|---|
+| H2 | `INT PRIMARY KEY` | `VARCHAR(255)` | `SYSTEM_RANGE(1, N)` |
+| PostgreSQL | `INT PRIMARY KEY` | `VARCHAR(255)` | `generate_series(1, N)` |
+| MySQL | `INT PRIMARY KEY` | `VARCHAR(255)` | set-based Cartesian product of decimal digit sets, filtered to `N` |
+| MariaDB | `INT PRIMARY KEY` | `VARCHAR(255)` | set-based Cartesian product of decimal digit sets, filtered to `N` |
+| SQL Server | `INT PRIMARY KEY` | `VARCHAR(255)` | digit CTE Cartesian product + `TOP (N)` + `ROW_NUMBER()` |
+| Oracle | `NUMBER(10) PRIMARY KEY` | `VARCHAR2(255)` | bounded 10k `CONNECT BY` block x `ceil(N/10k)`, filtered to `N` |
+
+The payload is deterministic: row `123` is `{id: 123, name: "row-123"}`. Source data is generated with set-based SQL **inside the database before timing starts**; k6 does not submit N individual inserts. Same-engine external cases use separate `benchmark_source` and `benchmark_dest` tables in one engine instance; cross-engine cases use separate source and destination containers.
+
+---
+
+## Fetch vs Batch
+
+IrisPipe exposes two independent tuning concepts even though the current benchmark profiles intentionally set them to the same value for a controlled comparison:
+
+- `fetchSize`: source-side JDBC reader fetch window/hint. It affects read round trips, driver buffering, and memory behavior. It is **not** a transaction boundary.
+- `batchSize`: destination-side writer batch/chunk size. In CHUNK atomic mode it also defines the commit boundary; in JOB atomic mode batches are still written incrementally but the whole job shares one destination transaction.
+
+| CI profile | Source `fetchSize` | Destination `batchSize` |
+|---|---:|---:|
+| Regular PR/main benchmark | 1,000 | 1,000 |
+| Deep/full benchmark | 5,000 | 5,000 |
+
+The raw full/deep tables display both values separately. Older retained snapshots were produced before `fetch_size` was persisted in the JSON report; those harness versions explicitly configured `fetchSize = batchSize`, so the renderer can recover the historical Fetch value without guessing.
 
 ---
 
@@ -60,18 +105,13 @@ The same `batchSize` has different transaction semantics:
 
 ```{mermaid}
 flowchart LR
-  subgraph JOB["JOB ? 50M rows"]
+  subgraph JOB["JOB / 50M rows"]
     J1["JDBC batches: 5,000 rows"] --> J2["1 destination transaction"] --> J3["Failure: rollback all 50M"]
   end
-  subgraph CHUNK["CHUNK ? 50M rows"]
-    C1["10,000 chunks ? 5,000 rows"] --> C2["10,000 independent commits"] --> C3["Failure: rollback only failing chunk"]
+  subgraph CHUNK["CHUNK / 50M rows"]
+    C1["10,000 chunks x 5,000 rows"] --> C2["10,000 independent commits"] --> C3["Failure: rollback only failing chunk"]
   end
 ```
-
-| CI profile | `fetchSize` / `batchSize` | JOB transaction boundary | CHUNK transaction boundary |
-|---|---:|---|---|
-| Regular PR/main benchmark | 1,000 rows | One destination transaction for the whole job | Commit every 1,000 rows |
-| Deep/full benchmark | 5,000 rows | One destination transaction for the whole job | Commit every 5,000 rows |
 
 | Source rows | CHUNK transaction groups @ 5,000 | JOB transaction groups |
 |---:|---:|---:|
@@ -89,7 +129,7 @@ Reported `duration_ms` / `rows_per_second` intentionally measure **IrisPipe migr
 
 ```{mermaid}
 flowchart LR
-  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline\nSpring Batch + JDBC + commits"] --> G["STOP TIMER"] --> H["Destination COUNT verification"] --> I["Publish report"]
+  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline<br/>Spring Batch + JDBC + commits"] --> G["STOP TIMER"] --> H["Destination COUNT verification"] --> I["Publish report"]
 ```
 
 **Included:** the synchronous `/api/v1/sync-pipeline` call from immediately before the request until the completed/failed response returns.
@@ -100,11 +140,11 @@ This is why smaller cases can show lower rows/s: fixed Spring Batch / JDBC / tra
 
 ---
 
-## Test Strategy
+## Throughput Chart Reading
 
-k6 is used for **integration-level correctness**, not only synthetic load generation. Each benchmark boots the actual backend, creates a real pipeline, executes JDBC migration, verifies runtime status, and validates persisted destination rows.
+The chart uses **X = source row count on a log scale** and **Y = measured rows/second**. Each source database is a tab, each destination is a curve, and JOB/CHUNK are separate tabs. This keeps the load level on the independent axis and makes throughput saturation or degradation visible as the dataset grows.
 
-For external databases, source data is generated **inside the database before the timer starts**. The full matrix uses separate source and destination containers for cross-engine paths; same-engine paths use separate source/destination tables in the same engine instance.
+Each circle is an actual 1M / 10M / 50M measurement. The line uses shape-preserving cubic interpolation only as a visual guide through those points; it does not create or imply additional benchmark samples.
 
 ---
 
@@ -117,12 +157,12 @@ flowchart TD
   PR["PR / main push"] --> G["Unit tests + regular k6 gates"]
   G --> P["Deploy Quarto using retained benchmark JSON"]
 
-  T["tag: benchmark-full-*"] --> H2["Source H2 ? 36 cases"]
-  T --> PG["Source PostgreSQL ? 36 cases"]
-  T --> MY["Source MySQL ? 36 cases"]
-  T --> MA["Source MariaDB ? 36 cases"]
-  T --> MS["Source SQL Server ? 36 cases"]
-  T --> OR["Source Oracle ? 36 cases"]
+  T["tag: benchmark-full-*"] --> H2["Source H2 / 36 cases"]
+  T --> PG["Source PostgreSQL / 36 cases"]
+  T --> MY["Source MySQL / 36 cases"]
+  T --> MA["Source MariaDB / 36 cases"]
+  T --> MS["Source SQL Server / 36 cases"]
+  T --> OR["Source Oracle / 36 cases"]
 
   M["Manual: Full RDBMS Benchmark - All Sources"] --> H2
   M --> PG
@@ -137,12 +177,12 @@ flowchart TD
   MA --> R
   MS --> R
   OR --> R
-  R --> D["repository_dispatch ? GitHub Pages"]
+  R --> D["repository_dispatch to GitHub Pages"]
 ```
 
 A source-specific tag such as `benchmark-postgres-*` triggers only that source workflow; `benchmark-full-*` triggers all six source workflows.
 
-The retained result file uses a merge key of `(db_pair, atomic_level, mode, row_count, batch_size)`. A normal merge to `main` **does not regenerate or clear deep results**, and a source-specific benchmark update replaces only the cases it actually measured.
+The retained result file uses a merge key of `(db_pair, atomic_level, mode, row_count, fetch_size, batch_size)`. A normal merge to `main` **does not regenerate or clear deep results**, and a source-specific benchmark update replaces only the cases it actually measured.
 
 ---
 
@@ -150,7 +190,7 @@ The retained result file uses a merge key of `(db_pair, atomic_level, mode, row_
 
 1. `mvn package` runs backend unit tests before benchmark execution.
 2. Regular PR/main gates stay bounded; 10M+ capacity work is tag/manual/scheduled only.
-3. Full matrix jobs use `batchSize=5,000` and validate 1M / 10M / 50M; each source workflow runs 36 cases with `max-parallel=4`.
+3. Full matrix jobs use `fetchSize=5,000`, `batchSize=5,000`, and validate 1M / 10M / 50M; each source workflow runs 36 cases with `max-parallel=4`.
 4. Source seed happens before the migration timer; k6 does not insert the benchmark dataset row-by-row.
 5. External destination row counts are verified after the timer and must equal the expected count.
 6. Benchmark snapshots are merged into retained history instead of replacing unrelated source/destination results; legacy 100K/20M measurements remain retained even though they are no longer part of the active ladder.
