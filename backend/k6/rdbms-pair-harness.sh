@@ -144,6 +144,9 @@ SQL
 DROP TABLE IF EXISTS benchmark_dest;
 CREATE TABLE benchmark_dest (id INT PRIMARY KEY, name VARCHAR(255));
 SQL
+        # A source-only or destination-only role intentionally skips one branch above.
+        # Keep the command group successful so pipefail reflects psql, not a false role predicate.
+        true
       } | docker exec -i "$container" psql -v ON_ERROR_STOP=1 -U postgres -d irispipe_bench
       ;;
     mysql|mariadb)
@@ -180,6 +183,9 @@ SQL
 DROP TABLE IF EXISTS benchmark_dest;
 CREATE TABLE benchmark_dest (id INT PRIMARY KEY, name VARCHAR(255));
 SQL
+        # A source-only or destination-only role intentionally skips one branch above.
+        # Keep the command group successful so pipefail reflects the DB client, not the role predicate.
+        true
       } | docker exec -i "$container" "$client" -uroot -pirispipe irispipe_bench
       ;;
     sqlserver)
