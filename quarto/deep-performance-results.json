@@ -1,11 +1,1559 @@
 {
-  "updated_at": "2026-09-09T03:54:53Z",
-  "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34304479185",
-  "commit_sha": "f91c5f473aebcf5748abb0210e87465725829c2f",
-  "case_count": 224,
+  "updated_at": "2026-09-09T07:25:13Z",
+  "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+  "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+  "case_count": 260,
   "active_benchmark_profile": "identity-relations-v2",
   "retention_policy": "merge-by-profile-db-pair-atomic-mode-row-count-fetch-size-batch-size",
   "cases": [
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-h2",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 9235,
+      "rows_per_second": 108283.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-h2",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 75517,
+      "rows_per_second": 132420.5,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-h2",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 353283,
+      "rows_per_second": 141529.6,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-h2",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 10204,
+      "rows_per_second": 98000.8,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-h2",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 79557,
+      "rows_per_second": 125696,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-h2",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 394300,
+      "rows_per_second": 126807,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mariadb",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 10214,
+      "rows_per_second": 97904.8,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mariadb",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 103166,
+      "rows_per_second": 96931.2,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mariadb",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 402827,
+      "rows_per_second": 124122.8,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mariadb",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 10054,
+      "rows_per_second": 99462.9,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mariadb",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 78167,
+      "rows_per_second": 127931.2,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mariadb",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 354387,
+      "rows_per_second": 141088.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mysql",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 21392,
+      "rows_per_second": 46746.4,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mysql",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 174820,
+      "rows_per_second": 57201.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mysql",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 810315,
+      "rows_per_second": 61704.4,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mysql",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 19524,
+      "rows_per_second": 51219,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mysql",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 186923,
+      "rows_per_second": 53498,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-mysql",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 869770,
+      "rows_per_second": 57486.5,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-oracle",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 14287,
+      "rows_per_second": 69993.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-oracle",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 77894,
+      "rows_per_second": 128379.6,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-oracle",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 390517,
+      "rows_per_second": 128035.4,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-oracle",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 13006,
+      "rows_per_second": 76887.6,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-oracle",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 78380,
+      "rows_per_second": 127583.6,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-oracle",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 346184,
+      "rows_per_second": 144431.9,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-postgres",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 15124,
+      "rows_per_second": 66120.1,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-postgres",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 122742,
+      "rows_per_second": 81471.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-postgres",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 555460,
+      "rows_per_second": 90015.5,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-postgres",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 15013,
+      "rows_per_second": 66608.9,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-postgres",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 120371,
+      "rows_per_second": 83076.5,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-postgres",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 607879,
+      "rows_per_second": 82253.2,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-sqlserver",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 19565,
+      "rows_per_second": 51111.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-sqlserver",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 165103,
+      "rows_per_second": 60568.3,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-sqlserver",
+      "atomic_level": "CHUNK",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 848001,
+      "rows_per_second": 58962.2,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-sqlserver",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 1000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 19218,
+      "rows_per_second": 52034.6,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 1000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "actual_destination_rows": 1000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 249996,
+        "user_roles": 749988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-sqlserver",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 10000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 175988,
+      "rows_per_second": 56822.1,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 10000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "actual_destination_rows": 10000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 2499996,
+        "user_roles": 7499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
+    {
+      "status": "pass",
+      "benchmark_profile": "identity-relations-v2",
+      "workload": "users-roles-user_roles",
+      "execution_count": 3,
+      "db_pair": "sqlserver-sqlserver",
+      "atomic_level": "JOB",
+      "mode": "success",
+      "row_count": 50000000,
+      "table_rows": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "fetch_size": 5000,
+      "batch_size": 5000,
+      "duration_ms": 844015,
+      "rows_per_second": 59240.7,
+      "measurement_scope": "sync_pipeline_http_call_only",
+      "excluded_from_duration": [
+        "database_container_startup",
+        "source_seed",
+        "backend_startup",
+        "pipeline_config_creation",
+        "destination_count_verification",
+        "report_publishing"
+      ],
+      "expected_destination_rows": 50000000,
+      "expected_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "actual_destination_rows": 50000000,
+      "actual_destination_rows_by_table": {
+        "roles": 16,
+        "users": 12499996,
+        "user_roles": 37499988
+      },
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318129846",
+      "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
+      "measured_at": "2026-09-09T07:25:13Z"
+    },
     {
       "status": "pass",
       "db_pair": "h2-h2",
