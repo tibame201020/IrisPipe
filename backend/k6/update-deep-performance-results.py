@@ -17,7 +17,7 @@ DISPLAY = {
     "sqlserver": "SQL Server",
     "oracle": "Oracle",
 }
-ROW_STEPS = [100_000, 1_000_000, 10_000_000, 20_000_000, 50_000_000]
+ROW_STEPS = [1_000_000, 10_000_000, 50_000_000]
 PALETTE = ["#0d6efd", "#198754", "#dc3545", "#6f42c1", "#fd7e14", "#20c997"]
 
 
@@ -257,11 +257,13 @@ def render(cases, lang):
     ]
     for source in ENGINES:
         retained = sum(len(standard_cases(cases, source, atomic)) for atomic in ("JOB", "CHUNK"))
-        last = source_last_measured(cases, source)
+        expected = len(ENGINES) * 2 * len(ROW_STEPS)
+        current = [case for atomic in ("JOB", "CHUNK") for case in standard_cases(cases, source, atomic)]
+        last = max((str(case["measured_at"]) for case in current if case.get("measured_at")), default=None)
         lines += [
             f"## {DISPLAY[source]}",
             "",
-            (f"**?????** {retained}/60 cases" if zh else f"**Retained coverage:** {retained}/60 cases"),
+            (f"**?????** {retained}/{expected} cases" if zh else f"**Retained coverage:** {retained}/{expected} cases"),
         ]
         if last:
             lines.append((f"?**?????** `{last}`" if zh else f"  **Latest measurement:** `{last}`"))
