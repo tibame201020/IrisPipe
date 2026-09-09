@@ -80,3 +80,16 @@ if depth != 0: raise SystemExit(f'unbalanced SQL Server seed SQL: depth={depth}'
 PY
 bash "$ROOT/rdbms-pair-harness.sh" stop-pair sqlserver h2
 echo "multi-table source-only role succeeds: sqlserver -> h2"
+
+: > "$GITHUB_ENV"
+bash "$ROOT/rdbms-pair-harness.sh" emit-shared-pair h2 postgres
+grep -q '^SOURCE_JDBC_DRIVER=$' "$GITHUB_ENV"
+grep -q '^DEST_JDBC_DRIVER=org.postgresql.Driver$' "$GITHUB_ENV"
+grep -q '^DEST_JDBC_URL=jdbc:postgresql://127.0.0.1:55432/irispipe_bench$' "$GITHUB_ENV"
+
+: > "$GITHUB_ENV"
+bash "$ROOT/rdbms-pair-harness.sh" emit-shared-pair sqlserver h2
+grep -q '^SOURCE_JDBC_DRIVER=com.microsoft.sqlserver.jdbc.SQLServerDriver$' "$GITHUB_ENV"
+grep -q 'SOURCE_JDBC_URL=.*127.0.0.1:51433' "$GITHUB_ENV"
+grep -q '^DEST_JDBC_DRIVER=$' "$GITHUB_ENV"
+echo "shared compatibility pair endpoints use the reusable :both containers"

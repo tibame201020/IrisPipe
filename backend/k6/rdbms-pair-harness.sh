@@ -356,32 +356,40 @@ start_pair() {
   fi
 }
 
-count_engine_dest() {
-  local engine="$1" role="$2" container
+count_engine_tables() {
+  local engine="$1" role="$2" prefix="$3" container
   container="$(container_name "$engine" "$role")"
   case "$engine" in
     postgres)
-      docker exec "$container" psql -U postgres -d irispipe_bench -Atqc "SELECT (SELECT COUNT(*) FROM benchmark_dst_roles) || ',' || (SELECT COUNT(*) FROM benchmark_dst_users) || ',' || (SELECT COUNT(*) FROM benchmark_dst_user_roles)" | tr -d '[:space:]'
+      docker exec "$container" psql -U postgres -d irispipe_bench -Atqc "SELECT (SELECT COUNT(*) FROM benchmark_${prefix}_roles) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_users) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_user_roles)" | tr -d '[:space:]'
       ;;
     mysql)
-      docker exec "$container" mysql -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_dst_roles),',',(SELECT COUNT(*) FROM benchmark_dst_users),',',(SELECT COUNT(*) FROM benchmark_dst_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
+      docker exec "$container" mysql -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT(*) FROM benchmark_${prefix}_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
       ;;
     mariadb)
-      docker exec "$container" mariadb -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_dst_roles),',',(SELECT COUNT(*) FROM benchmark_dst_users),',',(SELECT COUNT(*) FROM benchmark_dst_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
+      docker exec "$container" mariadb -uroot -pirispipe -Nse "SELECT CONCAT((SELECT COUNT(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT(*) FROM benchmark_${prefix}_user_roles))" irispipe_bench 2>/dev/null | tr -d '[:space:]'
       ;;
     sqlserver)
-      sqlserver_cmd "$container" -S localhost -U sa -P 'IrisPipe!12345' -d irispipe_bench -h -1 -W -Q "SET NOCOUNT ON; SELECT CONCAT((SELECT COUNT_BIG(*) FROM benchmark_dst_roles),',',(SELECT COUNT_BIG(*) FROM benchmark_dst_users),',',(SELECT COUNT_BIG(*) FROM benchmark_dst_user_roles))" | tr -d '[:space:]'
+      sqlserver_cmd "$container" -S localhost -U sa -P 'IrisPipe!12345' -d irispipe_bench -h -1 -W -Q "SET NOCOUNT ON; SELECT CONCAT((SELECT COUNT_BIG(*) FROM benchmark_${prefix}_roles),',',(SELECT COUNT_BIG(*) FROM benchmark_${prefix}_users),',',(SELECT COUNT_BIG(*) FROM benchmark_${prefix}_user_roles))" | tr -d '[:space:]'
       ;;
     oracle)
-      docker exec -i "$container" sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 <<'SQL' | awk 'NF {line=$0} END {gsub(/[[:space:]]/,"",line); print line}'
+      docker exec -i "$container" sqlplus -s irispipe/IrisPipe123@//localhost:1521/FREEPDB1 <<SQL | awk 'NF {line=$0} END {gsub(/[[:space:]]/,"",line); print line}'
 WHENEVER SQLERROR EXIT FAILURE
 SET HEADING OFF FEEDBACK OFF PAGESIZE 0 VERIFY OFF ECHO OFF
-SELECT (SELECT COUNT(*) FROM benchmark_dst_roles) || ',' || (SELECT COUNT(*) FROM benchmark_dst_users) || ',' || (SELECT COUNT(*) FROM benchmark_dst_user_roles) FROM dual;
+SELECT (SELECT COUNT(*) FROM benchmark_${prefix}_roles) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_users) || ',' || (SELECT COUNT(*) FROM benchmark_${prefix}_user_roles) FROM dual;
 EXIT;
 SQL
       ;;
     *) return 2 ;;
   esac
+}
+
+count_engine_dest() {
+  count_engine_tables "$1" "$2" dst
+}
+
+count_engine_source() {
+  count_engine_tables "$1" "$2" src
 }
 
 count_pair() {
@@ -391,6 +399,36 @@ count_pair() {
   count_engine_dest "$dest_engine" "$role"
 }
 
+
+clear_role_env() {
+  local role="$1" prefix
+  [[ "$role" == "dest" ]] && prefix=DEST || prefix=SOURCE
+  emit_env "${prefix}_JDBC_DRIVER" ""
+  emit_env "${prefix}_JDBC_URL" ""
+  emit_env "${prefix}_DB_USER" ""
+  emit_env "${prefix}_DB_PASSWORD" ""
+}
+
+emit_shared_pair() {
+  clear_role_env source
+  clear_role_env dest
+  if [[ "$source_engine" != "h2" ]]; then
+    emit_role_env source "$source_engine" "$(host_port "$source_engine" both)"
+  fi
+  if [[ "$dest_engine" != "h2" ]]; then
+    emit_role_env dest "$dest_engine" "$(host_port "$dest_engine" both)"
+  fi
+}
+
+count_shared_source() {
+  [[ "$source_engine" == "h2" ]] && { echo 'H2 source is verified inside k6' >&2; return 2; }
+  count_engine_source "$source_engine" both
+}
+
+count_shared_dest() {
+  [[ "$dest_engine" == "h2" ]] && { echo 'H2 destination is verified inside k6' >&2; return 2; }
+  count_engine_dest "$dest_engine" both
+}
 stop_pair() {
   if [[ "$source_engine" == "$dest_engine" && "$source_engine" != "h2" ]]; then
     docker rm -f "$(container_name "$source_engine" both)" >/dev/null 2>&1 || true
@@ -404,8 +442,11 @@ case "$action" in
   start-pair) start_pair ;;
   count-pair) count_pair ;;
   stop-pair) stop_pair ;;
+  emit-shared-pair) emit_shared_pair ;;
+  count-shared-source) count_shared_source ;;
+  count-shared-dest) count_shared_dest ;;
   *)
-    echo "Usage: $0 {start-pair|count-pair|stop-pair} SOURCE DEST [rows]" >&2
+    echo "Usage: $0 {start-pair|count-pair|stop-pair|emit-shared-pair|count-shared-source|count-shared-dest} SOURCE DEST [rows]" >&2
     exit 2
     ;;
 esac

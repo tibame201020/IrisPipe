@@ -6,6 +6,7 @@ IrisPipe 將 **PR 合併門檻的回歸測試** 與長時間容量 Benchmark 分
 
 - **k6 Benchmark：** API/runtime latency、有限資料量行為、failure semantics，以及 PostgreSQL-to-H2 驗證。
 - **Backend K6 Checks：** 對真實 Spring Boot backend 執行 10 組 regression suites。
+- **RDBMS Compatibility Ring：** 一般 PR/main 的跨資料庫 smoke gate；各外部 DB container 只啟動一次並重用，路徑為 `H2 -> PostgreSQL -> Oracle -> MySQL -> SQL Server -> MariaDB -> H2`。
 - **k6 Deep Volume Benchmark：** scheduled/manual 的容量快照，結果會保留。
 - **Full RDBMS Matrix：** 依 source 拆成 6 個 workflow，涵蓋 H2、PostgreSQL、MySQL、MariaDB、SQL Server、Oracle。完整一輪為 6 sources x 6 destinations x JOB/CHUNK x 1M/10M/50M = **216 cases**。
 
@@ -45,9 +46,10 @@ IrisPipe 將 **PR 合併門檻的回歸測試** 與長時間容量 Benchmark 分
 1. 一個 IrisPipe SyncJob 內有 **3 個 INSERT executions**：先 roles、再 users、最後 user_roles。
 2. 這 3 個 execution 會變成同一個 Spring Batch Job 內的連續 Steps，因此每一筆 benchmark 都同時驗證 IrisPipe 的 multi-task orchestration。
 3. 一般 PR/main gate 驗證有限規模的 H2-to-H2 JOB/CHUNK 與 failure semantics。
-4. Full matrix 讓 H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle 任一 source 都能對任一 destination。
-5. JOB / CHUNK 都跑 1M / 10M / 50M **總搬移筆數**。
-6. Destination 不只看 pipeline `COMPLETED`，而是逐表與總筆數都必須符合預期。
+4. 一般 CI 另外執行 **RDBMS Compatibility Ring**：5 個外部 DB container 先啟動一次後重用，以每 hop 10,000 總 rows 跑 6 條異質路徑。每個 DB 都會各當一次 source 與 destination，JOB / CHUNK 沿環交錯。
+5. Full matrix 讓 H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle 任一 source 都能對任一 destination。
+6. JOB / CHUNK 都跑 1M / 10M / 50M **總搬移筆數**。
+7. Destination 不只看 pipeline `COMPLETED`，而是逐表與總筆數都必須符合預期。
 
 這些數字是可重複的 GitHub-hosted runner regression benchmark，**不是 production-capacity claim**。
 
@@ -198,7 +200,9 @@ flowchart LR
 ```{mermaid}
 flowchart TD
   PR["PR / main push"] --> G["Unit tests + regular k6 gates"]
-  G --> P["使用 retained benchmark JSON 部署 Quarto"]
+  G --> C["RDBMS Compatibility Ring
+5 個共享 external DB containers / 6 hops / 10k rows"]
+  C --> P["使用 retained benchmark JSON 部署 Quarto"]
 
   T["tag: benchmark-full-*"] --> H2["Source H2 / 36 cases"]
   T --> PG["Source PostgreSQL / 36 cases"]
@@ -231,7 +235,8 @@ Retained result 的 merge key 現在包含 **benchmark profile**。因此舊單�
 
 1. `mvn package` 會先執行 backend unit tests。
 2. PR/main gate 維持有限規模；10M+ 容量測試只放在 tag/manual/scheduled benchmark。
-3. Full matrix 使用 `fetchSize=5,000`、`batchSize=5,000`、3 個 INSERT executions，測 1M / 10M / 50M 總 row count。
-4. Source seed 在 migration timer 開始前完成。
-5. Destination 在 timer 結束後逐表驗證 roles / users / user_roles 以及總筆數。
-6. Benchmark snapshot 依 **benchmark profile** merge 到 retained history；舊單表 measurement 仍保留供追溯，但不列入目前 schema 的圖表與 coverage。
+3. Compatibility Ring 每 hop 使用 **10,000 總 rows**、`fetchSize=1,000`、`batchSize=1,000`。PostgreSQL / Oracle / MySQL / SQL Server / MariaDB 各只啟動一次，且同一 instance 同時準備 source/destination tables，後續 6 個 hop 都直接重用。這層驗證 SQL/JDBC/schema/reachability，相容性結果不當成 performance 數字。
+4. Full matrix 使用 `fetchSize=5,000`、`batchSize=5,000`、3 個 INSERT executions，測 1M / 10M / 50M 總 row count。
+5. Source seed 在 migration timer 開始前完成。
+6. Destination 在 timer 結束後逐表驗證 roles / users / user_roles 以及總筆數。
+7. Benchmark snapshot 依 **benchmark profile** merge 到 retained history；舊單表 measurement 仍保留供追溯，但不列入目前 schema 的圖表與 coverage。
