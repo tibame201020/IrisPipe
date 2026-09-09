@@ -2,11 +2,11 @@
 
 | Metric | Latest CI value |
 |---|---:|
-| Execute latency p50 | **82 ms** |
-| Execute latency p95 | **162.6 ms** |
-| Execute latency p99 | **175.7 ms** |
-| API latency p50 | **4.5 ms** |
-| API latency p95 | **12.5 ms** |
+| Execute latency p50 | **77 ms** |
+| Execute latency p95 | **138.2 ms** |
+| Execute latency p99 | **150 ms** |
+| API latency p50 | **4.8 ms** |
+| API latency p95 | **11.6 ms** |
 | HTTP throughput | **11.9 req/s** |
 
 _Source: `quarto/performance-results.json`, updated by the `k6 Benchmark` GitHub Actions workflow._
@@ -21,14 +21,14 @@ These are repeatable GitHub Actions CI-runner benchmark results for regression t
 
 | DB path | Atomicity | Rows | Fetch | Batch | Txn groups | Duration | Throughput |
 |---|---|---:|---:|---:|---:|---:|---:|
-| H2 → H2 | CHUNK | 1,000 | 1,000 | 1,000 | 3 | 502 ms | 1992 rows/s |
-| H2 → H2 | CHUNK | 10,000 | 1,000 | 1,000 | 12 | 643 ms | 15552.1 rows/s |
-| H2 → H2 | CHUNK | 100,000 | 1,000 | 1,000 | 101 | 1981 ms | 50479.6 rows/s |
-| H2 → H2 | JOB | 1,000 | 1,000 | 1,000 | 1 | 444 ms | 2252.3 rows/s |
-| H2 → H2 | JOB | 10,000 | 1,000 | 1,000 | 1 | 653 ms | 15313.9 rows/s |
-| H2 → H2 | JOB | 100,000 | 1,000 | 1,000 | 1 | 2239 ms | 44662.8 rows/s |
-| PostgreSQL → H2 | CHUNK | 10,000 | 1,000 | 1,000 | 12 | 1508 ms | 6631.3 rows/s |
-| PostgreSQL → H2 | JOB | 10,000 | 1,000 | 1,000 | 1 | 1176 ms | 8503.4 rows/s |
+| H2 → H2 | CHUNK | 1,000 | 1,000 | 1,000 | 3 | 422 ms | 2369.7 rows/s |
+| H2 → H2 | CHUNK | 10,000 | 1,000 | 1,000 | 12 | 679 ms | 14727.5 rows/s |
+| H2 → H2 | CHUNK | 100,000 | 1,000 | 1,000 | 101 | 2033 ms | 49188.4 rows/s |
+| H2 → H2 | JOB | 1,000 | 1,000 | 1,000 | 1 | 509 ms | 1964.6 rows/s |
+| H2 → H2 | JOB | 10,000 | 1,000 | 1,000 | 1 | 853 ms | 11723.3 rows/s |
+| H2 → H2 | JOB | 100,000 | 1,000 | 1,000 | 1 | 2275 ms | 43956 rows/s |
+| PostgreSQL → H2 | CHUNK | 10,000 | 1,000 | 1,000 | 12 | 1109 ms | 9017.1 rows/s |
+| PostgreSQL → H2 | JOB | 10,000 | 1,000 | 1,000 | 1 | 1322 ms | 7564.3 rows/s |
 
 The matrix compares JOB (one destination transaction for the whole job) and CHUNK (commit per batch) across multiple row counts on the same CI-runner class.
 
