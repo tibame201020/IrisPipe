@@ -164,7 +164,8 @@ start_engine() {
       docker run -d --name "$container" -p "${port}:${cport}" \
         -e POSTGRES_DB=irispipe_bench -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
         postgres:16 >/dev/null
-      wait_for "$container" PostgreSQL docker exec "$container" pg_isready -U postgres -d irispipe_bench
+      wait_for "$container" 'PostgreSQL target database' \
+        docker exec "$container" psql -U postgres -d irispipe_bench -Atqc 'SELECT 1'
       {
         if [[ "$role" == "source" || "$role" == "both" ]]; then cat <<SQL
 DROP TABLE IF EXISTS benchmark_src_user_roles;
@@ -207,15 +208,16 @@ SQL
       } | docker exec -i "$container" psql -v ON_ERROR_STOP=1 -U postgres -d irispipe_bench
       ;;
     mysql|mariadb)
-      local image admin client db_env pass_env numbers
+      local image client db_env pass_env numbers
       if [[ "$engine" == "mysql" ]]; then
-        image=mysql:8.4; admin=mysqladmin; client=mysql; db_env=MYSQL_DATABASE; pass_env=MYSQL_ROOT_PASSWORD
+        image=mysql:8.4; client=mysql; db_env=MYSQL_DATABASE; pass_env=MYSQL_ROOT_PASSWORD
       else
-        image=mariadb:11.4; admin=mariadb-admin; client=mariadb; db_env=MARIADB_DATABASE; pass_env=MARIADB_ROOT_PASSWORD
+        image=mariadb:11.4; client=mariadb; db_env=MARIADB_DATABASE; pass_env=MARIADB_ROOT_PASSWORD
       fi
       docker run -d --name "$container" -p "${port}:${cport}" \
         -e "${db_env}=irispipe_bench" -e "${pass_env}=irispipe" "$image" >/dev/null
-      wait_for "$container" "$engine" docker exec "$container" "$admin" ping -h 127.0.0.1 -uroot -pirispipe --silent
+      wait_for "$container" "$engine target database" \
+        docker exec "$container" "$client" -uroot -pirispipe -Nse 'SELECT 1' irispipe_bench
       numbers="$(mysql_number_source)"
       {
         if [[ "$role" == "source" || "$role" == "both" ]]; then cat <<SQL
@@ -260,6 +262,8 @@ SQL
         mcr.microsoft.com/mssql/server:2022-latest >/dev/null
       wait_for "$container" 'SQL Server' sqlserver_cmd "$container" -S localhost -U sa -P "$password" -Q 'SELECT 1'
       sqlserver_cmd "$container" -S localhost -U sa -P "$password" -Q "IF DB_ID('irispipe_bench') IS NULL CREATE DATABASE irispipe_bench"
+      wait_for "$container" 'SQL Server target database' \
+        sqlserver_cmd "$container" -S localhost -U sa -P "$password" -d irispipe_bench -Q 'SELECT 1'
       local sql="SET NOCOUNT ON;"
       if [[ "$role" == "source" || "$role" == "both" ]]; then
         sql+=" IF OBJECT_ID('benchmark_src_user_roles','U') IS NOT NULL DROP TABLE benchmark_src_user_roles; IF OBJECT_ID('benchmark_src_users','U') IS NOT NULL DROP TABLE benchmark_src_users; IF OBJECT_ID('benchmark_src_roles','U') IS NOT NULL DROP TABLE benchmark_src_roles;"

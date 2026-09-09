@@ -17,13 +17,16 @@ case "$cmd" in
   rm|logs)
     ;;
   exec)
-    # Health checks and DB clients all succeed; capture SQL payloads/args.
-    if [[ " $* " == *" psql "* || " $* " == *" mysql "* || " $* " == *" mariadb "* ]]; then
-      cat >> "${DOCKER_STDIN_LOG:?}" || true
-    fi
-    if [[ " $* " == *"sqlcmd"* ]]; then
-      printf '%s
+    # Health checks and DB clients all succeed. Capture every exec command so
+    # target-database readiness probes can be asserted independently from seed SQL.
+    printf '%s
 ' "$*" >> "${DOCKER_CMD_LOG:?}"
+    if [[ " $* " == *" psql "* && " $* " != *" -Atqc "* ]]; then
+      cat >> "${DOCKER_STDIN_LOG:?}" || true
+    elif [[ " $* " == *" mysql "* && " $* " != *" -Nse "* ]]; then
+      cat >> "${DOCKER_STDIN_LOG:?}" || true
+    elif [[ " $* " == *" mariadb "* && " $* " != *" -Nse "* ]]; then
+      cat >> "${DOCKER_STDIN_LOG:?}" || true
     fi
     ;;
   ps)
@@ -43,6 +46,7 @@ export DOCKER_CMD_LOG="$TMP/docker-cmd"
 for source in postgres mysql mariadb; do
   : > "$GITHUB_ENV"
   : > "$DOCKER_STDIN_LOG"
+  : > "$DOCKER_CMD_LOG"
   bash "$ROOT/rdbms-pair-harness.sh" start-pair "$source" h2 100000
   grep -q '^SOURCE_JDBC_DRIVER=' "$GITHUB_ENV"
   grep -q '^SOURCE_JDBC_URL=' "$GITHUB_ENV"
@@ -52,8 +56,22 @@ for source in postgres mysql mariadb; do
   # For 100000 total rows: users=24996, user_roles=74988, roles=16.
   grep -q '24996' "$DOCKER_STDIN_LOG"
   grep -q '74988' "$DOCKER_STDIN_LOG"
+  case "$source" in
+    postgres)
+      grep -Fq 'psql -U postgres -d irispipe_bench -Atqc SELECT 1' "$DOCKER_CMD_LOG"
+      ! grep -q 'pg_isready' "$DOCKER_CMD_LOG"
+      ;;
+    mysql)
+      grep -Fq 'mysql -uroot -pirispipe -Nse SELECT 1 irispipe_bench' "$DOCKER_CMD_LOG"
+      ! grep -q 'mysqladmin.* ping ' "$DOCKER_CMD_LOG"
+      ;;
+    mariadb)
+      grep -Fq 'mariadb -uroot -pirispipe -Nse SELECT 1 irispipe_bench' "$DOCKER_CMD_LOG"
+      ! grep -q 'mariadb-admin.* ping ' "$DOCKER_CMD_LOG"
+      ;;
+  esac
   bash "$ROOT/rdbms-pair-harness.sh" stop-pair "$source" h2
-  echo "multi-table source-only role succeeds: $source -> h2"
+  echo "target-database readiness + multi-table source setup succeeds: $source -> h2"
 done
 
 : > "$GITHUB_ENV"
@@ -64,6 +82,7 @@ grep -q ' -b ' "$DOCKER_CMD_LOG"
 grep -q 'benchmark_src_roles' "$DOCKER_CMD_LOG"
 grep -q 'benchmark_src_users' "$DOCKER_CMD_LOG"
 grep -q 'benchmark_src_user_roles' "$DOCKER_CMD_LOG"
+grep -Fq -- "-d irispipe_bench -Q SELECT 1" "$DOCKER_CMD_LOG"
 grep -Fq "((((n-1)/3) + ((n-1)%3)*5) % 16) + 1" "$DOCKER_CMD_LOG"
 python - "$DOCKER_CMD_LOG" <<'PY'
 from pathlib import Path
