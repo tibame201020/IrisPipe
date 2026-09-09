@@ -3,7 +3,7 @@
   "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34304479185",
   "commit_sha": "f91c5f473aebcf5748abb0210e87465725829c2f",
   "case_count": 224,
-  "retention_policy": "merge-by-db-pair-atomic-mode-row-count-batch-size",
+  "retention_policy": "merge-by-db-pair-atomic-mode-row-count-fetch-size-batch-size",
   "cases": [
     {
       "status": "pass",
