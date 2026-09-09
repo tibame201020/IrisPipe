@@ -1,14 +1,16 @@
 /**
  * Data-volume benchmark for IrisPipe.
  *
- * Validates both large-volume atomicity semantics and throughput:
- * - atomicLevel=JOB: one destination transaction for the whole job
- * - atomicLevel=CHUNK: one destination transaction per batch/chunk
- * - benchmarkMode=success: verifies all rows arrive and records rows/sec
- * - benchmarkMode=failure: injects a duplicate-key failure at the final row
- *   and verifies the expected JOB vs CHUNK rollback boundary
- * - dbPair=postgres-h2: reads from PostgreSQL and writes to H2 to exercise
- *   a real cross-database JDBC path
+ * The benchmark uses a realistic three-table identity workload in one SyncJob:
+ *   roles -> users -> user_roles
+ * Each table is copied by a separate INSERT execution, so every run exercises
+ * IrisPipe's multi-execution/multi-task orchestration as well as JDBC throughput.
+ *
+ * ROW_COUNT is the total logical row count across all three tables. A fixed set
+ * of 16 roles is included in that total; the remaining rows are split 1:3
+ * between users and user_roles. Therefore every generated user has three role
+ * assignments while the advertised 1M/10M/50M scale remains the actual total
+ * number of rows migrated.
  */
 
 import http from 'k6/http';
@@ -17,11 +19,13 @@ import { Gauge, Trend } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://127.0.0.1:8080';
 const ROW_COUNT = Number.parseInt(__ENV.ROW_COUNT || '10000', 10);
+const ROLE_COUNT = Number.parseInt(__ENV.ROLE_COUNT || '16', 10);
 const ATOMIC_LEVEL = (__ENV.ATOMIC_LEVEL || 'JOB').toUpperCase();
 const BENCHMARK_MODE = (__ENV.BENCHMARK_MODE || 'success').toLowerCase();
 const DB_PAIR = (__ENV.DB_PAIR || 'h2-h2').toLowerCase();
 const BATCH_SIZE = Number.parseInt(__ENV.BATCH_SIZE || '1000', 10);
 const FETCH_SIZE = Number.parseInt(__ENV.FETCH_SIZE || __ENV.BATCH_SIZE || '1000', 10);
+const BENCHMARK_PROFILE = __ENV.BENCHMARK_PROFILE || 'identity-relations-v2';
 const REPORT_PATH = __ENV.BENCHMARK_REPORT || 'data-volume-benchmark-report.json';
 const SETUP_TIMEOUT = __ENV.K6_SETUP_TIMEOUT || '2m';
 const SCENARIO_MAX_DURATION = __ENV.K6_MAX_DURATION || '10m';
@@ -37,8 +41,14 @@ const DEST_DB_PASSWORD = __ENV.DEST_DB_PASSWORD || '';
 const EXTERNAL_SOURCE = SOURCE_JDBC_DRIVER.length > 0 || DB_PAIR === 'postgres-h2';
 const EXTERNAL_DESTINATION = DEST_JDBC_DRIVER.length > 0;
 
-if (!Number.isInteger(ROW_COUNT) || ROW_COUNT <= 0) {
-  throw new Error(`ROW_COUNT must be a positive integer, got: ${__ENV.ROW_COUNT}`);
+if (!Number.isInteger(ROW_COUNT) || ROW_COUNT <= ROLE_COUNT) {
+  throw new Error(`ROW_COUNT must be an integer greater than ROLE_COUNT, got: ${__ENV.ROW_COUNT}`);
+}
+if (!Number.isInteger(ROLE_COUNT) || ROLE_COUNT <= 0) {
+  throw new Error(`ROLE_COUNT must be a positive integer, got: ${__ENV.ROLE_COUNT}`);
+}
+if ((ROW_COUNT - ROLE_COUNT) % 4 !== 0) {
+  throw new Error(`ROW_COUNT - ROLE_COUNT must be divisible by 4, got: ${ROW_COUNT} - ${ROLE_COUNT}`);
 }
 if (!Number.isInteger(BATCH_SIZE) || BATCH_SIZE <= 0) {
   throw new Error(`BATCH_SIZE must be a positive integer, got: ${__ENV.BATCH_SIZE}`);
@@ -59,11 +69,16 @@ if (BENCHMARK_MODE === 'failure' && EXTERNAL_DESTINATION) {
   throw new Error('failure-mode external destinations are not supported by this benchmark harness');
 }
 
+const USER_COUNT = (ROW_COUNT - ROLE_COUNT) / 4;
+const USER_ROLE_COUNT = ROW_COUNT - ROLE_COUNT - USER_COUNT;
 const HEADERS = { 'Content-Type': 'application/json' };
 const TEXT_HEADERS = { 'Content-Type': 'text/plain' };
 const migrationDuration = new Trend('iris_data_migration_duration_ms', true);
 const rowsPerSecond = new Trend('iris_data_rows_per_second', true);
 const observedRows = new Gauge('iris_data_observed_rows');
+const observedRoles = new Gauge('iris_data_observed_roles');
+const observedUsers = new Gauge('iris_data_observed_users');
+const observedUserRoles = new Gauge('iris_data_observed_user_roles');
 const atomicityOk = new Gauge('iris_data_atomicity_ok');
 
 export const options = {
@@ -130,7 +145,6 @@ function sourceDatabase() {
       password: __ENV.POSTGRES_PASSWORD || 'postgres',
     };
   }
-
   return {
     driver: 'org.h2.Driver',
     url: 'jdbc:h2:./h2data/data',
@@ -156,31 +170,48 @@ function destinationDatabase() {
   };
 }
 
-function expectedDestinationCount() {
+function relationshipForOrdinal(ordinal) {
+  const userId = Math.floor((ordinal - 1) / 3) + 1;
+  const slot = (ordinal - 1) % 3;
+  const roleId = ((userId + slot * 5 - 1) % ROLE_COUNT) + 1;
+  return { userId, roleId };
+}
+
+function expectedDestinationCounts() {
   if (BENCHMARK_MODE === 'success') {
-    return ROW_COUNT;
-  }
-  if (ATOMIC_LEVEL === 'JOB') {
-    return 1;
+    return {
+      roles: ROLE_COUNT,
+      users: USER_COUNT,
+      user_roles: USER_ROLE_COUNT,
+      total: ROW_COUNT,
+    };
   }
 
-  // Failure is injected on the final source row. All prior full chunks remain
-  // committed in CHUNK mode, while the failing chunk is rolled back. The one
-  // pre-existing conflicting row stays in the destination.
-  const committedRows = Math.floor((ROW_COUNT - 1) / BATCH_SIZE) * BATCH_SIZE;
-  return committedRows + 1;
+  if (ATOMIC_LEVEL === 'JOB') {
+    return { roles: 0, users: 0, user_roles: 1, total: 1 };
+  }
+
+  const committedUserRoles = Math.floor((USER_ROLE_COUNT - 1) / BATCH_SIZE) * BATCH_SIZE;
+  const userRoleRows = committedUserRoles + 1; // plus the pre-existing conflict row
+  return {
+    roles: ROLE_COUNT,
+    users: USER_COUNT,
+    user_roles: userRoleRows,
+    total: ROLE_COUNT + USER_COUNT + userRoleRows,
+  };
 }
 
 function createPipeline() {
+  const executionSuffix = `${ATOMIC_LEVEL.toLowerCase()}_${BENCHMARK_MODE}`;
   const payload = {
     folderId: null,
-    pipelineName: `data-volume-${DB_PAIR}-${ATOMIC_LEVEL.toLowerCase()}-${BENCHMARK_MODE}-${ROW_COUNT}-${Date.now()}`,
+    pipelineName: `identity-volume-${DB_PAIR}-${executionSuffix}-${ROW_COUNT}-${Date.now()}`,
     stages: ['stage1'],
     jobs: [
       {
         stage: 'stage1',
         stageSequenceOrder: 1,
-        jobName: 'data_volume_copy',
+        jobName: 'identity_multi_table_copy',
         database: {
           source: sourceDatabase(),
           dest: destinationDatabase(),
@@ -188,9 +219,29 @@ function createPipeline() {
         executions: [
           {
             type: 'INSERT',
-            name: `data_volume_insert_${ATOMIC_LEVEL.toLowerCase()}_${BENCHMARK_MODE}`,
-            sql: 'SELECT id, name FROM benchmark_source ORDER BY id',
-            destTable: 'benchmark_dest',
+            name: `copy_roles_${executionSuffix}`,
+            sql: 'SELECT id, code, name, created_at, updated_at FROM benchmark_src_roles ORDER BY id',
+            destTable: 'benchmark_dst_roles',
+            parameters: null,
+            watermarkColumn: null,
+            summaryInfo: null,
+            executionContext: null,
+          },
+          {
+            type: 'INSERT',
+            name: `copy_users_${executionSuffix}`,
+            sql: 'SELECT id, username, email, display_name, status, locale, created_at, updated_at FROM benchmark_src_users ORDER BY id',
+            destTable: 'benchmark_dst_users',
+            parameters: null,
+            watermarkColumn: null,
+            summaryInfo: null,
+            executionContext: null,
+          },
+          {
+            type: 'INSERT',
+            name: `copy_user_roles_${executionSuffix}`,
+            sql: 'SELECT user_id, role_id, created_at, updated_at FROM benchmark_src_user_roles ORDER BY user_id, role_id',
+            destTable: 'benchmark_dst_user_roles',
             parameters: null,
             watermarkColumn: null,
             summaryInfo: null,
@@ -225,33 +276,86 @@ function createPipeline() {
   return body.id;
 }
 
+function createH2DestinationTables() {
+  sqlExecute('DROP TABLE IF EXISTS benchmark_dst_user_roles', 'drop destination user_roles');
+  sqlExecute('DROP TABLE IF EXISTS benchmark_dst_users', 'drop destination users');
+  sqlExecute('DROP TABLE IF EXISTS benchmark_dst_roles', 'drop destination roles');
+  sqlExecute('CREATE TABLE benchmark_dst_roles (id INT PRIMARY KEY, code VARCHAR(64) NOT NULL, name VARCHAR(128) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL)', 'create destination roles');
+  sqlExecute('CREATE TABLE benchmark_dst_users (id BIGINT PRIMARY KEY, username VARCHAR(64) NOT NULL, email VARCHAR(160) NOT NULL, display_name VARCHAR(128) NOT NULL, status VARCHAR(16) NOT NULL, locale VARCHAR(16) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL)', 'create destination users');
+  sqlExecute('CREATE TABLE benchmark_dst_user_roles (user_id BIGINT NOT NULL, role_id INT NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL, PRIMARY KEY (user_id, role_id))', 'create destination user_roles');
+}
+
+function createAndSeedH2SourceTables() {
+  sqlExecute('DROP TABLE IF EXISTS benchmark_src_user_roles', 'drop source user_roles');
+  sqlExecute('DROP TABLE IF EXISTS benchmark_src_users', 'drop source users');
+  sqlExecute('DROP TABLE IF EXISTS benchmark_src_roles', 'drop source roles');
+  sqlExecute('CREATE TABLE benchmark_src_roles (id INT PRIMARY KEY, code VARCHAR(64) NOT NULL, name VARCHAR(128) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL)', 'create source roles');
+  sqlExecute('CREATE TABLE benchmark_src_users (id BIGINT PRIMARY KEY, username VARCHAR(64) NOT NULL, email VARCHAR(160) NOT NULL, display_name VARCHAR(128) NOT NULL, status VARCHAR(16) NOT NULL, locale VARCHAR(16) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL)', 'create source users');
+  sqlExecute('CREATE TABLE benchmark_src_user_roles (user_id BIGINT NOT NULL, role_id INT NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL, PRIMARY KEY (user_id, role_id))', 'create source user_roles');
+
+  sqlExecute(
+    `INSERT INTO benchmark_src_roles (id, code, name, created_at, updated_at)
+     SELECT X, 'ROLE_' || X, 'Role ' || X, TIMESTAMP '2025-01-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00'
+     FROM SYSTEM_RANGE(1, ${ROLE_COUNT})`,
+    'seed H2 roles',
+  );
+  sqlExecute(
+    `INSERT INTO benchmark_src_users (id, username, email, display_name, status, locale, created_at, updated_at)
+     SELECT X,
+            'user_' || X,
+            'user' || X || '@example.test',
+            'User ' || X,
+            CASE WHEN MOD(X, 10) = 0 THEN 'SUSPENDED' WHEN MOD(X, 10) = 1 THEN 'INVITED' ELSE 'ACTIVE' END,
+            CASE MOD(X, 3) WHEN 0 THEN 'zh-TW' WHEN 1 THEN 'en-US' ELSE 'ja-JP' END,
+            TIMESTAMP '2025-01-01 00:00:00',
+            TIMESTAMP '2026-01-01 12:00:00'
+     FROM SYSTEM_RANGE(1, ${USER_COUNT})`,
+    'seed H2 users',
+  );
+  sqlExecute(
+    `INSERT INTO benchmark_src_user_roles (user_id, role_id, created_at, updated_at)
+     SELECT CAST(FLOOR((X - 1) / 3) + 1 AS BIGINT),
+            CAST(MOD((FLOOR((X - 1) / 3) + 1) + MOD(X - 1, 3) * 5 - 1, ${ROLE_COUNT}) + 1 AS INT),
+            TIMESTAMP '2025-02-01 00:00:00',
+            TIMESTAMP '2026-01-01 12:00:00'
+     FROM SYSTEM_RANGE(1, ${USER_ROLE_COUNT})`,
+    'seed H2 user_roles',
+  );
+}
+
+function readH2DestinationCounts() {
+  const roles = sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_dst_roles', 'CNT', 'destination roles count');
+  const users = sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_dst_users', 'CNT', 'destination users count');
+  const userRoles = sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_dst_user_roles', 'CNT', 'destination user_roles count');
+  return { roles, users, user_roles: userRoles, total: roles + users + userRoles };
+}
+
 export function setup() {
   if (!EXTERNAL_DESTINATION) {
-    sqlExecute('DROP TABLE IF EXISTS benchmark_dest', 'drop destination table');
-    sqlExecute('CREATE TABLE benchmark_dest (id INT PRIMARY KEY, name VARCHAR(255))', 'create destination table');
+    createH2DestinationTables();
   }
-
   if (!EXTERNAL_SOURCE) {
-    sqlExecute('DROP TABLE IF EXISTS benchmark_source', 'drop source table');
-    sqlExecute('CREATE TABLE benchmark_source (id INT PRIMARY KEY, name VARCHAR(255))', 'create source table');
-    sqlExecute(
-      `INSERT INTO benchmark_source (id, name) SELECT X, 'row-' || X FROM SYSTEM_RANGE(1, ${ROW_COUNT})`,
-      'seed H2 source rows',
-    );
+    createAndSeedH2SourceTables();
   }
 
   if (BENCHMARK_MODE === 'failure') {
+    const conflict = relationshipForOrdinal(USER_ROLE_COUNT);
     sqlExecute(
-      `INSERT INTO benchmark_dest (id, name) VALUES (${ROW_COUNT}, 'preexisting-conflict')`,
-      'seed duplicate-key conflict',
+      `INSERT INTO benchmark_dst_user_roles (user_id, role_id, created_at, updated_at)
+       VALUES (${conflict.userId}, ${conflict.roleId}, TIMESTAMP '2025-02-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00')`,
+      'seed duplicate-key conflict in final user_role row',
     );
   }
 
   const sourceCount = EXTERNAL_SOURCE
     ? ROW_COUNT
-    : sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_source', 'CNT', 'source row count');
+    : sqlScalar(
+      'SELECT (SELECT COUNT(*) FROM benchmark_src_roles) + (SELECT COUNT(*) FROM benchmark_src_users) + (SELECT COUNT(*) FROM benchmark_src_user_roles) AS CNT',
+      'CNT',
+      'source total row count',
+    );
   check(sourceCount, {
-    'source contains requested row count': (count) => count === ROW_COUNT,
+    'source contains requested total row count': (count) => count === ROW_COUNT,
   });
 
   return { pipelineId: createPipeline() };
@@ -279,20 +383,26 @@ export default function (data) {
     [`pipeline status is ${expectedStatus}`]: (item) => item && item.status === expectedStatus,
   });
 
-  const expectedCount = expectedDestinationCount();
-  let actualCount = null;
+  const expectedCounts = expectedDestinationCounts();
+  let actualCounts = null;
   let rowsOk = true;
   if (!EXTERNAL_DESTINATION) {
-    actualCount = sqlScalar('SELECT COUNT(*) AS CNT FROM benchmark_dest', 'CNT', 'destination row count');
-    rowsOk = check(actualCount, {
-      [`destination row count matches ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (count) => count === expectedCount,
+    actualCounts = readH2DestinationCounts();
+    rowsOk = check(actualCounts, {
+      [`roles count matches ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (counts) => counts.roles === expectedCounts.roles,
+      [`users count matches ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (counts) => counts.users === expectedCounts.users,
+      [`user_roles count matches ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (counts) => counts.user_roles === expectedCounts.user_roles,
+      [`total destination rows match ${ATOMIC_LEVEL} ${BENCHMARK_MODE} semantics`]: (counts) => counts.total === expectedCounts.total,
     });
   }
 
   const semanticsPassed = statusOk && rowsOk;
   atomicityOk.add(semanticsPassed ? 1 : 0);
-  if (actualCount !== null) {
-    observedRows.add(actualCount);
+  if (actualCounts !== null) {
+    observedRows.add(actualCounts.total);
+    observedRoles.add(actualCounts.roles);
+    observedUsers.add(actualCounts.users);
+    observedUserRoles.add(actualCounts.user_roles);
   }
   migrationDuration.add(elapsedMs);
 
@@ -315,14 +425,26 @@ export function handleSummary(data) {
   const durationMs = round1(metricValue(data, 'iris_data_migration_duration_ms', 'med'));
   const throughput = round1(metricValue(data, 'iris_data_rows_per_second', 'med'));
   const actualRows = metricValue(data, 'iris_data_observed_rows', 'value');
+  const actualRoles = metricValue(data, 'iris_data_observed_roles', 'value');
+  const actualUsers = metricValue(data, 'iris_data_observed_users', 'value');
+  const actualUserRoles = metricValue(data, 'iris_data_observed_user_roles', 'value');
   const semantics = metricValue(data, 'iris_data_atomicity_ok', 'value');
+  const expectedCounts = expectedDestinationCounts();
 
   const report = {
     status: semantics === 1 ? 'pass' : 'fail',
+    benchmark_profile: BENCHMARK_PROFILE,
+    workload: 'users-roles-user_roles',
+    execution_count: 3,
     db_pair: DB_PAIR,
     atomic_level: ATOMIC_LEVEL,
     mode: BENCHMARK_MODE,
     row_count: ROW_COUNT,
+    table_rows: {
+      roles: ROLE_COUNT,
+      users: USER_COUNT,
+      user_roles: USER_ROLE_COUNT,
+    },
     fetch_size: FETCH_SIZE,
     batch_size: BATCH_SIZE,
     duration_ms: durationMs,
@@ -336,8 +458,16 @@ export function handleSummary(data) {
       'destination_count_verification',
       'report_publishing',
     ],
-    expected_destination_rows: expectedDestinationCount(),
+    expected_destination_rows: expectedCounts.total,
+    expected_destination_rows_by_table: {
+      roles: expectedCounts.roles,
+      users: expectedCounts.users,
+      user_roles: expectedCounts.user_roles,
+    },
     actual_destination_rows: actualRows,
+    actual_destination_rows_by_table: actualRows === null
+      ? null
+      : { roles: actualRoles, users: actualUsers, user_roles: actualUserRoles },
   };
 
   return {

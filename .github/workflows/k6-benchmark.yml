@@ -61,6 +61,7 @@ jobs:
           bash -n backend/k6/rdbms-pair-harness.sh
           bash backend/k6/test-rdbms-pair-harness.sh
           python backend/k6/test_update_deep_performance_results.py
+          python backend/k6/test_finalize_external_benchmark.py
 
       - name: Locate runnable jar
         id: jar
@@ -554,11 +555,27 @@ jobs:
             echo "PostgreSQL service container not found" >&2
             exit 1
           fi
-          docker exec -i "$postgres_container" psql -U postgres -d irispipe_bench <<'SQL'
-          DROP TABLE IF EXISTS benchmark_source;
-          CREATE TABLE benchmark_source (id INT PRIMARY KEY, name VARCHAR(255));
-          INSERT INTO benchmark_source (id, name)
-          SELECT g, 'row-' || g FROM generate_series(1, 10000) AS g;
+          docker exec -i "$postgres_container" psql -v ON_ERROR_STOP=1 -U postgres -d irispipe_bench <<'SQL'
+          DROP TABLE IF EXISTS benchmark_src_user_roles;
+          DROP TABLE IF EXISTS benchmark_src_users;
+          DROP TABLE IF EXISTS benchmark_src_roles;
+          CREATE TABLE benchmark_src_roles (id INT PRIMARY KEY, code VARCHAR(64) NOT NULL, name VARCHAR(128) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+          CREATE TABLE benchmark_src_users (id BIGINT PRIMARY KEY, username VARCHAR(64) NOT NULL, email VARCHAR(160) NOT NULL, display_name VARCHAR(128) NOT NULL, status VARCHAR(16) NOT NULL, locale VARCHAR(16) NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);
+          CREATE TABLE benchmark_src_user_roles (user_id BIGINT NOT NULL, role_id INT NOT NULL, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL, PRIMARY KEY (user_id, role_id));
+          INSERT INTO benchmark_src_roles
+          SELECT g, 'ROLE_' || g, 'Role ' || g, TIMESTAMP '2025-01-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00'
+          FROM generate_series(1, 16) AS g;
+          INSERT INTO benchmark_src_users
+          SELECT g, 'user_' || g, 'user' || g || '@example.test', 'User ' || g,
+                 CASE WHEN g % 10 = 0 THEN 'SUSPENDED' WHEN g % 10 = 1 THEN 'INVITED' ELSE 'ACTIVE' END,
+                 CASE g % 3 WHEN 0 THEN 'zh-TW' WHEN 1 THEN 'en-US' ELSE 'ja-JP' END,
+                 TIMESTAMP '2025-01-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00'
+          FROM generate_series(1, 2496) AS g;
+          INSERT INTO benchmark_src_user_roles
+          SELECT ((g - 1) / 3) + 1,
+                 ((((g - 1) / 3) + 1 + ((g - 1) % 3) * 5 - 1) % 16) + 1,
+                 TIMESTAMP '2025-02-01 00:00:00', TIMESTAMP '2026-01-01 12:00:00'
+          FROM generate_series(1, 7488) AS g;
           SQL
 
       - name: Start backend

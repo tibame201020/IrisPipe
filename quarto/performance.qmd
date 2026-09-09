@@ -4,7 +4,7 @@ title: "Performance & Reliability"
 
 IrisPipe separates **merge-gating regression tests** from long-running capacity benchmarks:
 
-- **k6 Benchmark:** API/runtime latency, 1k / 10k / 100k data-volume behavior, failure semantics, and PostgreSQL-to-H2 coverage.
+- **k6 Benchmark:** API/runtime latency, bounded data-volume behavior, failure semantics, and PostgreSQL-to-H2 coverage.
 - **Backend K6 Checks:** 10 regression suites against a real Spring Boot backend.
 - **k6 Deep Volume Benchmark:** scheduled/manual retained capacity snapshots.
 - **Full RDBMS Matrix:** six source-specific workflows covering H2, PostgreSQL, MySQL, MariaDB, SQL Server, and Oracle. A full run is 6 sources x 6 destinations x JOB/CHUNK x 1M/10M/50M = **216 cases**.
@@ -42,84 +42,129 @@ _Source: `quarto/k6-regression-results.json`, updated by the `Backend K6 Checks`
 
 ## What the Benchmark Measures
 
-The data-volume benchmark exercises real Spring Batch + JDBC execution and validates both throughput and data correctness:
+The current benchmark profile is **`identity-relations-v2`**. It exercises a realistic three-table identity workload rather than a synthetic two-column table:
 
-1. Regular PR/main gate: H2-to-H2 JOB/CHUNK at 1k / 10k / 100k.
-2. Failure semantics: a duplicate key on the final row proves the JOB vs CHUNK rollback boundary.
-3. Cross-database correctness: destination row count must equal the expected row count; `COMPLETED` alone is not accepted as a pass.
-4. Full matrix: every source can target every destination across H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle.
-5. Capacity ladder: 1M / 10M / 50M for both JOB and CHUNK (baseline, sustained throughput, capacity stress).
+1. One IrisPipe SyncJob contains **three INSERT executions**: roles, users, then user-role assignments.
+2. The executions become sequential Spring Batch steps inside the same job, so every benchmark case exercises IrisPipe multi-task orchestration.
+3. Regular PR/main gates verify bounded H2-to-H2 JOB/CHUNK behavior and failure semantics.
+4. Full matrix runs every source against every destination across H2 / PostgreSQL / MySQL / MariaDB / SQL Server / Oracle.
+5. Capacity points are 1M / 10M / 50M **total migrated rows** for both JOB and CHUNK.
+6. Destination correctness is verified **per table and in total**; a pipeline status of `COMPLETED` alone is not accepted as a pass.
 
-All numbers are repeatable GitHub-hosted-runner regression benchmarks, **not production-capacity claims**.
+All values are repeatable GitHub-hosted-runner regression benchmarks, **not production-capacity claims**.
 
 ---
 
 ## Benchmark Dataset Schema
 
-Every full/deep case migrates the same simple logical row shape so database-engine behavior, JDBC reading, writing, batching, and transaction boundaries remain the variables under test.
+The benchmark models a conventional users / roles / user-role relationship. Physical benchmark tables use `benchmark_src_*` and `benchmark_dst_*` prefixes so source and destination can coexist in one database instance for same-engine cases.
 
 ```text
-benchmark_source
-  id    PRIMARY KEY    values 1..N
-  name                 "row-<id>"
+users
+  id            primary key
+  username      varchar
+  email         varchar
+  display_name  varchar
+  status        varchar   # ACTIVE / INVITED / SUSPENDED
+  locale        varchar   # en-US / zh-TW / ja-JP
+  created_at    timestamp/datetime
+  updated_at    timestamp/datetime
 
-source query
-  SELECT id, name FROM benchmark_source ORDER BY id
+roles
+  id            primary key
+  code          varchar
+  name          varchar
+  created_at    timestamp/datetime
+  updated_at    timestamp/datetime
 
-destination
-  benchmark_dest       same logical columns, empty before a success run
+user_roles
+  user_id       part of composite primary key
+  role_id       part of composite primary key
+  created_at    timestamp/datetime
+  updated_at    timestamp/datetime
 ```
 
-| Database | `id` physical type | `name` physical type | DB-side source seed method |
-|---|---|---|---|
-| H2 | `INT PRIMARY KEY` | `VARCHAR(255)` | `SYSTEM_RANGE(1, N)` |
-| PostgreSQL | `INT PRIMARY KEY` | `VARCHAR(255)` | `generate_series(1, N)` |
-| MySQL | `INT PRIMARY KEY` | `VARCHAR(255)` | set-based Cartesian product of decimal digit sets, filtered to `N` |
-| MariaDB | `INT PRIMARY KEY` | `VARCHAR(255)` | set-based Cartesian product of decimal digit sets, filtered to `N` |
-| SQL Server | `INT PRIMARY KEY` | `VARCHAR(255)` | digit CTE Cartesian product + `TOP (N)` + `ROW_NUMBER()` |
-| Oracle | `NUMBER(10) PRIMARY KEY` | `VARCHAR2(255)` | bounded 10k `CONNECT BY` block x `ceil(N/10k)`, filtered to `N` |
+The benchmark intentionally omits database-enforced foreign keys. The logical relationship and composite key are real, but leaving FK checks out keeps the measured variable focused on IrisPipe orchestration, JDBC transfer, batching, and transaction boundaries instead of engine-specific referential-integrity enforcement cost.
 
-The payload is deterministic: row `123` is `{id: 123, name: "row-123"}`. Source data is generated with set-based SQL **inside the database before timing starts**; k6 does not submit N individual inserts. Same-engine external cases use separate `benchmark_source` and `benchmark_dest` tables in one engine instance; cross-engine cases use separate source and destination containers.
+### Row distribution
+
+`ROW_COUNT` is the **actual total number of rows migrated across all three tasks**. Roles are fixed at 16 rows. The remaining rows are split 1:3 between users and user-role assignments, so each generated user has exactly three role assignments.
+
+| Benchmark point | Users | Roles | User-role rows | Total migrated rows |
+|---:|---:|---:|---:|---:|
+| 1M | 249,996 | 16 | 749,988 | 1,000,000 |
+| 10M | 2,499,996 | 16 | 7,499,988 | 10,000,000 |
+| 50M | 12,499,996 | 16 | 37,499,988 | 50,000,000 |
+
+User payloads are deterministic, for example `{id: 123, username: "user_123", email: "user123@example.test", display_name: "User 123", ...}`. Role assignments are also deterministic and distribute three distinct roles per user across the 16-role set.
+
+### Physical types and DB-side seed
+
+| Database | User id | Role id | Datetime type | DB-side seed strategy |
+|---|---|---|---|---|
+| H2 | `BIGINT` | `INT` | `TIMESTAMP` | `SYSTEM_RANGE` |
+| PostgreSQL | `BIGINT` | `INT` | `TIMESTAMP` | `generate_series` |
+| MySQL | `BIGINT` | `INT` | `DATETIME(6)` | set-based Cartesian decimal digit sets |
+| MariaDB | `BIGINT` | `INT` | `DATETIME(6)` | set-based Cartesian decimal digit sets |
+| SQL Server | `BIGINT` | `INT` | `DATETIME2(6)` | digit CTE + `ROW_NUMBER()` |
+| Oracle | `NUMBER(19)` | `NUMBER(10)` | `TIMESTAMP(6)` | bounded 10k `CONNECT BY` blocks |
+
+Source data is generated **inside the database before timing starts**. k6 never sends millions of individual INSERT requests during setup.
+
+---
+
+## Multi-Task Pipeline Shape
+
+A benchmark case is one SyncJob with three executions:
+
+```{mermaid}
+flowchart LR
+  S["Source DB"] --> R["Execution 1: roles"] --> U["Execution 2: users"] --> UR["Execution 3: user_roles"] --> D["Destination DB"]
+```
+
+The steps are deliberately separate rather than one joined query. This means the benchmark validates that IrisPipe can coordinate multiple related migration tasks inside one job while preserving the configured JOB/CHUNK transaction semantics.
 
 ---
 
 ## Fetch vs Batch
 
-IrisPipe exposes two independent tuning concepts even though the current benchmark profiles intentionally set them to the same value for a controlled comparison:
+IrisPipe exposes two independent tuning concepts even though the controlled benchmark currently sets them to the same value:
 
-- `fetchSize`: source-side JDBC reader fetch window/hint. It affects read round trips, driver buffering, and memory behavior. It is **not** a transaction boundary.
-- `batchSize`: destination-side writer batch/chunk size. In CHUNK atomic mode it also defines the commit boundary; in JOB atomic mode batches are still written incrementally but the whole job shares one destination transaction.
+- **`fetchSize`**: source-side JDBC reader fetch window/hint. It affects read round trips, driver buffering, and memory behavior. It is **not** a transaction boundary.
+- **`batchSize`**: destination-side writer batch/chunk size. In CHUNK mode it also defines commit boundaries; in JOB mode writes are still batched but all three executions share one destination transaction.
 
 | CI profile | Source `fetchSize` | Destination `batchSize` |
 |---|---:|---:|
 | Regular PR/main benchmark | 1,000 | 1,000 |
 | Deep/full benchmark | 5,000 | 5,000 |
 
-The raw full/deep tables display both values separately. Older retained snapshots were produced before `fetch_size` was persisted in the JSON report; those harness versions explicitly configured `fetchSize = batchSize`, so the renderer can recover the historical Fetch value without guessing.
+Full/deep result tables display both values separately.
 
 ---
 
 ## JOB vs CHUNK: Transaction Boundary
 
-The same `batchSize` has different transaction semantics:
+With three executions, transaction grouping is slightly different from a single-table benchmark:
 
 ```{mermaid}
 flowchart LR
-  subgraph JOB["JOB / 50M rows"]
-    J1["JDBC batches: 5,000 rows"] --> J2["1 destination transaction"] --> J3["Failure: rollback all 50M"]
+  subgraph JOB["JOB / 50M total rows"]
+    J1["roles step"] --> J2["users step"] --> J3["user_roles step"] --> J4["1 destination transaction"]
   end
-  subgraph CHUNK["CHUNK / 50M rows"]
-    C1["10,000 chunks x 5,000 rows"] --> C2["10,000 independent commits"] --> C3["Failure: rollback only failing chunk"]
+  subgraph CHUNK["CHUNK / 50M total rows"]
+    C1["roles chunks"] --> C2["users chunks"] --> C3["user_roles chunks"] --> C4["commit each chunk"]
   end
 ```
 
-| Source rows | CHUNK transaction groups @ 5,000 | JOB transaction groups |
-|---:|---:|---:|
-| 1M | 200 | 1 |
-| 10M | 2,000 | 1 |
-| 50M | 10,000 | 1 |
+For `batchSize=5,000`, CHUNK transaction groups are the sum of chunk counts for the three executions, not simply `ceil(totalRows / 5,000)`:
 
-The regular 10k failure test makes the trade-off observable. With a duplicate key on the final row and a 1,000-row batch, **JOB** rolls back all migrated rows and leaves only the pre-existing conflict row (**1 row**). **CHUNK** preserves the first nine committed chunks (**9,000 rows**) and rolls back only the failing tenth chunk, leaving **9,001 rows** including the pre-existing conflict.
+| Total rows | Roles chunks | Users chunks | User-role chunks | CHUNK transaction groups | JOB transaction groups |
+|---:|---:|---:|---:|---:|---:|
+| 1M | 1 | 50 | 150 | **201** | **1** |
+| 10M | 1 | 500 | 1,500 | **2,001** | **1** |
+| 50M | 1 | 2,500 | 7,500 | **10,001** | **1** |
+
+The regular 10k failure case injects a duplicate composite key into the **final user-role row**. In JOB mode, the failure in execution 3 rolls back executions 1 and 2 as well, leaving only the pre-existing conflict row (**1 total row**). In CHUNK mode, the completed roles and users tasks remain committed, as do the first seven full 1,000-row user-role chunks; the failing final chunk rolls back, leaving **9,513 total rows** (16 roles + 2,496 users + 7,001 user-role rows including the pre-existing conflict).
 
 ---
 
@@ -129,22 +174,22 @@ Reported `duration_ms` / `rows_per_second` intentionally measure **IrisPipe migr
 
 ```{mermaid}
 flowchart LR
-  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline<br/>Spring Batch + JDBC + commits"] --> G["STOP TIMER"] --> H["Destination COUNT verification"] --> I["Publish report"]
+  A["DB/container startup"] --> B["Source seed"] --> C["Backend startup"] --> D["Pipeline config"] --> E["START TIMER"] --> F["POST /sync-pipeline\n3 Spring Batch steps + JDBC + commits"] --> G["STOP TIMER"] --> H["Per-table destination COUNT verification"] --> I["Publish report"]
 ```
 
 **Included:** the synchronous `/api/v1/sync-pipeline` call from immediately before the request until the completed/failed response returns.
 
-**Excluded:** database/container startup, source-data generation, backend startup/readiness, pipeline-config creation, post-run destination `COUNT(*)`, artifact aggregation, and Pages deployment.
+**Excluded:** database/container startup, source-data generation, backend startup/readiness, pipeline-config creation, post-run destination `COUNT(*)` checks, artifact aggregation, and Pages deployment.
 
-This is why smaller cases can show lower rows/s: fixed Spring Batch / JDBC / transaction startup cost is amortized over fewer rows.
+`rows_per_second` uses the **total migrated rows across roles + users + user_roles** as the numerator.
 
 ---
 
 ## Throughput Chart Reading
 
-The chart uses **X = source row count on a log scale** and **Y = measured rows/second**. Each source database is a tab, each destination is a curve, and JOB/CHUNK are separate tabs. This keeps the load level on the independent axis and makes throughput saturation or degradation visible as the dataset grows.
+The chart uses **X = total migrated row count on a log scale** and **Y = measured rows/second**. Each source database is a tab, each destination is a line, and JOB/CHUNK are separate tabs.
 
-Each circle is an actual 1M / 10M / 50M measurement. The line uses shape-preserving cubic interpolation only as a visual guide through those points; it does not create or imply additional benchmark samples.
+There are only three measured points: **1M / 10M / 50M**. For that reason the chart uses **straight line segments between measured points** and keeps the original point markers. It deliberately does not smooth, regress, or interpolate a curve between them.
 
 ---
 
@@ -180,17 +225,15 @@ flowchart TD
   R --> D["repository_dispatch to GitHub Pages"]
 ```
 
-A source-specific tag such as `benchmark-postgres-*` triggers only that source workflow; `benchmark-full-*` triggers all six source workflows.
-
-The retained result file uses a merge key of `(db_pair, atomic_level, mode, row_count, fetch_size, batch_size)`. A normal merge to `main` **does not regenerate or clear deep results**, and a source-specific benchmark update replaces only the cases it actually measured.
+Retained results are keyed by benchmark profile as well as DB pair, atomic level, mode, row count, fetch size, and batch size. This prevents historical single-table results from being mistaken for measurements of the current multi-table schema.
 
 ---
 
 ## Benchmark Methodology
 
 1. `mvn package` runs backend unit tests before benchmark execution.
-2. Regular PR/main gates stay bounded; 10M+ capacity work is tag/manual/scheduled only.
-3. Full matrix jobs use `fetchSize=5,000`, `batchSize=5,000`, and validate 1M / 10M / 50M; each source workflow runs 36 cases with `max-parallel=4`.
-4. Source seed happens before the migration timer; k6 does not insert the benchmark dataset row-by-row.
-5. External destination row counts are verified after the timer and must equal the expected count.
-6. Benchmark snapshots are merged into retained history instead of replacing unrelated source/destination results; legacy 100K/20M measurements remain retained even though they are no longer part of the active ladder.
+2. PR/main gates remain bounded; 10M+ capacity work stays in tag/manual/scheduled workflows.
+3. Full matrix jobs use `fetchSize=5,000`, `batchSize=5,000`, three INSERT executions, and 1M / 10M / 50M total-row points.
+4. Source seed happens before the migration timer.
+5. Destination counts are verified after the timer for roles, users, user_roles, and total rows.
+6. Benchmark snapshots are merged into retained history by **benchmark profile**. Legacy single-table measurements remain available for traceability but are excluded from current-schema charts and coverage.
