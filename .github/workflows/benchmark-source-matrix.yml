@@ -49,11 +49,11 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         dest: [h2, postgres, mysql, mariadb, sqlserver, oracle]
         atomic: [JOB, CHUNK]
-        rows: [100000, 1000000, 10000000, 20000000, 50000000]
+        rows: [1000000, 10000000, 50000000]
     env:
       APP_LOG: ${{ github.workspace }}/.k6-tmp/full-${{ inputs.source }}-${{ matrix.dest }}-${{ matrix.atomic }}-${{ matrix.rows }}.log
       APP_PID_FILE: ${{ github.workspace }}/.k6-tmp/full-${{ inputs.source }}-${{ matrix.dest }}-${{ matrix.atomic }}-${{ matrix.rows }}.pid

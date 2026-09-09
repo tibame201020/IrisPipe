@@ -66,6 +66,23 @@ class DeepResultMergeTest(unittest.TestCase):
         self.assertEqual(500, h2["duration_ms"])
         self.assertEqual("new-run", h2["run_url"])
 
+    def test_legacy_row_steps_are_retained_but_not_in_current_ladder(self):
+        legacy = {
+            "db_pair": "h2-h2",
+            "atomic_level": "JOB",
+            "mode": "success",
+            "row_count": 100000,
+            "batch_size": 5000,
+            "duration_ms": 1000,
+            "rows_per_second": 100000,
+            "status": "pass",
+        }
+        current = dict(legacy, row_count=1000000)
+        merged = mod.merge_cases({"cases": [legacy]}, [current])
+        self.assertEqual(2, len(merged))
+        visible = mod.standard_cases(merged, "h2", "JOB")
+        self.assertEqual([1000000], [case["row_count"] for case in visible])
+
     def test_render_exposes_source_tabs_and_log_scale_chart(self):
         cases = []
         for dest in mod.ENGINES:
@@ -73,7 +90,7 @@ class DeepResultMergeTest(unittest.TestCase):
                 "db_pair": f"h2-{dest}",
                 "atomic_level": "JOB",
                 "mode": "success",
-                "row_count": 100000,
+                "row_count": 1000000,
                 "batch_size": 5000,
                 "duration_ms": 1000,
                 "rows_per_second": 100000,
