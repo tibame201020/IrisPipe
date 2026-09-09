@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated_at": "2026-09-09T05:01:45Z",
+    "generated_at": "2026-09-09T06:18:25Z",
     "note": "Updated by GitHub Actions on each benchmark run. See .github/workflows/k6-benchmark.yml"
   },
   "suites": [
@@ -56,18 +56,18 @@
     }
   ],
   "benchmark": {
-    "execute_latency_p50_ms": 60,
-    "execute_latency_p95_ms": 214.8,
-    "execute_latency_p99_ms": 243,
-    "api_latency_p50_ms": 4.2,
-    "api_latency_p95_ms": 12.7,
+    "execute_latency_p50_ms": 82,
+    "execute_latency_p95_ms": 162.6,
+    "execute_latency_p99_ms": 175.7,
+    "api_latency_p50_ms": 4.5,
+    "api_latency_p95_ms": 12.5,
     "throughput_rps": 11.9,
-    "note": "Last updated 2026-09-09T05:01:45Z by GitHub Actions"
+    "note": "Last updated 2026-09-09T06:18:25Z by GitHub Actions"
   },
   "data_volume": {
-    "updated_at": "2026-09-09T05:01:45Z",
-    "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34313102926",
-    "commit_sha": "b92679bfff87ffc98acddd45657d77d611af8d00",
+    "updated_at": "2026-09-09T06:18:25Z",
+    "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/34318111755",
+    "commit_sha": "e0c0ee04a0d88b56864c94c29414657269747b21",
     "cases": [
       {
         "status": "pass",
@@ -85,7 +85,7 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 753,
+        "duration_ms": 852,
         "rows_per_second": null,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
@@ -125,7 +125,7 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 763,
+        "duration_ms": 783,
         "rows_per_second": null,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
@@ -165,8 +165,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 430,
-        "rows_per_second": 2325.6,
+        "duration_ms": 502,
+        "rows_per_second": 1992,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -205,8 +205,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 811,
-        "rows_per_second": 12330.5,
+        "duration_ms": 643,
+        "rows_per_second": 15552.1,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -245,8 +245,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 2235,
-        "rows_per_second": 44742.7,
+        "duration_ms": 1981,
+        "rows_per_second": 50479.6,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -285,8 +285,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 374,
-        "rows_per_second": 2673.8,
+        "duration_ms": 444,
+        "rows_per_second": 2252.3,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -325,8 +325,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 678,
-        "rows_per_second": 14749.3,
+        "duration_ms": 653,
+        "rows_per_second": 15313.9,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -365,8 +365,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 2232,
-        "rows_per_second": 44802.9,
+        "duration_ms": 2239,
+        "rows_per_second": 44662.8,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -405,8 +405,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 1122,
-        "rows_per_second": 8912.7,
+        "duration_ms": 1508,
+        "rows_per_second": 6631.3,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
@@ -445,8 +445,8 @@
         },
         "fetch_size": 1000,
         "batch_size": 1000,
-        "duration_ms": 1095,
-        "rows_per_second": 9132.4,
+        "duration_ms": 1176,
+        "rows_per_second": 8503.4,
         "measurement_scope": "sync_pipeline_http_call_only",
         "excluded_from_duration": [
           "database_container_startup",
