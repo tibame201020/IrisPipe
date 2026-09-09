@@ -59,6 +59,7 @@ jobs:
         shell: bash
         run: |
           bash -n backend/k6/rdbms-pair-harness.sh
+          bash backend/k6/test-rdbms-pair-harness.sh
           python backend/k6/test_update_deep_performance_results.py
 
       - name: Locate runnable jar
