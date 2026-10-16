@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-16T22:13:52Z",
+  "updated_at": "2026-10-16T22:18:38Z",
   "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
   "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
   "case_count": 440,
@@ -22,8 +22,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 8825,
-      "rows_per_second": 113314.4,
+      "duration_ms": 8146,
+      "rows_per_second": 122759.6,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -45,9 +45,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -65,8 +65,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 73323,
-      "rows_per_second": 136382.9,
+      "duration_ms": 76587,
+      "rows_per_second": 130570.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -88,9 +88,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -108,8 +108,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 242851,
-      "rows_per_second": 205887.6,
+      "duration_ms": 389214,
+      "rows_per_second": 128464,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -131,9 +131,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -151,8 +151,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 6457,
-      "rows_per_second": 154870.7,
+      "duration_ms": 8889,
+      "rows_per_second": 112498.6,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -174,9 +174,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -194,8 +194,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 76454,
-      "rows_per_second": 130797.6,
+      "duration_ms": 80951,
+      "rows_per_second": 123531.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -217,9 +217,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -237,8 +237,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 408479,
-      "rows_per_second": 122405.3,
+      "duration_ms": 309624,
+      "rows_per_second": 161486.2,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -260,9 +260,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -280,8 +280,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 9584,
-      "rows_per_second": 104340.6,
+      "duration_ms": 9214,
+      "rows_per_second": 108530.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -303,9 +303,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -323,8 +323,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 85229,
-      "rows_per_second": 117331,
+      "duration_ms": 86764,
+      "rows_per_second": 115255.2,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -346,9 +346,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -366,8 +366,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 415995,
-      "rows_per_second": 120193.8,
+      "duration_ms": 416129,
+      "rows_per_second": 120155,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -389,9 +389,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -409,8 +409,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 9276,
-      "rows_per_second": 107805.1,
+      "duration_ms": 9200,
+      "rows_per_second": 108695.7,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -432,9 +432,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -452,8 +452,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 84656,
-      "rows_per_second": 118125.1,
+      "duration_ms": 85893,
+      "rows_per_second": 116423.9,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -475,9 +475,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -495,8 +495,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 403248,
-      "rows_per_second": 123993.2,
+      "duration_ms": 414676,
+      "rows_per_second": 120576.1,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -518,9 +518,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -538,8 +538,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 20742,
-      "rows_per_second": 48211.4,
+      "duration_ms": 15918,
+      "rows_per_second": 62822,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -561,9 +561,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -581,8 +581,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 148397,
-      "rows_per_second": 67386.8,
+      "duration_ms": 178268,
+      "rows_per_second": 56095.3,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -604,9 +604,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -624,8 +624,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 926988,
-      "rows_per_second": 53938.1,
+      "duration_ms": 567807,
+      "rows_per_second": 88058.1,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -647,9 +647,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -667,8 +667,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 20247,
-      "rows_per_second": 49390,
+      "duration_ms": 20885,
+      "rows_per_second": 47881.3,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -690,9 +690,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -710,8 +710,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 171963,
-      "rows_per_second": 58152,
+      "duration_ms": 169937,
+      "rows_per_second": 58845.3,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -733,9 +733,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -753,8 +753,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 856616,
-      "rows_per_second": 58369.2,
+      "duration_ms": 837251,
+      "rows_per_second": 59719.2,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -776,9 +776,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -796,8 +796,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 9157,
-      "rows_per_second": 109206.1,
+      "duration_ms": 12276,
+      "rows_per_second": 81459.8,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -819,9 +819,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -839,8 +839,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 71101,
-      "rows_per_second": 140645,
+      "duration_ms": 85005,
+      "rows_per_second": 117640.1,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -862,9 +862,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -882,8 +882,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 375152,
-      "rows_per_second": 133279.3,
+      "duration_ms": 368395,
+      "rows_per_second": 135723.9,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -905,9 +905,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -925,8 +925,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 10699,
-      "rows_per_second": 93466.7,
+      "duration_ms": 13123,
+      "rows_per_second": 76202.1,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -948,9 +948,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -968,8 +968,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 83254,
-      "rows_per_second": 120114.3,
+      "duration_ms": 68039,
+      "rows_per_second": 146974.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -991,9 +991,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1011,8 +1011,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 368734,
-      "rows_per_second": 135599.1,
+      "duration_ms": 396074,
+      "rows_per_second": 126239,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1034,9 +1034,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1054,8 +1054,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 13854,
-      "rows_per_second": 72181.3,
+      "duration_ms": 13868,
+      "rows_per_second": 72108.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1077,9 +1077,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1097,8 +1097,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 134475,
-      "rows_per_second": 74363.3,
+      "duration_ms": 120388,
+      "rows_per_second": 83064.8,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1120,9 +1120,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1140,8 +1140,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 621305,
-      "rows_per_second": 80475.8,
+      "duration_ms": 608717,
+      "rows_per_second": 82140,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1163,9 +1163,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1183,8 +1183,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 14508,
-      "rows_per_second": 68927.5,
+      "duration_ms": 14962,
+      "rows_per_second": 66836,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1206,9 +1206,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1226,8 +1226,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 131019,
-      "rows_per_second": 76324.8,
+      "duration_ms": 81816,
+      "rows_per_second": 122225.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1249,9 +1249,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1269,8 +1269,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 619151,
-      "rows_per_second": 80755.7,
+      "duration_ms": 623103,
+      "rows_per_second": 80243.6,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1292,9 +1292,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1312,8 +1312,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 20064,
-      "rows_per_second": 49840.5,
+      "duration_ms": 20067,
+      "rows_per_second": 49833.1,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1335,9 +1335,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1355,8 +1355,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 175135,
-      "rows_per_second": 57098.8,
+      "duration_ms": 180156,
+      "rows_per_second": 55507.4,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1378,9 +1378,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1398,8 +1398,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 831042,
-      "rows_per_second": 60165.4,
+      "duration_ms": 712970,
+      "rows_per_second": 70129.2,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1421,9 +1421,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1441,8 +1441,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 20484,
-      "rows_per_second": 48818.6,
+      "duration_ms": 17719,
+      "rows_per_second": 56436.6,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1464,9 +1464,9 @@
         "users": 249996,
         "user_roles": 749988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1484,8 +1484,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 169025,
-      "rows_per_second": 59162.8,
+      "duration_ms": 174735,
+      "rows_per_second": 57229.5,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1507,9 +1507,9 @@
         "users": 2499996,
         "user_roles": 7499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
@@ -1527,8 +1527,8 @@
       },
       "fetch_size": 5000,
       "batch_size": 5000,
-      "duration_ms": 493020,
-      "rows_per_second": 101415.8,
+      "duration_ms": 624878,
+      "rows_per_second": 80015.6,
       "measurement_scope": "sync_pipeline_http_call_only",
       "excluded_from_duration": [
         "database_container_startup",
@@ -1550,9 +1550,9 @@
         "users": 12499996,
         "user_roles": 37499988
       },
-      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38809285308",
-      "commit_sha": "f9548aff34b7b4b9683057a69fbae6c30399d820",
-      "measured_at": "2026-10-15T22:34:11Z"
+      "run_url": "https://github.com/tibame201020/IrisPipe/actions/runs/38967067201",
+      "commit_sha": "4c81a916c24e1a618cc2cd0b8f8a1e66965445dc",
+      "measured_at": "2026-10-16T22:18:38Z"
     },
     {
       "status": "pass",
